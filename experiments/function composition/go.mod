@@ -1,3 +1,3 @@
-module ovsep.com/simpleapp
+module ovsep.com/fmesh/function_composition
 
-go 1.18
+go 1.22
