@@ -126,7 +126,7 @@ func main() {
 
 	//Build mesh
 	fm := FMesh{
-		ErrorHandlingStrategy: IgnoreAll,
+		ErrorHandlingStrategy: StopOnFirstError,
 		Components: Components{
 			c0, c1, c2, c3, c4,
 		},

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -62,7 +61,7 @@ func (fm *FMesh) run() ([]*HopResult, error) {
 		hops = append(hops, hopReport)
 
 		if fm.ErrorHandlingStrategy == StopOnFirstError && hopReport.hasErrors() {
-			return hops, fmt.Errorf("%w %v", errors.New("Hop # %d finished with errors. Stopping fmesh"), len(hops), hopReport.activationResults)
+			return hops, fmt.Errorf("Hop #%d finished with errors. Stopping fmesh. Report: %v", len(hops), hopReport.activationResults)
 		}
 
 		if len(hopReport.activationResults) == 0 {
