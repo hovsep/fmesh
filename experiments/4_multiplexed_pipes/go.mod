@@ -1,2 +1,3 @@
-module ovsep.com/fmesh/4_multiplexed_pipes
-go 1.22
+module github.com/hovsep/fmesh/experiment/4_multiplexed_pipes
+
+go 1.23

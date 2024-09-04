@@ -1,2 +1,3 @@
-module ovsep.com/fmesh/5_error_handling
-go 1.22
+module github.com/hovsep/fmesh/experiment/5_error_handling
+
+go 1.23

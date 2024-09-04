@@ -1,3 +1,3 @@
-module ovsep.com/fmesh/2_multiple_inputs_outputs
+module github.com/hovsep/fmesh/experiment/2_multiple_inputs_outputs
 
-go 1.22
+go 1.23
