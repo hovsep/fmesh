@@ -1,3 +1,3 @@
-module ovsep.com/fmesh/1_function_composition
+module github.com/hovsep/fmesh/experiment/1_function_composition
 
-go 1.22
+go 1.23
