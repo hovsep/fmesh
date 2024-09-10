@@ -11,7 +11,7 @@ import (
 
 // This example shows a very basic program written with FMesh
 // All it does is passes an integer into a simple fmesh which consists of 2 components, the first one adds 2 to the
-// initial number, and the second one doubles the result.
+// initial number, and the second one doubles the result. (result must be 102)
 func main() {
 	c1 := &component.Component{
 		Name:        "adder",
@@ -23,7 +23,7 @@ func main() {
 			"res": &port.Port{},
 		},
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
-			num := inputs.ByName("num").GetSignal().GetPayload().(int)
+			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num + 2))
 			return nil
 		},
@@ -39,7 +39,7 @@ func main() {
 			"res": &port.Port{},
 		},
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
-			num := inputs.ByName("num").GetSignal().GetPayload().(int)
+			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num * 3))
 			return nil
 		},
@@ -63,7 +63,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	res := c2.Outputs.ByName("res").GetSignal().GetPayload().(int)
+	res := c2.Outputs.ByName("res").Signal().Payload()
 
 	fmt.Println("FMesh calculation result:", res)
 

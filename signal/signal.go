@@ -1,58 +1,45 @@
 package signal
 
-// @TODO:rename\refactor interface
-type SignalInterface interface {
-	//Remove IsAggregate\IsSingle, in favour of Len
-	IsAggregate() bool
-	IsSingle() bool
-	GetPayload() any
-	AllPayloads() []any //@TODO: refactor with true iterator
-}
-
+// Signal describes a piece of data sent between components
 type Signal struct {
-	Payload any
+	payloads []any //Signal can carry multiple payloads (e.g. when multiple signals are combined)
 }
 
-type Signals struct {
-	Payload []*Signal
+// New creates a new signal from the given payloads
+func New(payloads ...any) *Signal {
+	return &Signal{payloads: payloads}
 }
 
-func (s Signal) IsAggregate() bool {
-	return false
+// Len returns a number of payloads
+func (s *Signal) Len() int {
+	return len(s.payloads)
 }
 
-func (s Signal) IsSingle() bool {
-	return !s.IsAggregate()
+// Payloads returns all payloads
+func (s *Signal) Payloads() []any {
+	return s.payloads
 }
 
-func (s Signals) IsAggregate() bool {
-	return true
-}
-
-func (s Signals) IsSingle() bool {
-	return !s.IsAggregate()
-}
-
-func (s Signals) GetPayload() any {
-	return s.Payload
-}
-
-func (s Signal) GetPayload() any {
-	return s.Payload
-}
-
-func (s Signal) AllPayloads() []any {
-	return []any{s.Payload}
-}
-
-func (s Signals) AllPayloads() []any {
-	all := make([]any, 0)
-	for _, sig := range s.Payload {
-		all = append(all, sig.GetPayload())
+// Payload returns the first payloads (useful when you are sure there is just one payloads)
+// It panics when used with signal that carries multiple payloads
+func (s *Signal) Payload() any {
+	if s.Len() != 1 {
+		panic("signal has zero or multiple payloads")
 	}
-	return all
+	return s.payloads[0]
 }
 
-func New(payload any) *Signal {
-	return &Signal{Payload: payload}
+// Merge returns a new signal which payloads is combined from 2 original signals
+func (s *Signal) Merge(anotherSignal *Signal) *Signal {
+	//Merging with nothing
+	if anotherSignal == nil || anotherSignal.Payloads() == nil {
+		return s
+	}
+
+	//Original signal is empty
+	if s.Payloads() == nil {
+		return anotherSignal
+	}
+
+	return New(append(s.Payloads(), anotherSignal.Payloads()...)...)
 }

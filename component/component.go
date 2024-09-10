@@ -31,7 +31,7 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	}()
 
 	//@TODO:: https://github.com/hovsep/fmesh/issues/15
-	if !c.Inputs.AnyHasValue() {
+	if !c.Inputs.AnyHasSignal() {
 		//No Inputs set, stop here
 
 		aRes = hop.ActivationResult{
