@@ -1,3 +1,3 @@
-module github.com/hovsep/fmesh/experiment/10_shared_pointer
+module github.com/hovsep/fmesh/experiments/10_shared_pointer
 
 go 1.23
