@@ -1,58 +1,36 @@
 package signal
 
-// @TODO:rename\refactor interface
-type SignalInterface interface {
-	//Remove IsAggregate\IsSingle, in favour of Len
-	IsAggregate() bool
-	IsSingle() bool
-	GetPayload() any
-	AllPayloads() []any //@TODO: refactor with true iterator
-}
-
+// Signal describes a piece of data sent between components
 type Signal struct {
-	Payload any
+	payload []any //Signal can carry multiple payloads (e.g. when multiple signals are combined)
 }
 
-type Signals struct {
-	Payload []*Signal
+// New creates a new signal from the given payloads
+func New(payload ...any) *Signal {
+	return &Signal{payload: payload}
 }
 
-func (s Signal) IsAggregate() bool {
-	return false
+// Len returns a number of payloads
+func (s *Signal) Len() int {
+	return len(s.payload)
 }
 
-func (s Signal) IsSingle() bool {
-	return !s.IsAggregate()
+// Payload returns all payloads
+func (s *Signal) Payload() []any {
+	return s.payload
 }
 
-func (s Signals) IsAggregate() bool {
-	return true
-}
-
-func (s Signals) IsSingle() bool {
-	return !s.IsAggregate()
-}
-
-func (s Signals) GetPayload() any {
-	return s.Payload
-}
-
-func (s Signal) GetPayload() any {
-	return s.Payload
-}
-
-func (s Signal) AllPayloads() []any {
-	return []any{s.Payload}
-}
-
-func (s Signals) AllPayloads() []any {
-	all := make([]any, 0)
-	for _, sig := range s.Payload {
-		all = append(all, sig.GetPayload())
+// Merge returns a new signal which payload is combined from 2 original signals
+func (s *Signal) Merge(anotherSignal *Signal) *Signal {
+	//Merging with nothing
+	if anotherSignal == nil || anotherSignal.Payload() == nil {
+		return s
 	}
-	return all
-}
 
-func New(payload any) *Signal {
-	return &Signal{Payload: payload}
+	//Original signal is empty
+	if s.Payload() == nil {
+		return anotherSignal
+	}
+
+	return New(append(s.Payload(), anotherSignal.Payload()...)...)
 }

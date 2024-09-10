@@ -5,62 +5,26 @@ import (
 )
 
 type Port struct {
-	Signal signal.SignalInterface
+	signal *signal.Signal
 	Pipes  Pipes //Refs to Pipes connected to that port (no in\out semantics)
 }
 
 type Ports map[string]*Port
 
-func (p *Port) GetSignal() signal.SignalInterface {
-	if p == nil {
-		panic("invalid port")
-	}
-
-	if !p.HasSignal() {
-		return nil
-	}
-
-	if p.Signal.IsAggregate() {
-		return p.Signal.(*signal.Signals)
-	}
-	return p.Signal.(*signal.Signal)
+func (p *Port) Signal() *signal.Signal {
+	return p.signal
 }
 
-func (p *Port) PutSignal(sig signal.SignalInterface) {
-	if p.HasSignal() {
-		//Aggregate SignalInterface
-		var resValues []*signal.Signal
-
-		//Extract existing SignalInterface(s)
-		if p.Signal.IsSingle() {
-			resValues = append(resValues, p.Signal.(*signal.Signal))
-		} else if p.Signal.IsAggregate() {
-			resValues = p.Signal.(*signal.Signals).Payload
-		}
-
-		//Add new SignalInterface(s)
-		if sig.IsSingle() {
-			resValues = append(resValues, sig.(*signal.Signal))
-		} else if sig.IsAggregate() {
-			resValues = append(resValues, sig.(*signal.Signals).Payload...)
-		}
-
-		p.Signal = &signal.Signals{
-			Payload: resValues,
-		}
-		return
-	}
-
-	//Single SignalInterface
-	p.Signal = sig
+func (p *Port) PutSignal(sig *signal.Signal) {
+	p.signal = sig.Merge(p.Signal())
 }
 
 func (p *Port) ClearSignal() {
-	p.Signal = nil
+	p.signal = nil
 }
 
 func (p *Port) HasSignal() bool {
-	return p.Signal != nil
+	return p.signal != nil
 }
 
 // Adds pipe reference to port, so all Pipes of the port are easily iterable (no in\out semantics)
@@ -102,7 +66,7 @@ func (ports Ports) ManyByName(names ...string) Ports {
 	return selectedPorts
 }
 
-func (ports Ports) AnyHasValue() bool {
+func (ports Ports) AnyHasSignal() bool {
 	for _, p := range ports {
 		if p.HasSignal() {
 			return true
@@ -112,7 +76,7 @@ func (ports Ports) AnyHasValue() bool {
 	return false
 }
 
-func (ports Ports) AllHaveValue() bool {
+func (ports Ports) AllHaveSignal() bool {
 	for _, p := range ports {
 		if !p.HasSignal() {
 			return false
@@ -122,9 +86,9 @@ func (ports Ports) AllHaveValue() bool {
 	return true
 }
 
-func (ports Ports) SetAll(val signal.SignalInterface) {
+func (ports Ports) PutSignal(sig *signal.Signal) {
 	for _, p := range ports {
-		p.PutSignal(val)
+		p.PutSignal(sig)
 	}
 }
 
@@ -135,5 +99,5 @@ func (ports Ports) ClearAll() {
 }
 
 func ForwardSignal(source *Port, dest *Port) {
-	dest.PutSignal(source.GetSignal())
+	dest.PutSignal(source.Signal())
 }
