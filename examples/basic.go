@@ -23,7 +23,7 @@ func main() {
 			"res": &port.Port{},
 		},
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
-			num := inputs.ByName("num").Signal().Payload()[0].(int)
+			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num + 2))
 			return nil
 		},
@@ -39,7 +39,7 @@ func main() {
 			"res": &port.Port{},
 		},
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
-			num := inputs.ByName("num").Signal().Payload()[0].(int)
+			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num * 3))
 			return nil
 		},

@@ -7,7 +7,7 @@ import (
 
 func TestNew(t *testing.T) {
 	type args struct {
-		payload []any
+		payloads []any
 	}
 	tests := []struct {
 		name string
@@ -15,37 +15,37 @@ func TestNew(t *testing.T) {
 		want *Signal
 	}{
 		{
-			name: "nil payload",
+			name: "nil payloads",
 			args: args{
-				payload: nil,
+				payloads: nil,
 			},
-			want: &Signal{payload: nil},
+			want: &Signal{payloads: nil},
 		},
 		{
 			name: "empty slice",
 			args: args{
-				payload: []any{},
+				payloads: []any{},
 			},
-			want: &Signal{payload: []any{}},
+			want: &Signal{payloads: []any{}},
 		},
 		{
-			name: "single payload",
+			name: "single payloads",
 			args: args{
-				payload: []any{123},
+				payloads: []any{123},
 			},
-			want: &Signal{payload: []any{123}},
+			want: &Signal{payloads: []any{123}},
 		},
 		{
 			name: "multiple payloads",
 			args: args{
-				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
+				payloads: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
-			want: &Signal{payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
+			want: &Signal{payloads: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.payload...); !reflect.DeepEqual(got, tt.want) {
+			if got := New(tt.args.payloads...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("New() = %v, want %v", got, tt.want)
 			}
 		})
@@ -53,49 +53,35 @@ func TestNew(t *testing.T) {
 }
 
 func TestSignal_Len(t *testing.T) {
-	type fields struct {
-		payload []any
-	}
 	tests := []struct {
 		name   string
-		fields fields
+		signal *Signal
 		want   int
 	}{
 		{
-			name: "nil payload",
-			fields: fields{
-				payload: nil,
-			},
-			want: 0,
+			name:   "no args",
+			signal: New(),
+			want:   0,
 		},
 		{
-			name: "empty slice",
-			fields: fields{
-				payload: []any{},
-			},
-			want: 0,
+			name:   "nil payload is valid",
+			signal: New(nil),
+			want:   1,
 		},
 		{
-			name: "single payload",
-			fields: fields{
-				payload: []any{123},
-			},
-			want: 1,
+			name:   "single payload",
+			signal: New(123),
+			want:   1,
 		},
 		{
-			name: "multiple payloads",
-			fields: fields{
-				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
-			},
-			want: 6,
+			name:   "multiple payloads",
+			signal: New(123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil),
+			want:   6,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Signal{
-				payload: tt.fields.payload,
-			}
-			if got := s.Len(); got != tt.want {
+			if got := tt.signal.Len(); got != tt.want {
 				t.Errorf("Len() = %v, want %v", got, tt.want)
 			}
 		})
@@ -103,7 +89,6 @@ func TestSignal_Len(t *testing.T) {
 }
 
 func TestSignal_Merge(t *testing.T) {
-
 	tests := []struct {
 		name string
 		sigA *Signal
@@ -115,7 +100,7 @@ func TestSignal_Merge(t *testing.T) {
 			sigA: New(),
 			sigB: New(),
 			want: &Signal{
-				payload: nil,
+				payloads: nil,
 			},
 		},
 		{
@@ -123,7 +108,7 @@ func TestSignal_Merge(t *testing.T) {
 			sigA: New(),
 			sigB: New(12, 13),
 			want: &Signal{
-				payload: []any{12, 13},
+				payloads: []any{12, 13},
 			},
 		},
 		{
@@ -131,7 +116,7 @@ func TestSignal_Merge(t *testing.T) {
 			sigA: New(14, 15),
 			sigB: New(),
 			want: &Signal{
-				payload: []any{14, 15},
+				payloads: []any{14, 15},
 			},
 		},
 		{
@@ -139,7 +124,7 @@ func TestSignal_Merge(t *testing.T) {
 			sigA: New(16),
 			sigB: New(map[string]string{"k": "v"}),
 			want: &Signal{
-				payload: []any{16, map[string]string{"k": "v"}},
+				payloads: []any{16, map[string]string{"k": "v"}},
 			},
 		},
 	}
@@ -152,51 +137,86 @@ func TestSignal_Merge(t *testing.T) {
 	}
 }
 
-func TestSignal_Payload(t *testing.T) {
-	type fields struct {
-		payload []any
-	}
+func TestSignal_Payloads(t *testing.T) {
 	tests := []struct {
 		name   string
-		fields fields
+		signal *Signal
 		want   []any
 	}{
 		{
-			name: "nil payload",
-			fields: fields{
-				payload: nil,
-			},
-			want: nil,
+			name:   "no arg",
+			signal: New(),
+			want:   nil,
 		},
 		{
-			name: "empty slice",
-			fields: fields{
-				payload: []any{},
-			},
-			want: []any{},
+			name:   "nil payload",
+			signal: New(nil),
+			want:   []any{nil},
+		},
+
+		{
+			name:   "single payload",
+			signal: New(123),
+			want:   []any{123},
 		},
 		{
-			name: "single payload",
-			fields: fields{
-				payload: []any{123},
-			},
-			want: []any{123},
-		},
-		{
-			name: "multiple payloads",
-			fields: fields{
-				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
-			},
-			want: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
+			name:   "multiple payloads",
+			signal: New(123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil),
+			want:   []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Signal{
-				payload: tt.fields.payload,
+			if got := tt.signal.Payloads(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Payloads() = %v, want %v", got, tt.want)
 			}
-			if got := s.Payload(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Payload() = %v, want %v", got, tt.want)
+		})
+	}
+}
+
+func TestSignal_Payload(t *testing.T) {
+	tests := []struct {
+		name      string
+		signal    *Signal
+		want      any
+		wantPanic bool
+	}{
+		{
+			name:      "no arg",
+			signal:    New(),
+			wantPanic: true,
+		},
+		{
+			name:   "nil payload",
+			signal: New(nil),
+			want:   nil,
+		},
+
+		{
+			name:   "single payload",
+			signal: New(123),
+			want:   123,
+		},
+		{
+			name:      "multiple payloads",
+			signal:    New(1, 2),
+			wantPanic: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if tt.wantPanic && r == nil {
+					t.Errorf("The code did not panic")
+				}
+
+				if !tt.wantPanic && r != nil {
+					t.Errorf("The code unexpectedly paniced")
+				}
+			}()
+			if got := tt.signal.Payload(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Payloads() = %v, want %v", got, tt.want)
 			}
 		})
 	}
