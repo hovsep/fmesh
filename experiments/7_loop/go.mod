@@ -1,3 +1,3 @@
-module github.com/hovsep/fmesh/experiment/7_loop
+module github.com/hovsep/fmesh/experiments/7_loop
 
 go 1.23

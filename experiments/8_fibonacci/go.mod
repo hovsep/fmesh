@@ -1,3 +1,3 @@
-module github.com/hovsep/fmesh/experiment/8_fibonacci
+module github.com/hovsep/fmesh/experiments/8_fibonacci
 
 go 1.23

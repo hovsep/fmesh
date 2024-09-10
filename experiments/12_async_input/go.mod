@@ -1,3 +1,3 @@
-module github.com/hovsep/fmesh/experiment/12_async_input
+module github.com/hovsep/fmesh/experiments/12_async_input
 
 go 1.23
