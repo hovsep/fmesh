@@ -4,57 +4,79 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
+// Port defines a connectivity point of a component
 type Port struct {
-	signal *signal.Signal
-	Pipes  Pipes //Refs to Pipes connected to that port (no in\out semantics)
+	signal *signal.Signal //Current signal set on the port
+	pipes  Pipes          //Refs to pipes connected to this port (without in\out semantics)
 }
 
+// Ports is just useful collection type
 type Ports map[string]*Port
 
+// NewPort creates a new port
+func NewPort() *Port {
+	return &Port{}
+}
+
+// NewPorts creates a new port with the given name
+func NewPorts(names ...string) Ports {
+	ports := make(Ports, len(names))
+	for _, name := range names {
+		ports[name] = NewPort()
+	}
+	return ports
+}
+
+func (p *Port) Pipes() Pipes {
+	return p.pipes
+}
+
+// Signal returns current signal set on the port
 func (p *Port) Signal() *signal.Signal {
 	return p.signal
 }
 
+// PutSignal adds a signal to current signal
 func (p *Port) PutSignal(sig *signal.Signal) {
 	p.signal = sig.Combine(p.Signal())
 }
 
+// ClearSignal removes current signal from the port
+// @TODO: check if this affects the signal itself, as it is a pointer
 func (p *Port) ClearSignal() {
 	p.signal = nil
 }
 
+// HasSignal says whether port signal is set or not
 func (p *Port) HasSignal() bool {
 	return p.signal != nil
 }
 
-// Adds pipe reference to port, so all Pipes of the port are easily iterable (no in\out semantics)
+// Adds pipe reference to the port, so all pipes of the port are easily accessible
 func (p *Port) addPipeRef(pipe *Pipe) {
-	p.Pipes = append(p.Pipes, pipe)
+	if pipe.From == nil || pipe.To == nil {
+		return
+	}
+	p.pipes = append(p.pipes, pipe)
 }
 
-// PipeTo creates multiple pipes to other ports
+// PipeTo creates one or multiple pipes to other port(s)
 func (p *Port) PipeTo(toPorts ...*Port) {
 	for _, toPort := range toPorts {
-		newPipe := &Pipe{
-			From: p,
-			To:   toPort,
-		}
+		newPipe := NewPipe(p, toPort)
 		p.addPipeRef(newPipe)
 		toPort.addPipeRef(newPipe)
 	}
 
 }
 
-// @TODO: this type must have good tooling for working with collection
-// like adding new ports, filtering and so on
-
-// @TODO: add error handling (e.g. when port does not exist)
+// ByName returns a port by its name
 func (ports Ports) ByName(name string) *Port {
 	return ports[name]
 }
 
-// Deprecated, use ByName instead
-func (ports Ports) ManyByName(names ...string) Ports {
+// ByNames returns multiple ports by their names
+func (ports Ports) ByNames(names ...string) Ports {
 	selectedPorts := make(Ports)
 
 	for _, name := range names {
@@ -66,6 +88,7 @@ func (ports Ports) ManyByName(names ...string) Ports {
 	return selectedPorts
 }
 
+// AnyHasSignal returns true if at least one port in collection has signal
 func (ports Ports) AnyHasSignal() bool {
 	for _, p := range ports {
 		if p.HasSignal() {
@@ -76,6 +99,7 @@ func (ports Ports) AnyHasSignal() bool {
 	return false
 }
 
+// AllHaveSignal returns true when all ports in collection have signal
 func (ports Ports) AllHaveSignal() bool {
 	for _, p := range ports {
 		if !p.HasSignal() {
@@ -86,18 +110,21 @@ func (ports Ports) AllHaveSignal() bool {
 	return true
 }
 
+// PutSignal puts a signal to all the port in collection
 func (ports Ports) PutSignal(sig *signal.Signal) {
 	for _, p := range ports {
 		p.PutSignal(sig)
 	}
 }
 
-func (ports Ports) ClearAll() {
+// ClearSignal removes signals from all ports in collection
+func (ports Ports) ClearSignal() {
 	for _, p := range ports {
 		p.ClearSignal()
 	}
 }
 
+// ForwardSignal puts a signal from source port to dest port, without removing it on source port
 func ForwardSignal(source *Port, dest *Port) {
 	dest.PutSignal(source.Signal())
 }

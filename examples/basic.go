@@ -16,12 +16,8 @@ func main() {
 	c1 := &component.Component{
 		Name:        "adder",
 		Description: "adds 2 to the input",
-		Inputs: port.Ports{
-			"num": &port.Port{},
-		},
-		Outputs: port.Ports{
-			"res": &port.Port{},
-		},
+		Inputs:      port.NewPorts("num"),
+		Outputs:     port.NewPorts("res"),
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
 			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num + 2))
@@ -32,12 +28,8 @@ func main() {
 	c2 := &component.Component{
 		Name:        "multiplier",
 		Description: "multiplies by 3",
-		Inputs: port.Ports{
-			"num": &port.Port{},
-		},
-		Outputs: port.Ports{
-			"res": &port.Port{},
-		},
+		Inputs:      port.NewPorts("num"),
+		Outputs:     port.NewPorts("res"),
 		ActivationFunc: func(inputs port.Ports, outputs port.Ports) error {
 			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num * 3))

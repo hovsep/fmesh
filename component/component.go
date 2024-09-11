@@ -54,14 +54,14 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 		}
 
 		if !errors.Is(err, ErrWaitingForInputKeepInputs) {
-			c.Inputs.ClearAll()
+			c.Inputs.ClearSignal()
 		}
 
 		return
 	}
 
 	//Clear Inputs
-	c.Inputs.ClearAll()
+	c.Inputs.ClearSignal()
 
 	if err != nil {
 		aRes = hop.ActivationResult{
@@ -84,11 +84,11 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 
 func (c *Component) FlushOutputs() {
 	for _, out := range c.Outputs {
-		if !out.HasSignal() || len(out.Pipes) == 0 {
+		if !out.HasSignal() || len(out.Pipes()) == 0 {
 			continue
 		}
 
-		for _, pipe := range out.Pipes {
+		for _, pipe := range out.Pipes() {
 			//Multiplexing
 			pipe.Flush()
 		}
