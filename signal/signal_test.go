@@ -88,7 +88,7 @@ func TestSignal_Len(t *testing.T) {
 	}
 }
 
-func TestSignal_Merge(t *testing.T) {
+func TestSignal_Combine(t *testing.T) {
 	tests := []struct {
 		name string
 		sigA *Signal
@@ -130,8 +130,8 @@ func TestSignal_Merge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.sigA.Merge(tt.sigB); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Merge() = %v, want %v", got, tt.want)
+			if got := tt.sigA.Combine(tt.sigB); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Combine() = %v, want %v", got, tt.want)
 			}
 		})
 	}

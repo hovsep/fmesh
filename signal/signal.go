@@ -15,12 +15,17 @@ func (s *Signal) Len() int {
 	return len(s.payloads)
 }
 
+// HasPayload must be used to check whether signal carries at least 1 payload
+func (s *Signal) HasPayload() bool {
+	return s.Len() > 0
+}
+
 // Payloads returns all payloads
 func (s *Signal) Payloads() []any {
 	return s.payloads
 }
 
-// Payload returns the first payloads (useful when you are sure there is just one payloads)
+// Payload returns the first payload (useful when you are sure signal has only one payload)
 // It panics when used with signal that carries multiple payloads
 func (s *Signal) Payload() any {
 	if s.Len() != 1 {
@@ -29,8 +34,8 @@ func (s *Signal) Payload() any {
 	return s.payloads[0]
 }
 
-// Merge returns a new signal which payloads is combined from 2 original signals
-func (s *Signal) Merge(anotherSignal *Signal) *Signal {
+// Combine returns a new signal with combined payloads of 2 original signals
+func (s *Signal) Combine(anotherSignal *Signal) *Signal {
 	//Merging with nothing
 	if anotherSignal == nil || anotherSignal.Payloads() == nil {
 		return s
