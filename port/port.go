@@ -16,7 +16,7 @@ func (p *Port) Signal() *signal.Signal {
 }
 
 func (p *Port) PutSignal(sig *signal.Signal) {
-	p.signal = sig.Merge(p.Signal())
+	p.signal = sig.Combine(p.Signal())
 }
 
 func (p *Port) ClearSignal() {
