@@ -6,6 +6,7 @@ import (
 
 // Port defines a connectivity point of a component
 type Port struct {
+	name   string
 	signal *signal.Signal //Current signal set on the port
 	pipes  Pipes          //Refs to pipes connected to this port (without in\out semantics)
 }
@@ -14,19 +15,25 @@ type Port struct {
 type Ports map[string]*Port
 
 // NewPort creates a new port
-func NewPort() *Port {
-	return &Port{}
+func NewPort(name string) *Port {
+	return &Port{name: name}
 }
 
 // NewPorts creates a new port with the given name
 func NewPorts(names ...string) Ports {
 	ports := make(Ports, len(names))
 	for _, name := range names {
-		ports[name] = NewPort()
+		ports[name] = NewPort(name)
 	}
 	return ports
 }
 
+// Name getter
+func (p *Port) Name() string {
+	return p.name
+}
+
+// Pipes getter
 func (p *Port) Pipes() Pipes {
 	return p.pipes
 }

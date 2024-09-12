@@ -8,35 +8,112 @@ import (
 	"runtime/debug"
 )
 
-// @TODO: add a builder pattern implementation
+type ActivationFunc func(inputs port.Ports, outputs port.Ports) error
+
+// Component defines a main building block of FMesh
 type Component struct {
-	Name           string
-	Description    string
-	Inputs         port.Ports
-	Outputs        port.Ports
-	ActivationFunc func(inputs port.Ports, outputs port.Ports) error
+	name        string
+	description string
+	inputs      port.Ports
+	outputs     port.Ports
+	f           ActivationFunc
 }
 
-type Components []*Component
+// Components is a useful collection type
+type Components map[string]*Component
 
+// NewComponent creates a new empty component
+func NewComponent(name string) *Component {
+	return &Component{name: name}
+}
+
+func NewComponents(names ...string) Components {
+	components := make(Components, len(names))
+	for _, name := range names {
+		components[name] = NewComponent(name)
+	}
+	return components
+}
+
+// WithDescription sets description
+func (c *Component) WithDescription(description string) *Component {
+	c.description = description
+	return c
+}
+
+// WithInputs creates and sets input ports
+func (c *Component) WithInputs(portNames ...string) *Component {
+	c.inputs = port.NewPorts(portNames...)
+	return c
+}
+
+// WithOutputs creates and sets output ports
+func (c *Component) WithOutputs(portNames ...string) *Component {
+	c.outputs = port.NewPorts(portNames...)
+	return c
+}
+
+// WithActivationFunc sets activation function
+func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
+	c.f = f
+	return c
+}
+
+// Name getter
+func (c *Component) Name() string {
+	return c.name
+}
+
+// Description getter
+func (c *Component) Description() string {
+	return c.description
+}
+
+// Inputs getter
+func (c *Component) Inputs() port.Ports {
+	return c.inputs
+}
+
+// Outputs getter
+func (c *Component) Outputs() port.Ports {
+	return c.outputs
+}
+
+// Activate runs the activation function
 func (c *Component) Activate() (aRes hop.ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
+			errorFormat := "panicked with: %v, stacktrace: %s"
+			if _, ok := r.(error); ok {
+				errorFormat = "panicked with: %w, stacktrace: %s"
+			}
 			aRes = hop.ActivationResult{
 				Activated:     true,
-				ComponentName: c.Name,
-				Err:           fmt.Errorf("panicked with %w, stacktrace: %s", r, debug.Stack()),
+				ComponentName: c.name,
+				Err:           fmt.Errorf(errorFormat, r, debug.Stack()),
 			}
 		}
 	}()
 
 	//@TODO:: https://github.com/hovsep/fmesh/issues/15
-	if !c.Inputs.AnyHasSignal() {
-		//No Inputs set, stop here
+	if !c.inputs.AnyHasSignal() {
+		//No inputs set, stop here
 
 		aRes = hop.ActivationResult{
 			Activated:     false,
-			ComponentName: c.Name,
+			ComponentName: c.name,
+			Err:           nil,
+		}
+
+		return
+	}
+
+	if c.f == nil {
+		//Activation function is not set
+
+		aRes = hop.ActivationResult{
+			Activated:     false,
+			ComponentName: c.name,
 			Err:           nil,
 		}
 
@@ -44,29 +121,29 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	}
 
 	//Run the computation
-	err := c.ActivationFunc(c.Inputs, c.Outputs)
+	err := c.f(c.inputs, c.outputs)
 
 	if IsWaitingForInputError(err) {
 		aRes = hop.ActivationResult{
 			Activated:     false,
-			ComponentName: c.Name,
+			ComponentName: c.name,
 			Err:           nil,
 		}
 
 		if !errors.Is(err, ErrWaitingForInputKeepInputs) {
-			c.Inputs.ClearSignal()
+			c.inputs.ClearSignal()
 		}
 
 		return
 	}
 
-	//Clear Inputs
-	c.Inputs.ClearSignal()
+	//Clear inputs
+	c.inputs.ClearSignal()
 
 	if err != nil {
 		aRes = hop.ActivationResult{
 			Activated:     true,
-			ComponentName: c.Name,
+			ComponentName: c.name,
 			Err:           fmt.Errorf("failed to activate component: %w", err),
 		}
 
@@ -75,15 +152,16 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 
 	aRes = hop.ActivationResult{
 		Activated:     true,
-		ComponentName: c.Name,
+		ComponentName: c.name,
 		Err:           nil,
 	}
 
 	return
 }
 
+// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
 func (c *Component) FlushOutputs() {
-	for _, out := range c.Outputs {
+	for _, out := range c.outputs {
 		if !out.HasSignal() || len(out.Pipes()) == 0 {
 			continue
 		}
@@ -96,11 +174,7 @@ func (c *Component) FlushOutputs() {
 	}
 }
 
+// ByName returns a component by its name
 func (components Components) ByName(name string) *Component {
-	for _, c := range components {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+	return components[name]
 }

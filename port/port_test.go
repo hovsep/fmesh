@@ -2,6 +2,7 @@ package port
 
 import (
 	"github.com/hovsep/fmesh/signal"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -28,8 +29,8 @@ func TestNewPorts(t *testing.T) {
 				names: []string{"i1", "i2"},
 			},
 			want: Ports{
-				"i1": {},
-				"i2": {},
+				"i1": {name: "i1"},
+				"i2": {name: "i2"},
 			},
 		},
 		{
@@ -38,8 +39,8 @@ func TestNewPorts(t *testing.T) {
 				names: []string{"i1", "i2", "i1"},
 			},
 			want: Ports{
-				"i1": {},
-				"i2": {},
+				"i1": {name: "i1"},
+				"i2": {name: "i2"},
 			},
 		},
 	}
@@ -53,10 +54,10 @@ func TestNewPorts(t *testing.T) {
 }
 
 func TestPort_HasSignal(t *testing.T) {
-	portWithSignal := NewPort()
+	portWithSignal := NewPort("portWithSignal")
 	portWithSignal.PutSignal(signal.New(123))
 
-	portWithEmptySignal := NewPort()
+	portWithEmptySignal := NewPort("portWithEmptySignal")
 	portWithEmptySignal.PutSignal(signal.New())
 
 	tests := []struct {
@@ -66,7 +67,7 @@ func TestPort_HasSignal(t *testing.T) {
 	}{
 		{
 			name: "empty port",
-			port: NewPort(),
+			port: NewPort("emptyPort"),
 			want: false,
 		},
 		{
@@ -90,11 +91,11 @@ func TestPort_HasSignal(t *testing.T) {
 }
 
 func TestPort_Pipes(t *testing.T) {
-	destPort1, destPort2, destPort3 := NewPort(), NewPort(), NewPort()
-	portWithOnePipe := NewPort()
+	destPort1, destPort2, destPort3 := NewPort("destPort1"), NewPort("destPort2"), NewPort("destPort3")
+	portWithOnePipe := NewPort("portWithOnePipe")
 	portWithOnePipe.PipeTo(destPort1)
 
-	portWithMultiplePipes := NewPort()
+	portWithMultiplePipes := NewPort("portWithMultiplePipes")
 	portWithMultiplePipes.PipeTo(destPort2, destPort3)
 
 	tests := []struct {
@@ -104,7 +105,7 @@ func TestPort_Pipes(t *testing.T) {
 	}{
 		{
 			name: "no pipes",
-			port: NewPort(),
+			port: NewPort("noPipes"),
 			want: nil,
 		},
 		{
@@ -142,10 +143,10 @@ func TestPort_Pipes(t *testing.T) {
 }
 
 func TestPort_Signal(t *testing.T) {
-	portWithSignal := NewPort()
+	portWithSignal := NewPort("portWithSignal")
 	portWithSignal.PutSignal(signal.New(123))
 
-	portWithEmptySignal := NewPort()
+	portWithEmptySignal := NewPort("portWithEmptySignal")
 	portWithEmptySignal.PutSignal(signal.New())
 
 	tests := []struct {
@@ -155,7 +156,7 @@ func TestPort_Signal(t *testing.T) {
 	}{
 		{
 			name: "no signal",
-			port: NewPort(),
+			port: NewPort("noSignal"),
 			want: nil,
 		},
 		{
@@ -273,7 +274,7 @@ func TestPorts_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: &Port{},
+			want: &Port{name: "p1"},
 		},
 		{
 			name:  "port with signal found",
@@ -282,6 +283,7 @@ func TestPorts_ByName(t *testing.T) {
 				name: "p2",
 			},
 			want: &Port{
+				name:   "p2",
 				signal: signal.New(12),
 			},
 		},
@@ -320,7 +322,7 @@ func TestPorts_ByNames(t *testing.T) {
 				names: []string{"p1"},
 			},
 			want: Ports{
-				"p1": NewPort(),
+				"p1": &Port{name: "p1"},
 			},
 		},
 		{
@@ -330,8 +332,8 @@ func TestPorts_ByNames(t *testing.T) {
 				names: []string{"p1", "p2"},
 			},
 			want: Ports{
-				"p1": NewPort(),
-				"p2": NewPort(),
+				"p1": &Port{name: "p1"},
+				"p2": &Port{name: "p2"},
 			},
 		},
 		{
@@ -349,8 +351,8 @@ func TestPorts_ByNames(t *testing.T) {
 				names: []string{"p1", "p2", "p3"},
 			},
 			want: Ports{
-				"p1": NewPort(),
-				"p2": NewPort(),
+				"p1": &Port{name: "p1"},
+				"p2": &Port{name: "p2"},
 			},
 		},
 	}
@@ -364,7 +366,7 @@ func TestPorts_ByNames(t *testing.T) {
 }
 
 func TestPort_ClearSignal(t *testing.T) {
-	portWithSignal := NewPort()
+	portWithSignal := NewPort("portWithSignal")
 	portWithSignal.PutSignal(signal.New(111))
 
 	tests := []struct {
@@ -375,12 +377,12 @@ func TestPort_ClearSignal(t *testing.T) {
 		{
 			name:   "happy path",
 			before: portWithSignal,
-			after:  NewPort(),
+			after:  &Port{name: "portWithSignal"},
 		},
 		{
 			name:   "cleaning empty port",
-			before: NewPort(),
-			after:  NewPort(),
+			before: NewPort("emptyPort"),
+			after:  &Port{name: "emptyPort"},
 		},
 	}
 	for _, tt := range tests {
@@ -394,7 +396,7 @@ func TestPort_ClearSignal(t *testing.T) {
 }
 
 func TestPort_PipeTo(t *testing.T) {
-	p1, p2, p3, p4 := NewPort(), NewPort(), NewPort(), NewPort()
+	p1, p2, p3, p4 := NewPort("p1"), NewPort("p2"), NewPort("p3"), NewPort("p4")
 
 	type args struct {
 		toPorts []*Port
@@ -409,6 +411,7 @@ func TestPort_PipeTo(t *testing.T) {
 			name:   "happy path",
 			before: p1,
 			after: &Port{
+				name: "p1",
 				pipes: Pipes{
 					{
 						From: p1,
@@ -428,6 +431,7 @@ func TestPort_PipeTo(t *testing.T) {
 			name:   "invalid ports are ignored",
 			before: p4,
 			after: &Port{
+				name: "p4",
 				pipes: Pipes{
 					{
 						From: p4,
@@ -451,11 +455,14 @@ func TestPort_PipeTo(t *testing.T) {
 }
 
 func TestPort_PutSignal(t *testing.T) {
-	portWithSingleSignal := NewPort()
+	portWithSingleSignal := NewPort("portWithSingleSignal")
 	portWithSingleSignal.PutSignal(signal.New(11))
 
-	portWithMultipleSignals := NewPort()
+	portWithMultipleSignals := NewPort("portWithMultipleSignals")
 	portWithMultipleSignals.PutSignal(signal.New(11, 12))
+
+	portWithMultipleSignals2 := NewPort("portWithMultipleSignals2")
+	portWithMultipleSignals2.PutSignal(signal.New(55, 66))
 
 	type args struct {
 		sig *signal.Signal
@@ -468,8 +475,9 @@ func TestPort_PutSignal(t *testing.T) {
 	}{
 		{
 			name:   "single signal to empty port",
-			before: NewPort(),
+			before: NewPort("emptyPort"),
 			after: &Port{
+				name:   "emptyPort",
 				signal: signal.New(11),
 			},
 			args: args{
@@ -478,8 +486,9 @@ func TestPort_PutSignal(t *testing.T) {
 		},
 		{
 			name:   "multiple signals to empty port",
-			before: NewPort(),
+			before: NewPort("p"),
 			after: &Port{
+				name:   "p",
 				signal: signal.New(11, 12),
 			},
 			args: args{
@@ -490,6 +499,7 @@ func TestPort_PutSignal(t *testing.T) {
 			name:   "single signal to port with single signal",
 			before: portWithSingleSignal,
 			after: &Port{
+				name:   "portWithSingleSignal",
 				signal: signal.New(12, 11), //Notice LIFO order
 			},
 			args: args{
@@ -500,6 +510,7 @@ func TestPort_PutSignal(t *testing.T) {
 			name:   "single signal to port with multiple signals",
 			before: portWithMultipleSignals,
 			after: &Port{
+				name:   "portWithMultipleSignals",
 				signal: signal.New(13, 11, 12), //Notice LIFO order
 			},
 			args: args{
@@ -508,9 +519,10 @@ func TestPort_PutSignal(t *testing.T) {
 		},
 		{
 			name:   "multiple signals to port with multiple signals",
-			before: portWithMultipleSignals,
+			before: portWithMultipleSignals2,
 			after: &Port{
-				signal: signal.New(13, 14, 11, 12), //Notice LIFO order
+				name:   "portWithMultipleSignals2",
+				signal: signal.New(13, 14, 55, 66), //Notice LIFO order
 			},
 			args: args{
 				sig: signal.New(13, 14),
@@ -523,6 +535,35 @@ func TestPort_PutSignal(t *testing.T) {
 			if !reflect.DeepEqual(tt.before, tt.after) {
 				t.Errorf("ClearSignal() = %v, want %v", tt.before, tt.after)
 			}
+		})
+	}
+}
+
+func TestPorts_ClearSignal(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		ports := NewPorts("p1", "p2", "p3")
+		ports.PutSignal(signal.New(1, 2, 3))
+		assert.True(t, ports.AllHaveSignal())
+		ports.ClearSignal()
+		assert.False(t, ports.AnyHasSignal())
+	})
+}
+
+func TestPort_Name(t *testing.T) {
+	tests := []struct {
+		name string
+		port *Port
+		want string
+	}{
+		{
+			name: "happy path",
+			port: NewPort("p777"),
+			want: "p777",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.port.Name(), "Name()")
 		})
 	}
 }

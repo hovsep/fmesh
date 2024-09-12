@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewPipe(t *testing.T) {
-	p1, p2 := NewPort(), NewPort()
+	p1, p2 := NewPort("p1"), NewPort("p2")
 
 	type args struct {
 		from *Port
@@ -40,13 +40,13 @@ func TestNewPipe(t *testing.T) {
 }
 
 func TestPipe_Flush(t *testing.T) {
-	portWithSignal := NewPort()
+	portWithSignal := NewPort("portWithSignal")
 	portWithSignal.PutSignal(signal.New(777))
 
-	portWithMultipleSignals := NewPort()
+	portWithMultipleSignals := NewPort("portWithMultipleSignals")
 	portWithMultipleSignals.PutSignal(signal.New(11, 12))
 
-	emptyPort := NewPort()
+	emptyPort := NewPort("emptyPort")
 
 	tests := []struct {
 		name   string
@@ -56,14 +56,27 @@ func TestPipe_Flush(t *testing.T) {
 		{
 			name:   "flush to empty port",
 			before: NewPipe(portWithSignal, emptyPort),
-			after:  NewPipe(portWithSignal, portWithSignal),
+			after: &Pipe{
+				From: &Port{
+					name:   "portWithSignal",
+					signal: signal.New(777), //Flush does not clear source port
+				},
+				To: &Port{
+					name:   "emptyPort",
+					signal: signal.New(777),
+				},
+			},
 		},
 		{
 			name:   "flush to port with signal",
 			before: NewPipe(portWithSignal, portWithMultipleSignals),
-			after: NewPipe(portWithSignal, &Port{
-				signal: signal.New(777, 11, 12),
-			}),
+			after: &Pipe{
+				From: portWithSignal,
+				To: &Port{
+					name:   "portWithMultipleSignals",
+					signal: signal.New(777, 11, 12),
+				},
+			},
 		},
 	}
 	for _, tt := range tests {

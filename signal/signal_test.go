@@ -191,7 +191,6 @@ func TestSignal_Payload(t *testing.T) {
 			signal: New(nil),
 			want:   nil,
 		},
-
 		{
 			name:   "single payload",
 			signal: New(123),
@@ -217,6 +216,37 @@ func TestSignal_Payload(t *testing.T) {
 			}()
 			if got := tt.signal.Payload(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Payloads() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSignal_HasPayload(t *testing.T) {
+	tests := []struct {
+		name   string
+		signal *Signal
+		want   bool
+	}{
+		{
+			name:   "has payload",
+			signal: New(123),
+			want:   true,
+		},
+		{
+			name:   "has no payload",
+			signal: New(),
+			want:   false,
+		},
+		{
+			name:   "nil payload is valid",
+			signal: New(nil),
+			want:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.signal.HasPayload(); got != tt.want {
+				t.Errorf("HasPayload() = %v, want %v", got, tt.want)
 			}
 		})
 	}
