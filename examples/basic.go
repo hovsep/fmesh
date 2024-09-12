@@ -13,7 +13,7 @@ import (
 // All it does is passes an integer into a simple fmesh which consists of 2 components, the first one adds 2 to the
 // initial number, and the second one doubles the result. (result must be 102)
 func main() {
-	c1 := component.New("adder").
+	c1 := component.NewComponent("adder").
 		WithDescription("adds 2 to the input").
 		WithInputs("num").
 		WithOutputs("res").
@@ -23,7 +23,7 @@ func main() {
 			return nil
 		})
 
-	c2 := component.New("multiplier").
+	c2 := component.NewComponent("multiplier").
 		WithDescription("multiplies by 3").
 		WithInputs("num").
 		WithOutputs("res").

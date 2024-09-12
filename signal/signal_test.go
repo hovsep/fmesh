@@ -191,7 +191,6 @@ func TestSignal_Payload(t *testing.T) {
 			signal: New(nil),
 			want:   nil,
 		},
-
 		{
 			name:   "single payload",
 			signal: New(123),

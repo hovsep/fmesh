@@ -22,9 +22,17 @@ type Component struct {
 // Components is a useful collection type
 type Components map[string]*Component
 
-// New creates a new empty component
-func New(name string) *Component {
+// NewComponent creates a new empty component
+func NewComponent(name string) *Component {
 	return &Component{name: name}
+}
+
+func NewComponents(names ...string) Components {
+	components := make(Components, len(names))
+	for _, name := range names {
+		components[name] = NewComponent(name)
+	}
+	return components
 }
 
 // WithDescription sets description
@@ -75,10 +83,14 @@ func (c *Component) Outputs() port.Ports {
 func (c *Component) Activate() (aRes hop.ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
+			errorFormat := "panicked with: %v, stacktrace: %s"
+			if _, ok := r.(error); ok {
+				errorFormat = "panicked with: %w, stacktrace: %s"
+			}
 			aRes = hop.ActivationResult{
 				Activated:     true,
 				ComponentName: c.name,
-				Err:           fmt.Errorf("panicked with %w, stacktrace: %s", r, debug.Stack()),
+				Err:           fmt.Errorf(errorFormat, r, debug.Stack()),
 			}
 		}
 	}()
@@ -86,6 +98,18 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	//@TODO:: https://github.com/hovsep/fmesh/issues/15
 	if !c.inputs.AnyHasSignal() {
 		//No inputs set, stop here
+
+		aRes = hop.ActivationResult{
+			Activated:     false,
+			ComponentName: c.name,
+			Err:           nil,
+		}
+
+		return
+	}
+
+	if c.f == nil {
+		//Activation function is not set
 
 		aRes = hop.ActivationResult{
 			Activated:     false,
@@ -135,7 +159,7 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	return
 }
 
-// FlushOutputs pushed signals out of the component
+// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
 func (c *Component) FlushOutputs() {
 	for _, out := range c.outputs {
 		if !out.HasSignal() || len(out.Pipes()) == 0 {
