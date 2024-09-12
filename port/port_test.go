@@ -2,6 +2,7 @@ package port
 
 import (
 	"github.com/hovsep/fmesh/signal"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -457,6 +458,9 @@ func TestPort_PutSignal(t *testing.T) {
 	portWithMultipleSignals := NewPort()
 	portWithMultipleSignals.PutSignal(signal.New(11, 12))
 
+	portWithMultipleSignals2 := NewPort()
+	portWithMultipleSignals2.PutSignal(signal.New(55, 66))
+
 	type args struct {
 		sig *signal.Signal
 	}
@@ -508,9 +512,9 @@ func TestPort_PutSignal(t *testing.T) {
 		},
 		{
 			name:   "multiple signals to port with multiple signals",
-			before: portWithMultipleSignals,
+			before: portWithMultipleSignals2,
 			after: &Port{
-				signal: signal.New(13, 14, 11, 12), //Notice LIFO order
+				signal: signal.New(13, 14, 55, 66), //Notice LIFO order
 			},
 			args: args{
 				sig: signal.New(13, 14),
@@ -525,4 +529,14 @@ func TestPort_PutSignal(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPorts_ClearSignal(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		ports := NewPorts("p1", "p2", "p3")
+		ports.PutSignal(signal.New(1, 2, 3))
+		assert.True(t, ports.AllHaveSignal())
+		ports.ClearSignal()
+		assert.False(t, ports.AnyHasSignal())
+	})
 }
