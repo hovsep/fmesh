@@ -3,7 +3,7 @@ package fmesh
 import (
 	"fmt"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/hop"
+	"github.com/hovsep/fmesh/cycle"
 	"sync"
 )
 
@@ -43,12 +43,11 @@ func (fm *FMesh) WithErrorHandlingStrategy(strategy ErrorHandlingStrategy) *FMes
 	return fm
 }
 
-// ActivateComponents tries to activate all components
-func (fm *FMesh) activateComponents() *hop.HopResult {
-	hopResult := &hop.HopResult{
-		ActivationResults: make(map[string]error),
-	}
-	activationResultsChan := make(chan hop.ActivationResult) //@TODO: close the channel
+// ActivateComponents runs one activation cycle (tries to activate all components)
+func (fm *FMesh) activateComponents() *cycle.Result {
+	cycleResult := cycle.NewResult()
+
+	activationResultsChan := make(chan component.ActivationResult) //@TODO: close the channel
 	doneChan := make(chan struct{})
 
 	var wg sync.WaitGroup
@@ -57,11 +56,9 @@ func (fm *FMesh) activateComponents() *hop.HopResult {
 		for {
 			select {
 			case aRes := <-activationResultsChan:
-				if aRes.Activated {
-					hopResult.Lock()
-					hopResult.ActivationResults[aRes.ComponentName] = aRes.Err
-					hopResult.Unlock()
-				}
+				cycleResult.Lock()
+				cycleResult.ActivationResults[aRes.ComponentName()] = aRes
+				cycleResult.Unlock()
 			case <-doneChan:
 				return
 			}
@@ -79,7 +76,7 @@ func (fm *FMesh) activateComponents() *hop.HopResult {
 
 	wg.Wait()
 	doneChan <- struct{}{}
-	return hopResult
+	return cycleResult
 }
 
 // DrainComponents drains the data from all components outputs
@@ -90,22 +87,35 @@ func (fm *FMesh) drainComponents() {
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
-func (fm *FMesh) Run() ([]*hop.HopResult, error) {
-	hops := make([]*hop.HopResult, 0)
+func (fm *FMesh) Run() (cycle.Results, error) {
+	allCycles := cycle.NewResults()
 	for {
-		hopReport := fm.activateComponents()
-		hops = append(hops, hopReport) //@TODO:add collection abstraction
+		cycleResult := fm.activateComponents()
 
-		//@TODO:simplify check
-		if fm.errorHandlingStrategy == StopOnFirstError && hopReport.HasErrors() {
-			return hops, fmt.Errorf("hop #%d finished with errors. Stopping fmesh. Report: %v", len(hops), hopReport.ActivationResults)
+		if fm.shouldStop(cycleResult) {
+			return allCycles, fmt.Errorf("cycle #%d finished with errors. Stopping fmesh. Report: %v", len(allCycles), cycleResult.ActivationResults)
 		}
 
-		//@TODO:Add method
-		if len(hopReport.ActivationResults) == 0 {
+		if !cycleResult.HasActivatedComponents() {
 			//No component activated in this cycle. FMesh is ready to stop
-			return hops, nil
+			return allCycles, nil
 		}
+
+		allCycles = append(allCycles, cycleResult)
 		fm.drainComponents()
 	}
+}
+
+func (fm *FMesh) shouldStop(cycleResult *cycle.Result) bool {
+	switch fm.errorHandlingStrategy {
+	case StopOnFirstError:
+		if cycleResult.HasErrors() {
+			return true
+		}
+	case IgnoreAll:
+		return false
+	default:
+		panic("unsupported error handling strategy")
+	}
+	return false
 }

@@ -10,7 +10,7 @@ import (
 )
 
 // This example shows a very basic program written with FMesh
-// All it does is passes an integer into a simple fmesh which consists of 2 components, the first one adds 2 to the
+// All it does is passes an integer into a simple f-mesh which consists of 2 components, the first one adds 2 to the
 // initial number, and the second one doubles the result. (result must be 102)
 func main() {
 	c1 := component.NewComponent("adder").
