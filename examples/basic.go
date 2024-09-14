@@ -35,12 +35,7 @@ func main() {
 
 	c1.Outputs().ByName("res").PipeTo(c2.Inputs().ByName("num"))
 
-	fm := &fmesh.FMesh{
-		Name:                  "basic fmesh",
-		Description:           "",
-		Components:            component.Components{c1.Name(): c1, c2.Name(): c2},
-		ErrorHandlingStrategy: fmesh.StopOnFirstError,
-	}
+	fm := fmesh.New("basic fmesh").WithComponents(c1, c2).WithErrorHandlingStrategy(fmesh.StopOnFirstError)
 
 	c1.Inputs().ByName("num").PutSignal(signal.New(32))
 

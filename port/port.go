@@ -8,7 +8,8 @@ import (
 type Port struct {
 	name   string
 	signal *signal.Signal //Current signal set on the port
-	pipes  Pipes          //Refs to pipes connected to this port (without in\out semantics)
+	//@TODO:think of replacing pipe abstraction with list of "To" ports, as all pipes always point to this port as their "From"
+	pipes Pipes //Refs to pipes connected to this port (without in\out semantics)
 }
 
 // Ports is just useful collection type

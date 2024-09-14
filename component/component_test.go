@@ -566,7 +566,7 @@ func TestComponent_Activate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.getComponent().Activate()
+			got := tt.getComponent().MaybeActivate()
 			assert.Equal(t, got.Activated, tt.wantARes.Activated)
 			assert.Equal(t, got.ComponentName, tt.wantARes.ComponentName)
 			if tt.wantARes.Err == nil {
@@ -575,6 +575,113 @@ func TestComponent_Activate(t *testing.T) {
 				assert.ErrorContains(t, got.Err, tt.wantARes.Err.Error())
 			}
 
+		})
+	}
+}
+
+func TestComponents_Add(t *testing.T) {
+	type args struct {
+		component *Component
+	}
+	tests := []struct {
+		name       string
+		components Components
+		args       args
+		want       Components
+	}{
+		{
+			name:       "adding to empty collection",
+			components: NewComponents(),
+			args: args{
+				component: NewComponent("c1").WithDescription("descr"),
+			},
+			want: Components{
+				"c1": {name: "c1", description: "descr"},
+			},
+		},
+		{
+			name:       "adding to existing collection",
+			components: NewComponents("c1", "c2"),
+			args: args{
+				component: NewComponent("c3").WithDescription("descr"),
+			},
+			want: Components{
+				"c1": {name: "c1"},
+				"c2": {name: "c2"},
+				"c3": {name: "c3", description: "descr"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.components.Add(tt.args.component), "Add(%v)", tt.args.component)
+		})
+	}
+}
+
+func TestNewComponent(t *testing.T) {
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Component
+	}{
+		{
+			name: "empty name is valid",
+			args: args{
+				name: "",
+			},
+			want: &Component{},
+		},
+		{
+			name: "with name",
+			args: args{
+				name: "multiplier",
+			},
+			want: &Component{
+				name: "multiplier",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewComponent(tt.args.name), "NewComponent(%v)", tt.args.name)
+		})
+	}
+}
+
+func TestNewComponents(t *testing.T) {
+	type args struct {
+		names []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want Components
+	}{
+		{
+			name: "without specifying names",
+			args: args{
+				names: nil,
+			},
+			want: Components{},
+		},
+		{
+			name: "with names",
+			args: args{
+				names: []string{"c1", "c2"},
+			},
+			want: Components{
+				"c1": {name: "c1"},
+				"c2": {name: "c2"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewComponents(tt.args.names...), "NewComponents(%v)", tt.args.names)
 		})
 	}
 }

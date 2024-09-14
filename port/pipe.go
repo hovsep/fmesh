@@ -1,5 +1,7 @@
 package port
 
+//@TODO:the pipe type can be potentially removed
+
 // Pipe is the connection between two ports
 type Pipe struct {
 	From *Port
