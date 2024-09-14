@@ -567,3 +567,34 @@ func TestPort_Name(t *testing.T) {
 		})
 	}
 }
+
+func TestNewPort(t *testing.T) {
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Port
+	}{
+		{
+			name: "empty name is valid",
+			args: args{
+				name: "",
+			},
+			want: &Port{name: ""},
+		},
+		{
+			name: "with name",
+			args: args{
+				name: "p1",
+			},
+			want: &Port{name: "p1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewPort(tt.args.name), "NewPort(%v)", tt.args.name)
+		})
+	}
+}

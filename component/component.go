@@ -3,7 +3,6 @@ package component
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/hop"
 	"github.com/hovsep/fmesh/port"
 	"runtime/debug"
 )
@@ -27,6 +26,8 @@ func NewComponent(name string) *Component {
 	return &Component{name: name}
 }
 
+// NewComponents creates a collection of components
+// names are optional and can be used to create multiple empty components in one call
 func NewComponents(names ...string) Components {
 	components := make(Components, len(names))
 	for _, name := range names {
@@ -35,7 +36,7 @@ func NewComponents(names ...string) Components {
 	return components
 }
 
-// WithDescription sets description
+// WithDescription sets a description
 func (c *Component) WithDescription(description string) *Component {
 	c.description = description
 	return c
@@ -79,43 +80,34 @@ func (c *Component) Outputs() port.Ports {
 	return c.outputs
 }
 
-// Activate runs the activation function
-func (c *Component) Activate() (aRes hop.ActivationResult) {
+// hasActivationFunction checks when activation function is set
+func (c *Component) hasActivationFunction() bool {
+	return c.f != nil
+}
+
+// MaybeActivate tries to run the activation function if all required conditions are met
+func (c *Component) MaybeActivate() (activationResult ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			errorFormat := "panicked with: %v, stacktrace: %s"
 			if _, ok := r.(error); ok {
 				errorFormat = "panicked with: %w, stacktrace: %s"
 			}
-			aRes = hop.ActivationResult{
-				Activated:     true,
-				ComponentName: c.name,
-				Err:           fmt.Errorf(errorFormat, r, debug.Stack()),
-			}
+			activationResult = c.newActivationCodePanicked(fmt.Errorf(errorFormat, r, debug.Stack()))
 		}
 	}()
 
 	//@TODO:: https://github.com/hovsep/fmesh/issues/15
 	if !c.inputs.AnyHasSignal() {
 		//No inputs set, stop here
-
-		aRes = hop.ActivationResult{
-			Activated:     false,
-			ComponentName: c.name,
-			Err:           nil,
-		}
+		activationResult = c.newActivationCodeNoInput()
 
 		return
 	}
 
-	if c.f == nil {
-		//Activation function is not set
-
-		aRes = hop.ActivationResult{
-			Activated:     false,
-			ComponentName: c.name,
-			Err:           nil,
-		}
+	if !c.hasActivationFunction() {
+		//Activation function is not set (maybe useful while the mesh is under development)
+		activationResult = c.newActivationCodeNoFunction()
 
 		return
 	}
@@ -124,11 +116,7 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	err := c.f(c.inputs, c.outputs)
 
 	if IsWaitingForInputError(err) {
-		aRes = hop.ActivationResult{
-			Activated:     false,
-			ComponentName: c.name,
-			Err:           nil,
-		}
+		activationResult = c.newActivationCodeWaitingForInput()
 
 		if !errors.Is(err, ErrWaitingForInputKeepInputs) {
 			c.inputs.ClearSignal()
@@ -141,20 +129,12 @@ func (c *Component) Activate() (aRes hop.ActivationResult) {
 	c.inputs.ClearSignal()
 
 	if err != nil {
-		aRes = hop.ActivationResult{
-			Activated:     true,
-			ComponentName: c.name,
-			Err:           fmt.Errorf("failed to activate component: %w", err),
-		}
+		activationResult = c.newActivationCodeReturnedError(err)
 
 		return
 	}
 
-	aRes = hop.ActivationResult{
-		Activated:     true,
-		ComponentName: c.name,
-		Err:           nil,
-	}
+	activationResult = c.newActivationResultOK()
 
 	return
 }
@@ -177,4 +157,10 @@ func (c *Component) FlushOutputs() {
 // ByName returns a component by its name
 func (components Components) ByName(name string) *Component {
 	return components[name]
+}
+
+// Add adds a component to collection
+func (components Components) Add(component *Component) Components {
+	components[component.Name()] = component
+	return components
 }
