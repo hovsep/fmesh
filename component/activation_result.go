@@ -8,6 +8,9 @@ type ActivationResult struct {
 	err           error
 }
 
+// ActivationResults is a collection
+type ActivationResults map[string]*ActivationResult
+
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
 type ActivationResultCode int
 

@@ -162,8 +162,10 @@ func (components Components) ByName(name string) *Component {
 	return components[name]
 }
 
-// Add adds a component to collection
-func (components Components) Add(component *Component) Components {
-	components[component.Name()] = component
+// Add adds new components to existing collection
+func (components Components) Add(newComponents ...*Component) Components {
+	for _, component := range newComponents {
+		components[component.Name()] = component
+	}
 	return components
 }

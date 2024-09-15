@@ -1,7 +1,6 @@
 package fmesh
 
 import (
-	"fmt"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"sync"
@@ -17,7 +16,21 @@ type FMesh struct {
 
 // New creates a new f-mesh
 func New(name string) *FMesh {
-	return &FMesh{name: name}
+	return &FMesh{name: name, components: component.NewComponents()}
+}
+
+// Name getter
+func (fm *FMesh) Name() string {
+	return fm.name
+}
+
+// Description getter
+func (fm *FMesh) Description() string {
+	return fm.description
+}
+
+func (fm *FMesh) Components() component.Components {
+	return fm.components
 }
 
 // WithDescription sets a description
@@ -28,9 +41,6 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 
 // WithComponents adds components to f-mesh
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
-	if fm.components == nil {
-		fm.components = component.NewComponents()
-	}
 	for _, c := range components {
 		fm.components.Add(c)
 	}
@@ -97,33 +107,33 @@ func (fm *FMesh) Run() (cycle.Results, error) {
 	for {
 		cycleResult := fm.runCycle()
 
-		if fm.shouldStop(cycleResult) {
-			//TODO: add custom error
-			return allCycles, fmt.Errorf("cycle #%d finished with errors. Stopping fmesh. Report: %v", len(allCycles), cycleResult.ActivationResults)
+		mustStop, err := fm.mustStop(cycleResult)
+		if mustStop {
+			return allCycles, err
 		}
 
-		//@TODO: maybe better move this to shouldStop
-		if !cycleResult.HasActivatedComponents() {
-			//No component activated in this cycle. FMesh is ready to stop
-			return allCycles, nil
-		}
-
-		allCycles = append(allCycles, cycleResult)
+		allCycles.Add(cycleResult)
 		fm.drainComponents()
 	}
 }
 
-func (fm *FMesh) shouldStop(cycleResult *cycle.Result) bool {
+func (fm *FMesh) mustStop(cycleResult *cycle.Result) (bool, error) {
+	//Check if we are done (no components activated during the cycle => all inputs are processed)
+	if !cycleResult.HasActivatedComponents() {
+		return true, nil
+	}
+
+	//Check if mesh must stop because of configured error handling strategy
 	switch fm.errorHandlingStrategy {
 	case StopOnFirstError:
-		return cycleResult.HasErrors()
+		return cycleResult.HasErrors(), newFMeshStopError(ErrHitAnError, cycleResult)
 	case StopOnFirstPanic:
-		return cycleResult.HasPanics()
+		return cycleResult.HasPanics(), newFMeshStopError(ErrHitAPanic, cycleResult)
 	case IgnoreAll:
-		return false
+		return false, nil
 	default:
 		//@TODO: maybe better to return error
-		panic("unsupported error handling strategy")
+
+		return true, ErrUnsupportedErrorHandlingStrategy
 	}
-	return false
 }
