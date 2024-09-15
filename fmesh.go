@@ -43,12 +43,16 @@ func (fm *FMesh) WithErrorHandlingStrategy(strategy ErrorHandlingStrategy) *FMes
 	return fm
 }
 
-// ActivateComponents runs one activation cycle (tries to activate all components)
-func (fm *FMesh) activateComponents() *cycle.Result {
+// runCycle runs one activation cycle (tries to activate all components)
+func (fm *FMesh) runCycle() *cycle.Result {
 	cycleResult := cycle.NewResult()
 
-	activationResultsChan := make(chan component.ActivationResult) //@TODO: close the channel
-	doneChan := make(chan struct{})
+	if len(fm.components) == 0 {
+		return cycleResult
+	}
+
+	activationResultsChan := make(chan *component.ActivationResult) //@TODO: close the channel
+	doneChan := make(chan struct{})                                 //@TODO: close the channel
 
 	var wg sync.WaitGroup
 
@@ -56,8 +60,9 @@ func (fm *FMesh) activateComponents() *cycle.Result {
 		for {
 			select {
 			case aRes := <-activationResultsChan:
+				//@TODO :check for closed channel
 				cycleResult.Lock()
-				cycleResult.ActivationResults[aRes.ComponentName()] = aRes
+				cycleResult = cycleResult.WithActivationResult(aRes)
 				cycleResult.Unlock()
 			case <-doneChan:
 				return
@@ -75,7 +80,7 @@ func (fm *FMesh) activateComponents() *cycle.Result {
 	}
 
 	wg.Wait()
-	doneChan <- struct{}{}
+	doneChan <- struct{}{} //@TODO: no need to send close signal, just close the channel
 	return cycleResult
 }
 
@@ -90,12 +95,14 @@ func (fm *FMesh) drainComponents() {
 func (fm *FMesh) Run() (cycle.Results, error) {
 	allCycles := cycle.NewResults()
 	for {
-		cycleResult := fm.activateComponents()
+		cycleResult := fm.runCycle()
 
 		if fm.shouldStop(cycleResult) {
+			//TODO: add custom error
 			return allCycles, fmt.Errorf("cycle #%d finished with errors. Stopping fmesh. Report: %v", len(allCycles), cycleResult.ActivationResults)
 		}
 
+		//@TODO: maybe better move this to shouldStop
 		if !cycleResult.HasActivatedComponents() {
 			//No component activated in this cycle. FMesh is ready to stop
 			return allCycles, nil
@@ -109,12 +116,13 @@ func (fm *FMesh) Run() (cycle.Results, error) {
 func (fm *FMesh) shouldStop(cycleResult *cycle.Result) bool {
 	switch fm.errorHandlingStrategy {
 	case StopOnFirstError:
-		if cycleResult.HasErrors() {
-			return true
-		}
+		return cycleResult.HasErrors()
+	case StopOnFirstPanic:
+		return cycleResult.HasPanics()
 	case IgnoreAll:
 		return false
 	default:
+		//@TODO: maybe better to return error
 		panic("unsupported error handling strategy")
 	}
 	return false

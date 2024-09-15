@@ -8,7 +8,7 @@ import (
 // Result contains the information about activation cycle
 type Result struct {
 	sync.Mutex
-	ActivationResults map[string]component.ActivationResult
+	ActivationResults map[string]*component.ActivationResult
 }
 
 // Results contains the results of several activation cycles
@@ -16,17 +16,23 @@ type Results []*Result
 
 func NewResult() *Result {
 	return &Result{
-		ActivationResults: make(map[string]component.ActivationResult),
+		ActivationResults: make(map[string]*component.ActivationResult),
 	}
+}
+
+// WithActivationResult adds an activation result of particular component to cycle result
+func (result *Result) WithActivationResult(ar *component.ActivationResult) *Result {
+	result.ActivationResults[ar.ComponentName()] = ar
+	return result
 }
 
 func NewResults() Results {
 	return make(Results, 0)
 }
 
-// HasErrors tells whether the cycle is ended wih activation errors
-func (r *Result) HasErrors() bool {
-	for _, ar := range r.ActivationResults {
+// HasErrors tells whether the cycle is ended wih activation errors (at lease one component returned an error)
+func (result *Result) HasErrors() bool {
+	for _, ar := range result.ActivationResults {
 		if ar.HasError() {
 			return true
 		}
@@ -34,8 +40,18 @@ func (r *Result) HasErrors() bool {
 	return false
 }
 
-func (r *Result) HasActivatedComponents() bool {
-	for _, ar := range r.ActivationResults {
+// HasPanics tells whether the cycle is ended wih panic(at lease one component panicked)
+func (result *Result) HasPanics() bool {
+	for _, ar := range result.ActivationResults {
+		if ar.HasPanic() {
+			return true
+		}
+	}
+	return false
+}
+
+func (result *Result) HasActivatedComponents() bool {
+	for _, ar := range result.ActivationResults {
 		if ar.Activated() {
 			return true
 		}

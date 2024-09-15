@@ -86,13 +86,14 @@ func (c *Component) hasActivationFunction() bool {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met
-func (c *Component) MaybeActivate() (activationResult ActivationResult) {
+func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			errorFormat := "panicked with: %v, stacktrace: %s"
 			if _, ok := r.(error); ok {
 				errorFormat = "panicked with: %w, stacktrace: %s"
 			}
+			//TODO: add custom error
 			activationResult = c.newActivationCodePanicked(fmt.Errorf(errorFormat, r, debug.Stack()))
 		}
 	}()
