@@ -22,12 +22,14 @@ type Component struct {
 type Components map[string]*Component
 
 // NewComponent creates a new empty component
+// TODO: rename all constructors to New
 func NewComponent(name string) *Component {
 	return &Component{name: name}
 }
 
 // NewComponents creates a collection of components
 // names are optional and can be used to create multiple empty components in one call
+// @TODO: rename all such constructors to NewCollection
 func NewComponents(names ...string) Components {
 	components := make(Components, len(names))
 	for _, name := range names {
@@ -98,17 +100,17 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		}
 	}()
 
-	//@TODO:: https://github.com/hovsep/fmesh/issues/15
-	if !c.inputs.AnyHasSignal() {
-		//No inputs set, stop here
-		activationResult = c.newActivationCodeNoInput()
+	if !c.hasActivationFunction() {
+		//Activation function is not set (maybe useful while the mesh is under development)
+		activationResult = c.newActivationCodeNoFunction()
 
 		return
 	}
 
-	if !c.hasActivationFunction() {
-		//Activation function is not set (maybe useful while the mesh is under development)
-		activationResult = c.newActivationCodeNoFunction()
+	//@TODO:: https://github.com/hovsep/fmesh/issues/15
+	if !c.inputs.AnyHasSignal() {
+		//No inputs set, stop here
+		activationResult = c.newActivationCodeNoInput()
 
 		return
 	}
