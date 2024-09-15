@@ -21,8 +21,16 @@ func NewResult() *Result {
 }
 
 // WithActivationResult adds an activation result of particular component to cycle result
-func (result *Result) WithActivationResult(ar *component.ActivationResult) *Result {
-	result.ActivationResults[ar.ComponentName()] = ar
+func (result *Result) WithActivationResult(activationResult *component.ActivationResult) *Result {
+	result.ActivationResults[activationResult.ComponentName()] = activationResult
+	return result
+}
+
+// WithActivationResults adds multiple activation results
+func (result *Result) WithActivationResults(activationResults ...*component.ActivationResult) *Result {
+	for _, activationResult := range activationResults {
+		result.WithActivationResult(activationResult)
+	}
 	return result
 }
 
