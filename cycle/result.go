@@ -8,7 +8,7 @@ import (
 // Result contains the information about activation cycle
 type Result struct {
 	sync.Mutex
-	cycleNumber       int
+	cycleNumber       uint
 	activationResults component.ActivationResults
 }
 
@@ -18,7 +18,7 @@ type Results []*Result
 // NewResult creates a new cycle result
 func NewResult() *Result {
 	return &Result{
-		activationResults: make(map[string]*component.ActivationResult),
+		activationResults: make(component.ActivationResults),
 	}
 }
 
@@ -27,13 +27,13 @@ func NewResults() Results {
 	return make(Results, 0)
 }
 
-func (cycleResult *Result) SetCycleNumber(n int) *Result {
+func (cycleResult *Result) SetCycleNumber(n uint) *Result {
 	cycleResult.cycleNumber = n
 	return cycleResult
 }
 
 // CycleNumber getter
-func (cycleResult *Result) CycleNumber() int {
+func (cycleResult *Result) CycleNumber() uint {
 	return cycleResult.cycleNumber
 }
 
@@ -42,16 +42,10 @@ func (cycleResult *Result) ActivationResults() component.ActivationResults {
 	return cycleResult.activationResults
 }
 
-// WithActivationResult adds an activation result of particular component to cycle result
-func (cycleResult *Result) WithActivationResult(activationResult *component.ActivationResult) *Result {
-	cycleResult.activationResults[activationResult.ComponentName()] = activationResult
-	return cycleResult
-}
-
 // WithActivationResults adds multiple activation results
 func (cycleResult *Result) WithActivationResults(activationResults ...*component.ActivationResult) *Result {
 	for _, activationResult := range activationResults {
-		cycleResult.WithActivationResult(activationResult)
+		cycleResult.activationResults[activationResult.ComponentName()] = activationResult
 	}
 	return cycleResult
 }
@@ -87,6 +81,5 @@ func (cycleResult *Result) HasActivatedComponents() bool {
 
 // Add adds a cycle result to existing collection
 func (cycleResults Results) Add(cycleResult *Result) Results {
-	cycleResults = append(cycleResults, cycleResult)
-	return cycleResults
+	return append(cycleResults, cycleResult)
 }
