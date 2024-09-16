@@ -9,7 +9,7 @@ import (
 
 func TestResults_Add(t *testing.T) {
 	type args struct {
-		cycleResult *Result
+		cycleResults []*Result
 	}
 	tests := []struct {
 		name         string
@@ -21,11 +21,24 @@ func TestResults_Add(t *testing.T) {
 			name:         "happy path",
 			cycleResults: NewResults(),
 			args: args{
-				cycleResult: NewResult().SetCycleNumber(1).WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+				cycleResults: []*Result{
+					NewResult().
+						SetCycleNumber(1).
+						WithActivationResults(component.NewActivationResult("c1").SetActivated(false)),
+					NewResult().
+						SetCycleNumber(2).
+						WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+				},
 			},
 			want: Results{
 				{
 					cycleNumber: 1,
+					activationResults: component.ActivationResults{
+						"c1": component.NewActivationResult("c1").SetActivated(false),
+					},
+				},
+				{
+					cycleNumber: 2,
 					activationResults: component.ActivationResults{
 						"c1": component.NewActivationResult("c1").SetActivated(true),
 					},
@@ -35,7 +48,7 @@ func TestResults_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResults.Add(tt.args.cycleResult); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.cycleResults.Add(tt.args.cycleResults...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Add() = %v, want %v", got, tt.want)
 			}
 		})

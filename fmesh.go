@@ -72,7 +72,7 @@ func (fm *FMesh) runCycle() *cycle.Result {
 			case aRes := <-activationResultsChan:
 				//@TODO :check for closed channel
 				cycleResult.Lock()
-				cycleResult = cycleResult.WithActivationResult(aRes)
+				cycleResult = cycleResult.WithActivationResults(aRes)
 				cycleResult.Unlock()
 			case <-doneChan:
 				return
@@ -104,15 +104,17 @@ func (fm *FMesh) drainComponents() {
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
 func (fm *FMesh) Run() (cycle.Results, error) {
 	allCycles := cycle.NewResults()
+	cycleNumber := uint(0)
 	for {
-		cycleResult := fm.runCycle()
+		cycleNumber++
+		cycleResult := fm.runCycle().SetCycleNumber(cycleNumber)
+		allCycles = allCycles.Add(cycleResult)
 
 		mustStop, err := fm.mustStop(cycleResult)
 		if mustStop {
 			return allCycles, err
 		}
 
-		allCycles.Add(cycleResult)
 		fm.drainComponents()
 	}
 }
@@ -126,14 +128,12 @@ func (fm *FMesh) mustStop(cycleResult *cycle.Result) (bool, error) {
 	//Check if mesh must stop because of configured error handling strategy
 	switch fm.errorHandlingStrategy {
 	case StopOnFirstError:
-		return cycleResult.HasErrors(), newFMeshStopError(ErrHitAnError, cycleResult)
+		return cycleResult.HasErrors(), ErrHitAnError
 	case StopOnFirstPanic:
-		return cycleResult.HasPanics(), newFMeshStopError(ErrHitAPanic, cycleResult)
+		return cycleResult.HasPanics(), ErrHitAPanic
 	case IgnoreAll:
 		return false, nil
 	default:
-		//@TODO: maybe better to return error
-
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
 }

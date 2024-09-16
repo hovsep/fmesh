@@ -60,15 +60,15 @@ func (p *Port) HasSignal() bool {
 
 // Adds pipe reference to the port, so all pipes of the port are easily accessible
 func (p *Port) addPipeRef(pipe *Pipe) {
-	if pipe.From == nil || pipe.To == nil {
-		return
-	}
 	p.pipes = append(p.pipes, pipe)
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
 func (p *Port) PipeTo(toPorts ...*Port) {
 	for _, toPort := range toPorts {
+		if toPort == nil {
+			continue
+		}
 		newPipe := NewPipe(p, toPort)
 		p.addPipeRef(newPipe)
 		toPort.addPipeRef(newPipe)

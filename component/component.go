@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hovsep/fmesh/port"
-	"runtime/debug"
 )
 
 type ActivationFunc func(inputs port.Ports, outputs port.Ports) error
@@ -91,12 +90,9 @@ func (c *Component) hasActivationFunction() bool {
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			errorFormat := "panicked with: %v, stacktrace: %s"
-			if _, ok := r.(error); ok {
-				errorFormat = "panicked with: %w, stacktrace: %s"
-			}
-			//TODO: add custom error
-			activationResult = c.newActivationCodePanicked(fmt.Errorf(errorFormat, r, debug.Stack()))
+			//Clear inputs and exit
+			c.inputs.ClearSignal()
+			activationResult = c.newActivationCodePanicked(fmt.Errorf("panicked with: %v", r))
 		}
 	}()
 

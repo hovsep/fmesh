@@ -1,5 +1,7 @@
 package component
 
+import "fmt"
+
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
 	componentName string
@@ -81,7 +83,10 @@ func (c *Component) newActivationCodeWaitingForInput() *ActivationResult {
 
 // newActivationCodeReturnedError builds a specific activation result
 func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodeReturnedError).WithError(err)
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(ActivationCodeReturnedError).
+		WithError(fmt.Errorf("component returned an error: %w", err))
 }
 
 // newActivationCodePanicked builds a specific activation result

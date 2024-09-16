@@ -79,7 +79,10 @@ func (cycleResult *Result) HasActivatedComponents() bool {
 	return false
 }
 
-// Add adds a cycle result to existing collection
-func (cycleResults Results) Add(cycleResult *Result) Results {
-	return append(cycleResults, cycleResult)
+// Add adds cycle results to existing collection
+func (cycleResults Results) Add(newCycleResults ...*Result) Results {
+	for _, cycleResult := range newCycleResults {
+		cycleResults = append(cycleResults, cycleResult)
+	}
+	return cycleResults
 }

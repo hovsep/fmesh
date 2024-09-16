@@ -489,7 +489,7 @@ func TestComponent_Activate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				WithActivationCode(ActivationCodeReturnedError).
-				WithError(errors.New("failed to activate component: test error")),
+				WithError(errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -556,10 +556,10 @@ func TestComponent_Activate(t *testing.T) {
 			assert.Equal(t, got.Activated(), tt.wantActivationResult.Activated())
 			assert.Equal(t, got.ComponentName(), tt.wantActivationResult.ComponentName())
 			assert.Equal(t, got.Code(), tt.wantActivationResult.Code())
-			if !tt.wantActivationResult.HasError() {
-				assert.False(t, got.HasError())
+			if tt.wantActivationResult.HasError() {
+				assert.EqualError(t, got.Error(), tt.wantActivationResult.Error().Error())
 			} else {
-				assert.ErrorContains(t, got.Error(), tt.wantActivationResult.Error().Error())
+				assert.False(t, got.HasError())
 			}
 
 		})
