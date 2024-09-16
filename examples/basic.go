@@ -17,7 +17,7 @@ func main() {
 		WithDescription("adds 2 to the input").
 		WithInputs("num").
 		WithOutputs("res").
-		WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+		WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num + 2))
 			return nil
@@ -27,7 +27,7 @@ func main() {
 		WithDescription("multiplies by 3").
 		WithInputs("num").
 		WithOutputs("res").
-		WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+		WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 			num := inputs.ByName("num").Signal().Payload().(int)
 			outputs.ByName("res").PutSignal(signal.New(num * 3))
 			return nil

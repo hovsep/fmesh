@@ -6,14 +6,14 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-type ActivationFunc func(inputs port.Ports, outputs port.Ports) error
+type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 
 // Component defines a main building block of FMesh
 type Component struct {
 	name        string
 	description string
-	inputs      port.Ports
-	outputs     port.Ports
+	inputs      port.Collection
+	outputs     port.Collection
 	f           ActivationFunc
 }
 
@@ -43,15 +43,15 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
-// WithInputs creates and sets input ports
+// WithInputs creates input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = port.NewPorts(portNames...)
+	c.inputs = port.NewPortsCollection().Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
-// WithOutputs creates and sets output ports
+// WithOutputs creates output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = port.NewPorts(portNames...)
+	c.outputs = port.NewPortsCollection().Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
@@ -72,12 +72,12 @@ func (c *Component) Description() string {
 }
 
 // Inputs getter
-func (c *Component) Inputs() port.Ports {
+func (c *Component) Inputs() port.Collection {
 	return c.inputs
 }
 
 // Outputs getter
-func (c *Component) Outputs() port.Ports {
+func (c *Component) Outputs() port.Collection {
 	return c.outputs
 }
 
@@ -141,15 +141,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 // FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
 func (c *Component) FlushOutputs() {
 	for _, out := range c.outputs {
-		if !out.HasSignal() || len(out.Pipes()) == 0 {
-			continue
-		}
-
-		for _, pipe := range out.Pipes() {
-			//Multiplexing
-			pipe.Flush()
-		}
-		out.ClearSignal()
+		out.Flush()
 	}
 }
 

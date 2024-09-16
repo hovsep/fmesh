@@ -90,7 +90,7 @@ func TestComponent_Inputs(t *testing.T) {
 	tests := []struct {
 		name      string
 		component *Component
-		want      port.Ports
+		want      port.Collection
 	}{
 		{
 			name:      "no inputs",
@@ -100,7 +100,7 @@ func TestComponent_Inputs(t *testing.T) {
 		{
 			name:      "with inputs",
 			component: NewComponent("c1").WithInputs("i1", "i2"),
-			want: port.Ports{
+			want: port.Collection{
 				"i1": port.NewPort("i1"),
 				"i2": port.NewPort("i2"),
 			},
@@ -145,7 +145,7 @@ func TestComponent_Outputs(t *testing.T) {
 	tests := []struct {
 		name      string
 		component *Component
-		want      port.Ports
+		want      port.Collection
 	}{
 		{
 			name:      "no outputs",
@@ -155,7 +155,7 @@ func TestComponent_Outputs(t *testing.T) {
 		{
 			name:      "with outputs",
 			component: NewComponent("c1").WithOutputs("o1", "o2"),
-			want: port.Ports{
+			want: port.Collection{
 				"o1": port.NewPort("o1"),
 				"o2": port.NewPort("o2"),
 			},
@@ -184,7 +184,7 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			name:      "happy path",
 			component: NewComponent("c1"),
 			args: args{
-				f: func(inputs port.Ports, outputs port.Ports) error {
+				f: func(inputs port.Collection, outputs port.Collection) error {
 					outputs.ByName("out1").PutSignal(signal.New(23))
 					return nil
 				},
@@ -196,8 +196,10 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
 			//Compare activation functions by they result and error
-			testInputs1, testInputs2 := port.NewPorts("in1", "in2"), port.NewPorts("in1", "in2")
-			testOutputs1, testOutputs2 := port.NewPorts("out1", "out2"), port.NewPorts("out1", "out2")
+			testInputs1 := port.NewPortsCollection().Add(port.NewPortGroup("in1", "in2")...)
+			testInputs2 := port.NewPortsCollection().Add(port.NewPortGroup("in1", "in2")...)
+			testOutputs1 := port.NewPortsCollection().Add(port.NewPortGroup("out1", "out2")...)
+			testOutputs2 := port.NewPortsCollection().Add(port.NewPortGroup("out1", "out2")...)
 			err1 := componentAfter.f(testInputs1, testOutputs1)
 			err2 := tt.args.f(testInputs2, testOutputs2)
 			assert.Equal(t, err1, err2)
@@ -259,7 +261,7 @@ func TestComponent_WithInputs(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "",
-				inputs: port.Ports{
+				inputs: port.Collection{
 					"p1": port.NewPort("p1"),
 					"p2": port.NewPort("p2"),
 				},
@@ -276,7 +278,7 @@ func TestComponent_WithInputs(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "",
-				inputs:      port.Ports{},
+				inputs:      port.Collection{},
 				outputs:     nil,
 				f:           nil,
 			},
@@ -311,7 +313,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 				name:        "c1",
 				description: "",
 				inputs:      nil,
-				outputs: port.Ports{
+				outputs: port.Collection{
 					"p1": port.NewPort("p1"),
 					"p2": port.NewPort("p2"),
 				},
@@ -328,7 +330,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 				name:        "c1",
 				description: "",
 				inputs:      nil,
-				outputs:     port.Ports{},
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
@@ -458,7 +460,7 @@ func TestComponent_Activate(t *testing.T) {
 			getComponent: func() *Component {
 				c := NewComponent("c1").
 					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
 						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
 							return ErrWaitingForInputResetInputs
@@ -479,7 +481,7 @@ func TestComponent_Activate(t *testing.T) {
 			getComponent: func() *Component {
 				c := NewComponent("c1").
 					WithInputs("i1").
-					WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						return errors.New("test error")
 					})
 				//Only one input set
@@ -497,7 +499,7 @@ func TestComponent_Activate(t *testing.T) {
 				c := NewComponent("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
 						return nil
 					})
@@ -515,7 +517,7 @@ func TestComponent_Activate(t *testing.T) {
 				c := NewComponent("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
 						panic(errors.New("oh shrimps"))
 						return nil
@@ -535,7 +537,7 @@ func TestComponent_Activate(t *testing.T) {
 				c := NewComponent("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Ports, outputs port.Ports) error {
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
 						panic("oh shrimps")
 						return nil
