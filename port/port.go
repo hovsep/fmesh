@@ -8,8 +8,7 @@ import (
 type Port struct {
 	name   string
 	signal *signal.Signal //Current signal set on the port
-	//@TODO:think of replacing pipe abstraction with list of "To" ports, as all pipes always point to this port as their "From"
-	pipes Pipes //Refs to pipes connected to this port (without in\out semantics)
+	pipes  Pipes          //Refs to all outbound pipes connected to this port
 }
 
 // Ports is just useful collection type
@@ -50,7 +49,6 @@ func (p *Port) PutSignal(sig *signal.Signal) {
 }
 
 // ClearSignal removes current signal from the port
-// @TODO: check if this affects the signal itself, as it is a pointer
 func (p *Port) ClearSignal() {
 	p.signal = nil
 }
@@ -62,20 +60,19 @@ func (p *Port) HasSignal() bool {
 
 // Adds pipe reference to the port, so all pipes of the port are easily accessible
 func (p *Port) addPipeRef(pipe *Pipe) {
-	if pipe.From == nil || pipe.To == nil {
-		return
-	}
 	p.pipes = append(p.pipes, pipe)
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
 func (p *Port) PipeTo(toPorts ...*Port) {
 	for _, toPort := range toPorts {
+		if toPort == nil {
+			continue
+		}
 		newPipe := NewPipe(p, toPort)
 		p.addPipeRef(newPipe)
 		toPort.addPipeRef(newPipe)
 	}
-
 }
 
 // ByName returns a port by its name

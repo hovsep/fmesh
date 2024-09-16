@@ -1,19 +1,24 @@
 package component
 
+import "fmt"
+
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
-	activated     bool
 	componentName string
-	code          ActivationCode
+	activated     bool
+	code          ActivationResultCode
 	err           error
 }
 
-// ActivationCode denotes a specific info about how a component been activated or why not activated at all
-type ActivationCode int
+// ActivationResults is a collection
+type ActivationResults map[string]*ActivationResult
+
+// ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
+type ActivationResultCode int
 
 const (
 	// ActivationCodeOK ...: component is activated and did not return any errors
-	ActivationCodeOK ActivationCode = iota
+	ActivationCodeOK ActivationResultCode = iota
 
 	// ActivationCodeNoInput ...: component is not activated because it has no input set
 	ActivationCodeNoInput
@@ -31,68 +36,90 @@ const (
 	ActivationCodePanicked
 )
 
-func (ar ActivationResult) HasError() bool {
-	return ar.Error() != nil
+// NewActivationResult creates a new activation result for given component
+func NewActivationResult(componentName string) *ActivationResult {
+	return &ActivationResult{
+		componentName: componentName,
+	}
 }
 
-func (ar ActivationResult) ComponentName() string {
+// SetActivated setter
+func (ar *ActivationResult) SetActivated(activated bool) *ActivationResult {
+	ar.activated = activated
+	return ar
+}
+
+// WithActivationCode setter
+func (ar *ActivationResult) WithActivationCode(code ActivationResultCode) *ActivationResult {
+	ar.code = code
+	return ar
+}
+
+// WithError setter
+func (ar *ActivationResult) WithError(err error) *ActivationResult {
+	ar.err = err
+	return ar
+}
+
+// newActivationResultOK builds a specific activation result
+func (c *Component) newActivationResultOK() *ActivationResult {
+	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodeOK)
+}
+
+// newActivationCodeNoInput builds a specific activation result
+func (c *Component) newActivationCodeNoInput() *ActivationResult {
+	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeNoInput)
+}
+
+// newActivationCodeNoFunction builds a specific activation result
+func (c *Component) newActivationCodeNoFunction() *ActivationResult {
+	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeNoFunction)
+}
+
+// newActivationCodeWaitingForInput builds a specific activation result
+func (c *Component) newActivationCodeWaitingForInput() *ActivationResult {
+	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeWaitingForInput)
+}
+
+// newActivationCodeReturnedError builds a specific activation result
+func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult {
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(ActivationCodeReturnedError).
+		WithError(fmt.Errorf("component returned an error: %w", err))
+}
+
+// newActivationCodePanicked builds a specific activation result
+func (c *Component) newActivationCodePanicked(err error) *ActivationResult {
+	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodePanicked).WithError(err)
+}
+
+// ComponentName getter
+func (ar *ActivationResult) ComponentName() string {
 	return ar.componentName
 }
 
-func (ar ActivationResult) Activated() bool {
+// Activated getter
+func (ar *ActivationResult) Activated() bool {
 	return ar.activated
 }
 
-func (ar ActivationResult) Error() error {
+// Error getter
+func (ar *ActivationResult) Error() error {
 	return ar.err
 }
 
-func (c *Component) newActivationResultOK() ActivationResult {
-	return ActivationResult{
-		activated:     true,
-		componentName: c.Name(),
-		code:          ActivationCodeOK,
-	}
+// Code getter
+func (ar *ActivationResult) Code() ActivationResultCode {
+	return ar.code
 }
 
-func (c *Component) newActivationCodeNoInput() ActivationResult {
-	return ActivationResult{
-		activated:     false,
-		componentName: c.Name(),
-		code:          ActivationCodeNoInput,
-	}
+// HasError returns true when activation result has an error
+func (ar *ActivationResult) HasError() bool {
+	return ar.code == ActivationCodeReturnedError && ar.Error() != nil
 }
 
-func (c *Component) newActivationCodeNoFunction() ActivationResult {
-	return ActivationResult{
-		activated:     false,
-		componentName: c.Name(),
-		code:          ActivationCodeNoFunction,
-	}
-}
-
-func (c *Component) newActivationCodeWaitingForInput() ActivationResult {
-	return ActivationResult{
-		activated:     false,
-		componentName: c.Name(),
-		code:          ActivationCodeWaitingForInput,
-	}
-}
-
-func (c *Component) newActivationCodeReturnedError(err error) ActivationResult {
-	return ActivationResult{
-		activated:     true,
-		componentName: c.Name(),
-		code:          ActivationCodeReturnedError,
-		err:           err,
-	}
-}
-
-func (c *Component) newActivationCodePanicked(err error) ActivationResult {
-	return ActivationResult{
-		activated:     true,
-		componentName: c.Name(),
-		code:          ActivationCodePanicked,
-		err:           err,
-	}
+// HasPanic returns true when activation result is derived from panic
+func (ar *ActivationResult) HasPanic() bool {
+	return ar.code == ActivationCodePanicked && ar.Error() != nil
 }

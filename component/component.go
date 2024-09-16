@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hovsep/fmesh/port"
-	"runtime/debug"
 )
 
 type ActivationFunc func(inputs port.Ports, outputs port.Ports) error
@@ -22,12 +21,14 @@ type Component struct {
 type Components map[string]*Component
 
 // NewComponent creates a new empty component
+// TODO: rename all constructors to New
 func NewComponent(name string) *Component {
 	return &Component{name: name}
 }
 
 // NewComponents creates a collection of components
 // names are optional and can be used to create multiple empty components in one call
+// @TODO: rename all such constructors to NewCollection
 func NewComponents(names ...string) Components {
 	components := make(Components, len(names))
 	for _, name := range names {
@@ -86,28 +87,26 @@ func (c *Component) hasActivationFunction() bool {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met
-func (c *Component) MaybeActivate() (activationResult ActivationResult) {
+func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			errorFormat := "panicked with: %v, stacktrace: %s"
-			if _, ok := r.(error); ok {
-				errorFormat = "panicked with: %w, stacktrace: %s"
-			}
-			activationResult = c.newActivationCodePanicked(fmt.Errorf(errorFormat, r, debug.Stack()))
+			//Clear inputs and exit
+			c.inputs.ClearSignal()
+			activationResult = c.newActivationCodePanicked(fmt.Errorf("panicked with: %v", r))
 		}
 	}()
+
+	if !c.hasActivationFunction() {
+		//Activation function is not set (maybe useful while the mesh is under development)
+		activationResult = c.newActivationCodeNoFunction()
+
+		return
+	}
 
 	//@TODO:: https://github.com/hovsep/fmesh/issues/15
 	if !c.inputs.AnyHasSignal() {
 		//No inputs set, stop here
 		activationResult = c.newActivationCodeNoInput()
-
-		return
-	}
-
-	if !c.hasActivationFunction() {
-		//Activation function is not set (maybe useful while the mesh is under development)
-		activationResult = c.newActivationCodeNoFunction()
 
 		return
 	}
@@ -159,8 +158,10 @@ func (components Components) ByName(name string) *Component {
 	return components[name]
 }
 
-// Add adds a component to collection
-func (components Components) Add(component *Component) Components {
-	components[component.Name()] = component
+// Add adds new components to existing collection
+func (components Components) Add(newComponents ...*Component) Components {
+	for _, component := range newComponents {
+		components[component.Name()] = component
+	}
 	return components
 }

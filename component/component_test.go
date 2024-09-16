@@ -2,7 +2,6 @@ package component
 
 import (
 	"errors"
-	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -432,20 +431,16 @@ func TestNew(t *testing.T) {
 
 func TestComponent_Activate(t *testing.T) {
 	tests := []struct {
-		name         string
-		getComponent func() *Component
-		wantARes     cycle.ActivationResult
+		name                 string
+		getComponent         func() *Component
+		wantActivationResult *ActivationResult
 	}{
 		{
 			name: "empty component is not activated",
 			getComponent: func() *Component {
 				return NewComponent("c1")
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       false,
-				ComponentName:   "c1",
-				ActivationError: nil,
-			},
+			wantActivationResult: NewActivationResult("c1").SetActivated(false).WithActivationCode(ActivationCodeNoFunction),
 		},
 		{
 			name: "component with inputs set, but no activation func",
@@ -454,11 +449,9 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       false,
-				ComponentName:   "c1",
-				ActivationError: nil,
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(false).
+				WithActivationCode(ActivationCodeNoFunction),
 		},
 		{
 			name: "component is waiting for input",
@@ -477,11 +470,9 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       false,
-				ComponentName:   "c1",
-				ActivationError: nil,
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(false).
+				WithActivationCode(ActivationCodeWaitingForInput),
 		},
 		{
 			name: "activated with error",
@@ -495,11 +486,10 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       true,
-				ComponentName:   "c1",
-				ActivationError: errors.New("failed to activate component: test error"),
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(true).
+				WithActivationCode(ActivationCodeReturnedError).
+				WithError(errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -515,11 +505,9 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       true,
-				ComponentName:   "c1",
-				ActivationError: nil,
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(true).
+				WithActivationCode(ActivationCodeOK),
 		},
 		{
 			name: "component panicked with error",
@@ -536,11 +524,10 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       true,
-				ComponentName:   "c1",
-				ActivationError: errors.New("panicked with: oh shrimps"),
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(true).
+				WithActivationCode(ActivationCodePanicked).
+				WithError(errors.New("panicked with: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -557,22 +544,22 @@ func TestComponent_Activate(t *testing.T) {
 				c.Inputs().ByName("i1").PutSignal(signal.New(123))
 				return c
 			},
-			wantARes: cycle.ActivationResult{
-				Activated:       true,
-				ComponentName:   "c1",
-				ActivationError: errors.New("panicked with: oh shrimps"),
-			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(true).
+				WithActivationCode(ActivationCodePanicked).
+				WithError(errors.New("panicked with: oh shrimps")),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.getComponent().MaybeActivate()
-			assert.Equal(t, got.Activated, tt.wantARes.Activated)
-			assert.Equal(t, got.ComponentName, tt.wantARes.ComponentName)
-			if tt.wantARes.ActivationError == nil {
-				assert.Nil(t, got.ActivationError)
+			assert.Equal(t, got.Activated(), tt.wantActivationResult.Activated())
+			assert.Equal(t, got.ComponentName(), tt.wantActivationResult.ComponentName())
+			assert.Equal(t, got.Code(), tt.wantActivationResult.Code())
+			if tt.wantActivationResult.HasError() {
+				assert.EqualError(t, got.Error(), tt.wantActivationResult.Error().Error())
 			} else {
-				assert.ErrorContains(t, got.ActivationError, tt.wantARes.ActivationError.Error())
+				assert.False(t, got.HasError())
 			}
 
 		})
