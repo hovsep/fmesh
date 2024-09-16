@@ -102,10 +102,10 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	//Run the computation
 	err := c.f(c.inputs, c.outputs)
 
-	if IsWaitingForInputError(err) {
+	if errors.Is(err, errWaitingForInputs) {
 		activationResult = c.newActivationCodeWaitingForInput()
 
-		if !errors.Is(err, ErrWaitingForInputKeepInputs) {
+		if !errors.Is(err, errWaitingForInputsKeep) {
 			c.inputs.ClearSignal()
 		}
 
