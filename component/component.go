@@ -92,7 +92,6 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return
 	}
 
-	//@TODO:: https://github.com/hovsep/fmesh/issues/15
 	if !c.inputs.AnyHasSignal() {
 		//No inputs set, stop here
 		activationResult = c.newActivationCodeNoInput()

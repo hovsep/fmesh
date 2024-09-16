@@ -53,45 +53,30 @@ func (fm *FMesh) WithErrorHandlingStrategy(strategy ErrorHandlingStrategy) *FMes
 	return fm
 }
 
-// runCycle runs one activation cycle (tries to activate all components)
+// runCycle runs one activation cycle (tries to activate ready components)
 func (fm *FMesh) runCycle() *cycle.Cycle {
-	cycleResult := cycle.New()
+	newCycle := cycle.New()
 
 	if len(fm.components) == 0 {
-		return cycleResult
+		return newCycle
 	}
-
-	activationResultsChan := make(chan *component.ActivationResult) //@TODO: close the channel
-	doneChan := make(chan struct{})                                 //@TODO: close the channel
 
 	var wg sync.WaitGroup
 
-	go func() {
-		for {
-			select {
-			case aRes := <-activationResultsChan:
-				//@TODO :check for closed channel
-				cycleResult.Lock()
-				cycleResult.ActivationResults().Add(aRes)
-				cycleResult.Unlock()
-			case <-doneChan:
-				return
-			}
-		}
-	}()
-
 	for _, c := range fm.components {
 		wg.Add(1)
-		c := c //@TODO: check if this needed
-		go func() {
+
+		go func(component *component.Component, cycle *cycle.Cycle) {
 			defer wg.Done()
-			activationResultsChan <- c.MaybeActivate()
-		}()
+
+			cycle.Lock()
+			cycle.ActivationResults().Add(c.MaybeActivate())
+			cycle.Unlock()
+		}(c, newCycle)
 	}
 
 	wg.Wait()
-	doneChan <- struct{}{} //@TODO: no need to send close signal, just close the channel
-	return cycleResult
+	return newCycle
 }
 
 // DrainComponents drains the data from all components outputs
