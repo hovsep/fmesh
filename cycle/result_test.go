@@ -33,13 +33,13 @@ func TestResults_Add(t *testing.T) {
 			want: Results{
 				{
 					cycleNumber: 1,
-					activationResults: component.ActivationResults{
+					activationResults: component.ActivationResultCollection{
 						"c1": component.NewActivationResult("c1").SetActivated(false),
 					},
 				},
 				{
 					cycleNumber: 2,
-					activationResults: component.ActivationResults{
+					activationResults: component.ActivationResultCollection{
 						"c1": component.NewActivationResult("c1").SetActivated(true),
 					},
 				},
@@ -64,7 +64,7 @@ func TestNewResult(t *testing.T) {
 			name: "happy path",
 			want: &Result{
 				cycleNumber:       0,
-				activationResults: component.ActivationResults{},
+				activationResults: component.ActivationResultCollection{},
 			},
 		},
 	}
@@ -100,17 +100,17 @@ func TestResult_ActivationResults(t *testing.T) {
 	tests := []struct {
 		name        string
 		cycleResult *Result
-		want        component.ActivationResults
+		want        component.ActivationResultCollection
 	}{
 		{
 			name:        "no activation results",
 			cycleResult: NewResult(),
-			want:        component.ActivationResults{},
+			want:        component.ActivationResultCollection{},
 		},
 		{
 			name:        "happy path",
 			cycleResult: NewResult().WithActivationResults(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
-			want: component.ActivationResults{
+			want: component.ActivationResultCollection{
 				"c1": component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 			},
 		},
@@ -118,7 +118,7 @@ func TestResult_ActivationResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.cycleResult.ActivationResults(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ActivationResults() = %v, want %v", got, tt.want)
+				t.Errorf("ActivationResultCollection() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -287,7 +287,7 @@ func TestResult_SetCycleNumber(t *testing.T) {
 			},
 			want: &Result{
 				cycleNumber:       23,
-				activationResults: component.ActivationResults{},
+				activationResults: component.ActivationResultCollection{},
 			},
 		},
 	}
@@ -329,7 +329,7 @@ func TestResult_WithActivationResults(t *testing.T) {
 			},
 			want: &Result{
 				cycleNumber: 0,
-				activationResults: component.ActivationResults{
+				activationResults: component.ActivationResultCollection{
 					"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 					"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				},
@@ -353,7 +353,7 @@ func TestResult_WithActivationResults(t *testing.T) {
 			},
 			want: &Result{
 				cycleNumber: 0,
-				activationResults: component.ActivationResults{
+				activationResults: component.ActivationResultCollection{
 					"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 					"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 					"c3": component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),

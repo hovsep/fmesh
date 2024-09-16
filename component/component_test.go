@@ -9,6 +9,75 @@ import (
 	"testing"
 )
 
+func TestNewComponent(t *testing.T) {
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Component
+	}{
+		{
+			name: "empty name is valid",
+			args: args{
+				name: "",
+			},
+			want: &Component{
+				name:        "",
+				description: "",
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
+				f:           nil,
+			},
+		},
+		{
+			name: "with name",
+			args: args{
+				name: "multiplier",
+			},
+			want: &Component{
+				name:        "multiplier",
+				description: "",
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
+				f:           nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewComponent(tt.args.name), "NewComponent(%v)", tt.args.name)
+		})
+	}
+}
+
+func TestComponent_Name(t *testing.T) {
+	tests := []struct {
+		name      string
+		component *Component
+		want      string
+	}{
+		{
+			name:      "empty name",
+			component: NewComponent(""),
+			want:      "",
+		},
+		{
+			name:      "with name",
+			component: NewComponent("c1"),
+			want:      "c1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.component.Name(); got != tt.want {
+				t.Errorf("Name() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestComponent_Description(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -111,32 +180,6 @@ func TestComponent_Inputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.component.Inputs(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Inputs() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestComponent_Name(t *testing.T) {
-	tests := []struct {
-		name      string
-		component *Component
-		want      string
-	}{
-		{
-			name:      "empty name",
-			component: NewComponent(""),
-			want:      "",
-		},
-		{
-			name:      "with name",
-			component: NewComponent("c1"),
-			want:      "c1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.Name(); got != tt.want {
-				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -345,94 +388,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 	}
 }
 
-func TestComponents_ByName(t *testing.T) {
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name       string
-		components ComponentCollection
-		args       args
-		want       *Component
-	}{
-		{
-			name:       "component found",
-			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
-			args: args{
-				name: "c2",
-			},
-			want: &Component{
-				name:        "c2",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
-		},
-		{
-			name:       "component not found",
-			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
-			args: args{
-				name: "c3",
-			},
-			want: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.components.ByName(tt.args.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ByName() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNew(t *testing.T) {
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name string
-		args args
-		want *Component
-	}{
-		{
-			name: "happy path",
-			args: args{
-				name: "c1",
-			},
-			want: &Component{
-				name:        "c1",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
-		},
-		{
-			name: "empty name is valid",
-			args: args{
-				name: "",
-			},
-			want: &Component{
-				name:        "",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewComponent(tt.args.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewComponent() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestComponent_Activate(t *testing.T) {
+func TestComponent_MaybeActivate(t *testing.T) {
 	tests := []struct {
 		name                 string
 		getComponent         func() *Component
@@ -455,6 +411,25 @@ func TestComponent_Activate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoFunction),
+		},
+		{
+			name: "no input",
+			getComponent: func() *Component {
+				c := NewComponent("c1").
+					WithInputs("i1", "i2").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+
+						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
+							return ErrWaitingForInputResetInputs
+						}
+
+						return nil
+					})
+				return c
+			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(false).
+				WithActivationCode(ActivationCodeNoInput),
 		},
 		{
 			name: "component is waiting for input",
@@ -565,113 +540,6 @@ func TestComponent_Activate(t *testing.T) {
 				assert.False(t, got.HasError())
 			}
 
-		})
-	}
-}
-
-func TestComponents_Add(t *testing.T) {
-	type args struct {
-		component *Component
-	}
-	tests := []struct {
-		name       string
-		components ComponentCollection
-		args       args
-		want       ComponentCollection
-	}{
-		{
-			name:       "adding to empty collection",
-			components: NewComponentCollection(),
-			args: args{
-				component: NewComponent("c1").WithDescription("descr"),
-			},
-			want: ComponentCollection{
-				"c1": {
-					name:        "c1",
-					description: "descr",
-					inputs:      port.Collection{},
-					outputs:     port.Collection{},
-					f:           nil,
-				},
-			},
-		},
-		{
-			name:       "adding to existing collection",
-			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
-			args: args{
-				component: NewComponent("c3").WithDescription("descr"),
-			},
-			want: ComponentCollection{
-				"c1": {
-					name:        "c1",
-					description: "",
-					inputs:      port.Collection{},
-					outputs:     port.Collection{},
-					f:           nil,
-				},
-				"c2": {
-					name:        "c2",
-					description: "",
-					inputs:      port.Collection{},
-					outputs:     port.Collection{},
-					f:           nil,
-				},
-				"c3": {
-					name:        "c3",
-					description: "descr",
-					inputs:      port.Collection{},
-					outputs:     port.Collection{},
-					f:           nil,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, tt.components.Add(tt.args.component), "Add(%v)", tt.args.component)
-		})
-	}
-}
-
-func TestNewComponent(t *testing.T) {
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name string
-		args args
-		want *Component
-	}{
-		{
-			name: "empty name is valid",
-			args: args{
-				name: "",
-			},
-			want: &Component{
-				name:        "",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
-		},
-		{
-			name: "with name",
-			args: args{
-				name: "multiplier",
-			},
-			want: &Component{
-				name:        "multiplier",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewComponent(tt.args.name), "NewComponent(%v)", tt.args.name)
 		})
 	}
 }

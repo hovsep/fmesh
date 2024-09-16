@@ -10,7 +10,7 @@ import (
 type FMesh struct {
 	name                  string
 	description           string
-	components            component.ComponentCollection
+	components            component.Collection
 	errorHandlingStrategy ErrorHandlingStrategy
 }
 
@@ -29,7 +29,7 @@ func (fm *FMesh) Description() string {
 	return fm.description
 }
 
-func (fm *FMesh) Components() component.ComponentCollection {
+func (fm *FMesh) Components() component.Collection {
 	return fm.components
 }
 
@@ -72,7 +72,7 @@ func (fm *FMesh) runCycle() *cycle.Result {
 			case aRes := <-activationResultsChan:
 				//@TODO :check for closed channel
 				cycleResult.Lock()
-				cycleResult = cycleResult.WithActivationResults(aRes)
+				cycleResult.ActivationResults().Add(aRes)
 				cycleResult.Unlock()
 			case <-doneChan:
 				return

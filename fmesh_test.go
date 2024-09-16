@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 				name: "",
 			},
 			want: &FMesh{
-				components: component.ComponentCollection{},
+				components: component.Collection{},
 			},
 		},
 		{
@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 			},
 			want: &FMesh{
 				name:       "fm1",
-				components: component.ComponentCollection{},
+				components: component.Collection{},
 			},
 		},
 	}
@@ -68,7 +68,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 			want: &FMesh{
 				name:                  "fm1",
 				description:           "",
-				components:            component.ComponentCollection{},
+				components:            component.Collection{},
 				errorHandlingStrategy: 0,
 			},
 		},
@@ -81,7 +81,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 			want: &FMesh{
 				name:                  "fm1",
 				description:           "descr",
-				components:            component.ComponentCollection{},
+				components:            component.Collection{},
 				errorHandlingStrategy: 0,
 			},
 		},
@@ -113,7 +113,7 @@ func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
 			},
 			want: &FMesh{
 				name:                  "fm1",
-				components:            component.ComponentCollection{},
+				components:            component.Collection{},
 				errorHandlingStrategy: StopOnFirstError,
 			},
 		},
@@ -125,7 +125,7 @@ func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
 			},
 			want: &FMesh{
 				name:                  "fm1",
-				components:            component.ComponentCollection{},
+				components:            component.Collection{},
 				errorHandlingStrategy: IgnoreAll,
 			},
 		},
@@ -158,7 +158,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 			want: &FMesh{
 				name:                  "fm1",
 				description:           "",
-				components:            component.ComponentCollection{},
+				components:            component.Collection{},
 				errorHandlingStrategy: 0,
 			},
 		},
@@ -172,7 +172,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 			},
 			want: &FMesh{
 				name: "fm1",
-				components: component.ComponentCollection{
+				components: component.Collection{
 					"c1": component.NewComponent("c1"),
 				},
 			},
@@ -188,7 +188,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 			},
 			want: &FMesh{
 				name: "fm1",
-				components: component.ComponentCollection{
+				components: component.Collection{
 					"c1": component.NewComponent("c1"),
 					"c2": component.NewComponent("c2"),
 				},
@@ -207,7 +207,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 			},
 			want: &FMesh{
 				name: "fm1",
-				components: component.ComponentCollection{
+				components: component.Collection{
 					"c1": component.NewComponent("c1").WithDescription("descr1"),
 					"c2": component.NewComponent("c2").WithDescription("descr3"),
 					"c4": component.NewComponent("c4").WithDescription("descr4"),
@@ -625,7 +625,7 @@ func TestFMesh_Run(t *testing.T) {
 			//Compare cycle results one by one
 			for i := 0; i < len(got); i++ {
 				assert.Equal(t, tt.want[i].CycleNumber(), got[i].CycleNumber())
-				assert.Equal(t, len(tt.want[i].ActivationResults()), len(got[i].ActivationResults()), "ActivationResults len mismatch")
+				assert.Equal(t, len(tt.want[i].ActivationResults()), len(got[i].ActivationResults()), "ActivationResultCollection len mismatch")
 
 				//Compare activation results
 				for componentName, gotActivationResult := range got[i].ActivationResults() {

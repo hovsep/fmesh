@@ -10,9 +10,6 @@ type ActivationResult struct {
 	err           error
 }
 
-// ActivationResults is a collection
-type ActivationResults map[string]*ActivationResult
-
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
 type ActivationResultCode int
 
@@ -41,6 +38,36 @@ func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
 	}
+}
+
+// ComponentName getter
+func (ar *ActivationResult) ComponentName() string {
+	return ar.componentName
+}
+
+// Activated getter
+func (ar *ActivationResult) Activated() bool {
+	return ar.activated
+}
+
+// Error getter
+func (ar *ActivationResult) Error() error {
+	return ar.err
+}
+
+// Code getter
+func (ar *ActivationResult) Code() ActivationResultCode {
+	return ar.code
+}
+
+// HasError returns true when activation result has an error
+func (ar *ActivationResult) HasError() bool {
+	return ar.code == ActivationCodeReturnedError && ar.Error() != nil
+}
+
+// HasPanic returns true when activation result is derived from panic
+func (ar *ActivationResult) HasPanic() bool {
+	return ar.code == ActivationCodePanicked && ar.Error() != nil
 }
 
 // SetActivated setter
@@ -83,43 +110,10 @@ func (c *Component) newActivationCodeWaitingForInput() *ActivationResult {
 
 // newActivationCodeReturnedError builds a specific activation result
 func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(true).
-		WithActivationCode(ActivationCodeReturnedError).
-		WithError(fmt.Errorf("component returned an error: %w", err))
+	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodeReturnedError).WithError(fmt.Errorf("component returned an error: %w", err))
 }
 
 // newActivationCodePanicked builds a specific activation result
 func (c *Component) newActivationCodePanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodePanicked).WithError(err)
-}
-
-// ComponentName getter
-func (ar *ActivationResult) ComponentName() string {
-	return ar.componentName
-}
-
-// Activated getter
-func (ar *ActivationResult) Activated() bool {
-	return ar.activated
-}
-
-// Error getter
-func (ar *ActivationResult) Error() error {
-	return ar.err
-}
-
-// Code getter
-func (ar *ActivationResult) Code() ActivationResultCode {
-	return ar.code
-}
-
-// HasError returns true when activation result has an error
-func (ar *ActivationResult) HasError() bool {
-	return ar.code == ActivationCodeReturnedError && ar.Error() != nil
-}
-
-// HasPanic returns true when activation result is derived from panic
-func (ar *ActivationResult) HasPanic() bool {
-	return ar.code == ActivationCodePanicked && ar.Error() != nil
 }
