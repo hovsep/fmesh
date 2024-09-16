@@ -6,35 +6,24 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-type ActivationFunc func(inputs port.Ports, outputs port.Ports) error
+type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 
 // Component defines a main building block of FMesh
 type Component struct {
 	name        string
 	description string
-	inputs      port.Ports
-	outputs     port.Ports
+	inputs      port.Collection
+	outputs     port.Collection
 	f           ActivationFunc
 }
 
-// Components is a useful collection type
-type Components map[string]*Component
-
 // NewComponent creates a new empty component
-// TODO: rename all constructors to New
 func NewComponent(name string) *Component {
-	return &Component{name: name}
-}
-
-// NewComponents creates a collection of components
-// names are optional and can be used to create multiple empty components in one call
-// @TODO: rename all such constructors to NewCollection
-func NewComponents(names ...string) Components {
-	components := make(Components, len(names))
-	for _, name := range names {
-		components[name] = NewComponent(name)
+	return &Component{
+		name:    name,
+		inputs:  port.NewPortsCollection(),
+		outputs: port.NewPortsCollection(),
 	}
-	return components
 }
 
 // WithDescription sets a description
@@ -43,15 +32,15 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
-// WithInputs creates and sets input ports
+// WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = port.NewPorts(portNames...)
+	c.inputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
-// WithOutputs creates and sets output ports
+// WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = port.NewPorts(portNames...)
+	c.outputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
@@ -72,12 +61,12 @@ func (c *Component) Description() string {
 }
 
 // Inputs getter
-func (c *Component) Inputs() port.Ports {
+func (c *Component) Inputs() port.Collection {
 	return c.inputs
 }
 
 // Outputs getter
-func (c *Component) Outputs() port.Ports {
+func (c *Component) Outputs() port.Collection {
 	return c.outputs
 }
 
@@ -141,27 +130,6 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 // FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
 func (c *Component) FlushOutputs() {
 	for _, out := range c.outputs {
-		if !out.HasSignal() || len(out.Pipes()) == 0 {
-			continue
-		}
-
-		for _, pipe := range out.Pipes() {
-			//Multiplexing
-			pipe.Flush()
-		}
-		out.ClearSignal()
+		out.Flush()
 	}
-}
-
-// ByName returns a component by its name
-func (components Components) ByName(name string) *Component {
-	return components[name]
-}
-
-// Add adds new components to existing collection
-func (components Components) Add(newComponents ...*Component) Components {
-	for _, component := range newComponents {
-		components[component.Name()] = component
-	}
-	return components
 }

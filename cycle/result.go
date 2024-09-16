@@ -9,7 +9,7 @@ import (
 type Result struct {
 	sync.Mutex
 	cycleNumber       uint
-	activationResults component.ActivationResults
+	activationResults component.ActivationResultCollection
 }
 
 // Results contains the results of several activation cycles
@@ -18,7 +18,7 @@ type Results []*Result
 // NewResult creates a new cycle result
 func NewResult() *Result {
 	return &Result{
-		activationResults: make(component.ActivationResults),
+		activationResults: make(component.ActivationResultCollection),
 	}
 }
 
@@ -38,45 +38,23 @@ func (cycleResult *Result) CycleNumber() uint {
 }
 
 // ActivationResults getter
-func (cycleResult *Result) ActivationResults() component.ActivationResults {
+func (cycleResult *Result) ActivationResults() component.ActivationResultCollection {
 	return cycleResult.activationResults
-}
-
-// WithActivationResults adds multiple activation results
-func (cycleResult *Result) WithActivationResults(activationResults ...*component.ActivationResult) *Result {
-	for _, activationResult := range activationResults {
-		cycleResult.activationResults[activationResult.ComponentName()] = activationResult
-	}
-	return cycleResult
 }
 
 // HasErrors tells whether the cycle is ended wih activation errors (at lease one component returned an error)
 func (cycleResult *Result) HasErrors() bool {
-	for _, ar := range cycleResult.activationResults {
-		if ar.HasError() {
-			return true
-		}
-	}
-	return false
+	return cycleResult.ActivationResults().HasErrors()
 }
 
 // HasPanics tells whether the cycle is ended wih panic(at lease one component panicked)
 func (cycleResult *Result) HasPanics() bool {
-	for _, ar := range cycleResult.activationResults {
-		if ar.HasPanic() {
-			return true
-		}
-	}
-	return false
+	return cycleResult.ActivationResults().HasPanics()
 }
 
+// HasActivatedComponents tells when at least one component in the cycle has activated
 func (cycleResult *Result) HasActivatedComponents() bool {
-	for _, ar := range cycleResult.activationResults {
-		if ar.Activated() {
-			return true
-		}
-	}
-	return false
+	return cycleResult.ActivationResults().HasActivatedComponents()
 }
 
 // Add adds cycle results to existing collection
@@ -85,4 +63,10 @@ func (cycleResults Results) Add(newCycleResults ...*Result) Results {
 		cycleResults = append(cycleResults, cycleResult)
 	}
 	return cycleResults
+}
+
+// WithActivationResults adds multiple activation results
+func (cycleResult *Result) WithActivationResults(activationResults ...*component.ActivationResult) *Result {
+	cycleResult.activationResults = cycleResult.ActivationResults().Add(activationResults...)
+	return cycleResult
 }
