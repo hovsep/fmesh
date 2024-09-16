@@ -55,7 +55,8 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			component: NewComponent("c1"),
 			destPort:  nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
-				assert.Nil(t, componentAfterFlush.Outputs())
+				assert.NotNil(t, componentAfterFlush.Outputs())
+				assert.Empty(t, componentAfterFlush.Outputs())
 			},
 		},
 		{
@@ -95,7 +96,7 @@ func TestComponent_Inputs(t *testing.T) {
 		{
 			name:      "no inputs",
 			component: NewComponent("c1"),
-			want:      nil,
+			want:      port.Collection{},
 		},
 		{
 			name:      "with inputs",
@@ -150,7 +151,7 @@ func TestComponent_Outputs(t *testing.T) {
 		{
 			name:      "no outputs",
 			component: NewComponent("c1"),
-			want:      nil,
+			want:      port.Collection{},
 		},
 		{
 			name:      "with outputs",
@@ -227,8 +228,8 @@ func TestComponent_WithDescription(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "descr",
-				inputs:      nil,
-				outputs:     nil,
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
@@ -265,7 +266,7 @@ func TestComponent_WithInputs(t *testing.T) {
 					"p1": port.NewPort("p1"),
 					"p2": port.NewPort("p2"),
 				},
-				outputs: nil,
+				outputs: port.Collection{},
 				f:       nil,
 			},
 		},
@@ -279,7 +280,7 @@ func TestComponent_WithInputs(t *testing.T) {
 				name:        "c1",
 				description: "",
 				inputs:      port.Collection{},
-				outputs:     nil,
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
@@ -312,7 +313,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "",
-				inputs:      nil,
+				inputs:      port.Collection{},
 				outputs: port.Collection{
 					"p1": port.NewPort("p1"),
 					"p2": port.NewPort("p2"),
@@ -329,7 +330,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "",
-				inputs:      nil,
+				inputs:      port.Collection{},
 				outputs:     port.Collection{},
 				f:           nil,
 			},
@@ -350,27 +351,27 @@ func TestComponents_ByName(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		components Components
+		components ComponentCollection
 		args       args
 		want       *Component
 	}{
 		{
 			name:       "component found",
-			components: NewComponents("c1", "c2"),
+			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
 			args: args{
 				name: "c2",
 			},
 			want: &Component{
 				name:        "c2",
 				description: "",
-				inputs:      nil,
-				outputs:     nil,
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
 		{
 			name:       "component not found",
-			components: NewComponents("c1", "c2"),
+			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
 			args: args{
 				name: "c3",
 			},
@@ -403,8 +404,8 @@ func TestNew(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "",
-				inputs:      nil,
-				outputs:     nil,
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
@@ -416,8 +417,8 @@ func TestNew(t *testing.T) {
 			want: &Component{
 				name:        "",
 				description: "",
-				inputs:      nil,
-				outputs:     nil,
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
 				f:           nil,
 			},
 		},
@@ -574,30 +575,54 @@ func TestComponents_Add(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		components Components
+		components ComponentCollection
 		args       args
-		want       Components
+		want       ComponentCollection
 	}{
 		{
 			name:       "adding to empty collection",
-			components: NewComponents(),
+			components: NewComponentCollection(),
 			args: args{
 				component: NewComponent("c1").WithDescription("descr"),
 			},
-			want: Components{
-				"c1": {name: "c1", description: "descr"},
+			want: ComponentCollection{
+				"c1": {
+					name:        "c1",
+					description: "descr",
+					inputs:      port.Collection{},
+					outputs:     port.Collection{},
+					f:           nil,
+				},
 			},
 		},
 		{
 			name:       "adding to existing collection",
-			components: NewComponents("c1", "c2"),
+			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
 			args: args{
 				component: NewComponent("c3").WithDescription("descr"),
 			},
-			want: Components{
-				"c1": {name: "c1"},
-				"c2": {name: "c2"},
-				"c3": {name: "c3", description: "descr"},
+			want: ComponentCollection{
+				"c1": {
+					name:        "c1",
+					description: "",
+					inputs:      port.Collection{},
+					outputs:     port.Collection{},
+					f:           nil,
+				},
+				"c2": {
+					name:        "c2",
+					description: "",
+					inputs:      port.Collection{},
+					outputs:     port.Collection{},
+					f:           nil,
+				},
+				"c3": {
+					name:        "c3",
+					description: "descr",
+					inputs:      port.Collection{},
+					outputs:     port.Collection{},
+					f:           nil,
+				},
 			},
 		},
 	}
@@ -622,7 +647,13 @@ func TestNewComponent(t *testing.T) {
 			args: args{
 				name: "",
 			},
-			want: &Component{},
+			want: &Component{
+				name:        "",
+				description: "",
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
+				f:           nil,
+			},
 		},
 		{
 			name: "with name",
@@ -630,47 +661,17 @@ func TestNewComponent(t *testing.T) {
 				name: "multiplier",
 			},
 			want: &Component{
-				name: "multiplier",
+				name:        "multiplier",
+				description: "",
+				inputs:      port.Collection{},
+				outputs:     port.Collection{},
+				f:           nil,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, NewComponent(tt.args.name), "NewComponent(%v)", tt.args.name)
-		})
-	}
-}
-
-func TestNewComponents(t *testing.T) {
-	type args struct {
-		names []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want Components
-	}{
-		{
-			name: "without specifying names",
-			args: args{
-				names: nil,
-			},
-			want: Components{},
-		},
-		{
-			name: "with names",
-			args: args{
-				names: []string{"c1", "c2"},
-			},
-			want: Components{
-				"c1": {name: "c1"},
-				"c2": {name: "c2"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewComponents(tt.args.names...), "NewComponents(%v)", tt.args.names)
 		})
 	}
 }

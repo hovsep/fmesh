@@ -10,13 +10,13 @@ import (
 type FMesh struct {
 	name                  string
 	description           string
-	components            component.Components
+	components            component.ComponentCollection
 	errorHandlingStrategy ErrorHandlingStrategy
 }
 
 // New creates a new f-mesh
 func New(name string) *FMesh {
-	return &FMesh{name: name, components: component.NewComponents()}
+	return &FMesh{name: name, components: component.NewComponentCollection()}
 }
 
 // Name getter
@@ -29,7 +29,7 @@ func (fm *FMesh) Description() string {
 	return fm.description
 }
 
-func (fm *FMesh) Components() component.Components {
+func (fm *FMesh) Components() component.ComponentCollection {
 	return fm.components
 }
 

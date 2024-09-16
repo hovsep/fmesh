@@ -17,24 +17,13 @@ type Component struct {
 	f           ActivationFunc
 }
 
-// Components is a useful collection type
-type Components map[string]*Component
-
 // NewComponent creates a new empty component
-// TODO: rename all constructors to New
 func NewComponent(name string) *Component {
-	return &Component{name: name}
-}
-
-// NewComponents creates a collection of components
-// names are optional and can be used to create multiple empty components in one call
-// @TODO: rename all such constructors to NewCollection
-func NewComponents(names ...string) Components {
-	components := make(Components, len(names))
-	for _, name := range names {
-		components[name] = NewComponent(name)
+	return &Component{
+		name:    name,
+		inputs:  port.NewPortsCollection(),
+		outputs: port.NewPortsCollection(),
 	}
-	return components
 }
 
 // WithDescription sets a description
@@ -43,15 +32,15 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
-// WithInputs creates input ports
+// WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = port.NewPortsCollection().Add(port.NewPortGroup(portNames...)...)
+	c.inputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
-// WithOutputs creates output ports
+// WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = port.NewPortsCollection().Add(port.NewPortGroup(portNames...)...)
+	c.outputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
@@ -143,17 +132,4 @@ func (c *Component) FlushOutputs() {
 	for _, out := range c.outputs {
 		out.Flush()
 	}
-}
-
-// ByName returns a component by its name
-func (components Components) ByName(name string) *Component {
-	return components[name]
-}
-
-// Add adds new components to existing collection
-func (components Components) Add(newComponents ...*Component) Components {
-	for _, component := range newComponents {
-		components[component.Name()] = component
-	}
-	return components
 }
