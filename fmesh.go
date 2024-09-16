@@ -54,8 +54,8 @@ func (fm *FMesh) WithErrorHandlingStrategy(strategy ErrorHandlingStrategy) *FMes
 }
 
 // runCycle runs one activation cycle (tries to activate all components)
-func (fm *FMesh) runCycle() *cycle.Result {
-	cycleResult := cycle.NewResult()
+func (fm *FMesh) runCycle() *cycle.Cycle {
+	cycleResult := cycle.New()
 
 	if len(fm.components) == 0 {
 		return cycleResult
@@ -102,12 +102,10 @@ func (fm *FMesh) drainComponents() {
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
-func (fm *FMesh) Run() (cycle.Results, error) {
-	allCycles := cycle.NewResults()
-	cycleNumber := uint(0)
+func (fm *FMesh) Run() (cycle.Collection, error) {
+	allCycles := cycle.NewCollection()
 	for {
-		cycleNumber++
-		cycleResult := fm.runCycle().SetCycleNumber(cycleNumber)
+		cycleResult := fm.runCycle()
 		allCycles = allCycles.Add(cycleResult)
 
 		mustStop, err := fm.mustStop(cycleResult)
@@ -119,7 +117,7 @@ func (fm *FMesh) Run() (cycle.Results, error) {
 	}
 }
 
-func (fm *FMesh) mustStop(cycleResult *cycle.Result) (bool, error) {
+func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
 	//Check if we are done (no components activated during the cycle => all inputs are processed)
 	if !cycleResult.HasActivatedComponents() {
 		return true, nil

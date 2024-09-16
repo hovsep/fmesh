@@ -39,7 +39,9 @@ func main() {
 
 	c1.Inputs().ByName("num").PutSignal(signal.New(32))
 
-	_, err := fm.Run()
+	cycles, err := fm.Run()
+
+	fmt.Println("f-mesh stopped after ", len(cycles), " cycles")
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -48,6 +50,6 @@ func main() {
 
 	res := c2.Outputs().ByName("res").Signal().Payload()
 
-	fmt.Println("FMesh calculation result:", res)
+	fmt.Println("calculation result:", res)
 
 }
