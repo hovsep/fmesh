@@ -171,8 +171,8 @@ func TestComponent_Inputs(t *testing.T) {
 			name:      "with inputs",
 			component: NewComponent("c1").WithInputs("i1", "i2"),
 			want: port.Collection{
-				"i1": port.NewPort("i1"),
-				"i2": port.NewPort("i2"),
+				port.NewPort("i1"),
+				port.NewPort("i2"),
 			},
 		},
 	}
@@ -200,8 +200,8 @@ func TestComponent_Outputs(t *testing.T) {
 			name:      "with outputs",
 			component: NewComponent("c1").WithOutputs("o1", "o2"),
 			want: port.Collection{
-				"o1": port.NewPort("o1"),
-				"o2": port.NewPort("o2"),
+				port.NewPort("o1"),
+				port.NewPort("o2"),
 			},
 		},
 	}
@@ -306,8 +306,8 @@ func TestComponent_WithInputs(t *testing.T) {
 				name:        "c1",
 				description: "",
 				inputs: port.Collection{
-					"p1": port.NewPort("p1"),
-					"p2": port.NewPort("p2"),
+					port.NewPort("p1"),
+					port.NewPort("p2"),
 				},
 				outputs: port.Collection{},
 				f:       nil,
@@ -358,8 +358,8 @@ func TestComponent_WithOutputs(t *testing.T) {
 				description: "",
 				inputs:      port.Collection{},
 				outputs: port.Collection{
-					"p1": port.NewPort("p1"),
-					"p2": port.NewPort("p2"),
+					port.NewPort("p1"),
+					port.NewPort("p2"),
 				},
 				f: nil,
 			},
@@ -420,7 +420,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
 						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
-							return ErrWaitingForInputResetInputs
+							return NewErrWaitForInputs(false)
 						}
 
 						return nil
@@ -432,14 +432,35 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				WithActivationCode(ActivationCodeNoInput),
 		},
 		{
-			name: "component is waiting for input",
+			name: "component is waiting for input, reset inputs",
 			getComponent: func() *Component {
 				c := NewComponent("c1").
 					WithInputs("i1", "i2").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
 						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
-							return ErrWaitingForInputResetInputs
+							return NewErrWaitForInputs(false)
+						}
+
+						return nil
+					})
+				//Only one input set
+				c.Inputs().ByName("i1").PutSignal(signal.New(123))
+				return c
+			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(false).
+				WithActivationCode(ActivationCodeWaitingForInput),
+		},
+		{
+			name: "component is waiting for input, keep inputs",
+			getComponent: func() *Component {
+				c := NewComponent("c1").
+					WithInputs("i1", "i2").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+
+						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
+							return NewErrWaitForInputs(true)
 						}
 
 						return nil

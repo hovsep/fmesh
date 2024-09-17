@@ -669,7 +669,7 @@ func TestFMesh_runCycle(t *testing.T) {
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
-							return component.ErrWaitingForInputKeepInputs
+							return component.NewErrWaitForInputs(true)
 						}
 						return nil
 					}),

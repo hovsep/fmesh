@@ -3,7 +3,6 @@ package port
 import (
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -74,9 +73,8 @@ func TestPort_Signal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.port.Signal(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Signal() = %v, want %v", got, tt.want)
-			}
+			got := tt.port.Signal()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -104,9 +102,7 @@ func TestPort_ClearSignal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.before.ClearSignal()
-			if !reflect.DeepEqual(tt.before, tt.after) {
-				t.Errorf("ClearSignal() = %v, want %v", tt.before, tt.after)
-			}
+			assert.Equal(t, tt.after, tt.before)
 		})
 	}
 }
@@ -149,9 +145,7 @@ func TestPort_PipeTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.before.PipeTo(tt.args.toPorts...)
-			if !reflect.DeepEqual(tt.before, tt.after) {
-				t.Errorf("PipeTo() = %v, want %v", tt.before, tt.after)
-			}
+			assert.Equal(t, tt.after, tt.before)
 		})
 	}
 }
@@ -239,9 +233,7 @@ func TestPort_PutSignal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.before.PutSignal(tt.args.sig)
-			if !reflect.DeepEqual(tt.before, tt.after) {
-				t.Errorf("ClearSignal() = %v, want %v", tt.before, tt.after)
-			}
+			assert.Equal(t, tt.after, tt.before)
 		})
 	}
 }
@@ -260,7 +252,7 @@ func TestPort_Name(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, tt.port.Name(), "Name()")
+			assert.Equal(t, tt.want, tt.port.Name())
 		})
 	}
 }
@@ -291,7 +283,7 @@ func TestNewPort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewPort(tt.args.name), "NewPort(%v)", tt.args.name)
+			assert.Equal(t, tt.want, NewPort(tt.args.name))
 		})
 	}
 }

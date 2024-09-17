@@ -5,25 +5,31 @@ import (
 )
 
 // Collection is a port collection with useful methods
-type Collection map[string]*Port
+type Collection []*Port
 
 // NewPortsCollection creates empty collection
 func NewPortsCollection() Collection {
-	return make(Collection)
+	return make(Collection, 0)
 }
 
 // ByName returns a port by its name
 func (collection Collection) ByName(name string) *Port {
-	return collection[name]
+	for _, p := range collection {
+		if p.Name() == name {
+			return p
+		}
+	}
+	return nil
 }
 
 // ByNames returns multiple ports by their names
 func (collection Collection) ByNames(names ...string) Collection {
-	selectedPorts := make(Collection)
+	selectedPorts := NewPortsCollection()
 
 	for _, name := range names {
-		if p, ok := collection[name]; ok {
-			selectedPorts[name] = p
+		p := collection.ByName(name)
+		if p != nil {
+			selectedPorts = selectedPorts.Add(p)
 		}
 	}
 
@@ -66,12 +72,13 @@ func (collection Collection) ClearSignal() {
 	}
 }
 
+// Add adds ports to collection
 func (collection Collection) Add(ports ...*Port) Collection {
 	for _, port := range ports {
 		if port == nil {
 			continue
 		}
-		collection[port.Name()] = port
+		collection = append(collection, port)
 	}
 
 	return collection

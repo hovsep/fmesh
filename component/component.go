@@ -34,13 +34,13 @@ func (c *Component) WithDescription(description string) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs.Add(port.NewPortGroup(portNames...)...)
+	c.inputs = c.inputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs.Add(port.NewPortGroup(portNames...)...)
+	c.outputs = c.outputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
@@ -92,7 +92,6 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return
 	}
 
-	//@TODO:: https://github.com/hovsep/fmesh/issues/15
 	if !c.inputs.AnyHasSignal() {
 		//No inputs set, stop here
 		activationResult = c.newActivationCodeNoInput()
@@ -103,10 +102,10 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	//Run the computation
 	err := c.f(c.inputs, c.outputs)
 
-	if IsWaitingForInputError(err) {
+	if errors.Is(err, errWaitingForInputs) {
 		activationResult = c.newActivationCodeWaitingForInput()
 
-		if !errors.Is(err, ErrWaitingForInputKeepInputs) {
+		if !errors.Is(err, errWaitingForInputsKeep) {
 			c.inputs.ClearSignal()
 		}
 
