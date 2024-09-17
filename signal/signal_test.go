@@ -42,10 +42,9 @@ func TestNew(t *testing.T) {
 
 func TestSignal_Payload(t *testing.T) {
 	tests := []struct {
-		name      string
-		signal    *Signal
-		want      any
-		wantPanic bool
+		name   string
+		signal *Signal
+		want   any
 	}{
 		{
 			name:   "nil payload is valid",
@@ -60,17 +59,6 @@ func TestSignal_Payload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				r := recover()
-				if tt.wantPanic && r == nil {
-					t.Errorf("The code did not panic")
-				}
-
-				if !tt.wantPanic && r != nil {
-					t.Errorf("The code unexpectedly paniced")
-				}
-			}()
-
 			assert.Equal(t, tt.want, tt.signal.Payload())
 		})
 	}

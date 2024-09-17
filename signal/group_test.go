@@ -74,18 +74,13 @@ func TestGroup_FirstPayload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				r := recover()
-				if tt.wantPanic && r == nil {
-					t.Errorf("The code did not panic")
-				}
-
-				if !tt.wantPanic && r != nil {
-					t.Errorf("The code unexpectedly paniced")
-				}
-			}()
-
-			assert.Equal(t, tt.want, tt.group.FirstPayload())
+			if tt.wantPanic {
+				assert.Panics(t, func() {
+					tt.group.FirstPayload()
+				})
+			} else {
+				assert.Equal(t, tt.want, tt.group.FirstPayload())
+			}
 		})
 	}
 }
