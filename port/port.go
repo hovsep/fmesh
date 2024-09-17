@@ -8,14 +8,14 @@ import (
 type Port struct {
 	name   string
 	signal *signal.Signal //Current signal set on the port
-	pipes  Collection     //Refs to all outbound pipes connected to this port
+	pipes  Group          //Refs to all outbound pipes connected to this port
 }
 
 // NewPort creates a new port
 func NewPort(name string) *Port {
 	return &Port{
 		name:  name,
-		pipes: NewPortsCollection(),
+		pipes: NewPortGroup(),
 	}
 }
 

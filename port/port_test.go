@@ -91,12 +91,12 @@ func TestPort_ClearSignal(t *testing.T) {
 		{
 			name:   "happy path",
 			before: portWithSignal,
-			after:  &Port{name: "portWithSignal", pipes: Collection{}},
+			after:  &Port{name: "portWithSignal", pipes: Group{}},
 		},
 		{
 			name:   "cleaning empty port",
 			before: NewPort("emptyPort"),
-			after:  &Port{name: "emptyPort", pipes: Collection{}},
+			after:  &Port{name: "emptyPort", pipes: Group{}},
 		},
 	}
 	for _, tt := range tests {
@@ -124,7 +124,7 @@ func TestPort_PipeTo(t *testing.T) {
 			before: p1,
 			after: &Port{
 				name:  "p1",
-				pipes: NewPortsCollection().Add(p2, p3),
+				pipes: Group{p2, p3},
 			},
 			args: args{
 				toPorts: []*Port{p2, p3},
@@ -135,7 +135,7 @@ func TestPort_PipeTo(t *testing.T) {
 			before: p4,
 			after: &Port{
 				name:  "p4",
-				pipes: NewPortsCollection().Add(p2),
+				pipes: Group{p2},
 			},
 			args: args{
 				toPorts: []*Port{p2, nil},
@@ -175,7 +175,7 @@ func TestPort_PutSignal(t *testing.T) {
 			after: &Port{
 				name:   "emptyPort",
 				signal: signal.New(11),
-				pipes:  Collection{},
+				pipes:  Group{},
 			},
 			args: args{
 				sig: signal.New(11),
@@ -187,7 +187,7 @@ func TestPort_PutSignal(t *testing.T) {
 			after: &Port{
 				name:   "p",
 				signal: signal.New(11, 12),
-				pipes:  Collection{},
+				pipes:  Group{},
 			},
 			args: args{
 				sig: signal.New(11, 12),
@@ -199,7 +199,7 @@ func TestPort_PutSignal(t *testing.T) {
 			after: &Port{
 				name:   "portWithSingleSignal",
 				signal: signal.New(12, 11), //Notice LIFO order
-				pipes:  Collection{},
+				pipes:  Group{},
 			},
 			args: args{
 				sig: signal.New(12),
@@ -211,7 +211,7 @@ func TestPort_PutSignal(t *testing.T) {
 			after: &Port{
 				name:   "portWithMultipleSignals",
 				signal: signal.New(13, 11, 12), //Notice LIFO order
-				pipes:  Collection{},
+				pipes:  Group{},
 			},
 			args: args{
 				sig: signal.New(13),
@@ -223,7 +223,7 @@ func TestPort_PutSignal(t *testing.T) {
 			after: &Port{
 				name:   "portWithMultipleSignals2",
 				signal: signal.New(13, 14, 55, 66), //Notice LIFO order
-				pipes:  Collection{},
+				pipes:  Group{},
 			},
 			args: args{
 				sig: signal.New(13, 14),
@@ -271,14 +271,14 @@ func TestNewPort(t *testing.T) {
 			args: args{
 				name: "",
 			},
-			want: &Port{name: "", pipes: Collection{}},
+			want: &Port{name: "", pipes: Group{}},
 		},
 		{
 			name: "with name",
 			args: args{
 				name: "p1",
 			},
-			want: &Port{name: "p1", pipes: Collection{}},
+			want: &Port{name: "p1", pipes: Group{}},
 		},
 	}
 	for _, tt := range tests {

@@ -171,8 +171,8 @@ func TestComponent_Inputs(t *testing.T) {
 			name:      "with inputs",
 			component: NewComponent("c1").WithInputs("i1", "i2"),
 			want: port.Collection{
-				port.NewPort("i1"),
-				port.NewPort("i2"),
+				"i1": port.NewPort("i1"),
+				"i2": port.NewPort("i2"),
 			},
 		},
 	}
@@ -200,8 +200,8 @@ func TestComponent_Outputs(t *testing.T) {
 			name:      "with outputs",
 			component: NewComponent("c1").WithOutputs("o1", "o2"),
 			want: port.Collection{
-				port.NewPort("o1"),
-				port.NewPort("o2"),
+				"o1": port.NewPort("o1"),
+				"o2": port.NewPort("o2"),
 			},
 		},
 	}
@@ -306,8 +306,8 @@ func TestComponent_WithInputs(t *testing.T) {
 				name:        "c1",
 				description: "",
 				inputs: port.Collection{
-					port.NewPort("p1"),
-					port.NewPort("p2"),
+					"p1": port.NewPort("p1"),
+					"p2": port.NewPort("p2"),
 				},
 				outputs: port.Collection{},
 				f:       nil,
@@ -358,8 +358,8 @@ func TestComponent_WithOutputs(t *testing.T) {
 				description: "",
 				inputs:      port.Collection{},
 				outputs: port.Collection{
-					port.NewPort("p1"),
-					port.NewPort("p2"),
+					"p1": port.NewPort("p1"),
+					"p2": port.NewPort("p2"),
 				},
 				f: nil,
 			},
