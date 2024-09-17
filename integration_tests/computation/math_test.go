@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func Test_BasicMath(t *testing.T) {
+func Test_Math(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupFM    func() *fmesh.FMesh
