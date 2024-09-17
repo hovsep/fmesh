@@ -7,8 +7,8 @@ import (
 // Collection is a port collection with useful methods
 type Collection map[string]*Port
 
-// NewPortsCollection creates empty collection
-func NewPortsCollection() Collection {
+// NewCollection creates empty collection
+func NewCollection() Collection {
 	return make(Collection)
 }
 
@@ -30,10 +30,10 @@ func (collection Collection) ByNames(names ...string) Collection {
 	return selectedPorts
 }
 
-// AnyHasSignal returns true if at least one port in collection has signal
-func (collection Collection) AnyHasSignal() bool {
+// AnyHasSignals returns true if at least one port in collection has signals
+func (collection Collection) AnyHasSignals() bool {
 	for _, p := range collection {
-		if p.HasSignal() {
+		if p.HasSignals() {
 			return true
 		}
 	}
@@ -41,10 +41,10 @@ func (collection Collection) AnyHasSignal() bool {
 	return false
 }
 
-// AllHaveSignal returns true when all ports in collection have signal
-func (collection Collection) AllHaveSignal() bool {
+// AllHaveSignals returns true when all ports in collection have signals
+func (collection Collection) AllHaveSignals() bool {
 	for _, p := range collection {
-		if !p.HasSignal() {
+		if !p.HasSignals() {
 			return false
 		}
 	}
@@ -52,17 +52,17 @@ func (collection Collection) AllHaveSignal() bool {
 	return true
 }
 
-// PutSignal puts a signal to all the port in collection
-func (collection Collection) PutSignal(sig *signal.Signal) {
+// PutSignals puts a signals to all the port in collection
+func (collection Collection) PutSignals(signals ...*signal.Signal) {
 	for _, p := range collection {
-		p.PutSignal(sig)
+		p.PutSignals(signals...)
 	}
 }
 
-// ClearSignal removes signals from all ports in collection
-func (collection Collection) ClearSignal() {
+// ClearSignals removes signals from all ports in collection
+func (collection Collection) ClearSignals() {
 	for _, p := range collection {
-		p.ClearSignal()
+		p.ClearSignals()
 	}
 }
 

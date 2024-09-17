@@ -299,13 +299,13 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(signal.New(77))
+							outputs.ByName("o1").PutSignals(signal.New(77))
 							return nil
 						}),
 				),
 			initFM: func(fm *FMesh) {
 				//Fire the mesh
-				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignal(signal.New("start c1"))
+				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New("start c1"))
 			},
 			want: cycle.NewCollection().Add(
 				cycle.New().
@@ -327,7 +327,7 @@ func TestFMesh_Run(t *testing.T) {
 							return errors.New("boom")
 						})),
 			initFM: func(fm *FMesh) {
-				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignal(signal.New("start"))
+				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New("start"))
 			},
 			want: cycle.NewCollection().Add(
 				cycle.New().
@@ -350,7 +350,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(signal.New(10))
+							outputs.ByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
 					component.NewComponent("c2").
@@ -358,7 +358,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(inputs.ByName("i1").Signal())
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 					component.NewComponent("c3").
@@ -384,8 +384,8 @@ func TestFMesh_Run(t *testing.T) {
 				c2.Outputs().ByName("o1").PipeTo(c4.Inputs().ByName("i1"))
 
 				//Input data
-				c1.Inputs().ByName("i1").PutSignal(signal.New("start c1"))
-				c3.Inputs().ByName("i1").PutSignal(signal.New("start c3"))
+				c1.Inputs().ByName("i1").PutSignals(signal.New("start c1"))
+				c3.Inputs().ByName("i1").PutSignals(signal.New("start c3"))
 			},
 			want: cycle.NewCollection().Add(
 				cycle.New().
@@ -448,7 +448,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(signal.New(10))
+							outputs.ByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
 					component.NewComponent("c2").
@@ -456,7 +456,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(inputs.ByName("i1").Signal())
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 					component.NewComponent("c3").
@@ -471,7 +471,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(inputs.ByName("i1").Signal())
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 
 							// Even component panicked, it managed to set some data on output "o1"
 							// so that data will be available in next cycle
@@ -483,7 +483,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(inputs.ByName("i1").Signal())
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 				),
@@ -495,8 +495,8 @@ func TestFMesh_Run(t *testing.T) {
 				c4.Outputs().ByName("o1").PipeTo(c5.Inputs().ByName("i1"))
 
 				//Input data
-				c1.Inputs().ByName("i1").PutSignal(signal.New("start c1"))
-				c3.Inputs().ByName("i1").PutSignal(signal.New("start c3"))
+				c1.Inputs().ByName("i1").PutSignals(signal.New("start c1"))
+				c3.Inputs().ByName("i1").PutSignals(signal.New("start c3"))
 			},
 			want: cycle.NewCollection().Add(
 				//c1 and c3 activated, c3 finishes with error
@@ -654,7 +654,7 @@ func TestFMesh_runCycle(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.ByName("o1").PutSignal(signal.New("this signal will never be sent"))
+						outputs.ByName("o1").PutSignals(signal.New("this signal will never be sent"))
 						return nil
 					}),
 
@@ -668,7 +668,7 @@ func TestFMesh_runCycle(t *testing.T) {
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						if !inputs.ByNames("i1", "i2").AllHaveSignal() {
+						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
 							return component.NewErrWaitForInputs(true)
 						}
 						return nil
@@ -676,7 +676,7 @@ func TestFMesh_runCycle(t *testing.T) {
 			),
 			initFM: func(fm *FMesh) {
 				//Only i1 is set, while component is waiting for both i1 and i2 to be set
-				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignal(signal.New(123))
+				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignals(signal.New(123))
 			},
 			want: cycle.New().
 				WithActivationResults(
@@ -698,9 +698,9 @@ func TestFMesh_runCycle(t *testing.T) {
 				}),
 			),
 			initFM: func(fm *FMesh) {
-				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignal(signal.New(1))
-				fm.Components().ByName("c2").Inputs().ByName("i1").PutSignal(signal.New(2))
-				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignal(signal.New(3))
+				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New(1))
+				fm.Components().ByName("c2").Inputs().ByName("i1").PutSignals(signal.New(2))
+				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignals(signal.New(3))
 			},
 			want: cycle.New().WithActivationResults(
 				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
@@ -748,10 +748,10 @@ func TestFMesh_drainComponents(t *testing.T) {
 			},
 			assertionsAfterDrain: func(t *testing.T, fm *FMesh) {
 				//All ports in all components are empty
-				assert.False(t, fm.Components().ByName("c1").Inputs().AnyHasSignal())
-				assert.False(t, fm.Components().ByName("c1").Outputs().AnyHasSignal())
-				assert.False(t, fm.Components().ByName("c2").Inputs().AnyHasSignal())
-				assert.False(t, fm.Components().ByName("c2").Outputs().AnyHasSignal())
+				assert.False(t, fm.Components().ByName("c1").Inputs().AnyHasSignals())
+				assert.False(t, fm.Components().ByName("c1").Outputs().AnyHasSignals())
+				assert.False(t, fm.Components().ByName("c2").Inputs().AnyHasSignals())
+				assert.False(t, fm.Components().ByName("c2").Outputs().AnyHasSignals())
 			},
 		},
 		{
@@ -762,17 +762,17 @@ func TestFMesh_drainComponents(t *testing.T) {
 			),
 			initFM: func(fm *FMesh) {
 				//Both components have signals on their outputs
-				fm.Components().ByName("c1").Outputs().ByName("o1").PutSignal(signal.New(1))
-				fm.Components().ByName("c2").Outputs().ByName("o1").PutSignal(signal.New(1))
+				fm.Components().ByName("c1").Outputs().ByName("o1").PutSignals(signal.New(1))
+				fm.Components().ByName("c2").Outputs().ByName("o1").PutSignals(signal.New(1))
 			},
 			assertionsAfterDrain: func(t *testing.T, fm *FMesh) {
 				//Output signals are still there
-				assert.True(t, fm.Components().ByName("c1").Outputs().ByName("o1").HasSignal())
-				assert.True(t, fm.Components().ByName("c2").Outputs().ByName("o1").HasSignal())
+				assert.True(t, fm.Components().ByName("c1").Outputs().ByName("o1").HasSignals())
+				assert.True(t, fm.Components().ByName("c2").Outputs().ByName("o1").HasSignals())
 
 				//Inputs are clear
-				assert.False(t, fm.Components().ByName("c1").Inputs().ByName("i1").HasSignal())
-				assert.False(t, fm.Components().ByName("c2").Inputs().ByName("i1").HasSignal())
+				assert.False(t, fm.Components().ByName("c1").Inputs().ByName("i1").HasSignals())
+				assert.False(t, fm.Components().ByName("c2").Inputs().ByName("i1").HasSignals())
 			},
 		},
 		{
@@ -787,14 +787,14 @@ func TestFMesh_drainComponents(t *testing.T) {
 				c1.Outputs().ByName("o1").PipeTo(c2.Inputs().ByName("i1"))
 
 				//c1 has a signal which must go to c2.i1 after drain
-				c1.Outputs().ByName("o1").PutSignal(signal.New(123))
+				c1.Outputs().ByName("o1").PutSignals(signal.New(123))
 			},
 			assertionsAfterDrain: func(t *testing.T, fm *FMesh) {
 				c1, c2 := fm.Components().ByName("c1"), fm.Components().ByName("c2")
 
-				assert.True(t, c2.Inputs().ByName("i1").HasSignal())                    //Signal is transferred to destination port
-				assert.False(t, c1.Outputs().ByName("o1").HasSignal())                  //Source port is cleaned up
-				assert.Equal(t, c2.Inputs().ByName("i1").Signal().Payload().(int), 123) //The signal is correct
+				assert.True(t, c2.Inputs().ByName("i1").HasSignals())                         //Signals is transferred to destination port
+				assert.False(t, c1.Outputs().ByName("o1").HasSignals())                       //Source port is cleaned up
+				assert.Equal(t, c2.Inputs().ByName("i1").Signals().FirstPayload().(int), 123) //The signal is correct
 			},
 		},
 	}
