@@ -3,7 +3,6 @@ package component
 import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -42,9 +41,7 @@ func TestCollection_ByName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.components.ByName(tt.args.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ByName() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.components.ByName(tt.args.name))
 		})
 	}
 }

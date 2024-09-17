@@ -2,7 +2,7 @@ package cycle
 
 import (
 	"github.com/hovsep/fmesh/component"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,9 +18,7 @@ func TestNewCollection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewCollection(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCollection() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, NewCollection())
 		})
 	}
 }
@@ -60,9 +58,7 @@ func TestCollection_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResults.Add(tt.args.cycleResults...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Add() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResults.Add(tt.args.cycleResults...))
 		})
 	}
 }

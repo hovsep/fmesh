@@ -3,7 +3,7 @@ package cycle
 import (
 	"errors"
 	"github.com/hovsep/fmesh/component"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -21,9 +21,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, New())
 		})
 	}
 }
@@ -49,9 +47,7 @@ func TestCycle_ActivationResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResult.ActivationResults(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ActivationResultCollection() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResult.ActivationResults())
 		})
 	}
 }
@@ -88,9 +84,7 @@ func TestCycle_HasActivatedComponents(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResult.HasActivatedComponents(); got != tt.want {
-				t.Errorf("HasActivatedComponents() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResult.HasActivatedComponents())
 		})
 	}
 }
@@ -127,9 +121,7 @@ func TestCycle_HasErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResult.HasErrors(); got != tt.want {
-				t.Errorf("HasErrors() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResult.HasErrors())
 		})
 	}
 }
@@ -168,9 +160,7 @@ func TestCycle_HasPanics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResult.HasPanics(); got != tt.want {
-				t.Errorf("HasPanics() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResult.HasPanics())
 		})
 	}
 }
@@ -237,9 +227,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cycleResult.WithActivationResults(tt.args.activationResults...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithActivationResults() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.cycleResult.WithActivationResults(tt.args.activationResults...))
 		})
 	}
 }

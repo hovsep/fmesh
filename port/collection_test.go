@@ -37,9 +37,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ports.AllHaveSignals(); got != tt.want {
-				t.Errorf("AllHaveSignals() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.ports.AllHaveSignals())
 		})
 	}
 }
@@ -67,9 +65,7 @@ func TestCollection_AnyHasSignal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ports.AnyHasSignals(); got != tt.want {
-				t.Errorf("AnyHasSignals() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.ports.AnyHasSignals())
 		})
 	}
 }
@@ -118,8 +114,7 @@ func TestCollection_ByName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.ports.ByName(tt.args.name)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, tt.ports.ByName(tt.args.name))
 		})
 	}
 }
@@ -181,8 +176,7 @@ func TestCollection_ByNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.ports.ByNames(tt.args.names...)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, tt.ports.ByNames(tt.args.names...))
 		})
 	}
 }
