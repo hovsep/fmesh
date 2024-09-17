@@ -34,13 +34,13 @@ func (c *Component) WithDescription(description string) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs.Add(port.NewPortGroup(portNames...)...)
+	c.inputs = c.inputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs.Add(port.NewPortGroup(portNames...)...)
+	c.outputs = c.outputs.Add(port.NewPortGroup(portNames...)...)
 	return c
 }
 

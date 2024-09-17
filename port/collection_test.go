@@ -151,7 +151,7 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1"},
 			},
 			want: Collection{
-				"p1": &Port{
+				&Port{
 					name:  "p1",
 					pipes: Collection{},
 				},
@@ -164,8 +164,8 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Collection{}},
-				"p2": &Port{name: "p2", pipes: Collection{}},
+				&Port{name: "p1", pipes: Collection{}},
+				&Port{name: "p2", pipes: Collection{}},
 			},
 		},
 		{
@@ -183,8 +183,8 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2", "p3"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Collection{}},
-				"p2": &Port{name: "p2", pipes: Collection{}},
+				&Port{name: "p1", pipes: Collection{}},
+				&Port{name: "p2", pipes: Collection{}},
 			},
 		},
 	}
@@ -252,7 +252,7 @@ func TestCollection_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.Add(tt.args.ports...)
+			tt.collection = tt.collection.Add(tt.args.ports...)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}

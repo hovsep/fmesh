@@ -50,7 +50,7 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 		if toPort == nil {
 			continue
 		}
-		p.pipes.Add(toPort)
+		p.pipes = p.pipes.Add(toPort)
 	}
 }
 
@@ -61,7 +61,7 @@ func (p *Port) Flush() {
 	}
 
 	for _, outboundPort := range p.pipes {
-		//Multiplexing
+		//Fan-Out
 		ForwardSignal(p, outboundPort)
 	}
 	p.ClearSignal()
