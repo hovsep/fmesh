@@ -28,9 +28,7 @@ func TestPort_HasSignals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.port.HasSignals(); got != tt.want {
-				t.Errorf("HasSignals() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.port.HasSignals())
 		})
 	}
 }
@@ -57,8 +55,7 @@ func TestPort_Signals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.port.Signals()
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, tt.port.Signals())
 		})
 	}
 }

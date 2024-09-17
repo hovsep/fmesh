@@ -6,8 +6,8 @@ type Group []*Port
 // NewGroup creates multiple ports
 func NewGroup(names ...string) Group {
 	group := make(Group, len(names))
-	for _, name := range names {
-		group = append(group, New(name))
+	for i, name := range names {
+		group[i] = New(name)
 	}
 	return group
 }

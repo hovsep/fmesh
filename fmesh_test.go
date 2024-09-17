@@ -7,7 +7,6 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -42,9 +41,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, New(tt.args.name))
 		})
 	}
 }
@@ -88,9 +85,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fm.WithDescription(tt.args.description); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithDescription() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.WithDescription(tt.args.description))
 		})
 	}
 }
@@ -132,9 +127,7 @@ func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fm.WithErrorHandlingStrategy(tt.args.strategy); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithErrorHandlingStrategy() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.WithErrorHandlingStrategy(tt.args.strategy))
 		})
 	}
 }
@@ -217,9 +210,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fm.WithComponents(tt.args.components...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithComponents() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.WithComponents(tt.args.components...))
 		})
 	}
 }
@@ -243,9 +234,7 @@ func TestFMesh_Name(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fm.Name(); got != tt.want {
-				t.Errorf("Name() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.Name())
 		})
 	}
 }
@@ -269,9 +258,7 @@ func TestFMesh_Description(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fm.Description(); got != tt.want {
-				t.Errorf("Description() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.Description())
 		})
 	}
 }
@@ -714,9 +701,7 @@ func TestFMesh_runCycle(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(tt.fm)
 			}
-			if got := tt.fm.runCycle(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("runCycle() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.fm.runCycle())
 		})
 	}
 }

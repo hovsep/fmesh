@@ -14,7 +14,7 @@ type Cycle struct {
 // New creates a new cycle
 func New() *Cycle {
 	return &Cycle{
-		activationResults: make(component.ActivationResultCollection),
+		activationResults: component.NewActivationResultCollection(),
 	}
 }
 

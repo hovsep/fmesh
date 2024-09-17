@@ -5,7 +5,6 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -71,9 +70,7 @@ func TestComponent_Name(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.Name(); got != tt.want {
-				t.Errorf("Name() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.Name())
 		})
 	}
 }
@@ -97,9 +94,7 @@ func TestComponent_Description(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.Description(); got != tt.want {
-				t.Errorf("Description() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.Description())
 		})
 	}
 }
@@ -178,9 +173,7 @@ func TestComponent_Inputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.Inputs(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Inputs() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.Inputs())
 		})
 	}
 }
@@ -207,9 +200,7 @@ func TestComponent_Outputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.Outputs(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Outputs() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.Outputs())
 		})
 	}
 }
@@ -279,9 +270,7 @@ func TestComponent_WithDescription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.WithDescription(tt.args.description); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithDescription() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.WithDescription(tt.args.description))
 		})
 	}
 }
@@ -330,9 +319,7 @@ func TestComponent_WithInputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.WithInputs(tt.args.portNames...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithInputs() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.WithInputs(tt.args.portNames...))
 		})
 	}
 }
@@ -381,9 +368,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.component.WithOutputs(tt.args.portNames...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithOutputs() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.component.WithOutputs(tt.args.portNames...))
 		})
 	}
 }
@@ -551,14 +536,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.getComponent().MaybeActivate()
-			assert.Equal(t, got.Activated(), tt.wantActivationResult.Activated())
-			assert.Equal(t, got.ComponentName(), tt.wantActivationResult.ComponentName())
-			assert.Equal(t, got.Code(), tt.wantActivationResult.Code())
+			gotActivationResult := tt.getComponent().MaybeActivate()
+			assert.Equal(t, gotActivationResult.Activated(), tt.wantActivationResult.Activated())
+			assert.Equal(t, gotActivationResult.ComponentName(), tt.wantActivationResult.ComponentName())
+			assert.Equal(t, gotActivationResult.Code(), tt.wantActivationResult.Code())
 			if tt.wantActivationResult.HasError() {
-				assert.EqualError(t, got.Error(), tt.wantActivationResult.Error().Error())
+				assert.EqualError(t, gotActivationResult.Error(), tt.wantActivationResult.Error().Error())
 			} else {
-				assert.False(t, got.HasError())
+				assert.False(t, gotActivationResult.HasError())
 			}
 
 		})
