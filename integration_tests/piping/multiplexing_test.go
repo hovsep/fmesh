@@ -27,7 +27,7 @@ func Test_Multiplexing(t *testing.T) {
 						WithInputs("start").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							outputs.ByName("o1").PutSignal(signal.New(time.Now()))
+							outputs.ByName("o1").PutSignals(signal.New(time.Now()))
 							return nil
 						}),
 
@@ -36,7 +36,7 @@ func Test_Multiplexing(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 							//Bypass received signal to output
-							port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 
@@ -45,7 +45,7 @@ func Test_Multiplexing(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 							//Bypass received signal to output
-							port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 
@@ -54,7 +54,7 @@ func Test_Multiplexing(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 							//Bypass received signal to output
-							port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
 				)
@@ -68,19 +68,19 @@ func Test_Multiplexing(t *testing.T) {
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				//Fire the mesh
-				fm.Components().ByName("producer").Inputs().ByName("start").PutSignal(signal.New(struct{}{}))
+				fm.Components().ByName("producer").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				//All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
-				assert.True(t, c1.Outputs().ByName("o1").HasSignal())
-				assert.True(t, c2.Outputs().ByName("o1").HasSignal())
-				assert.True(t, c3.Outputs().ByName("o1").HasSignal())
+				assert.True(t, c1.Outputs().ByName("o1").HasSignals())
+				assert.True(t, c2.Outputs().ByName("o1").HasSignals())
+				assert.True(t, c3.Outputs().ByName("o1").HasSignals())
 
 				//All 3 signals are the same (literally the same address in memory)
-				sig1, sig2, sig3 := c1.Outputs().ByName("o1").Signal(), c2.Outputs().ByName("o1").Signal(), c3.Outputs().ByName("o1").Signal()
-				assert.Equal(t, sig1.Payload(), sig2.Payload())
-				assert.Equal(t, sig2.Payload(), sig3.Payload())
+				sig1, sig2, sig3 := c1.Outputs().ByName("o1").Signals(), c2.Outputs().ByName("o1").Signals(), c3.Outputs().ByName("o1").Signals()
+				assert.Equal(t, sig1.FirstPayload(), sig2.FirstPayload())
+				assert.Equal(t, sig2.FirstPayload(), sig3.FirstPayload())
 			},
 		},
 		{
@@ -90,7 +90,7 @@ func Test_Multiplexing(t *testing.T) {
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.ByName("o1").PutSignal(signal.New(rand.Int()))
+						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
@@ -98,7 +98,7 @@ func Test_Multiplexing(t *testing.T) {
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.ByName("o1").PutSignal(signal.New(rand.Int()))
+						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
@@ -106,7 +106,7 @@ func Test_Multiplexing(t *testing.T) {
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.ByName("o1").PutSignal(signal.New(rand.Int()))
+						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 				consumer := component.NewComponent("consumer").
@@ -114,7 +114,7 @@ func Test_Multiplexing(t *testing.T) {
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						//Bypass
-						port.ForwardSignal(inputs.ByName("i1"), outputs.ByName("o1"))
+						port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 						return nil
 					})
 
@@ -125,21 +125,21 @@ func Test_Multiplexing(t *testing.T) {
 				return fmesh.New("multiplexer").WithComponents(producer1, producer2, producer3, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("producer1").Inputs().ByName("start").PutSignal(signal.New(struct{}{}))
-				fm.Components().ByName("producer2").Inputs().ByName("start").PutSignal(signal.New(struct{}{}))
-				fm.Components().ByName("producer3").Inputs().ByName("start").PutSignal(signal.New(struct{}{}))
+				fm.Components().ByName("producer1").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer2").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer3").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				//Consumer received a signal
-				assert.True(t, fm.Components().ByName("consumer").Outputs().ByName("o1").HasSignal())
+				assert.True(t, fm.Components().ByName("consumer").Outputs().ByName("o1").HasSignals())
 
 				//The signal is combined and consist of 3 payloads
-				resultSignal := fm.Components().ByName("consumer").Outputs().ByName("o1").Signal()
-				assert.Equal(t, resultSignal.Len(), 3)
+				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals()
+				assert.Len(t, resultSignals, 3)
 
 				//And they are all different
-				assert.NotEqual(t, resultSignal.Payloads()[0], resultSignal.Payloads()[1])
-				assert.NotEqual(t, resultSignal.Payloads()[1], resultSignal.Payloads()[2])
+				assert.NotEqual(t, resultSignals.FirstPayload(), resultSignals[1].Payload())
+				assert.NotEqual(t, resultSignals[1].Payload(), resultSignals[2].Payload())
 			},
 		},
 	}

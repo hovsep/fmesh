@@ -21,8 +21,8 @@ type Component struct {
 func NewComponent(name string) *Component {
 	return &Component{
 		name:    name,
-		inputs:  port.NewPortsCollection(),
-		outputs: port.NewPortsCollection(),
+		inputs:  port.NewCollection(),
+		outputs: port.NewCollection(),
 	}
 }
 
@@ -34,13 +34,13 @@ func (c *Component) WithDescription(description string) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = c.inputs.Add(port.NewPortGroup(portNames...)...)
+	c.inputs = c.inputs.Add(port.NewGroup(portNames...)...)
 	return c
 }
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = c.outputs.Add(port.NewPortGroup(portNames...)...)
+	c.outputs = c.outputs.Add(port.NewGroup(portNames...)...)
 	return c
 }
 
@@ -80,7 +80,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			//Clear inputs and exit
-			c.inputs.ClearSignal()
+			c.inputs.ClearSignals()
 			activationResult = c.newActivationCodePanicked(fmt.Errorf("panicked with: %v", r))
 		}
 	}()
@@ -92,7 +92,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return
 	}
 
-	if !c.inputs.AnyHasSignal() {
+	if !c.inputs.AnyHasSignals() {
 		//No inputs set, stop here
 		activationResult = c.newActivationCodeNoInput()
 
@@ -106,14 +106,14 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		activationResult = c.newActivationCodeWaitingForInput()
 
 		if !errors.Is(err, errWaitingForInputsKeep) {
-			c.inputs.ClearSignal()
+			c.inputs.ClearSignals()
 		}
 
 		return
 	}
 
 	//Clear inputs
-	c.inputs.ClearSignal()
+	c.inputs.ClearSignals()
 
 	if err != nil {
 		activationResult = c.newActivationCodeReturnedError(err)

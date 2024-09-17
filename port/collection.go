@@ -5,41 +5,35 @@ import (
 )
 
 // Collection is a port collection with useful methods
-type Collection []*Port
+type Collection map[string]*Port
 
-// NewPortsCollection creates empty collection
-func NewPortsCollection() Collection {
-	return make(Collection, 0)
+// NewCollection creates empty collection
+func NewCollection() Collection {
+	return make(Collection)
 }
 
 // ByName returns a port by its name
 func (collection Collection) ByName(name string) *Port {
-	for _, p := range collection {
-		if p.Name() == name {
-			return p
-		}
-	}
-	return nil
+	return collection[name]
 }
 
 // ByNames returns multiple ports by their names
 func (collection Collection) ByNames(names ...string) Collection {
-	selectedPorts := NewPortsCollection()
+	selectedPorts := make(Collection)
 
 	for _, name := range names {
-		p := collection.ByName(name)
-		if p != nil {
-			selectedPorts = selectedPorts.Add(p)
+		if p, ok := collection[name]; ok {
+			selectedPorts[name] = p
 		}
 	}
 
 	return selectedPorts
 }
 
-// AnyHasSignal returns true if at least one port in collection has signal
-func (collection Collection) AnyHasSignal() bool {
+// AnyHasSignals returns true if at least one port in collection has signals
+func (collection Collection) AnyHasSignals() bool {
 	for _, p := range collection {
-		if p.HasSignal() {
+		if p.HasSignals() {
 			return true
 		}
 	}
@@ -47,10 +41,10 @@ func (collection Collection) AnyHasSignal() bool {
 	return false
 }
 
-// AllHaveSignal returns true when all ports in collection have signal
-func (collection Collection) AllHaveSignal() bool {
+// AllHaveSignals returns true when all ports in collection have signals
+func (collection Collection) AllHaveSignals() bool {
 	for _, p := range collection {
-		if !p.HasSignal() {
+		if !p.HasSignals() {
 			return false
 		}
 	}
@@ -58,27 +52,26 @@ func (collection Collection) AllHaveSignal() bool {
 	return true
 }
 
-// PutSignal puts a signal to all the port in collection
-func (collection Collection) PutSignal(sig *signal.Signal) {
+// PutSignals puts a signals to all the port in collection
+func (collection Collection) PutSignals(signals ...*signal.Signal) {
 	for _, p := range collection {
-		p.PutSignal(sig)
+		p.PutSignals(signals...)
 	}
 }
 
-// ClearSignal removes signals from all ports in collection
-func (collection Collection) ClearSignal() {
+// ClearSignals removes signals from all ports in collection
+func (collection Collection) ClearSignals() {
 	for _, p := range collection {
-		p.ClearSignal()
+		p.ClearSignals()
 	}
 }
 
-// Add adds ports to collection
 func (collection Collection) Add(ports ...*Port) Collection {
 	for _, port := range ports {
 		if port == nil {
 			continue
 		}
-		collection = append(collection, port)
+		collection[port.Name()] = port
 	}
 
 	return collection

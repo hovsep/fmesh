@@ -6,16 +6,17 @@ import (
 
 // Port defines a connectivity point of a component
 type Port struct {
-	name   string
-	signal *signal.Signal //Current signal set on the port
-	pipes  Collection     //Refs to all outbound pipes connected to this port
+	name    string
+	signals signal.Group //Current signals set on the port
+	pipes   Group        //Refs to all outbound pipes connected to this port
 }
 
-// NewPort creates a new port
-func NewPort(name string) *Port {
+// New creates a new port
+func New(name string) *Port {
 	return &Port{
-		name:  name,
-		pipes: NewPortsCollection(),
+		name:    name,
+		pipes:   NewGroup(),
+		signals: signal.NewGroup(),
 	}
 }
 
@@ -24,24 +25,26 @@ func (p *Port) Name() string {
 	return p.name
 }
 
-// Signal getter
-func (p *Port) Signal() *signal.Signal {
-	return p.signal
+// Signals getter
+func (p *Port) Signals() signal.Group {
+	return p.signals
 }
 
-// PutSignal adds a signal to current signal
-func (p *Port) PutSignal(sig *signal.Signal) {
-	p.signal = sig.Combine(p.Signal())
+// PutSignals adds a signals to current signals
+func (p *Port) PutSignals(signals ...*signal.Signal) {
+	for _, s := range signals {
+		p.signals = append(p.signals, s)
+	}
 }
 
-// ClearSignal removes current signal from the port
-func (p *Port) ClearSignal() {
-	p.signal = nil
+// ClearSignals removes current signals from the port
+func (p *Port) ClearSignals() {
+	p.signals = signal.NewGroup()
 }
 
-// HasSignal says whether port signal is set or not
-func (p *Port) HasSignal() bool {
-	return p.signal != nil
+// HasSignals says whether port signals is set or not
+func (p *Port) HasSignals() bool {
+	return len(p.signals) > 0
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
@@ -54,20 +57,20 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 	}
 }
 
-// Flush pushed current signal to pipes and clears the port
+// Flush pushed current signals to pipes and clears the port
 func (p *Port) Flush() {
-	if !p.HasSignal() || len(p.pipes) == 0 {
+	if !p.HasSignals() || len(p.pipes) == 0 {
 		return
 	}
 
 	for _, outboundPort := range p.pipes {
 		//Fan-Out
-		ForwardSignal(p, outboundPort)
+		ForwardSignals(p, outboundPort)
 	}
-	p.ClearSignal()
+	p.ClearSignals()
 }
 
-// ForwardSignal puts a signal from source port to destination port, without removing it on source port
-func ForwardSignal(source *Port, dest *Port) {
-	dest.PutSignal(source.Signal())
+// ForwardSignals puts signals from source port to destination port, without clearing the source port
+func ForwardSignals(source *Port, dest *Port) {
+	dest.PutSignals(source.Signals()...)
 }
