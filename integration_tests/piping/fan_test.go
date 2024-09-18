@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func Test_Multiplexing(t *testing.T) {
+func Test_Fan(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupFM    func() *fmesh.FMesh
@@ -84,7 +84,7 @@ func Test_Multiplexing(t *testing.T) {
 			},
 		},
 		{
-			name: "multiplexing",
+			name: "fan-in (3 pipes coming into 1 destination port)",
 			setupFM: func() *fmesh.FMesh {
 				producer1 := component.NewComponent("producer1").
 					WithInputs("start").
@@ -130,11 +130,12 @@ func Test_Multiplexing(t *testing.T) {
 				fm.Components().ByName("producer3").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+				assert.NoError(t, err)
 				//Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").Outputs().ByName("o1").HasSignals())
 
 				//The signal is combined and consist of 3 payloads
-				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals()
+				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals().AsGroup()
 				assert.Len(t, resultSignals, 3)
 
 				//And they are all different

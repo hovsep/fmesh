@@ -109,7 +109,7 @@ func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
 			want: &FMesh{
 				name:                  "fm1",
 				components:            component.Collection{},
-				errorHandlingStrategy: StopOnFirstError,
+				errorHandlingStrategy: StopOnFirstErrorOrPanic,
 			},
 		},
 		{
@@ -305,7 +305,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first error on first cycle",
 			fm: New("fm").
-				WithErrorHandlingStrategy(StopOnFirstError).
+				WithErrorHandlingStrategy(StopOnFirstErrorOrPanic).
 				WithComponents(
 					component.NewComponent("c1").
 						WithDescription("This component just returns an unexpected error").
@@ -660,29 +660,51 @@ func TestFMesh_runCycle(t *testing.T) {
 						}
 						return nil
 					}),
+				component.NewComponent("c4").
+					WithDescription("I'm waiting for specific input").
+					WithInputs("i1", "i2").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+							return component.NewErrWaitForInputs(false)
+						}
+						return nil
+					}),
 			),
 			initFM: func(fm *FMesh) {
 				//Only i1 is set, while component is waiting for both i1 and i2 to be set
 				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignals(signal.New(123))
+				//Same for c4
+				fm.Components().ByName("c4").Inputs().ByName("i1").PutSignals(signal.New(123))
 			},
 			want: cycle.New().
 				WithActivationResults(
 					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
-					component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeWaitingForInput)),
+					component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeWaitingForInput),
+					component.NewActivationResult("c4").SetActivated(false).WithActivationCode(component.ActivationCodeWaitingForInput)),
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",
 			fm: New("test").WithComponents(
-				component.NewComponent("c1").WithDescription("").WithInputs("i1").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-					return nil
-				}),
-				component.NewComponent("c2").WithDescription("").WithInputs("i1").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-					return nil
-				}),
-				component.NewComponent("c3").WithDescription("").WithInputs("i1").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-					return nil
-				}),
+				component.NewComponent("c1").
+					WithDescription("").
+					WithInputs("i1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						return nil
+					}),
+				component.NewComponent("c2").
+					WithDescription("").
+					WithInputs("i1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						return nil
+					}),
+				component.NewComponent("c3").
+					WithDescription("").
+					WithInputs("i1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						return nil
+					}),
 			),
 			initFM: func(fm *FMesh) {
 				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New(1))
@@ -690,9 +712,18 @@ func TestFMesh_runCycle(t *testing.T) {
 				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignals(signal.New(3))
 			},
 			want: cycle.New().WithActivationResults(
-				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				component.NewActivationResult("c1").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithInputKeys([]string{"1"}),
+				component.NewActivationResult("c2").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithInputKeys([]string{"1"}),
+				component.NewActivationResult("c3").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithInputKeys([]string{"1"}),
 			),
 		},
 	}
@@ -706,22 +737,28 @@ func TestFMesh_runCycle(t *testing.T) {
 	}
 }
 
-func TestFMesh_drainComponents(t *testing.T) {
+func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 	tests := []struct {
 		name                 string
+		cycle                *cycle.Cycle
 		fm                   *FMesh
 		initFM               func(fm *FMesh)
 		assertionsAfterDrain func(t *testing.T, fm *FMesh)
 	}{
 		{
-			name: "no components",
-			fm:   New("empty_fm"),
+			name:  "no components",
+			cycle: cycle.New(),
+			fm:    New("empty_fm"),
 			assertionsAfterDrain: func(t *testing.T, fm *FMesh) {
 				assert.Empty(t, fm.Components())
 			},
 		},
 		{
 			name: "no signals to be drained",
+			cycle: cycle.New().WithActivationResults(
+				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+			),
 			fm: New("fm").WithComponents(
 				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
 				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
@@ -741,6 +778,9 @@ func TestFMesh_drainComponents(t *testing.T) {
 		},
 		{
 			name: "there are signals on output, but no pipes",
+			cycle: cycle.New().WithActivationResults(
+				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
 			fm: New("fm").WithComponents(
 				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
 				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
@@ -762,6 +802,9 @@ func TestFMesh_drainComponents(t *testing.T) {
 		},
 		{
 			name: "happy path",
+			cycle: cycle.New().WithActivationResults(
+				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
 			fm: New("fm").WithComponents(
 				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
 				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
@@ -782,13 +825,15 @@ func TestFMesh_drainComponents(t *testing.T) {
 				assert.Equal(t, c2.Inputs().ByName("i1").Signals().FirstPayload().(int), 123) //The signal is correct
 			},
 		},
+
+		//TODO:add test cases: "only activated components are drained", "signals from previous cycle are removed"
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(tt.fm)
 			}
-			tt.fm.drainComponents()
+			tt.fm.drainComponentsAfterCycle(tt.cycle)
 			tt.assertionsAfterDrain(t, tt.fm)
 		})
 	}

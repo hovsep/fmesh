@@ -45,3 +45,12 @@ func (collection ActivationResultCollection) HasActivatedComponents() bool {
 	}
 	return false
 }
+
+// ByComponentName returns the activation result of given component
+func (collection ActivationResultCollection) ByComponentName(componentName string) *ActivationResult {
+	if result, ok := collection[componentName]; ok {
+		return result
+	}
+
+	return nil
+}

@@ -213,7 +213,6 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 		name      string
 		component *Component
 		args      args
-		want      *Component
 	}{
 		{
 			name:      "happy path",
@@ -238,7 +237,11 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			err1 := componentAfter.f(testInputs1, testOutputs1)
 			err2 := tt.args.f(testInputs2, testOutputs2)
 			assert.Equal(t, err1, err2)
-			assert.Equal(t, testOutputs1, testOutputs2)
+
+			//Compare signals without keys (because they are random)
+			assert.ElementsMatch(t, testOutputs1.ByName("out1").Signals().AsGroup(), testOutputs2.ByName("out1").Signals().AsGroup())
+			assert.ElementsMatch(t, testOutputs1.ByName("out2").Signals().AsGroup(), testOutputs2.ByName("out2").Signals().AsGroup())
+
 		})
 	}
 }

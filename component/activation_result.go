@@ -1,11 +1,15 @@
 package component
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
 	componentName string
 	activated     bool
+	inputKeys     []string //@TODO: check if we can replace this by one int which will show the index of last signal used as input within signals collection (use signal position in the collection as it's unique id)
 	code          ActivationResultCode
 	err           error
 }
@@ -88,32 +92,69 @@ func (ar *ActivationResult) WithError(err error) *ActivationResult {
 	return ar
 }
 
+func (ar *ActivationResult) WithInputKeys(keys []string) *ActivationResult {
+	ar.inputKeys = keys
+	return ar
+}
+
+func (ar *ActivationResult) InputKeys() []string {
+	return ar.inputKeys
+}
+
 // newActivationResultOK builds a specific activation result
 func (c *Component) newActivationResultOK() *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodeOK)
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(ActivationCodeOK).
+		WithInputKeys(c.Inputs().GetSignalKeys())
+
 }
 
 // newActivationCodeNoInput builds a specific activation result
 func (c *Component) newActivationCodeNoInput() *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeNoInput)
+	return NewActivationResult(c.Name()).
+		SetActivated(false).
+		WithActivationCode(ActivationCodeNoInput)
 }
 
 // newActivationCodeNoFunction builds a specific activation result
 func (c *Component) newActivationCodeNoFunction() *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeNoFunction)
+	return NewActivationResult(c.Name()).
+		SetActivated(false).
+		WithActivationCode(ActivationCodeNoFunction)
 }
 
 // newActivationCodeWaitingForInput builds a specific activation result
 func (c *Component) newActivationCodeWaitingForInput() *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(false).WithActivationCode(ActivationCodeWaitingForInput)
+	return NewActivationResult(c.Name()).
+		SetActivated(false).
+		WithActivationCode(ActivationCodeWaitingForInput)
 }
 
 // newActivationCodeReturnedError builds a specific activation result
 func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodeReturnedError).WithError(fmt.Errorf("component returned an error: %w", err))
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(ActivationCodeReturnedError).
+		WithError(fmt.Errorf("component returned an error: %w", err)).
+		WithInputKeys(c.Inputs().GetSignalKeys())
 }
 
 // newActivationCodePanicked builds a specific activation result
 func (c *Component) newActivationCodePanicked(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).SetActivated(true).WithActivationCode(ActivationCodePanicked).WithError(err)
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(ActivationCodePanicked).
+		WithError(err).
+		WithInputKeys(c.Inputs().GetSignalKeys())
+}
+
+// isWaitingForInput tells whether component is waiting for specific inputs
+func (c *Component) isWaitingForInput(activationResult *ActivationResult) bool {
+	return activationResult.HasError() && errors.Is(activationResult.Error(), errWaitingForInputs)
+}
+
+// WantsToKeepInputs tells whether component wants to keep signals on input ports for the next cycle
+func (c *Component) WantsToKeepInputs(activationResult *ActivationResult) bool {
+	return c.isWaitingForInput(activationResult) && errors.Is(activationResult.Error(), errWaitingForInputsKeep)
 }

@@ -66,6 +66,30 @@ func (collection Collection) ClearSignals() {
 	}
 }
 
+// Flush flushes all ports in collection
+func (collection Collection) Flush(clearFlushed bool) {
+	for _, p := range collection {
+		if portFlushed := p.Flush(); clearFlushed && portFlushed {
+			p.ClearSignals()
+		}
+	}
+}
+
+func (collection Collection) RemoveSignalsByKeys(signalKeys []string) Collection {
+	for _, p := range collection {
+		p.Signals().DeleteKeys(signalKeys)
+	}
+	return collection
+}
+
+// PipeTo creates pipes from each port in collection
+func (collection Collection) PipeTo(toPorts ...*Port) {
+	for _, p := range collection {
+		p.PipeTo(toPorts...)
+	}
+}
+
+// Add adds ports to collection
 func (collection Collection) Add(ports ...*Port) Collection {
 	for _, port := range ports {
 		if port == nil {
@@ -75,4 +99,12 @@ func (collection Collection) Add(ports ...*Port) Collection {
 	}
 
 	return collection
+}
+
+func (collection Collection) GetSignalKeys() []string {
+	keys := make([]string, 0)
+	for _, p := range collection {
+		keys = append(keys, p.Signals().GetKeys()...)
+	}
+	return keys
 }

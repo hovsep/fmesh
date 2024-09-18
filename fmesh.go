@@ -79,10 +79,23 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 	return newCycle
 }
 
-// DrainComponents drains the data from all components outputs
-func (fm *FMesh) drainComponents() {
+// DrainComponents drains the data from activated components
+func (fm *FMesh) drainComponentsAfterCycle(cycle *cycle.Cycle) {
 	for _, c := range fm.components {
+		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
+
+		if !activationResult.Activated() {
+			continue
+		}
+
+		c.FlushInputs()
 		c.FlushOutputs()
+
+		keepInputs := c.WantsToKeepInputs(activationResult)
+		if !keepInputs {
+			c.Inputs().RemoveSignalsByKeys(activationResult.InputKeys())
+		}
+
 	}
 }
 
@@ -98,7 +111,7 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 			return allCycles, err
 		}
 
-		fm.drainComponents()
+		fm.drainComponentsAfterCycle(cycleResult)
 	}
 }
 
@@ -110,8 +123,8 @@ func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
 
 	//Check if mesh must stop because of configured error handling strategy
 	switch fm.errorHandlingStrategy {
-	case StopOnFirstError:
-		return cycleResult.HasErrors(), ErrHitAnError
+	case StopOnFirstErrorOrPanic:
+		return cycleResult.HasErrors() || cycleResult.HasPanics(), ErrHitAnErrorOrPanic
 	case StopOnFirstPanic:
 		return cycleResult.HasPanics(), ErrHitAPanic
 	case IgnoreAll:

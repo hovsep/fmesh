@@ -40,22 +40,22 @@ func TestPort_Signals(t *testing.T) {
 	tests := []struct {
 		name string
 		port *Port
-		want signal.Group
+		want signal.Collection
 	}{
 		{
 			name: "no signals",
 			port: New("noSignal"),
-			want: signal.Group{},
+			want: signal.Collection{},
 		},
 		{
 			name: "with signal",
 			port: portWithSignal,
-			want: signal.NewGroup(123),
+			want: signal.NewCollection().AddPayload(123),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Signals())
+			assert.Equal(t, tt.want.AsGroup(), tt.port.Signals().AsGroup())
 		})
 	}
 }
@@ -72,12 +72,12 @@ func TestPort_ClearSignal(t *testing.T) {
 		{
 			name:   "happy path",
 			before: portWithSignal,
-			after:  &Port{name: "portWithSignal", pipes: Group{}, signals: signal.Group{}},
+			after:  &Port{name: "portWithSignal", pipes: Group{}, signals: signal.Collection{}},
 		},
 		{
 			name:   "cleaning empty port",
 			before: New("emptyPort"),
-			after:  &Port{name: "emptyPort", pipes: Group{}, signals: signal.Group{}},
+			after:  &Port{name: "emptyPort", pipes: Group{}, signals: signal.Collection{}},
 		},
 	}
 	for _, tt := range tests {
@@ -106,7 +106,7 @@ func TestPort_PipeTo(t *testing.T) {
 			after: &Port{
 				name:    "p1",
 				pipes:   Group{p2, p3},
-				signals: signal.Group{},
+				signals: signal.Collection{},
 			},
 			args: args{
 				toPorts: []*Port{p2, p3},
@@ -118,7 +118,7 @@ func TestPort_PipeTo(t *testing.T) {
 			after: &Port{
 				name:    "p4",
 				pipes:   Group{p2},
-				signals: signal.Group{},
+				signals: signal.Collection{},
 			},
 			args: args{
 				toPorts: []*Port{p2, nil},
@@ -157,7 +157,7 @@ func TestPort_PutSignals(t *testing.T) {
 			before: New("emptyPort"),
 			after: &Port{
 				name:    "emptyPort",
-				signals: signal.NewGroup(11),
+				signals: signal.NewCollection().AddPayload(11),
 				pipes:   Group{},
 			},
 			args: args{
@@ -169,7 +169,7 @@ func TestPort_PutSignals(t *testing.T) {
 			before: New("p"),
 			after: &Port{
 				name:    "p",
-				signals: signal.NewGroup(11, 12),
+				signals: signal.NewCollection().AddPayload(11, 12),
 				pipes:   Group{},
 			},
 			args: args{
@@ -181,7 +181,7 @@ func TestPort_PutSignals(t *testing.T) {
 			before: portWithSingleSignal,
 			after: &Port{
 				name:    "portWithSingleSignal",
-				signals: signal.NewGroup(11, 12),
+				signals: signal.NewCollection().AddPayload(11, 12),
 				pipes:   Group{},
 			},
 			args: args{
@@ -193,7 +193,7 @@ func TestPort_PutSignals(t *testing.T) {
 			before: portWithMultipleSignals,
 			after: &Port{
 				name:    "portWithMultipleSignals",
-				signals: signal.NewGroup(11, 12, 13), //Notice LIFO order
+				signals: signal.NewCollection().AddPayload(11, 12, 13),
 				pipes:   Group{},
 			},
 			args: args{
@@ -205,7 +205,7 @@ func TestPort_PutSignals(t *testing.T) {
 			before: portWithMultipleSignals2,
 			after: &Port{
 				name:    "portWithMultipleSignals2",
-				signals: signal.NewGroup(55, 66, 13, 14), //Notice LIFO order
+				signals: signal.NewCollection().AddPayload(55, 66, 13, 14), //Notice LIFO order
 				pipes:   Group{},
 			},
 			args: args{
@@ -216,7 +216,7 @@ func TestPort_PutSignals(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.before.PutSignals(tt.args.signals...)
-			assert.Equal(t, tt.after, tt.before)
+			assert.ElementsMatch(t, tt.after.Signals().AsGroup(), tt.before.Signals().AsGroup())
 		})
 	}
 }
@@ -257,7 +257,7 @@ func TestNewPort(t *testing.T) {
 			want: &Port{
 				name:    "",
 				pipes:   Group{},
-				signals: signal.Group{},
+				signals: signal.Collection{},
 			},
 		},
 		{
@@ -268,7 +268,7 @@ func TestNewPort(t *testing.T) {
 			want: &Port{
 				name:    "p1",
 				pipes:   Group{},
-				signals: signal.Group{},
+				signals: signal.Collection{},
 			},
 		},
 	}
@@ -295,6 +295,7 @@ func TestPort_Flush(t *testing.T) {
 		name       string
 		source     *Port
 		dest       *Port
+		wantResult bool
 		assertions func(t *testing.T, source *Port, dest *Port)
 	}{
 		{
@@ -305,39 +306,42 @@ func TestPort_Flush(t *testing.T) {
 				assert.False(t, source.HasSignals())
 				assert.False(t, dest.HasSignals())
 			},
+			wantResult: false,
 		},
 		{
 			name:   "flush to empty port",
 			source: portWithSignal1,
 			dest:   emptyPort,
 			assertions: func(t *testing.T, source *Port, dest *Port) {
-				//Source port is clear
-				assert.False(t, source.HasSignals())
+				//Source port is not cleared during flush
+				assert.True(t, source.HasSignals())
 
 				//Signals transferred to destination port
 				assert.True(t, dest.HasSignals())
 				assert.Equal(t, dest.Signals().FirstPayload().(int), 777)
 			},
+			wantResult: true,
 		},
 		{
 			name:   "flush to port with signals",
 			source: portWithSignal2,
 			dest:   portWithMultipleSignals,
 			assertions: func(t *testing.T, source *Port, dest *Port) {
-				//Source port is clear
-				assert.False(t, source.HasSignals())
+				//Source port is not cleared
+				assert.True(t, source.HasSignals())
 
 				//Destination port now has 1 more signal
 				assert.True(t, dest.HasSignals())
 				assert.Len(t, dest.Signals(), 3)
 				assert.Contains(t, dest.Signals().AllPayloads(), 888)
 			},
+			wantResult: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.source.PipeTo(tt.dest)
-			tt.source.Flush()
+			assert.Equal(t, tt.wantResult, tt.source.Flush())
 			if tt.assertions != nil {
 				tt.assertions(t, tt.source, tt.dest)
 			}

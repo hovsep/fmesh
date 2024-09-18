@@ -76,11 +76,10 @@ func (c *Component) hasActivationFunction() bool {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met
+// @TODO: hide this method from user
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			//Clear inputs and exit
-			c.inputs.ClearSignals()
 			activationResult = c.newActivationCodePanicked(fmt.Errorf("panicked with: %v", r))
 		}
 	}()
@@ -99,21 +98,14 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return
 	}
 
-	//Run the computation
-	err := c.f(c.inputs, c.outputs)
+	//Invoke the activation func
+	err := c.f(c.Inputs(), c.Outputs())
 
 	if errors.Is(err, errWaitingForInputs) {
 		activationResult = c.newActivationCodeWaitingForInput()
 
-		if !errors.Is(err, errWaitingForInputsKeep) {
-			c.inputs.ClearSignals()
-		}
-
 		return
 	}
-
-	//Clear inputs
-	c.inputs.ClearSignals()
 
 	if err != nil {
 		activationResult = c.newActivationCodeReturnedError(err)
@@ -126,9 +118,14 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	return
 }
 
-// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
+// FlushInputs ...
+// @TODO: hide this method from user
+func (c *Component) FlushInputs() {
+	c.inputs.Flush(false)
+}
+
+// FlushOutputs ...
+// @TODO: hide this method from user
 func (c *Component) FlushOutputs() {
-	for _, out := range c.outputs {
-		out.Flush()
-	}
+	c.outputs.Flush(true)
 }
