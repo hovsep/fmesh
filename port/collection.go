@@ -105,6 +105,19 @@ func (collection Collection) Add(ports ...*Port) Collection {
 	return collection
 }
 
+// AddIndexed creates ports with names like "o1","o2","o3" and so on
+func (collection Collection) AddIndexed(prefix string, startIndex int, endIndex int) Collection {
+	return collection.Add(NewIndexedGroup(prefix, startIndex, endIndex)...)
+}
+
+func (collection Collection) AllSignals() signal.Group {
+	group := signal.NewGroup()
+	for _, p := range collection {
+		group = append(group, p.Signals().AsGroup()...)
+	}
+	return group
+}
+
 func (collection Collection) GetSignalKeys() []string {
 	keys := make([]string, 0)
 	for _, p := range collection {

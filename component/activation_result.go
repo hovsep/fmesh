@@ -38,6 +38,7 @@ const (
 )
 
 // NewActivationResult creates a new activation result for given component
+// @TODO Hide this from user
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,

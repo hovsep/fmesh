@@ -23,7 +23,7 @@ func Test_PipingFromInput(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				adder := component.NewComponent("adder").
 					WithDescription("adds i1 and i2").
-					WithInputs("i1", "i2").
+					WithInputsIndexed("i", 1, 2).
 					WithOutputs("out").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						i1, i2 := inputs.ByName("i1").Signals().FirstPayload().(int), inputs.ByName("i2").Signals().FirstPayload().(int)
@@ -77,6 +77,96 @@ func Test_PipingFromInput(t *testing.T) {
 
 				assert.True(t, fm.Components().ByName("logger").Outputs().ByName("log").HasSignals())
 				assert.Len(t, l.Outputs().ByName("log").Signals(), 3)
+			},
+		},
+
+		{
+			name: "observing component which waits for inputs",
+			setupFM: func() *fmesh.FMesh {
+				starter := component.NewComponent("starter").
+					WithDescription("This component just starts the whole f-mesh").
+					WithInputs("start").
+					WithOutputsIndexed("o", 1, 2).
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						//Activate downstream components
+						outputs.PutSignals(inputs.AllSignals()[0])
+						return nil
+					})
+
+				incr1 := component.NewComponent("incr1").
+					WithDescription("Increments the input").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						outputs.PutSignals(signal.New(1 + inputs.AllSignals().FirstPayload().(int)))
+						return nil
+					})
+
+				incr2 := component.NewComponent("incr2").
+					WithDescription("Increments the input").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						outputs.PutSignals(signal.New(1 + inputs.AllSignals().FirstPayload().(int)))
+						return nil
+					})
+
+				doubler := component.NewComponent("doubler").
+					WithDescription("Doubles the input").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						outputs.PutSignals(signal.New(2 * inputs.AllSignals().FirstPayload().(int)))
+						return nil
+					})
+
+				agg := component.NewComponent("result_aggregator").
+					WithDescription("Adds 2 inputs (only when both are available)").
+					WithInputsIndexed("i", 1, 2).
+					WithOutputs("result").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+							return component.NewErrWaitForInputs(true)
+						}
+						i1 := inputs.ByName("i1").Signals().FirstPayload().(int)
+						i2 := inputs.ByName("i2").Signals().FirstPayload().(int)
+						outputs.PutSignals(signal.New(i1 + i2))
+						return nil
+					})
+
+				observer := component.NewComponent("obsrv").
+					WithDescription("Observes inputs of result aggregator").
+					WithInputsIndexed("i", 1, 2).
+					WithOutputs("log").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						outputs.ByName("log").PutSignals(inputs.AllSignals()...)
+						return nil
+					})
+
+				fm := fmesh.New("observer").WithComponents(starter, incr1, incr2, doubler, agg, observer)
+
+				starter.Outputs().ByName("o1").PipeTo(incr1.Inputs().ByName("i1"))
+				starter.Outputs().ByName("o2").PipeTo(incr2.Inputs().ByName("i1"))
+				incr1.Outputs().ByName("o1").PipeTo(doubler.Inputs().ByName("i1"))
+				doubler.Outputs().ByName("o1").PipeTo(agg.Inputs().ByName("i1"))
+				incr2.Outputs().ByName("o1").PipeTo(agg.Inputs().ByName("i2"))
+				agg.Inputs().ByName("i1").PipeTo(observer.Inputs().ByName("i1"))
+				agg.Inputs().ByName("i2").PipeTo(observer.Inputs().ByName("i2"))
+				return fm
+			},
+			setInputs: func(fm *fmesh.FMesh) {
+				fm.Components().ByName("starter").Inputs().PutSignals(signal.New(10))
+			},
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+				assert.NoError(t, err)
+
+				//Multiplier result
+				assert.Equal(t, 33, fm.Components().ByName("result_aggregator").Outputs().ByName("result").Signals().FirstPayload())
+
+				//Observed signals
+				assert.Len(t, fm.Components().ByName("obsrv").Outputs().ByName("log").Signals(), 2)
+				assert.Contains(t, fm.Components().ByName("obsrv").Outputs().ByName("log").Signals().AllPayloads(), 11)
+				assert.Contains(t, fm.Components().ByName("obsrv").Outputs().ByName("log").Signals().AllPayloads(), 22)
 			},
 		},
 	}
