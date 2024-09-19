@@ -47,7 +47,6 @@ func Test_PipingFromInput(t *testing.T) {
 					WithOutputs("log").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						for _, sig := range inputs.ByName("in").Signals() {
-							fmt.Println(fmt.Sprintf("LOGGED SIGNAL: %v", sig.Payload()))
 							outputs.ByName("log").PutSignals(signal.New(fmt.Sprintf("LOGGED SIGNAL: %v", sig.Payload())))
 						}
 						return nil

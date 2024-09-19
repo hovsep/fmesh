@@ -30,10 +30,16 @@ func (p *Port) Signals() signal.Collection {
 	return p.signals
 }
 
-// PutSignals adds a signals to current signals
+// PutSignals adds signals
 // @TODO: rename
 func (p *Port) PutSignals(signals ...*signal.Signal) {
 	p.Signals().Add(signals...)
+}
+
+// WithSignals adds signals and returns the port
+func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
+	p.PutSignals(signals...)
+	return p
 }
 
 // ClearSignals removes all signals from the port
@@ -62,9 +68,9 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 	}
 }
 
-// Flush pushes current signals to pipes and returns true when flushed
+// Flush pushes signals to pipes, clears the port if needed and returns true when flushed
 // @TODO: hide this method from user
-func (p *Port) Flush() bool {
+func (p *Port) Flush(clearFlushed bool) bool {
 	if !p.HasSignals() || !p.HasPipes() {
 		return false
 	}
@@ -72,6 +78,9 @@ func (p *Port) Flush() bool {
 	for _, outboundPort := range p.pipes {
 		//Fan-Out
 		ForwardSignals(p, outboundPort)
+	}
+	if clearFlushed {
+		p.ClearSignals()
 	}
 	return true
 }

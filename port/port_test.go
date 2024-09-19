@@ -7,8 +7,7 @@ import (
 )
 
 func TestPort_HasSignals(t *testing.T) {
-	portWithSignal := New("portWithSignal")
-	portWithSignal.PutSignals(signal.New(123))
+	portWithSignal := New("portWithSignal").WithSignals(signal.New(123))
 
 	tests := []struct {
 		name string
@@ -34,8 +33,7 @@ func TestPort_HasSignals(t *testing.T) {
 }
 
 func TestPort_Signals(t *testing.T) {
-	portWithSignal := New("portWithSignal")
-	portWithSignal.PutSignals(signal.New(123))
+	portWithSignal := New("portWithSignal").WithSignals(signal.New(123))
 
 	tests := []struct {
 		name string
@@ -61,8 +59,7 @@ func TestPort_Signals(t *testing.T) {
 }
 
 func TestPort_ClearSignal(t *testing.T) {
-	portWithSignal := New("portWithSignal")
-	portWithSignal.PutSignals(signal.New(111))
+	portWithSignal := New("portWithSignal").WithSignals(signal.New(111))
 
 	tests := []struct {
 		name   string
@@ -134,14 +131,11 @@ func TestPort_PipeTo(t *testing.T) {
 }
 
 func TestPort_PutSignals(t *testing.T) {
-	portWithSingleSignal := New("portWithSingleSignal")
-	portWithSingleSignal.PutSignals(signal.New(11))
+	portWithSingleSignal := New("portWithSingleSignal").WithSignals(signal.New(11))
 
-	portWithMultipleSignals := New("portWithMultipleSignals")
-	portWithMultipleSignals.PutSignals(signal.NewGroup(11, 12)...)
+	portWithMultipleSignals := New("portWithMultipleSignals").WithSignals(signal.NewGroup(11, 12)...)
 
-	portWithMultipleSignals2 := New("portWithMultipleSignals2")
-	portWithMultipleSignals2.PutSignals(signal.NewGroup(55, 66)...)
+	portWithMultipleSignals2 := New("portWithMultipleSignals2").WithSignals(signal.NewGroup(55, 66)...)
 
 	type args struct {
 		signals []*signal.Signal
@@ -280,28 +274,23 @@ func TestNewPort(t *testing.T) {
 }
 
 func TestPort_Flush(t *testing.T) {
-	portWithSignal1 := New("portWithSignal1")
-	portWithSignal1.PutSignals(signal.New(777))
-
-	portWithSignal2 := New("portWithSignal2")
-	portWithSignal2.PutSignals(signal.New(888))
-
-	portWithMultipleSignals := New("portWithMultipleSignals")
-	portWithMultipleSignals.PutSignals(signal.NewGroup(11, 12)...)
-
-	emptyPort := New("emptyPort")
-
 	tests := []struct {
-		name       string
-		source     *Port
-		dest       *Port
-		wantResult bool
-		assertions func(t *testing.T, source *Port, dest *Port)
+		name         string
+		getSource    func() *Port
+		getDest      func() *Port
+		clearFlushed bool
+		wantResult   bool
+		assertions   func(t *testing.T, source *Port, dest *Port)
 	}{
 		{
-			name:   "port with no signals",
-			source: New("empty_src"),
-			dest:   New("empty_dest"),
+			name: "port with no signals",
+			getSource: func() *Port {
+				return New("empty_src")
+			},
+			getDest: func() *Port {
+				return New("empty_dest")
+			},
+			clearFlushed: false,
 			assertions: func(t *testing.T, source *Port, dest *Port) {
 				assert.False(t, source.HasSignals())
 				assert.False(t, dest.HasSignals())
@@ -309,41 +298,92 @@ func TestPort_Flush(t *testing.T) {
 			wantResult: false,
 		},
 		{
-			name:   "flush to empty port",
-			source: portWithSignal1,
-			dest:   emptyPort,
+			name: "flush to empty port",
+			getSource: func() *Port {
+				return New("portWithSignal").WithSignals(signal.New(111))
+			},
+			getDest: func() *Port {
+				return New("empty_dest")
+			},
+			clearFlushed: false,
 			assertions: func(t *testing.T, source *Port, dest *Port) {
 				//Source port is not cleared during flush
 				assert.True(t, source.HasSignals())
 
 				//Signals transferred to destination port
 				assert.True(t, dest.HasSignals())
-				assert.Equal(t, dest.Signals().FirstPayload().(int), 777)
+				assert.Equal(t, dest.Signals().FirstPayload().(int), 111)
 			},
 			wantResult: true,
 		},
 		{
-			name:   "flush to port with signals",
-			source: portWithSignal2,
-			dest:   portWithMultipleSignals,
+			name: "flush to empty port and clear",
+			getSource: func() *Port {
+				return New("portWithSignal").WithSignals(signal.New(222))
+			},
+			getDest: func() *Port {
+				return New("empty_dest")
+			},
+			clearFlushed: true,
+			assertions: func(t *testing.T, source *Port, dest *Port) {
+				//Source port is cleared
+				assert.False(t, source.HasSignals())
+
+				//Signals transferred to destination port
+				assert.True(t, dest.HasSignals())
+				assert.Equal(t, dest.Signals().FirstPayload().(int), 222)
+			},
+			wantResult: true,
+		},
+		{
+			name: "flush to port with signals",
+			getSource: func() *Port {
+				return New("portWithSignal").WithSignals(signal.New(333))
+			},
+			getDest: func() *Port {
+				return New("portWithMultipleSignals").WithSignals(signal.NewGroup(444, 555, 666)...)
+			},
+			clearFlushed: false,
 			assertions: func(t *testing.T, source *Port, dest *Port) {
 				//Source port is not cleared
 				assert.True(t, source.HasSignals())
 
 				//Destination port now has 1 more signal
 				assert.True(t, dest.HasSignals())
-				assert.Len(t, dest.Signals(), 3)
-				assert.Contains(t, dest.Signals().AllPayloads(), 888)
+				assert.Len(t, dest.Signals(), 4)
+				assert.Contains(t, dest.Signals().AllPayloads(), 333)
+			},
+			wantResult: true,
+		},
+		{
+			name: "flush to port with signals and clear",
+			getSource: func() *Port {
+				return New("portWithSignal").WithSignals(signal.New(777))
+			},
+			getDest: func() *Port {
+				return New("portWithMultipleSignals").WithSignals(signal.NewGroup(888, 999, 101010)...)
+			},
+			clearFlushed: true,
+			assertions: func(t *testing.T, source *Port, dest *Port) {
+				//Source port is cleared
+				assert.False(t, source.HasSignals())
+
+				//Destination port now has 1 more signal
+				assert.True(t, dest.HasSignals())
+				assert.Len(t, dest.Signals(), 4)
+				assert.Contains(t, dest.Signals().AllPayloads(), 777)
 			},
 			wantResult: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.source.PipeTo(tt.dest)
-			assert.Equal(t, tt.wantResult, tt.source.Flush())
+			source := tt.getSource()
+			dest := tt.getDest()
+			source.PipeTo(dest)
+			assert.Equal(t, tt.wantResult, source.Flush(tt.clearFlushed))
 			if tt.assertions != nil {
-				tt.assertions(t, tt.source, tt.dest)
+				tt.assertions(t, source, dest)
 			}
 		})
 	}

@@ -52,11 +52,17 @@ func (collection Collection) AllHaveSignals() bool {
 	return true
 }
 
-// PutSignals puts a signals to all the port in collection
+// PutSignals adds signals to every port in collection
 func (collection Collection) PutSignals(signals ...*signal.Signal) {
 	for _, p := range collection {
 		p.PutSignals(signals...)
 	}
+}
+
+// WithSignals adds signals to every port in collection and returns the collection
+func (collection Collection) WithSignals(signals ...*signal.Signal) Collection {
+	collection.PutSignals(signals...)
+	return collection
 }
 
 // ClearSignals removes signals from all ports in collection
@@ -69,9 +75,7 @@ func (collection Collection) ClearSignals() {
 // Flush flushes all ports in collection
 func (collection Collection) Flush(clearFlushed bool) {
 	for _, p := range collection {
-		if portFlushed := p.Flush(); clearFlushed && portFlushed {
-			p.ClearSignals()
-		}
+		p.Flush(clearFlushed)
 	}
 }
 
