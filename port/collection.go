@@ -7,6 +7,13 @@ import (
 // Collection is a port collection with useful methods
 type Collection map[string]*Port
 
+// Metadata contains metadata about the port
+type Metadata struct {
+	SignalBufferLen int
+}
+
+type MetadataMap map[string]*Metadata
+
 // NewCollection creates empty collection
 func NewCollection() Collection {
 	return make(Collection)
@@ -79,13 +86,6 @@ func (collection Collection) Flush(clearFlushed bool) {
 	}
 }
 
-func (collection Collection) RemoveSignalsByKeys(signalKeys []string) Collection {
-	for _, p := range collection {
-		p.Signals().DeleteKeys(signalKeys)
-	}
-	return collection
-}
-
 // PipeTo creates pipes from each port in collection
 func (collection Collection) PipeTo(toPorts ...*Port) {
 	for _, p := range collection {
@@ -113,15 +113,24 @@ func (collection Collection) AddIndexed(prefix string, startIndex int, endIndex 
 func (collection Collection) AllSignals() signal.Group {
 	group := signal.NewGroup()
 	for _, p := range collection {
-		group = append(group, p.Signals().AsGroup()...)
+		group = append(group, p.Signals()...)
 	}
 	return group
 }
 
-func (collection Collection) GetSignalKeys() []string {
-	keys := make([]string, 0)
+// GetPortsMetadata returns info about current length of each port in collection
+func (collection Collection) GetPortsMetadata() MetadataMap {
+	res := make(MetadataMap)
 	for _, p := range collection {
-		keys = append(keys, p.Signals().GetKeys()...)
+		res[p.Name()] = &Metadata{
+			SignalBufferLen: len(p.Signals()),
+		}
 	}
-	return keys
+	return res
+}
+
+func (collection Collection) DisposeProcessedSignals(portsMetadata MetadataMap) {
+	for pName, meta := range portsMetadata {
+		collection.ByName(pName).DisposeFirstNSignals(meta.SignalBufferLen)
+	}
 }

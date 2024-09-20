@@ -28,3 +28,22 @@ func (group Group) AllPayloads() []any {
 	}
 	return all
 }
+
+// With adds signals to group
+func (group Group) With(signals ...*Signal) Group {
+	for _, sig := range signals {
+		if sig == nil {
+			continue
+		}
+		group = append(group, sig)
+	}
+
+	return group
+}
+
+func (group Group) WithPayloads(payloads ...any) Group {
+	for _, p := range payloads {
+		group = append(group, New(p))
+	}
+	return group
+}

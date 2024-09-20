@@ -33,8 +33,8 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) Group {
 	return group
 }
 
-// Add adds ports to group
-func (group Group) Add(ports ...*Port) Group {
+// With adds ports to group
+func (group Group) With(ports ...*Port) Group {
 	for _, port := range ports {
 		if port == nil {
 			continue

@@ -715,15 +715,27 @@ func TestFMesh_runCycle(t *testing.T) {
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputKeys([]string{"1"}),
+					WithInputsMetadata(port.MetadataMap{
+						"i1": &port.Metadata{
+							SignalBufferLen: 1,
+						},
+					}),
 				component.NewActivationResult("c2").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputKeys([]string{"1"}),
+					WithInputsMetadata(port.MetadataMap{
+						"i1": &port.Metadata{
+							SignalBufferLen: 1,
+						},
+					}),
 				component.NewActivationResult("c3").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputKeys([]string{"1"}),
+					WithInputsMetadata(port.MetadataMap{
+						"i1": &port.Metadata{
+							SignalBufferLen: 1,
+						},
+					}),
 			),
 		},
 	}

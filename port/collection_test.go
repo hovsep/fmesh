@@ -85,7 +85,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
+			want: &Port{name: "p1", pipes: Group{}, signals: signal.Group{}},
 		},
 		{
 			name:       "port with signals found",
@@ -95,7 +95,7 @@ func TestCollection_ByName(t *testing.T) {
 			},
 			want: &Port{
 				name:    "p2",
-				signals: signal.NewCollection().AddPayload(12),
+				signals: signal.NewGroup().With(signal.New(12)),
 				pipes:   Group{},
 			},
 		},
@@ -140,7 +140,7 @@ func TestCollection_ByNames(t *testing.T) {
 				"p1": &Port{
 					name:    "p1",
 					pipes:   Group{},
-					signals: signal.NewCollection(),
+					signals: signal.Group{},
 				},
 			},
 		},
@@ -151,8 +151,16 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
-				"p2": &Port{name: "p2", pipes: Group{}, signals: signal.Collection{}},
+				"p1": &Port{
+					name:    "p1",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
+				"p2": &Port{
+					name:    "p2",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
 			},
 		},
 		{
@@ -170,8 +178,16 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2", "p3"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
-				"p2": &Port{name: "p2", pipes: Group{}, signals: signal.Collection{}},
+				"p1": &Port{
+					name:    "p1",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
+				"p2": &Port{
+					name:    "p2",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
 			},
 		},
 	}

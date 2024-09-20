@@ -136,8 +136,8 @@ func (c *Component) FlushInputs() {
 	c.inputs.Flush(false)
 }
 
-// FlushOutputs ...
+// FlushAndClearOutputs flushes output ports and clears flushed ones
 // @TODO: hide this method from user
-func (c *Component) FlushOutputs() {
+func (c *Component) FlushAndClearOutputs() {
 	c.outputs.Flush(true)
 }

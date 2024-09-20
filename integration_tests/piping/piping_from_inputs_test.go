@@ -79,7 +79,6 @@ func Test_PipingFromInput(t *testing.T) {
 				assert.Len(t, l.Outputs().ByName("log").Signals(), 3)
 			},
 		},
-
 		{
 			name: "observing component which waits for inputs",
 			setupFM: func() *fmesh.FMesh {
