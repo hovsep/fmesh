@@ -7,12 +7,10 @@ import (
 )
 
 func TestCollection_AllHaveSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...)
-	oneEmptyPorts.PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").ClearSignals()
 
-	allWithSignalPorts := NewCollection().Add(NewGroup("out1", "out2", "out3")...)
-	allWithSignalPorts.PutSignals(signal.New(77))
+	allWithSignalPorts := NewCollection().Add(NewGroup("out1", "out2", "out3")...).WithSignals(signal.New(77))
 
 	tests := []struct {
 		name  string
@@ -43,8 +41,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 }
 
 func TestCollection_AnyHasSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...)
-	oneEmptyPorts.PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").ClearSignals()
 
 	tests := []struct {
@@ -71,8 +68,7 @@ func TestCollection_AnyHasSignal(t *testing.T) {
 }
 
 func TestCollection_ByName(t *testing.T) {
-	portsWithSignals := NewCollection().Add(NewGroup("p1", "p2")...)
-	portsWithSignals.PutSignals(signal.New(12))
+	portsWithSignals := NewCollection().Add(NewGroup("p1", "p2")...).WithSignals(signal.New(12))
 
 	type args struct {
 		name string
@@ -89,7 +85,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
+			want: &Port{name: "p1", pipes: Group{}, signals: signal.Group{}},
 		},
 		{
 			name:       "port with signals found",
@@ -99,7 +95,7 @@ func TestCollection_ByName(t *testing.T) {
 			},
 			want: &Port{
 				name:    "p2",
-				signals: signal.NewCollection().AddPayload(12),
+				signals: signal.NewGroup().With(signal.New(12)),
 				pipes:   Group{},
 			},
 		},
@@ -144,7 +140,7 @@ func TestCollection_ByNames(t *testing.T) {
 				"p1": &Port{
 					name:    "p1",
 					pipes:   Group{},
-					signals: signal.NewCollection(),
+					signals: signal.Group{},
 				},
 			},
 		},
@@ -155,8 +151,16 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
-				"p2": &Port{name: "p2", pipes: Group{}, signals: signal.Collection{}},
+				"p1": &Port{
+					name:    "p1",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
+				"p2": &Port{
+					name:    "p2",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
 			},
 		},
 		{
@@ -174,8 +178,16 @@ func TestCollection_ByNames(t *testing.T) {
 				names: []string{"p1", "p2", "p3"},
 			},
 			want: Collection{
-				"p1": &Port{name: "p1", pipes: Group{}, signals: signal.Collection{}},
-				"p2": &Port{name: "p2", pipes: Group{}, signals: signal.Collection{}},
+				"p1": &Port{
+					name:    "p1",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
+				"p2": &Port{
+					name:    "p2",
+					pipes:   Group{},
+					signals: signal.Group{},
+				},
 			},
 		},
 	}
@@ -188,8 +200,7 @@ func TestCollection_ByNames(t *testing.T) {
 
 func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		ports := NewCollection().Add(NewGroup("p1", "p2", "p3")...)
-		ports.PutSignals(signal.NewGroup(1, 2, 3)...)
+		ports := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.NewGroup(1, 2, 3)...)
 		assert.True(t, ports.AllHaveSignals())
 		ports.ClearSignals()
 		assert.False(t, ports.AnyHasSignals())

@@ -135,7 +135,7 @@ func Test_Fan(t *testing.T) {
 				assert.True(t, fm.Components().ByName("consumer").Outputs().ByName("o1").HasSignals())
 
 				//The signal is combined and consist of 3 payloads
-				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals().AsGroup()
+				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals()
 				assert.Len(t, resultSignals, 3)
 
 				//And they are all different

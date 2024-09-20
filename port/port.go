@@ -7,8 +7,8 @@ import (
 // Port defines a connectivity point of a component
 type Port struct {
 	name    string
-	signals signal.Collection //Current signals set on the port
-	pipes   Group             //Refs to all outbound pipes connected to this port
+	signals signal.Group //Signal buffer
+	pipes   Group        //Outbound pipes
 }
 
 // New creates a new port
@@ -16,7 +16,7 @@ func New(name string) *Port {
 	return &Port{
 		name:    name,
 		pipes:   NewGroup(),
-		signals: signal.NewCollection(),
+		signals: signal.NewGroup(),
 	}
 }
 
@@ -26,19 +26,37 @@ func (p *Port) Name() string {
 }
 
 // Signals getter
-func (p *Port) Signals() signal.Collection {
+func (p *Port) Signals() signal.Group {
 	return p.signals
 }
 
-// PutSignals adds a signals to current signals
+func (p *Port) setSignals(signals signal.Group) {
+	p.signals = signals
+}
+
+// PutSignals adds signals
 // @TODO: rename
 func (p *Port) PutSignals(signals ...*signal.Signal) {
-	p.Signals().Add(signals...)
+	p.setSignals(p.Signals().With(signals...))
+}
+
+// WithSignals adds signals and returns the port
+func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
+	p.PutSignals(signals...)
+	return p
 }
 
 // ClearSignals removes all signals from the port
 func (p *Port) ClearSignals() {
-	p.signals = signal.NewCollection()
+	p.setSignals(signal.NewGroup())
+}
+
+func (p *Port) DisposeFirstNSignals(n int) {
+	if n > len(p.Signals()) {
+		p.ClearSignals()
+		return
+	}
+	p.setSignals(p.Signals()[n:])
 }
 
 // HasSignals says whether port signals is set or not
@@ -58,13 +76,13 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 		if toPort == nil {
 			continue
 		}
-		p.pipes = p.pipes.Add(toPort)
+		p.pipes = p.pipes.With(toPort)
 	}
 }
 
-// Flush pushes current signals to pipes and returns true when flushed
+// Flush pushes signals to pipes, clears the port if needed and returns true when flushed
 // @TODO: hide this method from user
-func (p *Port) Flush() bool {
+func (p *Port) Flush(clearFlushed bool) bool {
 	if !p.HasSignals() || !p.HasPipes() {
 		return false
 	}
@@ -73,10 +91,13 @@ func (p *Port) Flush() bool {
 		//Fan-Out
 		ForwardSignals(p, outboundPort)
 	}
+	if clearFlushed {
+		p.ClearSignals()
+	}
 	return true
 }
 
 // ForwardSignals puts signals from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
-	dest.PutSignals(source.Signals().AsGroup()...)
+	dest.PutSignals(source.Signals()...)
 }

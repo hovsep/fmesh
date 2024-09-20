@@ -3,15 +3,16 @@ package component
 import (
 	"errors"
 	"fmt"
+	"github.com/hovsep/fmesh/port"
 )
 
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
-	componentName string
-	activated     bool
-	inputKeys     []string //@TODO: check if we can replace this by one int which will show the index of last signal used as input within signals collection (use signal position in the collection as it's unique id)
-	code          ActivationResultCode
-	err           error
+	componentName  string
+	activated      bool
+	inputsMetadata port.MetadataMap //Contains the info about length of input ports during the activation (required for correct i2i piping)
+	code           ActivationResultCode
+	err            error
 }
 
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
@@ -38,6 +39,7 @@ const (
 )
 
 // NewActivationResult creates a new activation result for given component
+// @TODO Hide this from user
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
@@ -92,13 +94,13 @@ func (ar *ActivationResult) WithError(err error) *ActivationResult {
 	return ar
 }
 
-func (ar *ActivationResult) WithInputKeys(keys []string) *ActivationResult {
-	ar.inputKeys = keys
+func (ar *ActivationResult) WithInputsMetadata(meta port.MetadataMap) *ActivationResult {
+	ar.inputsMetadata = meta
 	return ar
 }
 
-func (ar *ActivationResult) InputKeys() []string {
-	return ar.inputKeys
+func (ar *ActivationResult) InputsMetadata() port.MetadataMap {
+	return ar.inputsMetadata
 }
 
 // newActivationResultOK builds a specific activation result
@@ -106,7 +108,7 @@ func (c *Component) newActivationResultOK() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodeOK).
-		WithInputKeys(c.Inputs().GetSignalKeys())
+		WithInputsMetadata(c.Inputs().GetPortsMetadata())
 
 }
 
@@ -137,7 +139,7 @@ func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult 
 		SetActivated(true).
 		WithActivationCode(ActivationCodeReturnedError).
 		WithError(fmt.Errorf("component returned an error: %w", err)).
-		WithInputKeys(c.Inputs().GetSignalKeys())
+		WithInputsMetadata(c.Inputs().GetPortsMetadata())
 }
 
 // newActivationCodePanicked builds a specific activation result
@@ -146,7 +148,7 @@ func (c *Component) newActivationCodePanicked(err error) *ActivationResult {
 		SetActivated(true).
 		WithActivationCode(ActivationCodePanicked).
 		WithError(err).
-		WithInputKeys(c.Inputs().GetSignalKeys())
+		WithInputsMetadata(c.Inputs().GetPortsMetadata())
 }
 
 // isWaitingForInput tells whether component is waiting for specific inputs
