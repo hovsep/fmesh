@@ -134,3 +134,9 @@ func (collection Collection) DisposeProcessedSignals(portsMetadata MetadataMap) 
 		collection.ByName(pName).DisposeFirstNSignals(meta.SignalBufferLen)
 	}
 }
+
+func (collection Collection) FlushProcessedSignals(portsMetadata MetadataMap) {
+	for pName, meta := range portsMetadata {
+		collection.ByName(pName).FlushAndDisposeNSignals(meta.SignalBufferLen)
+	}
+}
