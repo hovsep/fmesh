@@ -3,16 +3,16 @@ package component
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/port"
 )
 
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
-	componentName  string
-	activated      bool
-	inputsMetadata port.MetadataMap //Contains the info about length of input ports during the activation (required for correct i2i piping)
-	code           ActivationResultCode
-	err            error
+	componentName string
+	activated     bool
+	stateBefore   *StateSnapshot //Contains the info about length of input ports during the activation (required for correct i2i piping)
+	stateAfter    *StateSnapshot
+	code          ActivationResultCode
+	err           error
 }
 
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
@@ -94,61 +94,67 @@ func (ar *ActivationResult) WithError(err error) *ActivationResult {
 	return ar
 }
 
-func (ar *ActivationResult) WithInputsMetadata(meta port.MetadataMap) *ActivationResult {
-	ar.inputsMetadata = meta
+func (ar *ActivationResult) WithStateBefore(snapshot *StateSnapshot) *ActivationResult {
+	ar.stateBefore = snapshot
 	return ar
 }
 
-func (ar *ActivationResult) InputsMetadata() port.MetadataMap {
-	return ar.inputsMetadata
+func (ar *ActivationResult) StateBefore() *StateSnapshot {
+	return ar.stateBefore
+}
+
+func (ar *ActivationResult) WithStateAfter(snapshot *StateSnapshot) *ActivationResult {
+	ar.stateAfter = snapshot
+	return ar
+}
+
+func (ar *ActivationResult) StateAfter() *StateSnapshot {
+	return ar.stateAfter
 }
 
 // newActivationResultOK builds a specific activation result
 func (c *Component) newActivationResultOK() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
-		WithActivationCode(ActivationCodeOK).
-		WithInputsMetadata(c.Inputs().GetPortsMetadata())
+		WithActivationCode(ActivationCodeOK)
 
 }
 
-// newActivationCodeNoInput builds a specific activation result
-func (c *Component) newActivationCodeNoInput() *ActivationResult {
+// newActivationResultNoInput builds a specific activation result
+func (c *Component) newActivationResultNoInput() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
 		WithActivationCode(ActivationCodeNoInput)
 }
 
-// newActivationCodeNoFunction builds a specific activation result
-func (c *Component) newActivationCodeNoFunction() *ActivationResult {
+// newActivationResultNoFunction builds a specific activation result
+func (c *Component) newActivationResultNoFunction() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
 		WithActivationCode(ActivationCodeNoFunction)
 }
 
-// newActivationCodeWaitingForInput builds a specific activation result
-func (c *Component) newActivationCodeWaitingForInput() *ActivationResult {
+// newActivationResultWaitingForInput builds a specific activation result
+func (c *Component) newActivationResultWaitingForInput() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
 		WithActivationCode(ActivationCodeWaitingForInput)
 }
 
-// newActivationCodeReturnedError builds a specific activation result
-func (c *Component) newActivationCodeReturnedError(err error) *ActivationResult {
+// newActivationResultReturnedError builds a specific activation result
+func (c *Component) newActivationResultReturnedError(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodeReturnedError).
-		WithError(fmt.Errorf("component returned an error: %w", err)).
-		WithInputsMetadata(c.Inputs().GetPortsMetadata())
+		WithError(fmt.Errorf("component returned an error: %w", err))
 }
 
-// newActivationCodePanicked builds a specific activation result
-func (c *Component) newActivationCodePanicked(err error) *ActivationResult {
+// newActivationResultPanicked builds a specific activation result
+func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodePanicked).
-		WithError(err).
-		WithInputsMetadata(c.Inputs().GetPortsMetadata())
+		WithError(err)
 }
 
 // isWaitingForInput tells whether component is waiting for specific inputs

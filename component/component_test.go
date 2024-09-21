@@ -99,25 +99,37 @@ func TestComponent_Description(t *testing.T) {
 	}
 }
 
-func TestComponent_FlushAndClearOutputs(t *testing.T) {
+func TestComponent_FlushOutputs(t *testing.T) {
 	sink := port.New("sink")
 
+	componentWithNoOutputs := NewComponent("c1")
+	componentWithCleanOutputs := NewComponent("c1").WithOutputs("o1", "o2")
+
 	componentWithAllOutputsSet := NewComponent("c1").WithOutputs("o1", "o2")
-	componentWithAllOutputsSet.Outputs().ByName("o1").PutSignals(signal.New(777))
-	componentWithAllOutputsSet.Outputs().ByName("o1").PutSignals(signal.New(888))
-	componentWithAllOutputsSet.Outputs().ByName("o1").PipeTo(sink)
-	componentWithAllOutputsSet.Outputs().ByName("o2").PipeTo(sink)
+	componentWithAllOutputsSet.Outputs().ByNames("o1").PutSignals(signal.New(777))
+	componentWithAllOutputsSet.Outputs().ByNames("o2").PutSignals(signal.New(888))
+	componentWithAllOutputsSet.Outputs().ByNames("o1", "o2").PipeTo(sink)
 
 	tests := []struct {
-		name       string
-		component  *Component
-		destPort   *port.Port //Where the component flushes ALL it's inputs
-		assertions func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
+		name             string
+		component        *Component
+		activationResult *ActivationResult
+		destPort         *port.Port //Where the component flushes ALL it's inputs
+		assertions       func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
 	}{
 		{
 			name:      "no outputs",
-			component: NewComponent("c1"),
-			destPort:  nil,
+			component: componentWithNoOutputs,
+			activationResult: componentWithNoOutputs.newActivationResultOK().
+				WithStateBefore(&StateSnapshot{
+					InputPorts:  port.MetadataMap{},
+					OutputPorts: port.MetadataMap{},
+				}).
+				WithStateAfter(&StateSnapshot{
+					InputPorts:  port.MetadataMap{},
+					OutputPorts: port.MetadataMap{},
+				}),
+			destPort: nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
 				assert.Empty(t, componentAfterFlush.Outputs())
@@ -125,8 +137,17 @@ func TestComponent_FlushAndClearOutputs(t *testing.T) {
 		},
 		{
 			name:      "output has no signal set",
-			component: NewComponent("c1").WithOutputs("o1", "o2"),
-			destPort:  nil,
+			component: componentWithCleanOutputs,
+			activationResult: componentWithCleanOutputs.newActivationResultOK().
+				WithStateBefore(&StateSnapshot{
+					InputPorts:  port.MetadataMap{},
+					OutputPorts: port.MetadataMap{},
+				}).
+				WithStateAfter(&StateSnapshot{
+					InputPorts:  port.MetadataMap{},
+					OutputPorts: port.MetadataMap{},
+				}),
+			destPort: nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
@@ -134,18 +155,35 @@ func TestComponent_FlushAndClearOutputs(t *testing.T) {
 		{
 			name:      "happy path",
 			component: componentWithAllOutputsSet,
-			destPort:  sink,
+			activationResult: componentWithAllOutputsSet.newActivationResultOK().
+				WithStateBefore(&StateSnapshot{
+					InputPorts:  port.MetadataMap{},
+					OutputPorts: port.MetadataMap{},
+				}).
+				WithStateAfter(&StateSnapshot{
+					InputPorts: port.MetadataMap{},
+					OutputPorts: port.MetadataMap{
+						"o1": &port.Metadata{
+							SignalBufferLen: 1,
+						},
+						"o2": &port.Metadata{
+							SignalBufferLen: 1,
+						},
+					},
+				}),
+			destPort: sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.Contains(t, destPort.Signals().AllPayloads(), 777)
 				assert.Contains(t, destPort.Signals().AllPayloads(), 888)
 				assert.Len(t, destPort.Signals().AllPayloads(), 2)
+				// Signals are disposed when port is flushed
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.component.FlushAndClearOutputs()
+			tt.component.FlushOutputs(tt.activationResult)
 			tt.assertions(t, tt.component, tt.destPort)
 		})
 	}

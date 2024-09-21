@@ -6,6 +6,12 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
+// @TODO add getter\setter and constructor
+type StateSnapshot struct {
+	InputPorts  port.MetadataMap
+	OutputPorts port.MetadataMap
+}
+
 type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 
 // Component defines a main building block of FMesh
@@ -87,26 +93,40 @@ func (c *Component) hasActivationFunction() bool {
 	return c.f != nil
 }
 
+func (c *Component) getStateSnapshot() *StateSnapshot {
+	return &StateSnapshot{
+		InputPorts:  c.Inputs().GetPortsMetadata(),
+		OutputPorts: c.Outputs().GetPortsMetadata(),
+	}
+}
+
 // MaybeActivate tries to run the activation function if all required conditions are met
 // @TODO: hide this method from user
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
+	stateBeforeActivation := c.getStateSnapshot()
+
 	defer func() {
 		if r := recover(); r != nil {
-			activationResult = c.newActivationCodePanicked(fmt.Errorf("panicked with: %v", r))
+			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r)).
+				WithStateBefore(stateBeforeActivation).
+				WithStateAfter(c.getStateSnapshot())
 		}
 	}()
 
 	if !c.hasActivationFunction() {
 		//Activation function is not set (maybe useful while the mesh is under development)
-		activationResult = c.newActivationCodeNoFunction()
+		activationResult = c.newActivationResultNoFunction().
+			WithStateBefore(stateBeforeActivation).
+			WithStateAfter(c.getStateSnapshot())
 
 		return
 	}
 
 	if !c.inputs.AnyHasSignals() {
 		//No inputs set, stop here
-		activationResult = c.newActivationCodeNoInput()
-
+		activationResult = c.newActivationResultNoInput().
+			WithStateBefore(stateBeforeActivation).
+			WithStateAfter(c.getStateSnapshot())
 		return
 	}
 
@@ -114,18 +134,24 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	err := c.f(c.Inputs(), c.Outputs())
 
 	if errors.Is(err, errWaitingForInputs) {
-		activationResult = c.newActivationCodeWaitingForInput()
+		activationResult = c.newActivationResultWaitingForInput().
+			WithStateBefore(stateBeforeActivation).
+			WithStateAfter(c.getStateSnapshot())
 
 		return
 	}
 
 	if err != nil {
-		activationResult = c.newActivationCodeReturnedError(err)
+		activationResult = c.newActivationResultReturnedError(err).
+			WithStateBefore(stateBeforeActivation).
+			WithStateAfter(c.getStateSnapshot())
 
 		return
 	}
 
-	activationResult = c.newActivationResultOK()
+	activationResult = c.newActivationResultOK().
+		WithStateBefore(stateBeforeActivation).
+		WithStateAfter(c.getStateSnapshot())
 
 	return
 }
@@ -133,11 +159,11 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 // FlushInputs ...
 // @TODO: hide this method from user
 func (c *Component) FlushInputs() {
-	c.inputs.Flush(false)
+	c.Inputs().Flush(false)
 }
 
-// FlushAndClearOutputs flushes output ports and clears flushed ones
+// FlushOutputs ...
 // @TODO: hide this method from user
-func (c *Component) FlushAndClearOutputs() {
-	c.outputs.Flush(true)
+func (c *Component) FlushOutputs(activationResult *ActivationResult) {
+	c.Outputs().FlushProcessedSignals(activationResult.StateAfter().OutputPorts)
 }

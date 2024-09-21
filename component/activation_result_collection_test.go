@@ -35,7 +35,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			args: args{
 				activationResults: []*ActivationResult{
 					NewComponent("c1").newActivationResultOK(),
-					NewComponent("c2").newActivationCodeReturnedError(errors.New("oops")),
+					NewComponent("c2").newActivationResultReturnedError(errors.New("oops")),
 				},
 			},
 			assertions: func(t *testing.T, collection ActivationResultCollection) {
@@ -53,8 +53,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			),
 			args: args{
 				activationResults: []*ActivationResult{
-					NewComponent("c4").newActivationCodeNoInput(),
-					NewComponent("c5").newActivationCodePanicked(errors.New("panic")),
+					NewComponent("c4").newActivationResultNoInput(),
+					NewComponent("c5").newActivationResultPanicked(errors.New("panic")),
 				},
 			},
 			assertions: func(t *testing.T, collection ActivationResultCollection) {

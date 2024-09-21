@@ -675,14 +675,130 @@ func TestFMesh_runCycle(t *testing.T) {
 				//Only i1 is set, while component is waiting for both i1 and i2 to be set
 				fm.Components().ByName("c3").Inputs().ByName("i1").PutSignals(signal.New(123))
 				//Same for c4
-				fm.Components().ByName("c4").Inputs().ByName("i1").PutSignals(signal.New(123))
+				fm.Components().ByName("c4").Inputs().ByName("i1").PutSignals(signal.New(456))
 			},
 			want: cycle.New().
 				WithActivationResults(
-					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
-					component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeWaitingForInput),
-					component.NewActivationResult("c4").SetActivated(false).WithActivationCode(component.ActivationCodeWaitingForInput)),
+					component.NewActivationResult("c1").
+						SetActivated(false).
+						WithActivationCode(component.ActivationCodeNoInput).
+						WithStateBefore(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}).
+						WithStateAfter(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}),
+					component.NewActivationResult("c2").
+						SetActivated(false).
+						WithActivationCode(component.ActivationCodeNoFunction).
+						WithStateBefore(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}).
+						WithStateAfter(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}),
+					component.NewActivationResult("c3").
+						SetActivated(false).
+						WithActivationCode(component.ActivationCodeWaitingForInput).
+						WithStateBefore(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+								"i2": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}).
+						WithStateAfter(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+								"i2": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}),
+					component.NewActivationResult("c4").
+						SetActivated(false).
+						WithActivationCode(component.ActivationCodeWaitingForInput).
+						WithStateBefore(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+								"i2": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						}).
+						WithStateAfter(&component.StateSnapshot{
+							InputPorts: port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+								"i2": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+							OutputPorts: port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							},
+						})),
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",
@@ -691,18 +807,25 @@ func TestFMesh_runCycle(t *testing.T) {
 					WithDescription("").
 					WithInputs("i1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						// No output
 						return nil
 					}),
 				component.NewComponent("c2").
 					WithDescription("").
 					WithInputs("i1").
+					WithOutputs("o1", "o2").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						// Sets output
+						outputs.ByName("o1").PutSignals(signal.New(1))
+
+						outputs.ByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5)...)
 						return nil
 					}),
 				component.NewComponent("c3").
 					WithDescription("").
 					WithInputs("i1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						// No output
 						return nil
 					}),
 			),
@@ -715,27 +838,73 @@ func TestFMesh_runCycle(t *testing.T) {
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputsMetadata(port.MetadataMap{
-						"i1": &port.Metadata{
-							SignalBufferLen: 1,
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
 						},
+						OutputPorts: port.MetadataMap{},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+						OutputPorts: port.MetadataMap{},
 					}),
 				component.NewActivationResult("c2").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputsMetadata(port.MetadataMap{
-						"i1": &port.Metadata{
-							SignalBufferLen: 1,
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+							"o2": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+							"o2": &port.Metadata{
+								SignalBufferLen: 4,
+							},
 						},
 					}),
 				component.NewActivationResult("c3").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithInputsMetadata(port.MetadataMap{
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+						OutputPorts: port.MetadataMap{},
+					}).WithStateAfter(&component.StateSnapshot{
+					InputPorts: port.MetadataMap{
 						"i1": &port.Metadata{
 							SignalBufferLen: 1,
 						},
-					}),
+					},
+					OutputPorts: port.MetadataMap{},
+				}),
 			),
 		},
 	}
@@ -791,11 +960,73 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 		{
 			name: "there are signals on output, but no pipes",
 			cycle: cycle.New().WithActivationResults(
-				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
+				component.NewActivationResult("c1").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+					}),
+				component.NewActivationResult("c2").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+					})),
 			fm: New("fm").WithComponents(
-				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
-				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
+				component.NewComponent("c1").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						return nil
+					}),
+				component.NewComponent("c2").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						return nil
+					}),
 			),
 			initFM: func(fm *FMesh) {
 				//Both components have signals on their outputs
@@ -815,8 +1046,61 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 		{
 			name: "happy path",
 			cycle: cycle.New().WithActivationResults(
-				component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
+				component.NewActivationResult("c1").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 1,
+							},
+						},
+					}),
+				component.NewActivationResult("c2").
+					SetActivated(true).
+					WithActivationCode(component.ActivationCodeOK).
+					WithStateBefore(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}).
+					WithStateAfter(&component.StateSnapshot{
+						InputPorts: port.MetadataMap{
+							"i1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+						OutputPorts: port.MetadataMap{
+							"o1": &port.Metadata{
+								SignalBufferLen: 0,
+							},
+						},
+					}),
+			),
 			fm: New("fm").WithComponents(
 				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
 				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
@@ -832,13 +1116,11 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 			assertionsAfterDrain: func(t *testing.T, fm *FMesh) {
 				c1, c2 := fm.Components().ByName("c1"), fm.Components().ByName("c2")
 
-				assert.True(t, c2.Inputs().ByName("i1").HasSignals())                         //Signals is transferred to destination port
+				assert.True(t, c2.Inputs().ByName("i1").HasSignals())                         //Signal is transferred to destination port
 				assert.False(t, c1.Outputs().ByName("o1").HasSignals())                       //Source port is cleaned up
 				assert.Equal(t, c2.Inputs().ByName("i1").Signals().FirstPayload().(int), 123) //The signal is correct
 			},
 		},
-
-		//TODO:add test cases: "only activated components are drained", "signals from previous cycle are removed"
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

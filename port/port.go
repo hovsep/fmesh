@@ -59,6 +59,25 @@ func (p *Port) DisposeFirstNSignals(n int) {
 	p.setSignals(p.Signals()[n:])
 }
 
+func (p *Port) FlushAndDisposeNSignals(n int) {
+	if n > len(p.Signals()) {
+		//Flush all
+		p.Flush(false)
+		p.ClearSignals()
+	}
+
+	if !p.HasSignals() || !p.HasPipes() {
+		return
+	}
+
+	for _, outboundPort := range p.pipes {
+		//Fan-Out
+		ForwardNSignals(p, outboundPort, n)
+	}
+
+	p.DisposeFirstNSignals(n)
+}
+
 // HasSignals says whether port signals is set or not
 func (p *Port) HasSignals() bool {
 	return len(p.Signals()) > 0
@@ -100,4 +119,8 @@ func (p *Port) Flush(clearFlushed bool) bool {
 // ForwardSignals puts signals from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
 	dest.PutSignals(source.Signals()...)
+}
+
+func ForwardNSignals(source *Port, dest *Port, n int) {
+	dest.PutSignals(source.Signals()[:n]...)
 }
