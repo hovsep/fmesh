@@ -1,10 +1,14 @@
 package fmesh
 
 import (
+	"errors"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"sync"
 )
+
+// @TODO: move this to fm.Config
+const maxCyclesAllowed = 100 //Dev mode
 
 // FMesh is the functional mesh
 type FMesh struct {
@@ -112,7 +116,7 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 		cycleResult := fm.runCycle()
 		allCycles = allCycles.Add(cycleResult)
 
-		mustStop, err := fm.mustStop(cycleResult)
+		mustStop, err := fm.mustStop(cycleResult, len(allCycles))
 		if mustStop {
 			return allCycles, err
 		}
@@ -121,7 +125,11 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 	}
 }
 
-func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
+func (fm *FMesh) mustStop(cycleResult *cycle.Cycle, cycleNum int) (bool, error) {
+	if cycleNum >= maxCyclesAllowed {
+		return true, errors.New("reached max allowed cycles")
+	}
+
 	//Check if we are done (no components activated during the cycle => all inputs are processed)
 	if !cycleResult.HasActivatedComponents() {
 		return true, nil
