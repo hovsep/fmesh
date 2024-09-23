@@ -20,7 +20,7 @@ func Test_Math(t *testing.T) {
 		{
 			name: "add and multiply",
 			setupFM: func() *fmesh.FMesh {
-				c1 := component.NewComponent("c1").
+				c1 := component.New("c1").
 					WithDescription("adds 2 to the input").
 					WithInputs("num").
 					WithOutputs("res").
@@ -30,7 +30,7 @@ func Test_Math(t *testing.T) {
 						return nil
 					})
 
-				c2 := component.NewComponent("c2").
+				c2 := component.New("c2").
 					WithDescription("multiplies by 3").
 					WithInputs("num").
 					WithOutputs("res").

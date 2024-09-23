@@ -18,7 +18,7 @@ func TestCollection_ByName(t *testing.T) {
 	}{
 		{
 			name:       "component found",
-			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
+			components: NewComponentCollection().Add(New("c1"), New("c2")),
 			args: args{
 				name: "c2",
 			},
@@ -32,7 +32,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "component not found",
-			components: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
+			components: NewComponentCollection().Add(New("c1"), New("c2")),
 			args: args{
 				name: "c3",
 			},
@@ -70,7 +70,7 @@ func TestCollection_Add(t *testing.T) {
 			name:       "adding to empty collection",
 			collection: NewComponentCollection(),
 			args: args{
-				components: []*Component{NewComponent("c1"), NewComponent("c2")},
+				components: []*Component{New("c1"), New("c2")},
 			},
 			assertions: func(t *testing.T, collection Collection) {
 				assert.Len(t, collection, 2)
@@ -81,9 +81,9 @@ func TestCollection_Add(t *testing.T) {
 		},
 		{
 			name:       "adding to existing collection",
-			collection: NewComponentCollection().Add(NewComponent("c1"), NewComponent("c2")),
+			collection: NewComponentCollection().Add(New("c1"), New("c2")),
 			args: args{
-				components: []*Component{NewComponent("c3"), NewComponent("c4")},
+				components: []*Component{New("c3"), New("c4")},
 			},
 			assertions: func(t *testing.T, collection Collection) {
 				assert.Len(t, collection, 4)

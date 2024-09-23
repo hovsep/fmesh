@@ -93,19 +93,7 @@ func (fm *FMesh) drainComponentsAfterCycle(cycle *cycle.Cycle) {
 		}
 
 		c.FlushOutputs(activationResult)
-
-		c.FlushInputs() // Inputs are a bit trickier
-
-		//Check if a component wait for inputs and wants to keep existing input
-		keepInputs := c.WantsToKeepInputs(activationResult)
-
-		if !keepInputs {
-			// Inputs can not be just cleared, instead we remove signals which
-			// have been used (been set on inputs) during the last activation cycle
-			// thus not affecting ones the component could have been received from i2i pipes
-			c.Inputs().DisposeProcessedSignals(activationResult.StateBefore().InputPorts)
-		}
-
+		c.FlushInputs(activationResult, c.WantsToKeepInputs(activationResult)) // Inputs are a bit trickier
 	}
 }
 

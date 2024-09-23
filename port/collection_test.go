@@ -8,7 +8,7 @@ import (
 
 func TestCollection_AllHaveSignal(t *testing.T) {
 	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.New(123))
-	oneEmptyPorts.ByName("p2").ClearSignals()
+	oneEmptyPorts.ByName("p2").Clear()
 
 	allWithSignalPorts := NewCollection().Add(NewGroup("out1", "out2", "out3")...).WithSignals(signal.New(77))
 
@@ -42,7 +42,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 
 func TestCollection_AnyHasSignal(t *testing.T) {
 	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.New(123))
-	oneEmptyPorts.ByName("p2").ClearSignals()
+	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
 		name  string
@@ -202,7 +202,7 @@ func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		ports := NewCollection().Add(NewGroup("p1", "p2", "p3")...).WithSignals(signal.NewGroup(1, 2, 3)...)
 		assert.True(t, ports.AllHaveSignals())
-		ports.ClearSignals()
+		ports.Clear()
 		assert.False(t, ports.AnyHasSignals())
 	})
 }

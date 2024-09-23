@@ -34,8 +34,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			collection: NewActivationResultCollection(),
 			args: args{
 				activationResults: []*ActivationResult{
-					NewComponent("c1").newActivationResultOK(),
-					NewComponent("c2").newActivationResultReturnedError(errors.New("oops")),
+					New("c1").newActivationResultOK(),
+					New("c2").newActivationResultReturnedError(errors.New("oops")),
 				},
 			},
 			assertions: func(t *testing.T, collection ActivationResultCollection) {
@@ -48,13 +48,13 @@ func TestActivationResultCollection_Add(t *testing.T) {
 		{
 			name: "adding to existing collection",
 			collection: NewActivationResultCollection().Add(
-				NewComponent("c1").newActivationResultOK(),
-				NewComponent("c2").newActivationResultOK(),
+				New("c1").newActivationResultOK(),
+				New("c2").newActivationResultOK(),
 			),
 			args: args{
 				activationResults: []*ActivationResult{
-					NewComponent("c4").newActivationResultNoInput(),
-					NewComponent("c5").newActivationResultPanicked(errors.New("panic")),
+					New("c4").newActivationResultNoInput(),
+					New("c5").newActivationResultPanicked(errors.New("panic")),
 				},
 			},
 			assertions: func(t *testing.T, collection ActivationResultCollection) {

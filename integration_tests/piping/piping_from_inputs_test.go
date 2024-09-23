@@ -21,7 +21,7 @@ func Test_PipingFromInput(t *testing.T) {
 		{
 			name: "observer pattern",
 			setupFM: func() *fmesh.FMesh {
-				adder := component.NewComponent("adder").
+				adder := component.New("adder").
 					WithDescription("adds i1 and i2").
 					WithInputsIndexed("i", 1, 2).
 					WithOutputs("out").
@@ -31,7 +31,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				multiplier := component.NewComponent("multiplier").
+				multiplier := component.New("multiplier").
 					WithDescription("multiplies i1 by 10").
 					WithInputs("i1").
 					WithOutputs("out").
@@ -41,7 +41,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				logger := component.NewComponent("logger").
+				logger := component.New("logger").
 					WithDescription("logs all input signals").
 					WithInputs("in").
 					WithOutputs("log").
@@ -82,7 +82,7 @@ func Test_PipingFromInput(t *testing.T) {
 		{
 			name: "observing component which waits for inputs",
 			setupFM: func() *fmesh.FMesh {
-				starter := component.NewComponent("starter").
+				starter := component.New("starter").
 					WithDescription("This component just starts the whole f-mesh").
 					WithInputs("start").
 					WithOutputsIndexed("o", 1, 2).
@@ -92,7 +92,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				incr1 := component.NewComponent("incr1").
+				incr1 := component.New("incr1").
 					WithDescription("Increments the input").
 					WithInputs("i1").
 					WithOutputs("o1").
@@ -101,7 +101,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				incr2 := component.NewComponent("incr2").
+				incr2 := component.New("incr2").
 					WithDescription("Increments the input").
 					WithInputs("i1").
 					WithOutputs("o1").
@@ -110,7 +110,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				doubler := component.NewComponent("doubler").
+				doubler := component.New("doubler").
 					WithDescription("Doubles the input").
 					WithInputs("i1").
 					WithOutputs("o1").
@@ -119,7 +119,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				agg := component.NewComponent("result_aggregator").
+				agg := component.New("result_aggregator").
 					WithDescription("Adds 2 inputs (only when both are available)").
 					WithInputsIndexed("i", 1, 2).
 					WithOutputs("result").
@@ -133,7 +133,7 @@ func Test_PipingFromInput(t *testing.T) {
 						return nil
 					})
 
-				observer := component.NewComponent("obsrv").
+				observer := component.New("obsrv").
 					WithDescription("Observes inputs of result aggregator").
 					WithInputsIndexed("i", 1, 2).
 					WithOutputs("log").

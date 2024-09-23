@@ -46,7 +46,7 @@ func TestNewComponent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewComponent(tt.args.name), "NewComponent(%v)", tt.args.name)
+			assert.Equalf(t, tt.want, New(tt.args.name), "New(%v)", tt.args.name)
 		})
 	}
 }
@@ -59,12 +59,12 @@ func TestComponent_Name(t *testing.T) {
 	}{
 		{
 			name:      "empty name",
-			component: NewComponent(""),
+			component: New(""),
 			want:      "",
 		},
 		{
 			name:      "with name",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			want:      "c1",
 		},
 	}
@@ -83,12 +83,12 @@ func TestComponent_Description(t *testing.T) {
 	}{
 		{
 			name:      "no description",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			want:      "",
 		},
 		{
 			name:      "with description",
-			component: NewComponent("c1").WithDescription("descr"),
+			component: New("c1").WithDescription("descr"),
 			want:      "descr",
 		},
 	}
@@ -102,10 +102,10 @@ func TestComponent_Description(t *testing.T) {
 func TestComponent_FlushOutputs(t *testing.T) {
 	sink := port.New("sink")
 
-	componentWithNoOutputs := NewComponent("c1")
-	componentWithCleanOutputs := NewComponent("c1").WithOutputs("o1", "o2")
+	componentWithNoOutputs := New("c1")
+	componentWithCleanOutputs := New("c1").WithOutputs("o1", "o2")
 
-	componentWithAllOutputsSet := NewComponent("c1").WithOutputs("o1", "o2")
+	componentWithAllOutputsSet := New("c1").WithOutputs("o1", "o2")
 	componentWithAllOutputsSet.Outputs().ByNames("o1").PutSignals(signal.New(777))
 	componentWithAllOutputsSet.Outputs().ByNames("o2").PutSignals(signal.New(888))
 	componentWithAllOutputsSet.Outputs().ByNames("o1", "o2").PipeTo(sink)
@@ -121,14 +121,8 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			name:      "no outputs",
 			component: componentWithNoOutputs,
 			activationResult: componentWithNoOutputs.newActivationResultOK().
-				WithStateBefore(&StateSnapshot{
-					InputPorts:  port.MetadataMap{},
-					OutputPorts: port.MetadataMap{},
-				}).
-				WithStateAfter(&StateSnapshot{
-					InputPorts:  port.MetadataMap{},
-					OutputPorts: port.MetadataMap{},
-				}),
+				WithStateBefore(NewStateSnapshot()).
+				WithStateAfter(NewStateSnapshot()),
 			destPort: nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
@@ -139,14 +133,14 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			name:      "output has no signal set",
 			component: componentWithCleanOutputs,
 			activationResult: componentWithCleanOutputs.newActivationResultOK().
-				WithStateBefore(&StateSnapshot{
-					InputPorts:  port.MetadataMap{},
-					OutputPorts: port.MetadataMap{},
-				}).
-				WithStateAfter(&StateSnapshot{
-					InputPorts:  port.MetadataMap{},
-					OutputPorts: port.MetadataMap{},
-				}),
+				WithStateBefore(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
+					"o1": &port.Metadata{SignalBufferLen: 0},
+					"o2": &port.Metadata{SignalBufferLen: 0},
+				})).
+				WithStateAfter(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
+					"o1": &port.Metadata{SignalBufferLen: 0},
+					"o2": &port.Metadata{SignalBufferLen: 0},
+				})),
 			destPort: nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
@@ -156,21 +150,16 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			name:      "happy path",
 			component: componentWithAllOutputsSet,
 			activationResult: componentWithAllOutputsSet.newActivationResultOK().
-				WithStateBefore(&StateSnapshot{
-					InputPorts:  port.MetadataMap{},
-					OutputPorts: port.MetadataMap{},
-				}).
-				WithStateAfter(&StateSnapshot{
-					InputPorts: port.MetadataMap{},
-					OutputPorts: port.MetadataMap{
+				WithStateBefore(NewStateSnapshot()).
+				WithStateAfter(NewStateSnapshot().
+					WithOutputPortsMetadata(port.MetadataMap{
 						"o1": &port.Metadata{
 							SignalBufferLen: 1,
 						},
 						"o2": &port.Metadata{
 							SignalBufferLen: 1,
 						},
-					},
-				}),
+					})),
 			destPort: sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.Contains(t, destPort.Signals().AllPayloads(), 777)
@@ -197,12 +186,12 @@ func TestComponent_Inputs(t *testing.T) {
 	}{
 		{
 			name:      "no inputs",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			want:      port.Collection{},
 		},
 		{
 			name:      "with inputs",
-			component: NewComponent("c1").WithInputs("i1", "i2"),
+			component: New("c1").WithInputs("i1", "i2"),
 			want: port.Collection{
 				"i1": port.New("i1"),
 				"i2": port.New("i2"),
@@ -224,12 +213,12 @@ func TestComponent_Outputs(t *testing.T) {
 	}{
 		{
 			name:      "no outputs",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			want:      port.Collection{},
 		},
 		{
 			name:      "with outputs",
-			component: NewComponent("c1").WithOutputs("o1", "o2"),
+			component: New("c1").WithOutputs("o1", "o2"),
 			want: port.Collection{
 				"o1": port.New("o1"),
 				"o2": port.New("o2"),
@@ -254,7 +243,7 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				f: func(inputs port.Collection, outputs port.Collection) error {
 					outputs.ByName("out1").PutSignals(signal.New(23))
@@ -296,7 +285,7 @@ func TestComponent_WithDescription(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				description: "descr",
 			},
@@ -328,7 +317,7 @@ func TestComponent_WithInputs(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -345,7 +334,7 @@ func TestComponent_WithInputs(t *testing.T) {
 		},
 		{
 			name:      "no arg",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				portNames: nil,
 			},
@@ -377,7 +366,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -394,7 +383,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 		},
 		{
 			name:      "no arg",
-			component: NewComponent("c1"),
+			component: New("c1"),
 			args: args{
 				portNames: nil,
 			},
@@ -423,14 +412,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "empty component is not activated",
 			getComponent: func() *Component {
-				return NewComponent("c1")
+				return New("c1")
 			},
 			wantActivationResult: NewActivationResult("c1").SetActivated(false).WithActivationCode(ActivationCodeNoFunction),
 		},
 		{
 			name: "component with inputs set, but no activation func",
 			getComponent: func() *Component {
-				c := NewComponent("c1").WithInputs("i1")
+				c := New("c1").WithInputs("i1")
 				c.Inputs().ByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -441,7 +430,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "no input",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1", "i2").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
@@ -460,7 +449,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component is waiting for input, reset inputs",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1", "i2").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
@@ -481,7 +470,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component is waiting for input, keep inputs",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1", "i2").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 
@@ -502,7 +491,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "activated with error",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						return errors.New("test error")
@@ -519,7 +508,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "activated without error",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -537,7 +526,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component panicked with error",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -557,7 +546,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component panicked with string",
 			getComponent: func() *Component {
-				c := NewComponent("c1").
+				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {

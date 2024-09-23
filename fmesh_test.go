@@ -160,13 +160,13 @@ func TestFMesh_WithComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.NewComponent("c1"),
+					component.New("c1"),
 				},
 			},
 			want: &FMesh{
 				name: "fm1",
 				components: component.Collection{
-					"c1": component.NewComponent("c1"),
+					"c1": component.New("c1"),
 				},
 			},
 		},
@@ -175,15 +175,15 @@ func TestFMesh_WithComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.NewComponent("c1"),
-					component.NewComponent("c2"),
+					component.New("c1"),
+					component.New("c2"),
 				},
 			},
 			want: &FMesh{
 				name: "fm1",
 				components: component.Collection{
-					"c1": component.NewComponent("c1"),
-					"c2": component.NewComponent("c2"),
+					"c1": component.New("c1"),
+					"c2": component.New("c2"),
 				},
 			},
 		},
@@ -192,18 +192,18 @@ func TestFMesh_WithComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.NewComponent("c1").WithDescription("descr1"),
-					component.NewComponent("c2").WithDescription("descr2"),
-					component.NewComponent("c2").WithDescription("descr3"), //This will overwrite the previous one
-					component.NewComponent("c4").WithDescription("descr4"),
+					component.New("c1").WithDescription("descr1"),
+					component.New("c2").WithDescription("descr2"),
+					component.New("c2").WithDescription("descr3"), //This will overwrite the previous one
+					component.New("c4").WithDescription("descr4"),
 				},
 			},
 			want: &FMesh{
 				name: "fm1",
 				components: component.Collection{
-					"c1": component.NewComponent("c1").WithDescription("descr1"),
-					"c2": component.NewComponent("c2").WithDescription("descr3"),
-					"c4": component.NewComponent("c4").WithDescription("descr4"),
+					"c1": component.New("c1").WithDescription("descr1"),
+					"c2": component.New("c2").WithDescription("descr3"),
+					"c4": component.New("c4").WithDescription("descr4"),
 				},
 			},
 		},
@@ -281,7 +281,7 @@ func TestFMesh_Run(t *testing.T) {
 			name: "unsupported error handling strategy",
 			fm: New("fm").WithErrorHandlingStrategy(100).
 				WithComponents(
-					component.NewComponent("c1").
+					component.New("c1").
 						WithDescription("This component simply puts a constant on o1").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -307,7 +307,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: New("fm").
 				WithErrorHandlingStrategy(StopOnFirstErrorOrPanic).
 				WithComponents(
-					component.NewComponent("c1").
+					component.New("c1").
 						WithDescription("This component just returns an unexpected error").
 						WithInputs("i1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -332,7 +332,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: New("fm").
 				WithErrorHandlingStrategy(StopOnFirstPanic).
 				WithComponents(
-					component.NewComponent("c1").
+					component.New("c1").
 						WithDescription("This component just sends a number to c2").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -340,7 +340,7 @@ func TestFMesh_Run(t *testing.T) {
 							outputs.ByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
-					component.NewComponent("c2").
+					component.New("c2").
 						WithDescription("This component receives a number from c1 and passes it to c4").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -348,14 +348,14 @@ func TestFMesh_Run(t *testing.T) {
 							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
-					component.NewComponent("c3").
+					component.New("c3").
 						WithDescription("This component returns an error, but the mesh is configured to ignore errors").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 							return errors.New("boom")
 						}),
-					component.NewComponent("c4").
+					component.New("c4").
 						WithDescription("This component receives a number from c2 and panics").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -430,7 +430,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: New("fm").
 				WithErrorHandlingStrategy(IgnoreAll).
 				WithComponents(
-					component.NewComponent("c1").
+					component.New("c1").
 						WithDescription("This component just sends a number to c2").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -438,7 +438,7 @@ func TestFMesh_Run(t *testing.T) {
 							outputs.ByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
-					component.NewComponent("c2").
+					component.New("c2").
 						WithDescription("This component receives a number from c1 and passes it to c4").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -446,14 +446,14 @@ func TestFMesh_Run(t *testing.T) {
 							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
 						}),
-					component.NewComponent("c3").
+					component.New("c3").
 						WithDescription("This component returns an error, but the mesh is configured to ignore errors").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 							return errors.New("boom")
 						}),
-					component.NewComponent("c4").
+					component.New("c4").
 						WithDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -465,7 +465,7 @@ func TestFMesh_Run(t *testing.T) {
 							panic("no way")
 							return nil
 						}),
-					component.NewComponent("c5").
+					component.New("c5").
 						WithDescription("This component receives a number from c4").
 						WithInputs("i1").
 						WithOutputs("o1").
@@ -636,7 +636,7 @@ func TestFMesh_runCycle(t *testing.T) {
 		{
 			name: "mesh has components, but no one is activated",
 			fm: New("test").WithComponents(
-				component.NewComponent("c1").
+				component.New("c1").
 					WithDescription("I do not have any input signal set, hence I will never be activated").
 					WithInputs("i1").
 					WithOutputs("o1").
@@ -645,12 +645,12 @@ func TestFMesh_runCycle(t *testing.T) {
 						return nil
 					}),
 
-				component.NewComponent("c2").
+				component.New("c2").
 					WithDescription("I do not have activation func set").
 					WithInputs("i1").
 					WithOutputs("o1"),
 
-				component.NewComponent("c3").
+				component.New("c3").
 					WithDescription("I'm waiting for specific input").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
@@ -660,7 +660,7 @@ func TestFMesh_runCycle(t *testing.T) {
 						}
 						return nil
 					}),
-				component.NewComponent("c4").
+				component.New("c4").
 					WithDescription("I'm waiting for specific input").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
@@ -682,135 +682,133 @@ func TestFMesh_runCycle(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeNoInput).
-						WithStateBefore(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
+						WithStateBefore(component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
 								"i1": &port.Metadata{
 									SignalBufferLen: 0,
 								},
-							},
-							OutputPorts: port.MetadataMap{
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
 								"o1": &port.Metadata{
 									SignalBufferLen: 0,
 								},
-							},
-						}).
-						WithStateAfter(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
+							})).
+						WithStateAfter(component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
 								"i1": &port.Metadata{
 									SignalBufferLen: 0,
 								},
-							},
-							OutputPorts: port.MetadataMap{
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
 								"o1": &port.Metadata{
 									SignalBufferLen: 0,
 								},
-							},
-						}),
+							})),
 					component.NewActivationResult("c2").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeNoFunction).
-						WithStateBefore(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						}).
-						WithStateAfter(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						}),
+						WithStateBefore(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								})).
+						WithStateAfter(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								})),
 					component.NewActivationResult("c3").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeWaitingForInput).
-						WithStateBefore(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 1,
-								},
-								"i2": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						}).
-						WithStateAfter(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 1,
-								},
-								"i2": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						}),
+						WithStateBefore(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 1,
+									},
+									"i2": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								})).
+						WithStateAfter(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 1,
+									},
+									"i2": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								})),
 					component.NewActivationResult("c4").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeWaitingForInput).
-						WithStateBefore(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 1,
-								},
-								"i2": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						}).
-						WithStateAfter(&component.StateSnapshot{
-							InputPorts: port.MetadataMap{
-								"i1": &port.Metadata{
-									SignalBufferLen: 1,
-								},
-								"i2": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-							OutputPorts: port.MetadataMap{
-								"o1": &port.Metadata{
-									SignalBufferLen: 0,
-								},
-							},
-						})),
+						WithStateBefore(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 1,
+									},
+									"i2": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								})).
+						WithStateAfter(
+							component.NewStateSnapshot().
+								WithInputPortsMetadata(port.MetadataMap{
+									"i1": &port.Metadata{
+										SignalBufferLen: 1,
+									},
+									"i2": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}).
+								WithOutputPortsMetadata(port.MetadataMap{
+									"o1": &port.Metadata{
+										SignalBufferLen: 0,
+									},
+								}))),
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",
 			fm: New("test").WithComponents(
-				component.NewComponent("c1").
+				component.New("c1").
 					WithDescription("").
 					WithInputs("i1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						// No output
 						return nil
 					}),
-				component.NewComponent("c2").
+				component.New("c2").
 					WithDescription("").
 					WithInputs("i1").
 					WithOutputs("o1", "o2").
@@ -821,7 +819,7 @@ func TestFMesh_runCycle(t *testing.T) {
 						outputs.ByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5)...)
 						return nil
 					}),
-				component.NewComponent("c3").
+				component.New("c3").
 					WithDescription("").
 					WithInputs("i1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -838,73 +836,70 @@ func TestFMesh_runCycle(t *testing.T) {
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-						OutputPorts: port.MetadataMap{},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-						OutputPorts: port.MetadataMap{},
-					}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})),
 				component.NewActivationResult("c2").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-							"o2": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-							"o2": &port.Metadata{
-								SignalBufferLen: 4,
-							},
-						},
-					}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+								"o2": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+								"o2": &port.Metadata{
+									SignalBufferLen: 4,
+								},
+							})),
 				component.NewActivationResult("c3").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-						OutputPorts: port.MetadataMap{},
-					}).WithStateAfter(&component.StateSnapshot{
-					InputPorts: port.MetadataMap{
-						"i1": &port.Metadata{
-							SignalBufferLen: 1,
-						},
-					},
-					OutputPorts: port.MetadataMap{},
-				}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})),
 			),
 		},
 	}
@@ -941,8 +936,8 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 			),
 			fm: New("fm").WithComponents(
-				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
-				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
+				component.New("c1").WithInputs("i1").WithOutputs("o1"),
+				component.New("c2").WithInputs("i1").WithOutputs("o1"),
 			),
 			initFM: func(fm *FMesh) {
 				//Create a pipe
@@ -963,65 +958,65 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-					}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})),
 				component.NewActivationResult("c2").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-					})),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							}))),
 			fm: New("fm").WithComponents(
-				component.NewComponent("c1").
+				component.New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						return nil
 					}),
-				component.NewComponent("c2").
+				component.New("c2").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -1049,61 +1044,61 @@ func TestFMesh_drainComponentsAfterCycle(t *testing.T) {
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 1,
-							},
-						},
-					}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 1,
+								},
+							})),
 				component.NewActivationResult("c2").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK).
-					WithStateBefore(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}).
-					WithStateAfter(&component.StateSnapshot{
-						InputPorts: port.MetadataMap{
-							"i1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-						OutputPorts: port.MetadataMap{
-							"o1": &port.Metadata{
-								SignalBufferLen: 0,
-							},
-						},
-					}),
+					WithStateBefore(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})).
+					WithStateAfter(
+						component.NewStateSnapshot().
+							WithInputPortsMetadata(port.MetadataMap{
+								"i1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							}).
+							WithOutputPortsMetadata(port.MetadataMap{
+								"o1": &port.Metadata{
+									SignalBufferLen: 0,
+								},
+							})),
 			),
 			fm: New("fm").WithComponents(
-				component.NewComponent("c1").WithInputs("i1").WithOutputs("o1"),
-				component.NewComponent("c2").WithInputs("i1").WithOutputs("o1"),
+				component.New("c1").WithInputs("i1").WithOutputs("o1"),
+				component.New("c2").WithInputs("i1").WithOutputs("o1"),
 			),
 			initFM: func(fm *FMesh) {
 				//Create a pipe
