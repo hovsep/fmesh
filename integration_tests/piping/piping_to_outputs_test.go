@@ -21,7 +21,7 @@ func Test_PipingToOutputs(t *testing.T) {
 			// Simple case: both generator and injector are activated only once and in the same cycle
 			name: "single signal injection",
 			setupFM: func() *fmesh.FMesh {
-				gen := component.NewComponent("generator").
+				gen := component.New("generator").
 					WithDescription("Just generates a signal").
 					WithInputs("start").
 					WithOutputs("res").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -29,7 +29,7 @@ func Test_PipingToOutputs(t *testing.T) {
 					return nil
 				})
 
-				inj := component.NewComponent("injector").
+				inj := component.New("injector").
 					WithDescription("Adds signals to gen.res output port").
 					WithInputs("start").
 					WithOutputs("res").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -58,7 +58,7 @@ func Test_PipingToOutputs(t *testing.T) {
 			// 2 components have symmetrically connected output (both are generators and injectors at the same time)
 			name: "outputs exchange",
 			setupFM: func() *fmesh.FMesh {
-				c1 := component.NewComponent("c1").
+				c1 := component.New("c1").
 					WithDescription("Generates a signal").
 					WithInputs("start").
 					WithOutputs("res").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -66,7 +66,7 @@ func Test_PipingToOutputs(t *testing.T) {
 					return nil
 				})
 
-				c2 := component.NewComponent("c2").
+				c2 := component.New("c2").
 					WithDescription("Generates a signal").
 					WithInputs("start").
 					WithOutputs("res").WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {

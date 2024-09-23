@@ -16,13 +16,13 @@ func (group Group) FirstPayload() any {
 	//Intentionally not checking the group len
 	//as the method does not have returning error (api is simpler)
 	//and we can not just return nil, as nil may be a valid payload.
-	//So just let runtime panic
+	//Just letting the runtime panic
 	return group[0].Payload()
 }
 
 // AllPayloads returns a slice with all payloads of the all signals in the group
 func (group Group) AllPayloads() []any {
-	all := make([]any, 0)
+	all := make([]any, 0, len(group))
 	for _, s := range group {
 		all = append(all, s.Payload())
 	}

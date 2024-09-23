@@ -23,7 +23,7 @@ func Test_Fan(t *testing.T) {
 			name: "fan-out (3 pipes from 1 source port)",
 			setupFM: func() *fmesh.FMesh {
 				fm := fmesh.New("fan-out").WithComponents(
-					component.NewComponent("producer").
+					component.New("producer").
 						WithInputs("start").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -31,7 +31,7 @@ func Test_Fan(t *testing.T) {
 							return nil
 						}),
 
-					component.NewComponent("consumer1").
+					component.New("consumer1").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -40,7 +40,7 @@ func Test_Fan(t *testing.T) {
 							return nil
 						}),
 
-					component.NewComponent("consumer2").
+					component.New("consumer2").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -49,7 +49,7 @@ func Test_Fan(t *testing.T) {
 							return nil
 						}),
 
-					component.NewComponent("consumer3").
+					component.New("consumer3").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -86,7 +86,7 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-in (3 pipes coming into 1 destination port)",
 			setupFM: func() *fmesh.FMesh {
-				producer1 := component.NewComponent("producer1").
+				producer1 := component.New("producer1").
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -94,7 +94,7 @@ func Test_Fan(t *testing.T) {
 						return nil
 					})
 
-				producer2 := component.NewComponent("producer2").
+				producer2 := component.New("producer2").
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
@@ -102,14 +102,14 @@ func Test_Fan(t *testing.T) {
 						return nil
 					})
 
-				producer3 := component.NewComponent("producer3").
+				producer3 := component.New("producer3").
 					WithInputs("start").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
-				consumer := component.NewComponent("consumer").
+				consumer := component.New("consumer").
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {

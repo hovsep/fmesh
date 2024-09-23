@@ -6,12 +6,6 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-// @TODO add getter\setter and constructor
-type StateSnapshot struct {
-	InputPorts  port.MetadataMap
-	OutputPorts port.MetadataMap
-}
-
 type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 
 // Component defines a main building block of FMesh
@@ -23,8 +17,8 @@ type Component struct {
 	f           ActivationFunc
 }
 
-// NewComponent creates a new empty component
-func NewComponent(name string) *Component {
+// New creates initialized component
+func New(name string) *Component {
 	return &Component{
 		name:    name,
 		inputs:  port.NewCollection(),
@@ -93,13 +87,6 @@ func (c *Component) hasActivationFunction() bool {
 	return c.f != nil
 }
 
-func (c *Component) getStateSnapshot() *StateSnapshot {
-	return &StateSnapshot{
-		InputPorts:  c.Inputs().GetPortsMetadata(),
-		OutputPorts: c.Outputs().GetPortsMetadata(),
-	}
-}
-
 // MaybeActivate tries to run the activation function if all required conditions are met
 // @TODO: hide this method from user
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
@@ -158,12 +145,22 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 
 // FlushInputs ...
 // @TODO: hide this method from user
-func (c *Component) FlushInputs() {
-	c.Inputs().Flush(false)
+func (c *Component) FlushInputs(activationResult *ActivationResult, keepInputSignals bool) {
+	c.Inputs().Flush()
+	if !keepInputSignals {
+		// Inputs can not be just cleared, instead we remove signals which
+		// have been used (been set on inputs) during the last activation cycle
+		// thus not affecting ones the component could have been received from i2i pipes
+		for portName, p := range c.Inputs() {
+			p.DisposeSignals(activationResult.StateBefore().InputPortsMetadata()[portName].SignalBufferLen)
+		}
+	}
 }
 
 // FlushOutputs ...
 // @TODO: hide this method from user
 func (c *Component) FlushOutputs(activationResult *ActivationResult) {
-	c.Outputs().FlushProcessedSignals(activationResult.StateAfter().OutputPorts)
+	for portName, p := range c.Outputs() {
+		p.FlushAndDispose(activationResult.StateAfter().OutputPortsMetadata()[portName].SignalBufferLen)
+	}
 }

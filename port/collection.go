@@ -7,13 +7,6 @@ import (
 // Collection is a port collection with useful methods
 type Collection map[string]*Port
 
-// Metadata contains metadata about the port
-type Metadata struct {
-	SignalBufferLen int
-}
-
-type MetadataMap map[string]*Metadata
-
 // NewCollection creates empty collection
 func NewCollection() Collection {
 	return make(Collection)
@@ -72,17 +65,17 @@ func (collection Collection) WithSignals(signals ...*signal.Signal) Collection {
 	return collection
 }
 
-// ClearSignals removes signals from all ports in collection
-func (collection Collection) ClearSignals() {
+// Clear clears all ports in collection
+func (collection Collection) Clear() {
 	for _, p := range collection {
-		p.ClearSignals()
+		p.Clear()
 	}
 }
 
 // Flush flushes all ports in collection
-func (collection Collection) Flush(clearFlushed bool) {
+func (collection Collection) Flush() {
 	for _, p := range collection {
-		p.Flush(clearFlushed)
+		p.Flush()
 	}
 }
 
@@ -116,27 +109,4 @@ func (collection Collection) AllSignals() signal.Group {
 		group = append(group, p.Signals()...)
 	}
 	return group
-}
-
-// GetPortsMetadata returns info about current length of each port in collection
-func (collection Collection) GetPortsMetadata() MetadataMap {
-	res := make(MetadataMap)
-	for _, p := range collection {
-		res[p.Name()] = &Metadata{
-			SignalBufferLen: len(p.Signals()),
-		}
-	}
-	return res
-}
-
-func (collection Collection) DisposeProcessedSignals(portsMetadata MetadataMap) {
-	for pName, meta := range portsMetadata {
-		collection.ByName(pName).DisposeFirstNSignals(meta.SignalBufferLen)
-	}
-}
-
-func (collection Collection) FlushProcessedSignals(portsMetadata MetadataMap) {
-	for pName, meta := range portsMetadata {
-		collection.ByName(pName).FlushAndDisposeNSignals(meta.SignalBufferLen)
-	}
 }

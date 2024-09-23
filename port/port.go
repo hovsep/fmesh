@@ -30,6 +30,7 @@ func (p *Port) Signals() signal.Group {
 	return p.signals
 }
 
+// setSignals sets signals field
 func (p *Port) setSignals(signals signal.Group) {
 	p.signals = signals
 }
@@ -46,24 +47,22 @@ func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	return p
 }
 
-// ClearSignals removes all signals from the port
-func (p *Port) ClearSignals() {
+// Clear removes all signals from the port
+func (p *Port) Clear() {
 	p.setSignals(signal.NewGroup())
 }
 
-func (p *Port) DisposeFirstNSignals(n int) {
-	if n > len(p.Signals()) {
-		p.ClearSignals()
-		return
-	}
+// DisposeSignals removes n signals from the beginning of signal buffer
+func (p *Port) DisposeSignals(n int) {
 	p.setSignals(p.Signals()[n:])
 }
 
-func (p *Port) FlushAndDisposeNSignals(n int) {
+// FlushAndDispose flushes n signals and then disposes them
+func (p *Port) FlushAndDispose(n int) {
 	if n > len(p.Signals()) {
-		//Flush all
-		p.Flush(false)
-		p.ClearSignals()
+		//Flush all signals and clear
+		p.Flush()
+		p.Clear()
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
@@ -75,7 +74,7 @@ func (p *Port) FlushAndDisposeNSignals(n int) {
 		ForwardNSignals(p, outboundPort, n)
 	}
 
-	p.DisposeFirstNSignals(n)
+	p.DisposeSignals(n)
 }
 
 // HasSignals says whether port signals is set or not
@@ -101,7 +100,7 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 
 // Flush pushes signals to pipes, clears the port if needed and returns true when flushed
 // @TODO: hide this method from user
-func (p *Port) Flush(clearFlushed bool) bool {
+func (p *Port) Flush() bool {
 	if !p.HasSignals() || !p.HasPipes() {
 		return false
 	}
@@ -110,17 +109,15 @@ func (p *Port) Flush(clearFlushed bool) bool {
 		//Fan-Out
 		ForwardSignals(p, outboundPort)
 	}
-	if clearFlushed {
-		p.ClearSignals()
-	}
 	return true
 }
 
-// ForwardSignals puts signals from source port to destination port, without clearing the source port
+// ForwardSignals copies all signals from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
 	dest.PutSignals(source.Signals()...)
 }
 
+// ForwardNSignals forwards n signals
 func ForwardNSignals(source *Port, dest *Port, n int) {
 	dest.PutSignals(source.Signals()[:n]...)
 }
