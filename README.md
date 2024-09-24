@@ -30,7 +30,8 @@ It allows you to express your program as a mesh of interconnected components.</p
 <p>The framework is not suitable for implementing complex concurrent systems</p>
 
 <h2>Example:</h2>
-<pre>
+
+```go
 	// Create f-mesh
 	fm := fmesh.New("hello world").
 		WithComponents(
@@ -75,6 +76,6 @@ It allows you to express your program as a mesh of interconnected components.</p
 	//Extract results
 	results := fm.Components().ByName("case").Outputs().ByName("res").Signals().FirstPayload()
 	fmt.Printf("Result is :%v", results)
-</pre>
+```
 
 <h2>Version 0.1.0 coming soon</h2>
