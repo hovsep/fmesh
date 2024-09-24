@@ -19,22 +19,22 @@ type ActivationResult struct {
 type ActivationResultCode int
 
 const (
-	// ActivationCodeOK ...: component is activated and did not return any errors
+	// ActivationCodeOK : component is activated and did not return any errors
 	ActivationCodeOK ActivationResultCode = iota
 
-	// ActivationCodeNoInput ...: component is not activated because it has no input set
+	// ActivationCodeNoInput : component is not activated because it has no input set
 	ActivationCodeNoInput
 
-	// ActivationCodeNoFunction ...: component activation function is not set, so we can not activate it
+	// ActivationCodeNoFunction : component activation function is not set, so we can not activate it
 	ActivationCodeNoFunction
 
-	// ActivationCodeWaitingForInput ...: component is waiting for more inputs on some ports
+	// ActivationCodeWaitingForInput : component is waiting for more inputs on some ports
 	ActivationCodeWaitingForInput
 
-	// ActivationCodeReturnedError ...: component is activated, but returned an error
+	// ActivationCodeReturnedError : component is activated, but returned an error
 	ActivationCodeReturnedError
 
-	// ActivationCodePanicked ...: component is activated, but panicked
+	// ActivationCodePanicked : component is activated, but panicked
 	ActivationCodePanicked
 )
 

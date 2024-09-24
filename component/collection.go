@@ -1,6 +1,6 @@
 package component
 
-// ComponentCollection is a collection of components with useful methods
+// Collection is a collection of components with useful methods
 type Collection map[string]*Component
 
 // NewComponentCollection creates empty collection

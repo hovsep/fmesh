@@ -1,5 +1,6 @@
 package signal
 
+// Group represents a list of signals
 type Group []*Signal
 
 // NewGroup creates empty group
@@ -14,7 +15,7 @@ func NewGroup(payloads ...any) Group {
 // FirstPayload returns the first signal payload
 func (group Group) FirstPayload() any {
 	//Intentionally not checking the group len
-	//as the method does not have returning error (api is simpler)
+	//as the method does not have returning error (chaining api)
 	//and we can not just return nil, as nil may be a valid payload.
 	//Just letting the runtime panic
 	return group[0].Payload()
@@ -41,6 +42,7 @@ func (group Group) With(signals ...*Signal) Group {
 	return group
 }
 
+// WithPayloads allows to add new signals into the group providing only their payloads
 func (group Group) WithPayloads(payloads ...any) Group {
 	for _, p := range payloads {
 		group = append(group, New(p))

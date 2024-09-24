@@ -77,6 +77,20 @@ func (p *Port) FlushAndDispose(n int) {
 	p.DisposeSignals(n)
 }
 
+// Flush pushes signals to pipes and returns true when flushed
+// @TODO: hide this method from user
+func (p *Port) Flush() bool {
+	if !p.HasSignals() || !p.HasPipes() {
+		return false
+	}
+
+	for _, outboundPort := range p.pipes {
+		//Fan-Out
+		ForwardSignals(p, outboundPort)
+	}
+	return true
+}
+
 // HasSignals says whether port signals is set or not
 func (p *Port) HasSignals() bool {
 	return len(p.Signals()) > 0
@@ -96,20 +110,6 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 		}
 		p.pipes = p.pipes.With(toPort)
 	}
-}
-
-// Flush pushes signals to pipes, clears the port if needed and returns true when flushed
-// @TODO: hide this method from user
-func (p *Port) Flush() bool {
-	if !p.HasSignals() || !p.HasPipes() {
-		return false
-	}
-
-	for _, outboundPort := range p.pipes {
-		//Fan-Out
-		ForwardSignals(p, outboundPort)
-	}
-	return true
 }
 
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port

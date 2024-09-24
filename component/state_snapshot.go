@@ -16,12 +16,12 @@ func NewStateSnapshot() *StateSnapshot {
 	}
 }
 
-// InputPortsMetadata ... getter
+// InputPortsMetadata getter
 func (s *StateSnapshot) InputPortsMetadata() port.MetadataMap {
 	return s.inputPortsMetadata
 }
 
-// OutputPortsMetadata ... getter
+// OutputPortsMetadata getter
 func (s *StateSnapshot) OutputPortsMetadata() port.MetadataMap {
 	return s.outputPortsMetadata
 }
