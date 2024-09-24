@@ -143,7 +143,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	return
 }
 
-// FlushInputs ...
+// FlushInputs flushes and clears (when needed) input ports
 // @TODO: hide this method from user
 func (c *Component) FlushInputs(activationResult *ActivationResult, keepInputSignals bool) {
 	c.Inputs().Flush()
@@ -157,7 +157,7 @@ func (c *Component) FlushInputs(activationResult *ActivationResult, keepInputSig
 	}
 }
 
-// FlushOutputs ...
+// FlushOutputs flushes output ports and disposes processed signals
 // @TODO: hide this method from user
 func (c *Component) FlushOutputs(activationResult *ActivationResult) {
 	for portName, p := range c.Outputs() {

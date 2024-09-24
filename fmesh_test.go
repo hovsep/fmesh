@@ -274,7 +274,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name:    "empty mesh stops after first cycle",
 			fm:      New("fm"),
-			want:    cycle.NewCollection().Add(cycle.New()),
+			want:    cycle.NewCollection().With(cycle.New()),
 			wantErr: false,
 		},
 		{
@@ -294,7 +294,7 @@ func TestFMesh_Run(t *testing.T) {
 				//Fire the mesh
 				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New("start c1"))
 			},
-			want: cycle.NewCollection().Add(
+			want: cycle.NewCollection().With(
 				cycle.New().
 					WithActivationResults(component.NewActivationResult("c1").
 						SetActivated(true).
@@ -316,7 +316,7 @@ func TestFMesh_Run(t *testing.T) {
 			initFM: func(fm *FMesh) {
 				fm.Components().ByName("c1").Inputs().ByName("i1").PutSignals(signal.New("start"))
 			},
-			want: cycle.NewCollection().Add(
+			want: cycle.NewCollection().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -374,7 +374,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.Inputs().ByName("i1").PutSignals(signal.New("start c1"))
 				c3.Inputs().ByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewCollection().Add(
+			want: cycle.NewCollection().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -485,7 +485,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.Inputs().ByName("i1").PutSignals(signal.New("start c1"))
 				c3.Inputs().ByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewCollection().Add(
+			want: cycle.NewCollection().With(
 				//c1 and c3 activated, c3 finishes with error
 				cycle.New().
 					WithActivationResults(

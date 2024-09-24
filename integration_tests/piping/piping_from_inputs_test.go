@@ -88,7 +88,7 @@ func Test_PipingFromInput(t *testing.T) {
 					WithOutputsIndexed("o", 1, 2).
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
 						//Activate downstream components
-						outputs.PutSignals(inputs.AllSignals()[0])
+						outputs.PutSignals(inputs.ByName("start").Signals().First())
 						return nil
 					})
 
@@ -97,7 +97,7 @@ func Test_PipingFromInput(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.PutSignals(signal.New(1 + inputs.AllSignals().FirstPayload().(int)))
+						outputs.PutSignals(signal.New(1 + inputs.ByName("i1").Signals().FirstPayload().(int)))
 						return nil
 					})
 
@@ -106,7 +106,7 @@ func Test_PipingFromInput(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.PutSignals(signal.New(1 + inputs.AllSignals().FirstPayload().(int)))
+						outputs.PutSignals(signal.New(1 + inputs.ByName("i1").Signals().FirstPayload().(int)))
 						return nil
 					})
 
@@ -115,7 +115,7 @@ func Test_PipingFromInput(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.PutSignals(signal.New(2 * inputs.AllSignals().FirstPayload().(int)))
+						outputs.PutSignals(signal.New(2 * inputs.ByName("i1").Signals().FirstPayload().(int)))
 						return nil
 					})
 
@@ -138,7 +138,7 @@ func Test_PipingFromInput(t *testing.T) {
 					WithInputsIndexed("i", 1, 2).
 					WithOutputs("log").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						outputs.ByName("log").PutSignals(inputs.AllSignals()...)
+						outputs.ByName("log").PutSignals(inputs.ByNames("i1", "i2").Signals()...)
 						return nil
 					})
 

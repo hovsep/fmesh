@@ -1,6 +1,6 @@
 package component
 
-// ComponentCollection is a collection of components with useful methods
+// Collection is a collection of components with useful methods
 type Collection map[string]*Component
 
 // NewComponentCollection creates empty collection
@@ -13,9 +13,9 @@ func (collection Collection) ByName(name string) *Component {
 	return collection[name]
 }
 
-// Add adds new components to existing collection
-func (collection Collection) Add(newComponents ...*Component) Collection {
-	for _, component := range newComponents {
+// Add adds components to existing collection
+func (collection Collection) Add(components ...*Component) Collection {
+	for _, component := range components {
 		collection[component.Name()] = component
 	}
 	return collection
