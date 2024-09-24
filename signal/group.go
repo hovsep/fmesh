@@ -12,40 +12,45 @@ func NewGroup(payloads ...any) Group {
 	return group
 }
 
+// First returns the first signal in the group
+func (group Group) First() *Signal {
+	return group[0]
+}
+
 // FirstPayload returns the first signal payload
 func (group Group) FirstPayload() any {
-	//Intentionally not checking the group len
-	//as the method does not have returning error (chaining api)
-	//and we can not just return nil, as nil may be a valid payload.
-	//Just letting the runtime panic
-	return group[0].Payload()
+	return group.First().Payload()
 }
 
 // AllPayloads returns a slice with all payloads of the all signals in the group
 func (group Group) AllPayloads() []any {
-	all := make([]any, 0, len(group))
-	for _, s := range group {
-		all = append(all, s.Payload())
+	all := make([]any, len(group), len(group))
+	for i, sig := range group {
+		all[i] = sig.Payload()
 	}
 	return all
 }
 
-// With adds signals to group
+// With returns the group with added signals
 func (group Group) With(signals ...*Signal) Group {
-	for _, sig := range signals {
+	newGroup := make(Group, len(group)+len(signals))
+	copy(newGroup, group)
+	for i, sig := range signals {
 		if sig == nil {
 			continue
 		}
-		group = append(group, sig)
+		newGroup[len(group)+i] = sig
 	}
 
-	return group
+	return newGroup
 }
 
-// WithPayloads allows to add new signals into the group providing only their payloads
+// WithPayloads returns a group with added signals created from provided payloads
 func (group Group) WithPayloads(payloads ...any) Group {
-	for _, p := range payloads {
-		group = append(group, New(p))
+	newGroup := make(Group, len(group)+len(payloads))
+	copy(newGroup, group)
+	for i, p := range payloads {
+		newGroup[len(group)+i] = New(p)
 	}
-	return group
+	return newGroup
 }

@@ -103,7 +103,8 @@ func (collection Collection) AddIndexed(prefix string, startIndex int, endIndex 
 	return collection.Add(NewIndexedGroup(prefix, startIndex, endIndex)...)
 }
 
-func (collection Collection) AllSignals() signal.Group {
+// Signals returns all signals of all ports in the group
+func (collection Collection) Signals() signal.Group {
 	group := signal.NewGroup()
 	for _, p := range collection {
 		group = append(group, p.Signals()...)

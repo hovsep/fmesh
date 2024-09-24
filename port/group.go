@@ -35,12 +35,11 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) Group {
 
 // With adds ports to group
 func (group Group) With(ports ...*Port) Group {
-	for _, port := range ports {
-		if port == nil {
-			continue
-		}
-		group = append(group, port)
+	newGroup := make(Group, len(group)+len(ports))
+	copy(newGroup, group)
+	for i, port := range ports {
+		newGroup[len(group)+i] = port
 	}
 
-	return group
+	return newGroup
 }

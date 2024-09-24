@@ -8,10 +8,12 @@ func NewCollection() Collection {
 	return make(Collection, 0)
 }
 
-// Add adds cycle results to existing collection
-func (collection Collection) Add(newCycleResults ...*Cycle) Collection {
-	for _, cycleResult := range newCycleResults {
-		collection = append(collection, cycleResult)
+// With adds cycle results to existing collection
+func (collection Collection) With(cycleResults ...*Cycle) Collection {
+	newCollection := make(Collection, len(collection)+len(cycleResults))
+	copy(newCollection, collection)
+	for i, cycleResult := range cycleResults {
+		newCollection[len(collection)+i] = cycleResult
 	}
-	return collection
+	return newCollection
 }

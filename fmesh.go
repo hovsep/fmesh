@@ -102,7 +102,7 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 	allCycles := cycle.NewCollection()
 	for {
 		cycleResult := fm.runCycle()
-		allCycles = allCycles.Add(cycleResult)
+		allCycles = allCycles.With(cycleResult)
 
 		mustStop, err := fm.mustStop(cycleResult, len(allCycles))
 		if mustStop {
