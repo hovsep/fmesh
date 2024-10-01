@@ -111,19 +111,15 @@ func TestComponent_FlushOutputs(t *testing.T) {
 	componentWithAllOutputsSet.Outputs().ByNames("o1", "o2").PipeTo(sink)
 
 	tests := []struct {
-		name             string
-		component        *Component
-		activationResult *ActivationResult
-		destPort         *port.Port //Where the component flushes ALL it's inputs
-		assertions       func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
+		name       string
+		component  *Component
+		destPort   *port.Port //Where the component flushes ALL it's inputs
+		assertions func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
 	}{
 		{
 			name:      "no outputs",
 			component: componentWithNoOutputs,
-			activationResult: componentWithNoOutputs.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot()).
-				WithStateAfter(NewStateSnapshot()),
-			destPort: nil,
+			destPort:  nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
 				assert.Empty(t, componentAfterFlush.Outputs())
@@ -132,16 +128,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name:      "output has no signal set",
 			component: componentWithCleanOutputs,
-			activationResult: componentWithCleanOutputs.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
-					"o1": &port.Metadata{SignalBufferLen: 0},
-					"o2": &port.Metadata{SignalBufferLen: 0},
-				})).
-				WithStateAfter(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
-					"o1": &port.Metadata{SignalBufferLen: 0},
-					"o2": &port.Metadata{SignalBufferLen: 0},
-				})),
-			destPort: nil,
+			destPort:  nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
@@ -149,18 +136,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name:      "happy path",
 			component: componentWithAllOutputsSet,
-			activationResult: componentWithAllOutputsSet.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot()).
-				WithStateAfter(NewStateSnapshot().
-					WithOutputPortsMetadata(port.MetadataMap{
-						"o1": &port.Metadata{
-							SignalBufferLen: 1,
-						},
-						"o2": &port.Metadata{
-							SignalBufferLen: 1,
-						},
-					})),
-			destPort: sink,
+			destPort:  sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.Contains(t, destPort.Signals().AllPayloads(), 777)
 				assert.Contains(t, destPort.Signals().AllPayloads(), 888)
@@ -172,7 +148,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.component.FlushOutputs(tt.activationResult)
+			tt.component.FlushOutputs()
 			tt.assertions(t, tt.component, tt.destPort)
 		})
 	}
@@ -426,67 +402,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoFunction),
-		},
-		{
-			name: "no input",
-			getComponent: func() *Component {
-				c := New("c1").
-					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(false)
-						}
-
-						return nil
-					})
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeNoInput),
-		},
-		{
-			name: "component is waiting for input, reset inputs",
-			getComponent: func() *Component {
-				c := New("c1").
-					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(false)
-						}
-
-						return nil
-					})
-				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeWaitingForInput),
-		},
-		{
-			name: "component is waiting for input, keep inputs",
-			getComponent: func() *Component {
-				c := New("c1").
-					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(true)
-						}
-
-						return nil
-					})
-				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeWaitingForInput),
 		},
 		{
 			name: "activated with error",

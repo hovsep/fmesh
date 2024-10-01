@@ -84,16 +84,15 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 }
 
 // DrainComponents drains the data from activated components
-func (fm *FMesh) drainComponentsAfterCycle(cycle *cycle.Cycle) {
-	for _, c := range fm.components {
+func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
+	for _, c := range fm.Components() {
 		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
 
 		if !activationResult.Activated() {
 			continue
 		}
 
-		c.FlushOutputs(activationResult)
-		c.FlushInputs(activationResult, c.WantsToKeepInputs(activationResult)) // Inputs are a bit trickier
+		c.FlushOutputs()
 	}
 }
 
@@ -109,7 +108,7 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 			return allCycles, err
 		}
 
-		fm.drainComponentsAfterCycle(cycleResult)
+		fm.drainComponents(cycleResult)
 	}
 }
 

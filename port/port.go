@@ -52,43 +52,18 @@ func (p *Port) Clear() {
 	p.setSignals(signal.NewGroup())
 }
 
-// DisposeSignals removes n signals from the beginning of signal buffer
-func (p *Port) DisposeSignals(n int) {
-	p.setSignals(p.Signals()[n:])
-}
-
-// FlushAndDispose flushes n signals and then disposes them
-func (p *Port) FlushAndDispose(n int) {
-	if n > len(p.Signals()) {
-		//Flush all signals and clear
-		p.Flush()
-		p.Clear()
-	}
-
+// Flush pushes signals to pipes and clears the port
+// @TODO: hide this method from user
+func (p *Port) Flush() {
 	if !p.HasSignals() || !p.HasPipes() {
 		return
 	}
 
 	for _, outboundPort := range p.pipes {
 		//Fan-Out
-		ForwardNSignals(p, outboundPort, n)
-	}
-
-	p.DisposeSignals(n)
-}
-
-// Flush pushes signals to pipes and returns true when flushed
-// @TODO: hide this method from user
-func (p *Port) Flush() bool {
-	if !p.HasSignals() || !p.HasPipes() {
-		return false
-	}
-
-	for _, outboundPort := range p.pipes {
-		//Fan-Out
 		ForwardSignals(p, outboundPort)
 	}
-	return true
+	p.Clear()
 }
 
 // HasSignals says whether port signals is set or not
@@ -115,9 +90,4 @@ func (p *Port) PipeTo(toPorts ...*Port) {
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
 	dest.PutSignals(source.Signals()...)
-}
-
-// ForwardNSignals forwards n signals
-func ForwardNSignals(source *Port, dest *Port, n int) {
-	dest.PutSignals(source.Signals()[:n]...)
 }
