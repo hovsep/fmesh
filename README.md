@@ -8,25 +8,26 @@
 
 <h1>What is it?</h1>
 <p>F-Mesh is a simplistic FBP-inspired framework in Go. 
-It allows you to express your program as a mesh of interconnected components.</p>
+It allows you to express your program as a mesh of interconnected components.
+You can think of it as a simple functions orchestrator.
+</p>
 <h3>Main concepts:</h3>
 <ul>
 <li>F-Mesh consists of multiple <b>Components</b> - the main building blocks</li>
-<li>Components have unlimited number of input and output <p>Ports</p>. </li>
+<li>Components have unlimited number of input and output <p>Ports</p></li>
 <li>The main job of each component is to read inputs and provide outputs</li>
-<li>Each port of the component can be connected to one or multiple ports of any other component. Such connections are called <b>Pipes</b></li>
-<li>It does not matter whether port is input or output, any port can be connected to any other port</li>
+<li>Any output port can be connected to any input port via <b>Pipes</b></li>
 <li>The component behaviour is defined by its <b>Activation function</b></li>
 <li>The framework checks when components are ready to be activated and calls their activation functions concurrently</li>
 <li>One such iteration is called <b>Activation cycle</b></li>
-<li>On each activation cycle the framework does same things: activates all the components ready to be activated, flushes the data through pipes and disposes processed <b>Signals (the data chunks flowing between components)</b></li>
+<li>On each activation cycle the framework does same things: activates all the components ready for activation, flushes the data through pipes and disposes input <b>Signals (the data chunks flowing between components)</b></li>
 <li>Ports and pipes are type agnostic, any data can be transferred or aggregated on any port</li>
 <li>The framework works in discrete time, not it wall time. The quant of time is 1 activation cycle, which gives you "logical parallelism" out of the box</li>
 <li>F-Mesh is suitable for logical wireframing, simulation, functional-style computations and implementing simple concurrency patterns without using the concurrency primitives like channels or any sort of locks</li>
 </ul>
 
 <h1>What it is not?</h1>
-<p>F-mesh is not a classical FBP implementation, and it is not fully async. It does not support long-running components or wall-time events (like timers and tickers).</p>
+<p>F-mesh is not a classical FBP implementation, and it is not fully async. It does not support long-running components or wall-time events (like timers and tickers)</p>
 <p>The framework is not suitable for implementing complex concurrent systems</p>
 
 <h2>Example:</h2>
@@ -54,7 +55,10 @@ It allows you to express your program as a mesh of interconnected components.</p
 					outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 					return nil
 				})).
-		WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic)
+                .WithConfig(fmesh.Config{
+                                    ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+                                    CyclesLimit:           10,
+                                    })
 
 	fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
 		fm.Components().ByName("case").Inputs().ByName("i1"),
