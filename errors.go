@@ -21,4 +21,5 @@ var (
 	ErrHitAnErrorOrPanic                = errors.New("f-mesh hit an error or panic and will be stopped")
 	ErrHitAPanic                        = errors.New("f-mesh hit a panic and will be stopped")
 	ErrUnsupportedErrorHandlingStrategy = errors.New("unsupported error handling strategy")
+	ErrReachedMaxAllowedCycles          = errors.New("reached max allowed cycles")
 )

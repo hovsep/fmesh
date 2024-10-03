@@ -1,26 +1,40 @@
 package fmesh
 
 import (
-	"errors"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"sync"
 )
 
-// @TODO: move this to fm.Config
-const maxCyclesAllowed = 100 //Dev mode
+const UnlimitedCycles = 0
+
+type Config struct {
+	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics
+	ErrorHandlingStrategy ErrorHandlingStrategy
+	// CyclesLimit defines max number of activation cycles, 0 means no limit
+	CyclesLimit int
+}
+
+var defaultConfig = Config{
+	ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+	CyclesLimit:           1000,
+}
 
 // FMesh is the functional mesh
 type FMesh struct {
-	name                  string
-	description           string
-	components            component.Collection
-	errorHandlingStrategy ErrorHandlingStrategy
+	name        string
+	description string
+	components  component.Collection
+	config      Config
 }
 
 // New creates a new f-mesh
 func New(name string) *FMesh {
-	return &FMesh{name: name, components: component.NewComponentCollection()}
+	return &FMesh{
+		name:       name,
+		components: component.NewComponentCollection(),
+		config:     defaultConfig,
+	}
 }
 
 // Name getter
@@ -51,9 +65,9 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	return fm
 }
 
-// WithErrorHandlingStrategy defines how the mesh will handle errors
-func (fm *FMesh) WithErrorHandlingStrategy(strategy ErrorHandlingStrategy) *FMesh {
-	fm.errorHandlingStrategy = strategy
+// WithConfig sets the configuration and returns the f-mesh
+func (fm *FMesh) WithConfig(config Config) *FMesh {
+	fm.config = config
 	return fm
 }
 
@@ -113,8 +127,8 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 }
 
 func (fm *FMesh) mustStop(cycleResult *cycle.Cycle, cycleNum int) (bool, error) {
-	if cycleNum >= maxCyclesAllowed {
-		return true, errors.New("reached max allowed cycles")
+	if (fm.config.CyclesLimit > 0) && (cycleNum >= fm.config.CyclesLimit) {
+		return true, ErrReachedMaxAllowedCycles
 	}
 
 	//Check if we are done (no components activated during the cycle => all inputs are processed)
@@ -123,11 +137,17 @@ func (fm *FMesh) mustStop(cycleResult *cycle.Cycle, cycleNum int) (bool, error) 
 	}
 
 	//Check if mesh must stop because of configured error handling strategy
-	switch fm.errorHandlingStrategy {
+	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
-		return cycleResult.HasErrors() || cycleResult.HasPanics(), ErrHitAnErrorOrPanic
+		if cycleResult.HasErrors() || cycleResult.HasPanics() {
+			return true, ErrHitAnErrorOrPanic
+		}
+		return false, nil
 	case StopOnFirstPanic:
-		return cycleResult.HasPanics(), ErrHitAPanic
+		if cycleResult.HasPanics() {
+			return true, ErrHitAPanic
+		}
+		return false, nil
 	case IgnoreAll:
 		return false, nil
 	default:

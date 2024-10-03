@@ -42,7 +42,10 @@ func Test_Math(t *testing.T) {
 
 				c1.Outputs().ByName("res").PipeTo(c2.Inputs().ByName("num"))
 
-				return fmesh.New("fm").WithComponents(c1, c2).WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic)
+				return fmesh.New("fm").WithComponents(c1, c2).WithConfig(fmesh.Config{
+					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+					CyclesLimit:           10,
+				})
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("c1").Inputs().ByName("num").PutSignals(signal.New(32))

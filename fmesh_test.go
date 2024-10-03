@@ -26,6 +26,7 @@ func TestNew(t *testing.T) {
 			},
 			want: &FMesh{
 				components: component.Collection{},
+				config:     defaultConfig,
 			},
 		},
 		{
@@ -36,6 +37,7 @@ func TestNew(t *testing.T) {
 			want: &FMesh{
 				name:       "fm1",
 				components: component.Collection{},
+				config:     defaultConfig,
 			},
 		},
 	}
@@ -63,10 +65,10 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "",
 			},
 			want: &FMesh{
-				name:                  "fm1",
-				description:           "",
-				components:            component.Collection{},
-				errorHandlingStrategy: 0,
+				name:        "fm1",
+				description: "",
+				components:  component.Collection{},
+				config:      defaultConfig,
 			},
 		},
 		{
@@ -76,10 +78,10 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &FMesh{
-				name:                  "fm1",
-				description:           "descr",
-				components:            component.Collection{},
-				errorHandlingStrategy: 0,
+				name:        "fm1",
+				description: "descr",
+				components:  component.Collection{},
+				config:      defaultConfig,
 			},
 		},
 	}
@@ -90,9 +92,9 @@ func TestFMesh_WithDescription(t *testing.T) {
 	}
 }
 
-func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
+func TestFMesh_WithConfig(t *testing.T) {
 	type args struct {
-		strategy ErrorHandlingStrategy
+		config Config
 	}
 	tests := []struct {
 		name string
@@ -101,33 +103,27 @@ func TestFMesh_WithErrorHandlingStrategy(t *testing.T) {
 		want *FMesh
 	}{
 		{
-			name: "default strategy",
+			name: "custom config",
 			fm:   New("fm1"),
 			args: args{
-				strategy: 0,
+				config: Config{
+					ErrorHandlingStrategy: IgnoreAll,
+					CyclesLimit:           9999,
+				},
 			},
 			want: &FMesh{
-				name:                  "fm1",
-				components:            component.Collection{},
-				errorHandlingStrategy: StopOnFirstErrorOrPanic,
-			},
-		},
-		{
-			name: "custom strategy",
-			fm:   New("fm1"),
-			args: args{
-				strategy: IgnoreAll,
-			},
-			want: &FMesh{
-				name:                  "fm1",
-				components:            component.Collection{},
-				errorHandlingStrategy: IgnoreAll,
+				name:       "fm1",
+				components: component.Collection{},
+				config: Config{
+					ErrorHandlingStrategy: IgnoreAll,
+					CyclesLimit:           9999,
+				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.WithErrorHandlingStrategy(tt.args.strategy))
+			assert.Equal(t, tt.want, tt.fm.WithConfig(tt.args.config))
 		})
 	}
 }
@@ -137,10 +133,10 @@ func TestFMesh_WithComponents(t *testing.T) {
 		components []*component.Component
 	}
 	tests := []struct {
-		name string
-		fm   *FMesh
-		args args
-		want *FMesh
+		name           string
+		fm             *FMesh
+		args           args
+		wantComponents component.Collection
 	}{
 		{
 			name: "no components",
@@ -148,12 +144,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 			args: args{
 				components: nil,
 			},
-			want: &FMesh{
-				name:                  "fm1",
-				description:           "",
-				components:            component.Collection{},
-				errorHandlingStrategy: 0,
-			},
+			wantComponents: component.Collection{},
 		},
 		{
 			name: "with single component",
@@ -163,11 +154,8 @@ func TestFMesh_WithComponents(t *testing.T) {
 					component.New("c1"),
 				},
 			},
-			want: &FMesh{
-				name: "fm1",
-				components: component.Collection{
-					"c1": component.New("c1"),
-				},
+			wantComponents: component.Collection{
+				"c1": component.New("c1"),
 			},
 		},
 		{
@@ -179,12 +167,9 @@ func TestFMesh_WithComponents(t *testing.T) {
 					component.New("c2"),
 				},
 			},
-			want: &FMesh{
-				name: "fm1",
-				components: component.Collection{
-					"c1": component.New("c1"),
-					"c2": component.New("c2"),
-				},
+			wantComponents: component.Collection{
+				"c1": component.New("c1"),
+				"c2": component.New("c2"),
 			},
 		},
 		{
@@ -198,19 +183,16 @@ func TestFMesh_WithComponents(t *testing.T) {
 					component.New("c4").WithDescription("descr4"),
 				},
 			},
-			want: &FMesh{
-				name: "fm1",
-				components: component.Collection{
-					"c1": component.New("c1").WithDescription("descr1"),
-					"c2": component.New("c2").WithDescription("descr3"),
-					"c4": component.New("c4").WithDescription("descr4"),
-				},
+			wantComponents: component.Collection{
+				"c1": component.New("c1").WithDescription("descr1"),
+				"c2": component.New("c2").WithDescription("descr3"),
+				"c4": component.New("c4").WithDescription("descr4"),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.WithComponents(tt.args.components...))
+			assert.Equal(t, tt.wantComponents, tt.fm.WithComponents(tt.args.components...).Components())
 		})
 	}
 }
@@ -279,7 +261,10 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			name: "unsupported error handling strategy",
-			fm: New("fm").WithErrorHandlingStrategy(100).
+			fm: New("fm").WithConfig(Config{
+				ErrorHandlingStrategy: 100,
+				CyclesLimit:           0,
+			}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component simply puts a constant on o1").
@@ -305,7 +290,9 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first error on first cycle",
 			fm: New("fm").
-				WithErrorHandlingStrategy(StopOnFirstErrorOrPanic).
+				WithConfig(Config{
+					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+				}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just returns an unexpected error").
@@ -330,7 +317,9 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first panic on cycle 3",
 			fm: New("fm").
-				WithErrorHandlingStrategy(StopOnFirstPanic).
+				WithConfig(Config{
+					ErrorHandlingStrategy: StopOnFirstPanic,
+				}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
@@ -428,7 +417,9 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "all errors and panics are ignored",
 			fm: New("fm").
-				WithErrorHandlingStrategy(IgnoreAll).
+				WithConfig(Config{
+					ErrorHandlingStrategy: IgnoreAll,
+				}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
@@ -686,6 +677,110 @@ func TestFMesh_runCycle(t *testing.T) {
 				tt.initFM(tt.fm)
 			}
 			assert.Equal(t, tt.want, tt.fm.runCycle())
+		})
+	}
+}
+
+func TestFMesh_mustStop(t *testing.T) {
+	type args struct {
+		cycleResult *cycle.Cycle
+		cycleNum    int
+	}
+	tests := []struct {
+		name    string
+		fmesh   *FMesh
+		args    args
+		want    bool
+		wantErr error
+	}{
+		{
+			name:  "with default config, no time to stop",
+			fmesh: New("fm"),
+			args: args{
+				cycleResult: cycle.New().WithActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(true).
+						WithActivationCode(component.ActivationCodeOK),
+				),
+				cycleNum: 5,
+			},
+			want:    false,
+			wantErr: nil,
+		},
+		{
+			name:  "with default config, reached max cycles",
+			fmesh: New("fm"),
+			args: args{
+				cycleResult: cycle.New().WithActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(true).
+						WithActivationCode(component.ActivationCodeOK),
+				),
+				cycleNum: 1001,
+			},
+			want:    true,
+			wantErr: ErrReachedMaxAllowedCycles,
+		},
+		{
+			name:  "mesh finished naturally and must stop",
+			fmesh: New("fm"),
+			args: args{
+				cycleResult: cycle.New().WithActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(false).
+						WithActivationCode(component.ActivationCodeNoInput),
+				),
+				cycleNum: 5,
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			name: "mesh hit an error",
+			fmesh: New("fm").WithConfig(Config{
+				ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+				CyclesLimit:           UnlimitedCycles,
+			}),
+			args: args{
+				cycleResult: cycle.New().WithActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(true).
+						WithActivationCode(component.ActivationCodeReturnedError).
+						WithError(errors.New("c1 activation finished with error")),
+				),
+				cycleNum: 5,
+			},
+			want:    true,
+			wantErr: ErrHitAnErrorOrPanic,
+		},
+		{
+			name: "mesh hit a panic",
+			fmesh: New("fm").WithConfig(Config{
+				ErrorHandlingStrategy: StopOnFirstPanic,
+			}),
+			args: args{
+				cycleResult: cycle.New().WithActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(true).
+						WithActivationCode(component.ActivationCodePanicked).
+						WithError(errors.New("c1 panicked")),
+				),
+				cycleNum: 5,
+			},
+			want:    true,
+			wantErr: ErrHitAPanic,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.fmesh.mustStop(tt.args.cycleResult, tt.args.cycleNum)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
