@@ -106,7 +106,17 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
 			continue
 		}
 
+		if component.IsWaitingForInput(activationResult) {
+			if !component.WantsToKeepInputs(activationResult) {
+				c.ClearInputs()
+			}
+			// Components waiting for inputs are not flushed
+			continue
+		}
+
+		// Normally components are fully drained
 		c.FlushOutputs()
+		c.ClearInputs()
 	}
 }
 
@@ -127,7 +137,7 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 }
 
 func (fm *FMesh) mustStop(cycleResult *cycle.Cycle, cycleNum int) (bool, error) {
-	if (fm.config.CyclesLimit > 0) && (cycleNum >= fm.config.CyclesLimit) {
+	if (fm.config.CyclesLimit > 0) && (cycleNum > fm.config.CyclesLimit) {
 		return true, ErrReachedMaxAllowedCycles
 	}
 
