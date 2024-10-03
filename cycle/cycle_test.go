@@ -200,7 +200,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 			},
 		},
 		{
-			name: "adding to existing collection",
+			name: "adding to non-empty collection",
 			cycleResult: New().WithActivationResults(
 				component.NewActivationResult("c1").
 					SetActivated(false).

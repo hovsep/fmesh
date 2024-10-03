@@ -33,25 +33,25 @@ func (c *Component) WithDescription(description string) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = c.Inputs().Add(port.NewGroup(portNames...)...)
+	c.inputs = c.Inputs().With(port.NewGroup(portNames...)...)
 	return c
 }
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = c.Outputs().Add(port.NewGroup(portNames...)...)
+	c.outputs = c.Outputs().With(port.NewGroup(portNames...)...)
 	return c
 }
 
 // WithInputsIndexed creates multiple prefixed ports
 func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	c.inputs = c.Inputs().AddIndexed(prefix, startIndex, endIndex)
+	c.inputs = c.Inputs().WithIndexed(prefix, startIndex, endIndex)
 	return c
 }
 
 // WithOutputsIndexed creates multiple prefixed ports
 func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	c.outputs = c.Outputs().AddIndexed(prefix, startIndex, endIndex)
+	c.outputs = c.Outputs().WithIndexed(prefix, startIndex, endIndex)
 	return c
 }
 

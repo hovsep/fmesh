@@ -14,12 +14,9 @@ func NewGroup(names ...string) Group {
 	return group
 }
 
-// NewIndexedGroup is useful when you want to create group of ports with same prefix
+// NewIndexedGroup is useful to create group of ports with same prefix
+// NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0"
 func NewIndexedGroup(prefix string, startIndex int, endIndex int) Group {
-	if prefix == "" {
-		return nil
-	}
-
 	if startIndex > endIndex {
 		return nil
 	}

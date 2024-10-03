@@ -46,7 +46,7 @@ func TestNewComponent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, New(tt.args.name), "New(%v)", tt.args.name)
+			assert.Equal(t, tt.want, New(tt.args.name))
 		})
 	}
 }
@@ -233,10 +233,10 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
 			//Compare activation functions by they result and error
-			testInputs1 := port.NewCollection().Add(port.NewGroup("in1", "in2")...)
-			testInputs2 := port.NewCollection().Add(port.NewGroup("in1", "in2")...)
-			testOutputs1 := port.NewCollection().Add(port.NewGroup("out1", "out2")...)
-			testOutputs2 := port.NewCollection().Add(port.NewGroup("out1", "out2")...)
+			testInputs1 := port.NewCollection().With(port.NewGroup("in1", "in2")...)
+			testInputs2 := port.NewCollection().With(port.NewGroup("in1", "in2")...)
+			testOutputs1 := port.NewCollection().With(port.NewGroup("out1", "out2")...)
+			testOutputs2 := port.NewCollection().With(port.NewGroup("out1", "out2")...)
 			err1 := componentAfter.f(testInputs1, testOutputs1)
 			err2 := tt.args.f(testInputs2, testOutputs2)
 			assert.Equal(t, err1, err2)

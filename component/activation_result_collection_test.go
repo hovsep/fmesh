@@ -46,7 +46,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			},
 		},
 		{
-			name: "adding to existing collection",
+			name: "adding to non-empty collection",
 			collection: NewActivationResultCollection().Add(
 				New("c1").newActivationResultOK(),
 				New("c2").newActivationResultOK(),

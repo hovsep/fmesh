@@ -78,13 +78,21 @@ func (p *Port) HasPipes() bool {
 
 // PipeTo creates one or multiple pipes to other port(s)
 // @TODO: hide this method from AF
-func (p *Port) PipeTo(toPorts ...*Port) {
-	for _, toPort := range toPorts {
-		if toPort == nil {
+func (p *Port) PipeTo(destPorts ...*Port) {
+	for _, destPort := range destPorts {
+		if destPort == nil {
 			continue
 		}
-		p.pipes = p.pipes.With(toPort)
+		p.pipes = p.pipes.With(destPort)
 	}
+}
+
+// withPipes adds pipes and returns the port
+func (p *Port) withPipes(destPorts ...*Port) *Port {
+	for _, destPort := range destPorts {
+		p.PipeTo(destPort)
+	}
+	return p
 }
 
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port
