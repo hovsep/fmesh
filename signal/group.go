@@ -36,9 +36,6 @@ func (group Group) With(signals ...*Signal) Group {
 	newGroup := make(Group, len(group)+len(signals))
 	copy(newGroup, group)
 	for i, sig := range signals {
-		if sig == nil {
-			continue
-		}
 		newGroup[len(group)+i] = sig
 	}
 
