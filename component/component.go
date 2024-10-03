@@ -1,7 +1,6 @@
 package component
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hovsep/fmesh/port"
 )
@@ -34,25 +33,25 @@ func (c *Component) WithDescription(description string) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	c.inputs = c.Inputs().Add(port.NewGroup(portNames...)...)
+	c.inputs = c.Inputs().With(port.NewGroup(portNames...)...)
 	return c
 }
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	c.outputs = c.Outputs().Add(port.NewGroup(portNames...)...)
+	c.outputs = c.Outputs().With(port.NewGroup(portNames...)...)
 	return c
 }
 
 // WithInputsIndexed creates multiple prefixed ports
 func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	c.inputs = c.Inputs().AddIndexed(prefix, startIndex, endIndex)
+	c.inputs = c.Inputs().WithIndexed(prefix, startIndex, endIndex)
 	return c
 }
 
 // WithOutputsIndexed creates multiple prefixed ports
 func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	c.outputs = c.Outputs().AddIndexed(prefix, startIndex, endIndex)
+	c.outputs = c.Outputs().WithIndexed(prefix, startIndex, endIndex)
 	return c
 }
 
@@ -90,77 +89,46 @@ func (c *Component) hasActivationFunction() bool {
 // MaybeActivate tries to run the activation function if all required conditions are met
 // @TODO: hide this method from user
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
-	stateBeforeActivation := c.getStateSnapshot()
+	defer func() {
+		c.Inputs().Clear()
+	}()
 
 	defer func() {
 		if r := recover(); r != nil {
-			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r)).
-				WithStateBefore(stateBeforeActivation).
-				WithStateAfter(c.getStateSnapshot())
+			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
 		}
 	}()
 
 	if !c.hasActivationFunction() {
 		//Activation function is not set (maybe useful while the mesh is under development)
-		activationResult = c.newActivationResultNoFunction().
-			WithStateBefore(stateBeforeActivation).
-			WithStateAfter(c.getStateSnapshot())
+		activationResult = c.newActivationResultNoFunction()
 
 		return
 	}
 
 	if !c.inputs.AnyHasSignals() {
 		//No inputs set, stop here
-		activationResult = c.newActivationResultNoInput().
-			WithStateBefore(stateBeforeActivation).
-			WithStateAfter(c.getStateSnapshot())
+		activationResult = c.newActivationResultNoInput()
 		return
 	}
 
 	//Invoke the activation func
 	err := c.f(c.Inputs(), c.Outputs())
 
-	if errors.Is(err, errWaitingForInputs) {
-		activationResult = c.newActivationResultWaitingForInput().
-			WithStateBefore(stateBeforeActivation).
-			WithStateAfter(c.getStateSnapshot())
-
-		return
-	}
-
 	if err != nil {
-		activationResult = c.newActivationResultReturnedError(err).
-			WithStateBefore(stateBeforeActivation).
-			WithStateAfter(c.getStateSnapshot())
+		activationResult = c.newActivationResultReturnedError(err)
 
 		return
 	}
 
-	activationResult = c.newActivationResultOK().
-		WithStateBefore(stateBeforeActivation).
-		WithStateAfter(c.getStateSnapshot())
+	activationResult = c.newActivationResultOK()
 
 	return
 }
 
-// FlushInputs flushes and clears (when needed) input ports
-// @TODO: hide this method from user
-func (c *Component) FlushInputs(activationResult *ActivationResult, keepInputSignals bool) {
-	c.Inputs().Flush()
-	if !keepInputSignals {
-		// Inputs can not be just cleared, instead we remove signals which
-		// have been used (been set on inputs) during the last activation cycle
-		// thus not affecting ones the component could have been received from i2i pipes
-		for portName, p := range c.Inputs() {
-			p.DisposeSignals(activationResult.StateBefore().InputPortsMetadata()[portName].SignalBufferLen)
-		}
-	}
-}
-
-// FlushOutputs flushes output ports and disposes processed signals
-// @TODO: hide this method from user
-func (c *Component) FlushOutputs(activationResult *ActivationResult) {
-	for portName, p := range c.Outputs() {
-		p.FlushAndDispose(activationResult.StateAfter().OutputPortsMetadata()[portName].SignalBufferLen)
+// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
+func (c *Component) FlushOutputs() {
+	for _, out := range c.outputs {
+		out.Flush()
 	}
 }

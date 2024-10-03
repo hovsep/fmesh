@@ -46,7 +46,7 @@ func TestNewComponent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, New(tt.args.name), "New(%v)", tt.args.name)
+			assert.Equal(t, tt.want, New(tt.args.name))
 		})
 	}
 }
@@ -111,19 +111,15 @@ func TestComponent_FlushOutputs(t *testing.T) {
 	componentWithAllOutputsSet.Outputs().ByNames("o1", "o2").PipeTo(sink)
 
 	tests := []struct {
-		name             string
-		component        *Component
-		activationResult *ActivationResult
-		destPort         *port.Port //Where the component flushes ALL it's inputs
-		assertions       func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
+		name       string
+		component  *Component
+		destPort   *port.Port //Where the component flushes ALL it's inputs
+		assertions func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
 	}{
 		{
 			name:      "no outputs",
 			component: componentWithNoOutputs,
-			activationResult: componentWithNoOutputs.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot()).
-				WithStateAfter(NewStateSnapshot()),
-			destPort: nil,
+			destPort:  nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
 				assert.Empty(t, componentAfterFlush.Outputs())
@@ -132,16 +128,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name:      "output has no signal set",
 			component: componentWithCleanOutputs,
-			activationResult: componentWithCleanOutputs.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
-					"o1": &port.Metadata{SignalBufferLen: 0},
-					"o2": &port.Metadata{SignalBufferLen: 0},
-				})).
-				WithStateAfter(NewStateSnapshot().WithOutputPortsMetadata(port.MetadataMap{
-					"o1": &port.Metadata{SignalBufferLen: 0},
-					"o2": &port.Metadata{SignalBufferLen: 0},
-				})),
-			destPort: nil,
+			destPort:  nil,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
@@ -149,18 +136,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name:      "happy path",
 			component: componentWithAllOutputsSet,
-			activationResult: componentWithAllOutputsSet.newActivationResultOK().
-				WithStateBefore(NewStateSnapshot()).
-				WithStateAfter(NewStateSnapshot().
-					WithOutputPortsMetadata(port.MetadataMap{
-						"o1": &port.Metadata{
-							SignalBufferLen: 1,
-						},
-						"o2": &port.Metadata{
-							SignalBufferLen: 1,
-						},
-					})),
-			destPort: sink,
+			destPort:  sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
 				assert.Contains(t, destPort.Signals().AllPayloads(), 777)
 				assert.Contains(t, destPort.Signals().AllPayloads(), 888)
@@ -172,7 +148,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.component.FlushOutputs(tt.activationResult)
+			tt.component.FlushOutputs()
 			tt.assertions(t, tt.component, tt.destPort)
 		})
 	}
@@ -257,10 +233,10 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
 			//Compare activation functions by they result and error
-			testInputs1 := port.NewCollection().Add(port.NewGroup("in1", "in2")...)
-			testInputs2 := port.NewCollection().Add(port.NewGroup("in1", "in2")...)
-			testOutputs1 := port.NewCollection().Add(port.NewGroup("out1", "out2")...)
-			testOutputs2 := port.NewCollection().Add(port.NewGroup("out1", "out2")...)
+			testInputs1 := port.NewCollection().With(port.NewGroup("in1", "in2")...)
+			testInputs2 := port.NewCollection().With(port.NewGroup("in1", "in2")...)
+			testOutputs1 := port.NewCollection().With(port.NewGroup("out1", "out2")...)
+			testOutputs2 := port.NewCollection().With(port.NewGroup("out1", "out2")...)
 			err1 := componentAfter.f(testInputs1, testOutputs1)
 			err2 := tt.args.f(testInputs2, testOutputs2)
 			assert.Equal(t, err1, err2)
@@ -410,7 +386,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		wantActivationResult *ActivationResult
 	}{
 		{
-			name: "empty component is not activated",
+			name: "component with no activation function and no inputs",
 			getComponent: func() *Component {
 				return New("c1")
 			},
@@ -428,16 +404,13 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				WithActivationCode(ActivationCodeNoFunction),
 		},
 		{
-			name: "no input",
+			name: "component with activation func, but no inputs",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1", "i2").
+					WithInputs("i1").
+					WithOutputs("o1").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(false)
-						}
-
+						port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 						return nil
 					})
 				return c
@@ -445,48 +418,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoInput),
-		},
-		{
-			name: "component is waiting for input, reset inputs",
-			getComponent: func() *Component {
-				c := New("c1").
-					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(false)
-						}
-
-						return nil
-					})
-				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeWaitingForInput),
-		},
-		{
-			name: "component is waiting for input, keep inputs",
-			getComponent: func() *Component {
-				c := New("c1").
-					WithInputs("i1", "i2").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(true)
-						}
-
-						return nil
-					})
-				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeWaitingForInput),
 		},
 		{
 			name: "activated with error",
@@ -567,15 +498,113 @@ func TestComponent_MaybeActivate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotActivationResult := tt.getComponent().MaybeActivate()
-			assert.Equal(t, gotActivationResult.Activated(), tt.wantActivationResult.Activated())
-			assert.Equal(t, gotActivationResult.ComponentName(), tt.wantActivationResult.ComponentName())
-			assert.Equal(t, gotActivationResult.Code(), tt.wantActivationResult.Code())
+			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
+			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
+			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
 			if tt.wantActivationResult.HasError() {
 				assert.EqualError(t, gotActivationResult.Error(), tt.wantActivationResult.Error().Error())
 			} else {
 				assert.False(t, gotActivationResult.HasError())
 			}
 
+		})
+	}
+}
+
+func TestComponent_WithInputsIndexed(t *testing.T) {
+	type args struct {
+		prefix     string
+		startIndex int
+		endIndex   int
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "component has no ports before",
+			component: New("c").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Outputs(), 2)
+				assert.Len(t, component.Inputs(), 3)
+			},
+		},
+		{
+			name:      "component has ports before",
+			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Outputs(), 2)
+				assert.Len(t, component.Inputs(), 5)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithInputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_WithOutputsIndexed(t *testing.T) {
+	type args struct {
+		prefix     string
+		startIndex int
+		endIndex   int
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "component has no ports before",
+			component: New("c").WithInputs("i1", "i2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Inputs(), 2)
+				assert.Len(t, component.Outputs(), 3)
+			},
+		},
+		{
+			name:      "component has ports before",
+			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Inputs(), 2)
+				assert.Len(t, component.Outputs(), 5)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithOutputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
 		})
 	}
 }

@@ -59,8 +59,8 @@ func (collection Collection) PutSignals(signals ...*signal.Signal) {
 	}
 }
 
-// WithSignals adds signals to every port in collection and returns the collection
-func (collection Collection) WithSignals(signals ...*signal.Signal) Collection {
+// withSignals adds signals to every port in collection and returns the collection
+func (collection Collection) withSignals(signals ...*signal.Signal) Collection {
 	collection.PutSignals(signals...)
 	return collection
 }
@@ -79,28 +79,25 @@ func (collection Collection) Flush() {
 	}
 }
 
-// PipeTo creates pipes from each port in collection
-func (collection Collection) PipeTo(toPorts ...*Port) {
+// PipeTo creates pipes from each port in collection to given destination ports
+func (collection Collection) PipeTo(destPorts ...*Port) {
 	for _, p := range collection {
-		p.PipeTo(toPorts...)
+		p.PipeTo(destPorts...)
 	}
 }
 
-// Add adds ports to collection
-func (collection Collection) Add(ports ...*Port) Collection {
+// With adds ports to collection and returns it
+func (collection Collection) With(ports ...*Port) Collection {
 	for _, port := range ports {
-		if port == nil {
-			continue
-		}
 		collection[port.Name()] = port
 	}
 
 	return collection
 }
 
-// AddIndexed creates ports with names like "o1","o2","o3" and so on
-func (collection Collection) AddIndexed(prefix string, startIndex int, endIndex int) Collection {
-	return collection.Add(NewIndexedGroup(prefix, startIndex, endIndex)...)
+// WithIndexed creates ports with names like "o1","o2","o3" and so on
+func (collection Collection) WithIndexed(prefix string, startIndex int, endIndex int) Collection {
+	return collection.With(NewIndexedGroup(prefix, startIndex, endIndex)...)
 }
 
 // Signals returns all signals of all ports in the group

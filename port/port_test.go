@@ -7,8 +7,6 @@ import (
 )
 
 func TestPort_HasSignals(t *testing.T) {
-	portWithSignal := New("portWithSignal").WithSignals(signal.New(123))
-
 	tests := []struct {
 		name string
 		port *Port
@@ -21,7 +19,7 @@ func TestPort_HasSignals(t *testing.T) {
 		},
 		{
 			name: "port has normal signals",
-			port: portWithSignal,
+			port: New("p").WithSignals(signal.New(123)),
 			want: true,
 		},
 	}
@@ -33,8 +31,6 @@ func TestPort_HasSignals(t *testing.T) {
 }
 
 func TestPort_Signals(t *testing.T) {
-	portWithSignal := New("portWithSignal").WithSignals(signal.New(123))
-
 	tests := []struct {
 		name string
 		port *Port
@@ -47,7 +43,7 @@ func TestPort_Signals(t *testing.T) {
 		},
 		{
 			name: "with signal",
-			port: portWithSignal,
+			port: New("p").WithSignals(signal.New(123)),
 			want: signal.NewGroup(123),
 		},
 	}
@@ -59,8 +55,6 @@ func TestPort_Signals(t *testing.T) {
 }
 
 func TestPort_Clear(t *testing.T) {
-	portWithSignal := New("portWithSignal").WithSignals(signal.New(111))
-
 	tests := []struct {
 		name   string
 		before *Port
@@ -68,8 +62,8 @@ func TestPort_Clear(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			before: portWithSignal,
-			after:  &Port{name: "portWithSignal", pipes: Group{}, signals: signal.Group{}},
+			before: New("p").WithSignals(signal.New(111)),
+			after:  &Port{name: "p", pipes: Group{}, signals: signal.Group{}},
 		},
 		{
 			name:   "cleaning empty port",
@@ -131,77 +125,51 @@ func TestPort_PipeTo(t *testing.T) {
 }
 
 func TestPort_PutSignals(t *testing.T) {
-	portWithSingleSignal := New("portWithSingleSignal").WithSignals(signal.New(11))
-
-	portWithMultipleSignals := New("portWithMultipleSignals").WithSignals(signal.NewGroup(11, 12)...)
-
-	portWithMultipleSignals2 := New("portWithMultipleSignals2").WithSignals(signal.NewGroup(55, 66)...)
-
 	type args struct {
 		signals []*signal.Signal
 	}
 	tests := []struct {
-		name   string
-		before *Port
-		after  *Port
-		args   args
+		name         string
+		port         *Port
+		signalsAfter signal.Group
+		args         args
 	}{
 		{
-			name:   "single signal to empty port",
-			before: New("emptyPort"),
-			after: &Port{
-				name:    "emptyPort",
-				signals: signal.NewGroup(11),
-				pipes:   Group{},
-			},
+			name:         "single signal to empty port",
+			port:         New("emptyPort"),
+			signalsAfter: signal.NewGroup(11),
 			args: args{
 				signals: signal.NewGroup(11),
 			},
 		},
 		{
-			name:   "multiple signals to empty port",
-			before: New("p"),
-			after: &Port{
-				name:    "p",
-				signals: signal.NewGroup(11, 12),
-				pipes:   Group{},
-			},
+			name:         "multiple signals to empty port",
+			port:         New("p"),
+			signalsAfter: signal.NewGroup(11, 12),
 			args: args{
 				signals: signal.NewGroup(11, 12),
 			},
 		},
 		{
-			name:   "single signal to port with single signal",
-			before: portWithSingleSignal,
-			after: &Port{
-				name:    "portWithSingleSignal",
-				signals: signal.NewGroup(11, 12),
-				pipes:   Group{},
-			},
+			name:         "single signal to port with single signal",
+			port:         New("p").WithSignals(signal.New(11)),
+			signalsAfter: signal.NewGroup(11, 12),
 			args: args{
 				signals: signal.NewGroup(12),
 			},
 		},
 		{
-			name:   "single signals to port with multiple signals",
-			before: portWithMultipleSignals,
-			after: &Port{
-				name:    "portWithMultipleSignals",
-				signals: signal.NewGroup(11, 12, 13),
-				pipes:   Group{},
-			},
+			name:         "single signals to port with multiple signals",
+			port:         New("p").WithSignals(signal.NewGroup(11, 12)...),
+			signalsAfter: signal.NewGroup(11, 12, 13),
 			args: args{
 				signals: signal.NewGroup(13),
 			},
 		},
 		{
-			name:   "multiple signals to port with multiple signals",
-			before: portWithMultipleSignals2,
-			after: &Port{
-				name:    "portWithMultipleSignals2",
-				signals: signal.NewGroup(55, 66, 13, 14), //Notice LIFO order
-				pipes:   Group{},
-			},
+			name:         "multiple signals to port with multiple signals",
+			port:         New("p").WithSignals(signal.NewGroup(55, 66)...),
+			signalsAfter: signal.NewGroup(55, 66, 13, 14), //Notice LIFO order
 			args: args{
 				signals: signal.NewGroup(13, 14),
 			},
@@ -209,8 +177,8 @@ func TestPort_PutSignals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.before.PutSignals(tt.args.signals...)
-			assert.ElementsMatch(t, tt.after.Signals(), tt.before.Signals())
+			tt.port.PutSignals(tt.args.signals...)
+			assert.ElementsMatch(t, tt.signalsAfter, tt.port.Signals())
 		})
 	}
 }
@@ -273,136 +241,96 @@ func TestNewPort(t *testing.T) {
 	}
 }
 
-func TestPort_Flush(t *testing.T) {
+func TestPort_HasPipes(t *testing.T) {
 	tests := []struct {
-		name       string
-		getSource  func() *Port
-		getDest    func() *Port
-		wantResult bool
-		assertions func(t *testing.T, source *Port, dest *Port)
+		name string
+		port *Port
+		want bool
 	}{
 		{
-			name: "port with no signals",
-			getSource: func() *Port {
-				return New("empty_src")
-			},
-			getDest: func() *Port {
-				return New("empty_dest")
-			},
-			assertions: func(t *testing.T, source *Port, dest *Port) {
-				assert.False(t, source.HasSignals())
-				assert.False(t, dest.HasSignals())
-			},
-			wantResult: false,
+			name: "no pipes",
+			port: New("p"),
+			want: false,
 		},
 		{
-			name: "flush to empty port",
-			getSource: func() *Port {
-				return New("portWithSignal").WithSignals(signal.New(111))
-			},
-			getDest: func() *Port {
-				return New("empty_dest")
-			},
-			assertions: func(t *testing.T, source *Port, dest *Port) {
-				//Source port is not cleared during flush
-				assert.True(t, source.HasSignals())
-
-				//Signals transferred to destination port
-				assert.True(t, dest.HasSignals())
-				assert.Equal(t, dest.Signals().FirstPayload().(int), 111)
-			},
-			wantResult: true,
-		},
-		{
-			name: "flush to port with signals",
-			getSource: func() *Port {
-				return New("portWithSignal").WithSignals(signal.New(333))
-			},
-			getDest: func() *Port {
-				return New("portWithMultipleSignals").WithSignals(signal.NewGroup(444, 555, 666)...)
-			},
-			assertions: func(t *testing.T, source *Port, dest *Port) {
-				//Source port is not cleared
-				assert.True(t, source.HasSignals())
-
-				//Destination port now has 1 more signal
-				assert.True(t, dest.HasSignals())
-				assert.Len(t, dest.Signals(), 4)
-				assert.Contains(t, dest.Signals().AllPayloads(), 333)
-			},
-			wantResult: true,
+			name: "with pipes",
+			port: New("p1").withPipes(New("p2")),
+			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			source := tt.getSource()
-			dest := tt.getDest()
-			source.PipeTo(dest)
-			assert.Equal(t, tt.wantResult, source.Flush())
-			if tt.assertions != nil {
-				tt.assertions(t, source, dest)
-			}
+			assert.Equal(t, tt.want, tt.port.HasPipes())
 		})
 	}
 }
 
-func TestPort_DisposeSignals(t *testing.T) {
-	type args struct {
-		n int
-	}
+func TestPort_Flush(t *testing.T) {
 	tests := []struct {
-		name        string
-		port        *Port
-		wantSignals signal.Group
-		wantPanic   bool
-		args        args
+		name       string
+		srcPort    *Port
+		assertions func(t *testing.T, srcPort *Port)
 	}{
 		{
-			name:        "empty port",
-			port:        New("empty"),
-			wantSignals: signal.Group{},
-			args: args{
-				n: 0,
+			name:    "port with signals and no pipes is not flushed",
+			srcPort: New("p").WithSignals(signal.NewGroup(1, 2, 3)...),
+			assertions: func(t *testing.T, srcPort *Port) {
+				assert.True(t, srcPort.HasSignals())
+				assert.Len(t, srcPort.Signals(), 3)
+				assert.False(t, srcPort.HasPipes())
 			},
 		},
 		{
-			name:        "with signals",
-			port:        New("p1").WithSignals(signal.NewGroup(11, 22, 33, 44, 55, 66)...),
-			wantSignals: signal.NewGroup(44, 55, 66),
-			args: args{
-				n: 3,
+			name:    "empty port with pipes is not flushed",
+			srcPort: New("p").withPipes(New("p1"), New("p2")),
+			assertions: func(t *testing.T, srcPort *Port) {
+				assert.False(t, srcPort.HasSignals())
+				assert.True(t, srcPort.HasPipes())
 			},
 		},
 		{
-			name:        "n > len(signals), panic",
-			port:        New("p1").WithSignals(signal.NewGroup(11, 22, 33, 44, 55, 66)...),
-			wantSignals: signal.NewGroup(),
-			wantPanic:   true,
-			args: args{
-				n: 10,
+			name: "flush to empty ports",
+			srcPort: New("p").WithSignals(signal.NewGroup(1, 2, 3)...).
+				withPipes(
+					New("p1"),
+					New("p2")),
+			assertions: func(t *testing.T, srcPort *Port) {
+				assert.False(t, srcPort.HasSignals())
+				assert.True(t, srcPort.HasPipes())
+				for _, destPort := range srcPort.pipes {
+					assert.True(t, destPort.HasSignals())
+					assert.Len(t, destPort.Signals(), 3)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 1)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 2)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 3)
+				}
 			},
 		},
 		{
-			name:        "n = 0 has no effect",
-			port:        New("p1").WithSignals(signal.NewGroup(11, 22, 33, 44, 55, 66)...),
-			wantSignals: signal.NewGroup(11, 22, 33, 44, 55, 66),
-			args: args{
-				n: 0,
+			name: "flush to non empty ports",
+			srcPort: New("p").WithSignals(signal.NewGroup(1, 2, 3)...).
+				withPipes(
+					New("p1").WithSignals(signal.NewGroup(4, 5, 6)...),
+					New("p2").WithSignals(signal.NewGroup(7, 8, 9)...)),
+			assertions: func(t *testing.T, srcPort *Port) {
+				assert.False(t, srcPort.HasSignals())
+				assert.True(t, srcPort.HasPipes())
+				for _, destPort := range srcPort.pipes {
+					assert.True(t, destPort.HasSignals())
+					assert.Len(t, destPort.Signals(), 6)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 1)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 2)
+					assert.Contains(t, destPort.Signals().AllPayloads(), 3)
+				}
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			if tt.wantPanic {
-				assert.Panics(t, func() {
-					tt.port.DisposeSignals(tt.args.n)
-				})
-			} else {
-				tt.port.DisposeSignals(tt.args.n)
-				assert.Equal(t, tt.wantSignals, tt.port.Signals())
+			tt.srcPort.Flush()
+			if tt.assertions != nil {
+				tt.assertions(t, tt.srcPort)
 			}
-
 		})
 	}
 }

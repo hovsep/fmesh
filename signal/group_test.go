@@ -108,3 +108,103 @@ func TestGroup_AllPayloads(t *testing.T) {
 		})
 	}
 }
+
+func TestGroup_With(t *testing.T) {
+	type args struct {
+		signals []*Signal
+	}
+	tests := []struct {
+		name  string
+		group Group
+		args  args
+		want  Group
+	}{
+		{
+			name:  "no addition to empty group",
+			group: NewGroup(),
+			args: args{
+				signals: nil,
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "no addition to group",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				signals: nil,
+			},
+			want: NewGroup(1, 2, 3),
+		},
+		{
+			name:  "addition to empty group",
+			group: NewGroup(),
+			args: args{
+				signals: NewGroup(3, 4, 5),
+			},
+			want: NewGroup(3, 4, 5),
+		},
+		{
+			name:  "addition to group",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				signals: NewGroup(4, 5, 6),
+			},
+			want: NewGroup(1, 2, 3, 4, 5, 6),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.group.With(tt.args.signals...))
+		})
+	}
+}
+
+func TestGroup_WithPayloads(t *testing.T) {
+	type args struct {
+		payloads []any
+	}
+	tests := []struct {
+		name  string
+		group Group
+		args  args
+		want  Group
+	}{
+		{
+			name:  "no addition to empty group",
+			group: NewGroup(),
+			args: args{
+				payloads: nil,
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "addition to empty group",
+			group: NewGroup(),
+			args: args{
+				payloads: []any{1, 2, 3},
+			},
+			want: NewGroup(1, 2, 3),
+		},
+		{
+			name:  "no addition to group",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				payloads: nil,
+			},
+			want: NewGroup(1, 2, 3),
+		},
+		{
+			name:  "addition to group",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				payloads: []any{4, 5, 6},
+			},
+			want: NewGroup(1, 2, 3, 4, 5, 6),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.group.WithPayloads(tt.args.payloads...))
+		})
+	}
+}

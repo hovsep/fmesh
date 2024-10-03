@@ -80,7 +80,7 @@ func TestCollection_Add(t *testing.T) {
 			},
 		},
 		{
-			name:       "adding to existing collection",
+			name:       "adding to non-empty collection",
 			collection: NewComponentCollection().Add(New("c1"), New("c2")),
 			args: args{
 				components: []*Component{New("c3"), New("c4")},
