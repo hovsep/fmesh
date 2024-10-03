@@ -32,7 +32,7 @@ type FMesh struct {
 func New(name string) *FMesh {
 	return &FMesh{
 		name:       name,
-		components: component.NewComponentCollection(),
+		components: component.NewCollection(),
 		config:     defaultConfig,
 	}
 }
@@ -60,7 +60,7 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 // WithComponents adds components to f-mesh
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	for _, c := range components {
-		fm.components.Add(c)
+		fm.components = fm.components.With(c)
 	}
 	return fm
 }
