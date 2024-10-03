@@ -386,7 +386,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		wantActivationResult *ActivationResult
 	}{
 		{
-			name: "empty component is not activated",
+			name: "component with no activation function and no inputs",
 			getComponent: func() *Component {
 				return New("c1")
 			},
@@ -402,6 +402,22 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoFunction),
+		},
+		{
+			name: "component with activation func, but no inputs",
+			getComponent: func() *Component {
+				c := New("c1").
+					WithInputs("i1").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+						return nil
+					})
+				return c
+			},
+			wantActivationResult: NewActivationResult("c1").
+				SetActivated(false).
+				WithActivationCode(ActivationCodeNoInput),
 		},
 		{
 			name: "activated with error",
@@ -482,15 +498,113 @@ func TestComponent_MaybeActivate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotActivationResult := tt.getComponent().MaybeActivate()
-			assert.Equal(t, gotActivationResult.Activated(), tt.wantActivationResult.Activated())
-			assert.Equal(t, gotActivationResult.ComponentName(), tt.wantActivationResult.ComponentName())
-			assert.Equal(t, gotActivationResult.Code(), tt.wantActivationResult.Code())
+			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
+			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
+			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
 			if tt.wantActivationResult.HasError() {
 				assert.EqualError(t, gotActivationResult.Error(), tt.wantActivationResult.Error().Error())
 			} else {
 				assert.False(t, gotActivationResult.HasError())
 			}
 
+		})
+	}
+}
+
+func TestComponent_WithInputsIndexed(t *testing.T) {
+	type args struct {
+		prefix     string
+		startIndex int
+		endIndex   int
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "component has no ports before",
+			component: New("c").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Outputs(), 2)
+				assert.Len(t, component.Inputs(), 3)
+			},
+		},
+		{
+			name:      "component has ports before",
+			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Outputs(), 2)
+				assert.Len(t, component.Inputs(), 5)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithInputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_WithOutputsIndexed(t *testing.T) {
+	type args struct {
+		prefix     string
+		startIndex int
+		endIndex   int
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "component has no ports before",
+			component: New("c").WithInputs("i1", "i2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Inputs(), 2)
+				assert.Len(t, component.Outputs(), 3)
+			},
+		},
+		{
+			name:      "component has ports before",
+			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			args: args{
+				prefix:     "p",
+				startIndex: 1,
+				endIndex:   3,
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Inputs(), 2)
+				assert.Len(t, component.Outputs(), 5)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithOutputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
 		})
 	}
 }
