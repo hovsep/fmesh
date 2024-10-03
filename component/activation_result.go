@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -30,6 +31,12 @@ const (
 
 	// ActivationCodePanicked : component is activated, but panicked
 	ActivationCodePanicked
+
+	// ActivationCodeWaitingForInputs : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behaviour)
+	ActivationCodeWaitingForInputsClear
+
+	// ActivationCodeWaitingForInputsKeep : component waits for specific inputs, but wants to keep current input signals for the next cycle
+	ActivationCodeWaitingForInputsKeep
 )
 
 // NewActivationResult creates a new activation result for given component
@@ -60,13 +67,13 @@ func (ar *ActivationResult) Code() ActivationResultCode {
 	return ar.code
 }
 
-// HasError returns true when activation result has an error
-func (ar *ActivationResult) HasError() bool {
+// IsError returns true when activation result has an error
+func (ar *ActivationResult) IsError() bool {
 	return ar.code == ActivationCodeReturnedError && ar.Error() != nil
 }
 
-// HasPanic returns true when activation result is derived from panic
-func (ar *ActivationResult) HasPanic() bool {
+// IsPanic returns true when activation result is derived from panic
+func (ar *ActivationResult) IsPanic() bool {
 	return ar.code == ActivationCodePanicked && ar.Error() != nil
 }
 
@@ -124,4 +131,24 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 		SetActivated(true).
 		WithActivationCode(ActivationCodePanicked).
 		WithError(err)
+}
+
+func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
+	activationCode := ActivationCodeWaitingForInputsClear
+	if errors.Is(err, errWaitingForInputsKeep) {
+		activationCode = ActivationCodeWaitingForInputsKeep
+	}
+	return NewActivationResult(c.Name()).
+		SetActivated(true).
+		WithActivationCode(activationCode).
+		WithError(err)
+}
+
+func IsWaitingForInput(activationResult *ActivationResult) bool {
+	return activationResult.Code() == ActivationCodeWaitingForInputsClear ||
+		activationResult.Code() == ActivationCodeWaitingForInputsKeep
+}
+
+func WantsToKeepInputs(activationResult *ActivationResult) bool {
+	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }

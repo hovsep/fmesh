@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hovsep/fmesh/port"
 )
@@ -90,10 +91,6 @@ func (c *Component) hasActivationFunction() bool {
 // @TODO: hide this method from user
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	defer func() {
-		c.Inputs().Clear()
-	}()
-
-	defer func() {
 		if r := recover(); r != nil {
 			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
 		}
@@ -102,7 +99,6 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	if !c.hasActivationFunction() {
 		//Activation function is not set (maybe useful while the mesh is under development)
 		activationResult = c.newActivationResultNoFunction()
-
 		return
 	}
 
@@ -115,14 +111,17 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	//Invoke the activation func
 	err := c.f(c.Inputs(), c.Outputs())
 
+	if errors.Is(err, errWaitingForInputs) {
+		activationResult = c.newActivationResultWaitingForInputs(err)
+		return
+	}
+
 	if err != nil {
 		activationResult = c.newActivationResultReturnedError(err)
-
 		return
 	}
 
 	activationResult = c.newActivationResultOK()
-
 	return
 }
 
@@ -131,4 +130,9 @@ func (c *Component) FlushOutputs() {
 	for _, out := range c.outputs {
 		out.Flush()
 	}
+}
+
+// ClearInputs clears all input ports
+func (c *Component) ClearInputs() {
+	c.Inputs().Clear()
 }

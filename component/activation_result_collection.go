@@ -19,7 +19,7 @@ func (collection ActivationResultCollection) Add(activationResults ...*Activatio
 // HasErrors tells whether the collection contains at least one activation result with error and respective code
 func (collection ActivationResultCollection) HasErrors() bool {
 	for _, ar := range collection {
-		if ar.HasError() {
+		if ar.IsError() {
 			return true
 		}
 	}
@@ -29,7 +29,7 @@ func (collection ActivationResultCollection) HasErrors() bool {
 // HasPanics tells whether the collection contains at least one activation result with panic and respective code
 func (collection ActivationResultCollection) HasPanics() bool {
 	for _, ar := range collection {
-		if ar.HasPanic() {
+		if ar.IsPanic() {
 			return true
 		}
 	}

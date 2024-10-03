@@ -18,7 +18,7 @@ func TestCollection_ByName(t *testing.T) {
 	}{
 		{
 			name:       "component found",
-			components: NewComponentCollection().Add(New("c1"), New("c2")),
+			components: NewCollection().With(New("c1"), New("c2")),
 			args: args{
 				name: "c2",
 			},
@@ -32,7 +32,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "component not found",
-			components: NewComponentCollection().Add(New("c1"), New("c2")),
+			components: NewCollection().With(New("c1"), New("c2")),
 			args: args{
 				name: "c3",
 			},
@@ -46,7 +46,7 @@ func TestCollection_ByName(t *testing.T) {
 	}
 }
 
-func TestCollection_Add(t *testing.T) {
+func TestCollection_With(t *testing.T) {
 	type args struct {
 		components []*Component
 	}
@@ -58,7 +58,7 @@ func TestCollection_Add(t *testing.T) {
 	}{
 		{
 			name:       "adding nothing to empty collection",
-			collection: NewComponentCollection(),
+			collection: NewCollection(),
 			args: args{
 				components: nil,
 			},
@@ -68,7 +68,7 @@ func TestCollection_Add(t *testing.T) {
 		},
 		{
 			name:       "adding to empty collection",
-			collection: NewComponentCollection(),
+			collection: NewCollection(),
 			args: args{
 				components: []*Component{New("c1"), New("c2")},
 			},
@@ -81,7 +81,7 @@ func TestCollection_Add(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewComponentCollection().Add(New("c1"), New("c2")),
+			collection: NewCollection().With(New("c1"), New("c2")),
 			args: args{
 				components: []*Component{New("c3"), New("c4")},
 			},
@@ -97,9 +97,9 @@ func TestCollection_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.Add(tt.args.components...)
+			collectionAfter := tt.collection.With(tt.args.components...)
 			if tt.assertions != nil {
-				tt.assertions(t, tt.collection)
+				tt.assertions(t, collectionAfter)
 			}
 		})
 	}

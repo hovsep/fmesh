@@ -601,10 +601,10 @@ func TestFMesh_Run(t *testing.T) {
 					assert.Equal(t, tt.want[i].ActivationResults()[componentName].ComponentName(), gotActivationResult.ComponentName())
 					assert.Equal(t, tt.want[i].ActivationResults()[componentName].Code(), gotActivationResult.Code())
 
-					if tt.want[i].ActivationResults()[componentName].HasError() {
+					if tt.want[i].ActivationResults()[componentName].IsError() {
 						assert.EqualError(t, tt.want[i].ActivationResults()[componentName].Error(), gotActivationResult.Error().Error())
 					} else {
-						assert.False(t, gotActivationResult.HasError())
+						assert.False(t, gotActivationResult.IsError())
 					}
 				}
 			}

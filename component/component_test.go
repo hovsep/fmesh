@@ -501,10 +501,10 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
 			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
-			if tt.wantActivationResult.HasError() {
+			if tt.wantActivationResult.IsError() {
 				assert.EqualError(t, gotActivationResult.Error(), tt.wantActivationResult.Error().Error())
 			} else {
-				assert.False(t, gotActivationResult.HasError())
+				assert.False(t, gotActivationResult.IsError())
 			}
 
 		})
