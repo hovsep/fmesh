@@ -494,6 +494,56 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				WithActivationCode(ActivationCodePanicked).
 				WithError(errors.New("panicked with: oh shrimps")),
 		},
+		{
+			name: "component is waiting for inputs",
+			getComponent: func() *Component {
+				c1 := New("c1").
+					WithInputs("i1", "i2").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+							return NewErrWaitForInputs(false)
+						}
+						return nil
+					})
+
+				// Only one input set
+				c1.Inputs().ByName("i1").PutSignals(signal.New(123))
+
+				return c1
+			},
+			wantActivationResult: &ActivationResult{
+				componentName: "c1",
+				activated:     true,
+				code:          ActivationCodeWaitingForInputsClear,
+				err:           NewErrWaitForInputs(false),
+			},
+		},
+		{
+			name: "component is waiting for inputs and wants to keep them",
+			getComponent: func() *Component {
+				c1 := New("c1").
+					WithInputs("i1", "i2").
+					WithOutputs("o1").
+					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+							return NewErrWaitForInputs(true)
+						}
+						return nil
+					})
+
+				// Only one input set
+				c1.Inputs().ByName("i1").PutSignals(signal.New(123))
+
+				return c1
+			},
+			wantActivationResult: &ActivationResult{
+				componentName: "c1",
+				activated:     true,
+				code:          ActivationCodeWaitingForInputsKeep,
+				err:           NewErrWaitForInputs(true),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
