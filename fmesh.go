@@ -103,20 +103,29 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
 		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
 
 		if !activationResult.Activated() {
+			// Component did not activate, so it did not create new output signals, hence nothing to drain
 			continue
 		}
+
+		// By default, all outputs are flushed and all inputs are cleared
+		shouldFlushOutputs := true
+		shouldClearInputs := true
 
 		if component.IsWaitingForInput(activationResult) {
-			if !component.WantsToKeepInputs(activationResult) {
-				c.ClearInputs()
-			}
-			// Components waiting for inputs are not flushed
-			continue
+			// @TODO: maybe we should clear outputs
+			// in order to prevent leaking outputs from previous cycle
+			// (if outputs were set before returning errWaitingForInputs)
+			shouldFlushOutputs = false
+			shouldClearInputs = !component.WantsToKeepInputs(activationResult)
 		}
 
-		// Normally components are fully drained
-		c.FlushOutputs()
-		c.ClearInputs()
+		if shouldFlushOutputs {
+			c.FlushOutputs()
+		}
+
+		if shouldClearInputs {
+			c.ClearInputs()
+		}
 	}
 }
 
