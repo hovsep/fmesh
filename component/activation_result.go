@@ -32,7 +32,7 @@ const (
 	// ActivationCodePanicked : component is activated, but panicked
 	ActivationCodePanicked
 
-	// ActivationCodeWaitingForInputs : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behaviour)
+	// ActivationCodeWaitingForInputsClear : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behaviour)
 	ActivationCodeWaitingForInputsClear
 
 	// ActivationCodeWaitingForInputsKeep : component waits for specific inputs, but wants to keep current input signals for the next cycle
