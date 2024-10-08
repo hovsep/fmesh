@@ -28,6 +28,11 @@ func (p *Port) Signals() signal.Group {
 	return p.signals
 }
 
+// Pipes getter
+func (p *Port) Pipes() Group {
+	return p.pipes
+}
+
 // setSignals sets signals field
 func (p *Port) setSignals(signals signal.Group) {
 	p.signals = signals
