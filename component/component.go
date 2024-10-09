@@ -12,10 +12,10 @@ type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 // Component defines a main building block of FMesh
 type Component struct {
 	common.NamedEntity
-	description string
-	inputs      port.Collection
-	outputs     port.Collection
-	f           ActivationFunc
+	common.DescribedEntity
+	inputs  port.Collection
+	outputs port.Collection
+	f       ActivationFunc
 }
 
 // New creates initialized component
@@ -29,7 +29,7 @@ func New(name string) *Component {
 
 // WithDescription sets a description
 func (c *Component) WithDescription(description string) *Component {
-	c.description = description
+	c.DescribedEntity = common.NewDescribedEntity(description)
 	return c
 }
 
@@ -61,11 +61,6 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex i
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	c.f = f
 	return c
-}
-
-// Description getter
-func (c *Component) Description() string {
-	return c.description
 }
 
 // Inputs getter
