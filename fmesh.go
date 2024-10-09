@@ -24,9 +24,9 @@ var defaultConfig = Config{
 // FMesh is the functional mesh
 type FMesh struct {
 	common.NamedEntity
-	description string
-	components  component.Collection
-	config      Config
+	common.DescribedEntity
+	components component.Collection
+	config     Config
 }
 
 // New creates a new f-mesh
@@ -38,18 +38,13 @@ func New(name string) *FMesh {
 	}
 }
 
-// Description getter
-func (fm *FMesh) Description() string {
-	return fm.description
-}
-
 func (fm *FMesh) Components() component.Collection {
 	return fm.components
 }
 
 // WithDescription sets a description
 func (fm *FMesh) WithDescription(description string) *FMesh {
-	fm.description = description
+	fm.DescribedEntity = common.NewDescribedEntity(description)
 	return fm
 }
 
