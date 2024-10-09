@@ -81,7 +81,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: &Port{name: "p1", pipes: Group{}, signals: signal.Group{}},
+			want: New("p1"),
 		},
 		{
 			name:       "port with signals found",
@@ -89,11 +89,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p2",
 			},
-			want: &Port{
-				name:    "p2",
-				signals: signal.NewGroup().With(signal.New(12)),
-				pipes:   Group{},
-			},
+			want: New("p2").WithSignals(signal.New(12)),
 		},
 		{
 			name:       "port not found",
@@ -132,32 +128,15 @@ func TestCollection_ByNames(t *testing.T) {
 			args: args{
 				names: []string{"p1"},
 			},
-			want: Collection{
-				"p1": &Port{
-					name:    "p1",
-					pipes:   Group{},
-					signals: signal.Group{},
-				},
-			},
+			want: NewCollection().With(New("p1")),
 		},
 		{
 			name:  "multiple ports found",
-			ports: NewCollection().With(NewGroup("p1", "p2")...),
+			ports: NewCollection().With(NewGroup("p1", "p2", "p3", "p4")...),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: Collection{
-				"p1": &Port{
-					name:    "p1",
-					pipes:   Group{},
-					signals: signal.Group{},
-				},
-				"p2": &Port{
-					name:    "p2",
-					pipes:   Group{},
-					signals: signal.Group{},
-				},
-			},
+			want: NewCollection().With(NewGroup("p1", "p2")...),
 		},
 		{
 			name:  "single port not found",
@@ -173,18 +152,7 @@ func TestCollection_ByNames(t *testing.T) {
 			args: args{
 				names: []string{"p1", "p2", "p3"},
 			},
-			want: Collection{
-				"p1": &Port{
-					name:    "p1",
-					pipes:   Group{},
-					signals: signal.Group{},
-				},
-				"p2": &Port{
-					name:    "p2",
-					pipes:   Group{},
-					signals: signal.Group{},
-				},
-			},
+			want: NewCollection().With(NewGroup("p1", "p2")...),
 		},
 	}
 	for _, tt := range tests {
