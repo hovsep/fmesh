@@ -2,6 +2,7 @@ package component
 
 import (
 	"errors"
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -22,79 +23,19 @@ func TestNewComponent(t *testing.T) {
 			args: args{
 				name: "",
 			},
-			want: &Component{
-				name:        "",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
+			want: New(""),
 		},
 		{
 			name: "with name",
 			args: args{
 				name: "multiplier",
 			},
-			want: &Component{
-				name:        "multiplier",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
+			want: New("multiplier"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, New(tt.args.name))
-		})
-	}
-}
-
-func TestComponent_Name(t *testing.T) {
-	tests := []struct {
-		name      string
-		component *Component
-		want      string
-	}{
-		{
-			name:      "empty name",
-			component: New(""),
-			want:      "",
-		},
-		{
-			name:      "with name",
-			component: New("c1"),
-			want:      "c1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.Name())
-		})
-	}
-}
-
-func TestComponent_Description(t *testing.T) {
-	tests := []struct {
-		name      string
-		component *Component
-		want      string
-	}{
-		{
-			name:      "no description",
-			component: New("c1"),
-			want:      "",
-		},
-		{
-			name:      "with description",
-			component: New("c1").WithDescription("descr"),
-			want:      "descr",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.Description())
 		})
 	}
 }
@@ -266,11 +207,11 @@ func TestComponent_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &Component{
-				name:        "c1",
-				description: "descr",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
+				NamedEntity:     common.NewNamedEntity("c1"),
+				DescribedEntity: common.NewDescribedEntity("descr"),
+				inputs:          port.Collection{},
+				outputs:         port.Collection{},
+				f:               nil,
 			},
 		},
 	}
@@ -298,8 +239,8 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
+				NamedEntity:     common.NewNamedEntity("c1"),
+				DescribedEntity: common.NewDescribedEntity(""),
 				inputs: port.Collection{
 					"p1": port.New("p1"),
 					"p2": port.New("p2"),
@@ -315,11 +256,11 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
+				NamedEntity:     common.NewNamedEntity("c1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				inputs:          port.Collection{},
+				outputs:         port.Collection{},
+				f:               nil,
 			},
 		},
 	}
@@ -347,9 +288,9 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				inputs:      port.Collection{},
+				NamedEntity:     common.NewNamedEntity("c1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				inputs:          port.Collection{},
 				outputs: port.Collection{
 					"p1": port.New("p1"),
 					"p2": port.New("p2"),
@@ -364,11 +305,11 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
+				NamedEntity:     common.NewNamedEntity("c1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				inputs:          port.Collection{},
+				outputs:         port.Collection{},
+				f:               nil,
 			},
 		},
 	}
@@ -652,6 +593,41 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			componentAfter := tt.component.WithOutputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_WithLabels(t *testing.T) {
+	type args struct {
+		labels common.LabelsCollection
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "happy path",
+			component: New("c1"),
+			args: args{
+				labels: common.LabelsCollection{
+					"l1": "v1",
+					"l2": "v2",
+				},
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Labels(), 2)
+				assert.True(t, component.HasAllLabels("l1", "l2"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithLabels(tt.args.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}
