@@ -66,10 +66,10 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "",
 			},
 			want: &FMesh{
-				NamedEntity: common.NewNamedEntity("fm1"),
-				description: "",
-				components:  component.Collection{},
-				config:      defaultConfig,
+				NamedEntity:     common.NewNamedEntity("fm1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				components:      component.Collection{},
+				config:          defaultConfig,
 			},
 		},
 		{
@@ -79,10 +79,10 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &FMesh{
-				NamedEntity: common.NewNamedEntity("fm1"),
-				description: "descr",
-				components:  component.Collection{},
-				config:      defaultConfig,
+				NamedEntity:     common.NewNamedEntity("fm1"),
+				DescribedEntity: common.NewDescribedEntity("descr"),
+				components:      component.Collection{},
+				config:          defaultConfig,
 			},
 		},
 	}
@@ -194,30 +194,6 @@ func TestFMesh_WithComponents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.wantComponents, tt.fm.WithComponents(tt.args.components...).Components())
-		})
-	}
-}
-
-func TestFMesh_Description(t *testing.T) {
-	tests := []struct {
-		name string
-		fm   *FMesh
-		want string
-	}{
-		{
-			name: "empty description",
-			fm:   New("fm1"),
-			want: "",
-		},
-		{
-			name: "with description",
-			fm:   New("fm1").WithDescription("descr"),
-			want: "descr",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.Description())
 		})
 	}
 }
