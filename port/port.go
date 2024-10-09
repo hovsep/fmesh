@@ -8,6 +8,7 @@ import (
 // Port defines a connectivity point of a component
 type Port struct {
 	common.NamedEntity
+	common.LabeledEntity
 	signals signal.Group //Signal buffer
 	pipes   Group        //Outbound pipes
 }
@@ -89,6 +90,12 @@ func (p *Port) withPipes(destPorts ...*Port) *Port {
 	for _, destPort := range destPorts {
 		p.PipeTo(destPort)
 	}
+	return p
+}
+
+// WithLabels sets labels and returns the port
+func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
+	p.LabeledEntity.SetLabels(labels)
 	return p
 }
 

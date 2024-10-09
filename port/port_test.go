@@ -1,6 +1,7 @@
 package port
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -295,6 +296,41 @@ func TestPort_Flush(t *testing.T) {
 			tt.srcPort.Flush()
 			if tt.assertions != nil {
 				tt.assertions(t, tt.srcPort)
+			}
+		})
+	}
+}
+
+func TestPort_WithLabels(t *testing.T) {
+	type args struct {
+		labels common.LabelsCollection
+	}
+	tests := []struct {
+		name       string
+		port       *Port
+		args       args
+		assertions func(t *testing.T, port *Port)
+	}{
+		{
+			name: "happy path",
+			port: New("p1"),
+			args: args{
+				labels: common.LabelsCollection{
+					"l1": "v1",
+					"l2": "v2",
+				},
+			},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Len(t, port.Labels(), 2)
+				assert.True(t, port.HasAllLabels("l1", "l2"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.WithLabels(tt.args.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
 			}
 		})
 	}
