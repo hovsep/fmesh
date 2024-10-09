@@ -1,10 +1,14 @@
 package common
 
+import "errors"
+
 type LabelsCollection map[string]string
 
 type LabeledEntity struct {
 	labels LabelsCollection
 }
+
+var errLabelNotFound = errors.New("label not found")
 
 // NewLabeledEntity constructor
 func NewLabeledEntity(labels LabelsCollection) LabeledEntity {
@@ -15,6 +19,17 @@ func NewLabeledEntity(labels LabelsCollection) LabeledEntity {
 // Labels getter
 func (e *LabeledEntity) Labels() LabelsCollection {
 	return e.labels
+}
+
+// Label returns the value of single label or nil if it is not found
+func (e *LabeledEntity) Label(label string) (string, error) {
+	value, ok := e.labels[label]
+
+	if !ok {
+		return "", errLabelNotFound
+	}
+
+	return value, nil
 }
 
 // SetLabels overwrites labels collection

@@ -417,3 +417,65 @@ func TestLabeledEntity_HasAnyLabel(t *testing.T) {
 		})
 	}
 }
+
+func TestLabeledEntity_Label(t *testing.T) {
+	type args struct {
+		label string
+	}
+	tests := []struct {
+		name          string
+		labeledEntity LabeledEntity
+		args          args
+		want          string
+		wantErr       bool
+	}{
+		{
+			name: "no labels",
+			labeledEntity: LabeledEntity{
+				labels: nil,
+			},
+			args: args{
+				label: "l1",
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "label found",
+			labeledEntity: NewLabeledEntity(LabelsCollection{
+				"l1": "v1",
+				"l2": "v2",
+			}),
+			args: args{
+				label: "l2",
+			},
+			want:    "v2",
+			wantErr: false,
+		},
+		{
+			name: "label not found",
+			labeledEntity: NewLabeledEntity(LabelsCollection{
+				"l1": "v1",
+				"l2": "v2",
+			}),
+			args: args{
+				label: "l3",
+			},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.labeledEntity.Label(tt.args.label)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
