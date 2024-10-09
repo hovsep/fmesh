@@ -10,6 +10,6 @@ func NewDescribedEntity(description string) DescribedEntity {
 }
 
 // Description getter
-func (d DescribedEntity) Description() string {
-	return d.description
+func (e DescribedEntity) Description() string {
+	return e.description
 }

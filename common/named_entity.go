@@ -10,6 +10,6 @@ func NewNamedEntity(name string) NamedEntity {
 }
 
 // Name getter
-func (n NamedEntity) Name() string {
-	return n.name
+func (e NamedEntity) Name() string {
+	return e.name
 }
