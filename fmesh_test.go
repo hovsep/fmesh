@@ -2,6 +2,7 @@ package fmesh
 
 import (
 	"errors"
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
@@ -35,9 +36,9 @@ func TestNew(t *testing.T) {
 				name: "fm1",
 			},
 			want: &FMesh{
-				name:       "fm1",
-				components: component.Collection{},
-				config:     defaultConfig,
+				NamedEntity: common.NewNamedEntity("fm1"),
+				components:  component.Collection{},
+				config:      defaultConfig,
 			},
 		},
 	}
@@ -65,7 +66,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "",
 			},
 			want: &FMesh{
-				name:        "fm1",
+				NamedEntity: common.NewNamedEntity("fm1"),
 				description: "",
 				components:  component.Collection{},
 				config:      defaultConfig,
@@ -78,7 +79,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &FMesh{
-				name:        "fm1",
+				NamedEntity: common.NewNamedEntity("fm1"),
 				description: "descr",
 				components:  component.Collection{},
 				config:      defaultConfig,
@@ -112,8 +113,8 @@ func TestFMesh_WithConfig(t *testing.T) {
 				},
 			},
 			want: &FMesh{
-				name:       "fm1",
-				components: component.Collection{},
+				NamedEntity: common.NewNamedEntity("fm1"),
+				components:  component.Collection{},
 				config: Config{
 					ErrorHandlingStrategy: IgnoreAll,
 					CyclesLimit:           9999,
@@ -193,30 +194,6 @@ func TestFMesh_WithComponents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.wantComponents, tt.fm.WithComponents(tt.args.components...).Components())
-		})
-	}
-}
-
-func TestFMesh_Name(t *testing.T) {
-	tests := []struct {
-		name string
-		fm   *FMesh
-		want string
-	}{
-		{
-			name: "empty name is valid",
-			fm:   New(""),
-			want: "",
-		},
-		{
-			name: "with name",
-			fm:   New("fm1"),
-			want: "fm1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.Name())
 		})
 	}
 }

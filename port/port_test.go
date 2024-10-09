@@ -63,12 +63,12 @@ func TestPort_Clear(t *testing.T) {
 		{
 			name:   "happy path",
 			before: New("p").WithSignals(signal.New(111)),
-			after:  &Port{name: "p", pipes: Group{}, signals: signal.Group{}},
+			after:  New("p"),
 		},
 		{
 			name:   "cleaning empty port",
 			before: New("emptyPort"),
-			after:  &Port{name: "emptyPort", pipes: Group{}, signals: signal.Group{}},
+			after:  New("emptyPort"),
 		},
 	}
 	for _, tt := range tests {
@@ -94,11 +94,7 @@ func TestPort_PipeTo(t *testing.T) {
 		{
 			name:   "happy path",
 			before: p1,
-			after: &Port{
-				name:    "p1",
-				pipes:   Group{p2, p3},
-				signals: signal.Group{},
-			},
+			after:  New("p1").withPipes(p2, p3),
 			args: args{
 				toPorts: []*Port{p2, p3},
 			},
@@ -106,11 +102,7 @@ func TestPort_PipeTo(t *testing.T) {
 		{
 			name:   "invalid ports are ignored",
 			before: p4,
-			after: &Port{
-				name:    "p4",
-				pipes:   Group{p2},
-				signals: signal.Group{},
-			},
+			after:  New("p4").withPipes(p2),
 			args: args{
 				toPorts: []*Port{p2, nil},
 			},
@@ -183,25 +175,6 @@ func TestPort_PutSignals(t *testing.T) {
 	}
 }
 
-func TestPort_Name(t *testing.T) {
-	tests := []struct {
-		name string
-		port *Port
-		want string
-	}{
-		{
-			name: "happy path",
-			port: New("p777"),
-			want: "p777",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Name())
-		})
-	}
-}
-
 func TestNewPort(t *testing.T) {
 	type args struct {
 		name string
@@ -216,22 +189,14 @@ func TestNewPort(t *testing.T) {
 			args: args{
 				name: "",
 			},
-			want: &Port{
-				name:    "",
-				pipes:   Group{},
-				signals: signal.Group{},
-			},
+			want: New(""),
 		},
 		{
 			name: "with name",
 			args: args{
 				name: "p1",
 			},
-			want: &Port{
-				name:    "p1",
-				pipes:   Group{},
-				signals: signal.Group{},
-			},
+			want: New("p1"),
 		},
 	}
 	for _, tt := range tests {

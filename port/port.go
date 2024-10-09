@@ -1,12 +1,13 @@
 package port
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 )
 
 // Port defines a connectivity point of a component
 type Port struct {
-	name    string
+	common.NamedEntity
 	signals signal.Group //Signal buffer
 	pipes   Group        //Outbound pipes
 }
@@ -14,15 +15,11 @@ type Port struct {
 // New creates a new port
 func New(name string) *Port {
 	return &Port{
-		name:    name,
-		pipes:   NewGroup(),
-		signals: signal.NewGroup(),
+		NamedEntity: common.NewNamedEntity(name),
+		pipes:       NewGroup(),
+		signals:     signal.NewGroup(),
 	}
-}
 
-// Name getter
-func (p *Port) Name() string {
-	return p.name
 }
 
 // Signals getter
