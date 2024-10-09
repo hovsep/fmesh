@@ -13,6 +13,7 @@ type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 type Component struct {
 	common.NamedEntity
 	common.DescribedEntity
+	common.LabeledEntity
 	inputs  port.Collection
 	outputs port.Collection
 	f       ActivationFunc
@@ -60,6 +61,12 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex i
 // WithActivationFunc sets activation function
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	c.f = f
+	return c
+}
+
+// WithLabels sets labels and returns the component
+func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
+	c.LabeledEntity.SetLabels(labels)
 	return c
 }
 
