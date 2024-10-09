@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"sync"
@@ -22,7 +23,7 @@ var defaultConfig = Config{
 
 // FMesh is the functional mesh
 type FMesh struct {
-	name        string
+	common.NamedEntity
 	description string
 	components  component.Collection
 	config      Config
@@ -31,15 +32,10 @@ type FMesh struct {
 // New creates a new f-mesh
 func New(name string) *FMesh {
 	return &FMesh{
-		name:       name,
-		components: component.NewCollection(),
-		config:     defaultConfig,
+		NamedEntity: common.NewNamedEntity(name),
+		components:  component.NewCollection(),
+		config:      defaultConfig,
 	}
-}
-
-// Name getter
-func (fm *FMesh) Name() string {
-	return fm.name
 }
 
 // Description getter

@@ -3,6 +3,7 @@ package component
 import (
 	"errors"
 	"fmt"
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
 )
 
@@ -10,7 +11,7 @@ type ActivationFunc func(inputs port.Collection, outputs port.Collection) error
 
 // Component defines a main building block of FMesh
 type Component struct {
-	name        string
+	common.NamedEntity
 	description string
 	inputs      port.Collection
 	outputs     port.Collection
@@ -20,9 +21,9 @@ type Component struct {
 // New creates initialized component
 func New(name string) *Component {
 	return &Component{
-		name:    name,
-		inputs:  port.NewCollection(),
-		outputs: port.NewCollection(),
+		NamedEntity: common.NewNamedEntity(name),
+		inputs:      port.NewCollection(),
+		outputs:     port.NewCollection(),
 	}
 }
 
@@ -60,11 +61,6 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex i
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	c.f = f
 	return c
-}
-
-// Name getter
-func (c *Component) Name() string {
-	return c.name
 }
 
 // Description getter

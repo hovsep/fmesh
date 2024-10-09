@@ -1,7 +1,6 @@
 package component
 
 import (
-	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -22,13 +21,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "c2",
 			},
-			want: &Component{
-				name:        "c2",
-				description: "",
-				inputs:      port.Collection{},
-				outputs:     port.Collection{},
-				f:           nil,
-			},
+			want: New("c2"),
 		},
 		{
 			name:       "component not found",
