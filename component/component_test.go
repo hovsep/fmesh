@@ -599,3 +599,38 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 		})
 	}
 }
+
+func TestComponent_WithLabels(t *testing.T) {
+	type args struct {
+		labels common.LabelsCollection
+	}
+	tests := []struct {
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "happy path",
+			component: New("c1"),
+			args: args{
+				labels: common.LabelsCollection{
+					"l1": "v1",
+					"l2": "v2",
+				},
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Len(t, component.Labels(), 2)
+				assert.True(t, component.HasAllLabels("l1", "l2"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.WithLabels(tt.args.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
