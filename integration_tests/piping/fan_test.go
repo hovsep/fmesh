@@ -1,11 +1,9 @@
 package integration_tests
 
 import (
-	"fmt"
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/export"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -149,10 +147,6 @@ func Test_Fan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
-
-			exp := export.NewDotExporter()
-			fmt.Println(string(exp.Export(fm)))
-
 			tt.setInputs(fm)
 			cycles, err := fm.Run()
 			tt.assertions(t, fm, cycles, err)
