@@ -1,6 +1,9 @@
 package common
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type LabelsCollection map[string]string
 
@@ -26,7 +29,7 @@ func (e *LabeledEntity) Label(label string) (string, error) {
 	value, ok := e.labels[label]
 
 	if !ok {
-		return "", errLabelNotFound
+		return "", fmt.Errorf("%w , label: %s", errLabelNotFound, label)
 	}
 
 	return value, nil
