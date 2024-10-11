@@ -16,6 +16,27 @@ type ActivationResult struct {
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
 type ActivationResultCode int
 
+func (a ActivationResultCode) String() string {
+	switch a {
+	case ActivationCodeOK:
+		return "OK"
+	case ActivationCodeNoInput:
+		return "No input"
+	case ActivationCodeNoFunction:
+		return "Activation function is missing"
+	case ActivationCodeReturnedError:
+		return "Returned error"
+	case ActivationCodePanicked:
+		return "Panicked"
+	case ActivationCodeWaitingForInputsClear:
+		return "Component is waiting for input"
+	case ActivationCodeWaitingForInputsKeep:
+		return "Component is waiting for input and wants to keep all inputs till next cycle"
+	default:
+		return "Unsupported code"
+	}
+}
+
 const (
 	// ActivationCodeOK : component is activated and did not return any errors
 	ActivationCodeOK ActivationResultCode = iota
