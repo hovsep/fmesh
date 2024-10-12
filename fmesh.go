@@ -123,21 +123,23 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
 func (fm *FMesh) Run() (cycle.Collection, error) {
 	allCycles := cycle.NewCollection()
+	cycleNumber := 0
 	for {
-		cycleResult := fm.runCycle()
+		cycleResult := fm.runCycle().WithNumber(cycleNumber)
 		allCycles = allCycles.With(cycleResult)
 
-		mustStop, err := fm.mustStop(cycleResult, len(allCycles))
+		mustStop, err := fm.mustStop(cycleResult)
 		if mustStop {
 			return allCycles, err
 		}
 
 		fm.drainComponents(cycleResult)
+		cycleNumber++
 	}
 }
 
-func (fm *FMesh) mustStop(cycleResult *cycle.Cycle, cycleNum int) (bool, error) {
-	if (fm.config.CyclesLimit > 0) && (cycleNum > fm.config.CyclesLimit) {
+func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
+	if (fm.config.CyclesLimit > 0) && (cycleResult.Number() > fm.config.CyclesLimit) {
 		return true, ErrReachedMaxAllowedCycles
 	}
 

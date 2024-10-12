@@ -637,7 +637,6 @@ func TestFMesh_runCycle(t *testing.T) {
 func TestFMesh_mustStop(t *testing.T) {
 	type args struct {
 		cycleResult *cycle.Cycle
-		cycleNum    int
 	}
 	tests := []struct {
 		name    string
@@ -654,8 +653,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK),
-				),
-				cycleNum: 5,
+				).WithNumber(5),
 			},
 			want:    false,
 			wantErr: nil,
@@ -668,8 +666,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK),
-				),
-				cycleNum: 1001,
+				).WithNumber(1001),
 			},
 			want:    true,
 			wantErr: ErrReachedMaxAllowedCycles,
@@ -682,8 +679,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeNoInput),
-				),
-				cycleNum: 5,
+				).WithNumber(5),
 			},
 			want:    true,
 			wantErr: nil,
@@ -700,8 +696,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeReturnedError).
 						WithError(errors.New("c1 activation finished with error")),
-				),
-				cycleNum: 5,
+				).WithNumber(5),
 			},
 			want:    true,
 			wantErr: ErrHitAnErrorOrPanic,
@@ -717,8 +712,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodePanicked).
 						WithError(errors.New("c1 panicked")),
-				),
-				cycleNum: 5,
+				).WithNumber(5),
 			},
 			want:    true,
 			wantErr: ErrHitAPanic,
@@ -726,7 +720,7 @@ func TestFMesh_mustStop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.fmesh.mustStop(tt.args.cycleResult, tt.args.cycleNum)
+			got, err := tt.fmesh.mustStop(tt.args.cycleResult)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error())
 			} else {
