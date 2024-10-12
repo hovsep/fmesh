@@ -1,4 +1,4 @@
-package export
+package dot
 
 import (
 	"github.com/hovsep/fmesh"
