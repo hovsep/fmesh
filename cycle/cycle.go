@@ -8,6 +8,7 @@ import (
 // Cycle contains the info about given activation cycle
 type Cycle struct {
 	sync.Mutex
+	number            int
 	activationResults component.ActivationResultCollection
 }
 
@@ -41,5 +42,16 @@ func (cycle *Cycle) HasActivatedComponents() bool {
 // WithActivationResults adds multiple activation results
 func (cycle *Cycle) WithActivationResults(activationResults ...*component.ActivationResult) *Cycle {
 	cycle.activationResults = cycle.ActivationResults().Add(activationResults...)
+	return cycle
+}
+
+// Number returns sequence number
+func (cycle *Cycle) Number() int {
+	return cycle.number
+}
+
+// WithNumber sets the sequence number
+func (cycle *Cycle) WithNumber(number int) *Cycle {
+	cycle.number = number
 	return cycle
 }
