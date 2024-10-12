@@ -10,6 +10,6 @@ type Exporter interface {
 	// Export returns f-mesh representation in some format
 	Export(fm *fmesh.FMesh) ([]byte, error)
 
-	// ExportWithCycles returns representations of f-mesh during multiple cycles
-	ExportWithCycles(fm *fmesh.FMesh, cycles cycle.Collection) ([][]byte, error)
+	// ExportWithCycles returns the f-mesh state representation in each activation cycle
+	ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.Collection) ([][]byte, error)
 }
