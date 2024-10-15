@@ -101,10 +101,14 @@ func (collection Collection) WithIndexed(prefix string, startIndex int, endIndex
 }
 
 // Signals returns all signals of all ports in the group
-func (collection Collection) Signals() signal.Group {
+func (collection Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
 	for _, p := range collection {
-		group = append(group, p.Signals()...)
+		signals, err := p.Signals().Signals()
+		if err != nil {
+			return group.WithError(err)
+		}
+		group = group.With(signals...)
 	}
 	return group
 }

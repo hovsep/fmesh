@@ -164,7 +164,7 @@ func TestCollection_ByNames(t *testing.T) {
 
 func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		ports := NewCollection().With(NewGroup("p1", "p2", "p3")...).withSignals(signal.NewGroup(1, 2, 3)...)
+		ports := NewCollection().With(NewGroup("p1", "p2", "p3")...).withSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
 		ports.Clear()
 		assert.False(t, ports.AnyHasSignals())
@@ -241,17 +241,19 @@ func TestCollection_Flush(t *testing.T) {
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
 				New("src").
-					WithSignals(signal.NewGroup(1, 2, 3)...).
+					WithSignalGroups(signal.NewGroup(1, 2, 3)).
 					withPipes(New("dst1"), New("dst2")),
 			),
 			assertions: func(t *testing.T, collection Collection) {
 				assert.Len(t, collection, 1)
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").pipes {
-					assert.Len(t, destPort.Signals(), 3)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 1)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 2)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 3)
+					assert.Len(t, destPort.Signals().SignalsOrNil(), 3)
+					allPayloads, err := destPort.Signals().AllPayloads()
+					assert.NoError(t, err)
+					assert.Contains(t, allPayloads, 1)
+					assert.Contains(t, allPayloads, 2)
+					assert.Contains(t, allPayloads, 3)
 				}
 			},
 		},
@@ -362,7 +364,7 @@ func TestCollection_Signals(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection Collection
-		want       signal.Group
+		want       *signal.Group
 	}{
 		{
 			name:       "empty collection",
@@ -373,7 +375,7 @@ func TestCollection_Signals(t *testing.T) {
 			name: "non-empty collection",
 			collection: NewCollection().
 				WithIndexed("p", 1, 3).
-				withSignals(signal.NewGroup(1, 2, 3)...).
+				withSignals(signal.New(1), signal.New(2), signal.New(3)).
 				withSignals(signal.New("test")),
 			want: signal.NewGroup(1, 2, 3, "test", 1, 2, 3, "test", 1, 2, 3, "test"),
 		},

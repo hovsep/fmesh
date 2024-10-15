@@ -78,9 +78,14 @@ func Test_Fan(t *testing.T) {
 				assert.True(t, c3.Outputs().ByName("o1").HasSignals())
 
 				//All 3 signals are the same (literally the same address in memory)
-				sig1, sig2, sig3 := c1.Outputs().ByName("o1").Signals(), c2.Outputs().ByName("o1").Signals(), c3.Outputs().ByName("o1").Signals()
-				assert.Equal(t, sig1.FirstPayload(), sig2.FirstPayload())
-				assert.Equal(t, sig2.FirstPayload(), sig3.FirstPayload())
+				sig1, err := c1.Outputs().ByName("o1").Signals().FirstPayload()
+				assert.NoError(t, err)
+				sig2, err := c2.Outputs().ByName("o1").Signals().FirstPayload()
+				assert.NoError(t, err)
+				sig3, err := c3.Outputs().ByName("o1").Signals().FirstPayload()
+				assert.NoError(t, err)
+				assert.Equal(t, sig1, sig2)
+				assert.Equal(t, sig2, sig3)
 			},
 		},
 		{
@@ -136,11 +141,18 @@ func Test_Fan(t *testing.T) {
 
 				//The signal is combined and consist of 3 payloads
 				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Signals()
-				assert.Len(t, resultSignals, 3)
+				assert.Len(t, resultSignals.SignalsOrNil(), 3)
 
 				//And they are all different
-				assert.NotEqual(t, resultSignals.FirstPayload(), resultSignals[1].Payload())
-				assert.NotEqual(t, resultSignals[1].Payload(), resultSignals[2].Payload())
+				sig0, err := resultSignals.FirstPayload()
+				assert.NoError(t, err)
+				sig1, err := resultSignals.SignalsOrNil()[1].Payload()
+				assert.NoError(t, err)
+				sig2, err := resultSignals.SignalsOrNil()[2].Payload()
+				assert.NoError(t, err)
+
+				assert.NotEqual(t, sig0, sig1)
+				assert.NotEqual(t, sig1, sig2)
 			},
 		},
 	}
