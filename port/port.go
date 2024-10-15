@@ -9,8 +9,9 @@ import (
 type Port struct {
 	common.NamedEntity
 	common.LabeledEntity
+	*common.Chainable
 	buffer *signal.Group
-	pipes  Group //Outbound pipes
+	pipes  *Group //Outbound pipes
 }
 
 // New creates a new port
@@ -18,6 +19,7 @@ func New(name string) *Port {
 	return &Port{
 		NamedEntity:   common.NewNamedEntity(name),
 		LabeledEntity: common.NewLabeledEntity(nil),
+		Chainable:     common.NewChainable(),
 		pipes:         NewGroup(),
 		buffer:        signal.NewGroup(),
 	}
@@ -26,11 +28,18 @@ func New(name string) *Port {
 
 // Buffer getter
 func (p *Port) Buffer() *signal.Group {
+	if p.HasError() {
+		return p.buffer.WithError(p.Error())
+	}
 	return p.buffer
 }
 
 // Pipes getter
-func (p *Port) Pipes() Group {
+// @TODO maybe better to return []*Port directly
+func (p *Port) Pipes() *Group {
+	if p.HasError() {
+		return p.pipes.WithError(p.Error())
+	}
 	return p.pipes
 }
 
@@ -39,94 +48,149 @@ func (p *Port) setSignals(signals *signal.Group) {
 	p.buffer = signals
 }
 
-// PutSignals adds buffer
+// PutSignals adds signals to buffer
 // @TODO: rename
-func (p *Port) PutSignals(signals ...*signal.Signal) {
+func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
+	if p.HasError() {
+		return p
+	}
 	p.setSignals(p.Buffer().With(signals...))
+	return p
 }
 
 // WithSignals puts buffer and returns the port
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
-	p.PutSignals(signals...)
-	return p
+	if p.HasError() {
+		return p
+	}
+
+	return p.PutSignals(signals...)
 }
 
 // WithSignalGroups puts groups of buffer and returns the port
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
+	if p.HasError() {
+		return p
+	}
 	for _, group := range signalGroups {
 		signals, err := group.Signals()
 		if err != nil {
-			//@TODO add error handling
+			return p.WithError(err)
 		}
 		p.PutSignals(signals...)
+		if p.HasError() {
+			return p
+		}
 	}
 
 	return p
 }
 
-// Clear removes all buffer from the port
-func (p *Port) Clear() {
+// Clear removes all signals from the port buffer
+func (p *Port) Clear() *Port {
+	if p.HasError() {
+		return p
+	}
 	p.setSignals(signal.NewGroup())
+	return p
 }
 
 // Flush pushes buffer to pipes and clears the port
 // @TODO: hide this method from user
-func (p *Port) Flush() {
-	if !p.HasSignals() || !p.HasPipes() {
-		return
+func (p *Port) Flush() *Port {
+	if p.HasError() {
+		return p
 	}
 
-	for _, outboundPort := range p.pipes {
-		//Fan-Out
-		ForwardSignals(p, outboundPort)
+	if !p.HasSignals() || !p.HasPipes() {
+		//@TODO maybe better to return explicit errors
+		return nil
 	}
-	p.Clear()
+
+	pipes, err := p.pipes.Ports()
+	if err != nil {
+		return p.WithError(err)
+	}
+
+	for _, outboundPort := range pipes {
+		//Fan-Out
+		err = ForwardSignals(p, outboundPort)
+		if err != nil {
+			return p.WithError(err)
+		}
+	}
+	return p.Clear()
 }
 
 // HasSignals says whether port buffer is set or not
 func (p *Port) HasSignals() bool {
+	if p.HasError() {
+		//@TODO: add logging here
+		return false
+	}
 	signals, err := p.Buffer().Signals()
 	if err != nil {
-		// TODO::add error handling
+		//@TODO: add logging here
+		return false
 	}
 	return len(signals) > 0
 }
 
 // HasPipes says whether port has outbound pipes
 func (p *Port) HasPipes() bool {
-	return len(p.pipes) > 0
+	if p.HasError() {
+		//@TODO: add logging here
+		return false
+	}
+	pipes, err := p.pipes.Ports()
+	if err != nil {
+		//@TODO: add logging here
+		return false
+	}
+
+	return len(pipes) > 0
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
 // @TODO: hide this method from AF
-func (p *Port) PipeTo(destPorts ...*Port) {
+func (p *Port) PipeTo(destPorts ...*Port) *Port {
+	if p.HasError() {
+		return p
+	}
 	for _, destPort := range destPorts {
 		if destPort == nil {
 			continue
 		}
 		p.pipes = p.pipes.With(destPort)
 	}
-}
-
-// withPipes adds pipes and returns the port
-func (p *Port) withPipes(destPorts ...*Port) *Port {
-	for _, destPort := range destPorts {
-		p.PipeTo(destPort)
-	}
 	return p
 }
 
 // WithLabels sets labels and returns the port
 func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
+	if p.HasError() {
+		return p
+	}
+
 	p.LabeledEntity.SetLabels(labels)
 	return p
 }
 
 // ForwardSignals copies all buffer from source port to destination port, without clearing the source port
-func ForwardSignals(source *Port, dest *Port) {
+func ForwardSignals(source *Port, dest *Port) error {
 	signals, err := source.Buffer().Signals()
 	if err != nil {
-		//@TODO::add error handling
+		return err
 	}
 	dest.PutSignals(signals...)
+	if dest.HasError() {
+		return dest.Error()
+	}
+	return nil
+}
+
+// WithError returns port with error
+func (p *Port) WithError(err error) *Port {
+	p.SetError(err)
+	return p
 }
