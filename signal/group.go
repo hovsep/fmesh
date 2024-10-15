@@ -13,22 +13,25 @@ type Group struct {
 
 // NewGroup creates empty group
 func NewGroup(payloads ...any) *Group {
+	newGroup := &Group{
+		Chainable: common.NewChainable(),
+	}
+
 	signals := make([]*Signal, len(payloads))
 	for i, payload := range payloads {
 		signals[i] = New(payload)
 	}
-	return &Group{
-		Chainable: &common.Chainable{},
-		signals:   signals,
-	}
+	return newGroup.withSignals(signals)
 }
 
 // First returns the first signal in the group
 func (group *Group) First() *Signal {
 	if group.HasError() {
-		sig := New(nil)
-		sig.SetError(group.Error())
-		return sig
+		return New(nil).WithError(group.Error())
+	}
+
+	if len(group.signals) == 0 {
+		return New(nil).WithError(errors.New("group has no signals"))
 	}
 
 	return group.signals[0]
@@ -71,13 +74,11 @@ func (group *Group) With(signals ...*Signal) *Group {
 	copy(newSignals, group.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			group.SetError(errors.New("signal is nil"))
-			return group
+			return group.WithError(errors.New("signal is nil"))
 		}
 
 		if sig.HasError() {
-			group.SetError(sig.Error())
-			return group
+			return group.WithError(sig.Error())
 		}
 
 		newSignals[len(group.signals)+i] = sig
@@ -117,8 +118,13 @@ func (group *Group) Signals() ([]*Signal, error) {
 
 // SignalsOrNil returns signals or nil in case of any error
 func (group *Group) SignalsOrNil() []*Signal {
+	return group.SignalsOrDefault(nil)
+}
+
+// SignalsOrDefault returns signals or default in case of any error
+func (group *Group) SignalsOrDefault(defaultSignals []*Signal) []*Signal {
 	if group.HasError() {
-		return nil
+		return defaultSignals
 	}
 	return group.signals
 }
