@@ -4,6 +4,10 @@ type Chainable struct {
 	err error
 }
 
+func NewChainable() *Chainable {
+	return &Chainable{}
+}
+
 func (c *Chainable) SetError(err error) {
 	c.err = err
 }
