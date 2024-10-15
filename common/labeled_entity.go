@@ -15,7 +15,6 @@ var errLabelNotFound = errors.New("label not found")
 
 // NewLabeledEntity constructor
 func NewLabeledEntity(labels LabelsCollection) LabeledEntity {
-
 	return LabeledEntity{labels: labels}
 }
 

@@ -84,7 +84,7 @@ func TestCollection_ByName(t *testing.T) {
 			want: New("p1"),
 		},
 		{
-			name:       "port with signals found",
+			name:       "port with buffer found",
 			collection: NewCollection().With(NewGroup("p1", "p2")...).withSignals(signal.New(12)),
 			args: args{
 				name: "p2",
@@ -248,8 +248,8 @@ func TestCollection_Flush(t *testing.T) {
 				assert.Len(t, collection, 1)
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").pipes {
-					assert.Len(t, destPort.Signals().SignalsOrNil(), 3)
-					allPayloads, err := destPort.Signals().AllPayloads()
+					assert.Len(t, destPort.Buffer().SignalsOrNil(), 3)
+					allPayloads, err := destPort.Buffer().AllPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)

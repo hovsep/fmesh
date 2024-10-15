@@ -104,12 +104,12 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithInputs("num1", "num2").
 						WithOutputs("result").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							num1, err := inputs.ByName("num1").Signals().FirstPayload()
+							num1, err := inputs.ByName("num1").Buffer().FirstPayload()
 							if err != nil {
 								return err
 							}
 
-							num2, err := inputs.ByName("num2").Signals().FirstPayload()
+							num2, err := inputs.ByName("num2").Buffer().FirstPayload()
 							if err != nil {
 								return err
 							}
@@ -123,7 +123,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithInputs("num").
 						WithOutputs("result").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							num, err := inputs.ByName("num").Signals().FirstPayload()
+							num, err := inputs.ByName("num").Buffer().FirstPayload()
 							if err != nil {
 								return err
 							}

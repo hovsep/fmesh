@@ -9,23 +9,24 @@ import (
 type Port struct {
 	common.NamedEntity
 	common.LabeledEntity
-	signals *signal.Group //TODO rename to signal buffer
-	pipes   Group         //Outbound pipes
+	buffer *signal.Group
+	pipes  Group //Outbound pipes
 }
 
 // New creates a new port
 func New(name string) *Port {
 	return &Port{
-		NamedEntity: common.NewNamedEntity(name),
-		pipes:       NewGroup(),
-		signals:     signal.NewGroup(),
+		NamedEntity:   common.NewNamedEntity(name),
+		LabeledEntity: common.NewLabeledEntity(nil),
+		pipes:         NewGroup(),
+		buffer:        signal.NewGroup(),
 	}
 
 }
 
-// Signals getter
-func (p *Port) Signals() *signal.Group {
-	return p.signals
+// Buffer getter
+func (p *Port) Buffer() *signal.Group {
+	return p.buffer
 }
 
 // Pipes getter
@@ -33,24 +34,24 @@ func (p *Port) Pipes() Group {
 	return p.pipes
 }
 
-// setSignals sets signals field
+// setSignals sets buffer field
 func (p *Port) setSignals(signals *signal.Group) {
-	p.signals = signals
+	p.buffer = signals
 }
 
-// PutSignals adds signals
+// PutSignals adds buffer
 // @TODO: rename
 func (p *Port) PutSignals(signals ...*signal.Signal) {
-	p.setSignals(p.Signals().With(signals...))
+	p.setSignals(p.Buffer().With(signals...))
 }
 
-// WithSignals puts signals and returns the port
+// WithSignals puts buffer and returns the port
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	p.PutSignals(signals...)
 	return p
 }
 
-// WithSignalGroups puts groups of signals and returns the port
+// WithSignalGroups puts groups of buffer and returns the port
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	for _, group := range signalGroups {
 		signals, err := group.Signals()
@@ -63,12 +64,12 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	return p
 }
 
-// Clear removes all signals from the port
+// Clear removes all buffer from the port
 func (p *Port) Clear() {
 	p.setSignals(signal.NewGroup())
 }
 
-// Flush pushes signals to pipes and clears the port
+// Flush pushes buffer to pipes and clears the port
 // @TODO: hide this method from user
 func (p *Port) Flush() {
 	if !p.HasSignals() || !p.HasPipes() {
@@ -82,9 +83,9 @@ func (p *Port) Flush() {
 	p.Clear()
 }
 
-// HasSignals says whether port signals is set or not
+// HasSignals says whether port buffer is set or not
 func (p *Port) HasSignals() bool {
-	signals, err := p.Signals().Signals()
+	signals, err := p.Buffer().Signals()
 	if err != nil {
 		// TODO::add error handling
 	}
@@ -121,9 +122,9 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 	return p
 }
 
-// ForwardSignals copies all signals from source port to destination port, without clearing the source port
+// ForwardSignals copies all buffer from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
-	signals, err := source.Signals().Signals()
+	signals, err := source.Buffer().Signals()
 	if err != nil {
 		//@TODO::add error handling
 	}

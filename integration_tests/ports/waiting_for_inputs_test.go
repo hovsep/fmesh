@@ -26,7 +26,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							inputNum, err := inputs.ByName("i1").Signals().FirstPayload()
+							inputNum, err := inputs.ByName("i1").Buffer().FirstPayload()
 							if err != nil {
 								return err
 							}
@@ -50,12 +50,12 @@ func Test_WaitingForInputs(t *testing.T) {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1, err := inputs.ByName("i1").Signals().FirstPayload()
+						inputNum1, err := inputs.ByName("i1").Buffer().FirstPayload()
 						if err != nil {
 							return err
 						}
 
-						inputNum2, err := inputs.ByName("i2").Signals().FirstPayload()
+						inputNum2, err := inputs.ByName("i2").Buffer().FirstPayload()
 						if err != nil {
 							return err
 						}
@@ -90,7 +90,7 @@ func Test_WaitingForInputs(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				assert.NoError(t, err)
-				result, err := fm.Components().ByName("sum").Outputs().ByName("o1").Signals().FirstPayload()
+				result, err := fm.Components().ByName("sum").Outputs().ByName("o1").Buffer().FirstPayload()
 				assert.NoError(t, err)
 				assert.Equal(t, 16, result.(int))
 			},
