@@ -9,8 +9,8 @@ import (
 type Port struct {
 	common.NamedEntity
 	common.LabeledEntity
-	signals signal.Group //Signal buffer
-	pipes   Group        //Outbound pipes
+	signals *signal.Group //TODO rename to signal buffer
+	pipes   Group         //Outbound pipes
 }
 
 // New creates a new port
@@ -24,7 +24,7 @@ func New(name string) *Port {
 }
 
 // Signals getter
-func (p *Port) Signals() signal.Group {
+func (p *Port) Signals() *signal.Group {
 	return p.signals
 }
 
@@ -34,7 +34,7 @@ func (p *Port) Pipes() Group {
 }
 
 // setSignals sets signals field
-func (p *Port) setSignals(signals signal.Group) {
+func (p *Port) setSignals(signals *signal.Group) {
 	p.signals = signals
 }
 
@@ -44,9 +44,22 @@ func (p *Port) PutSignals(signals ...*signal.Signal) {
 	p.setSignals(p.Signals().With(signals...))
 }
 
-// WithSignals adds signals and returns the port
+// WithSignals puts signals and returns the port
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	p.PutSignals(signals...)
+	return p
+}
+
+// WithSignalGroups puts groups of signals and returns the port
+func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
+	for _, group := range signalGroups {
+		signals, err := group.Signals()
+		if err != nil {
+			//@TODO add error handling
+		}
+		p.PutSignals(signals...)
+	}
+
 	return p
 }
 
@@ -71,7 +84,11 @@ func (p *Port) Flush() {
 
 // HasSignals says whether port signals is set or not
 func (p *Port) HasSignals() bool {
-	return len(p.Signals()) > 0
+	signals, err := p.Signals().Signals()
+	if err != nil {
+		// TODO::add error handling
+	}
+	return len(signals) > 0
 }
 
 // HasPipes says whether port has outbound pipes
@@ -106,5 +123,9 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) {
-	dest.PutSignals(source.Signals()...)
+	signals, err := source.Signals().Signals()
+	if err != nil {
+		//@TODO::add error handling
+	}
+	dest.PutSignals(signals...)
 }

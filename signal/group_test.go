@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -10,48 +11,53 @@ func TestNewGroup(t *testing.T) {
 		payloads []any
 	}
 	tests := []struct {
-		name string
-		args args
-		want Group
+		name       string
+		args       args
+		assertions func(t *testing.T, group *Group)
 	}{
 		{
 			name: "no payloads",
 			args: args{
 				payloads: nil,
 			},
-			want: Group{},
+			assertions: func(t *testing.T, group *Group) {
+				signals, err := group.Signals()
+				assert.NoError(t, err)
+				assert.Len(t, signals, 0)
+			},
 		},
 		{
 			name: "with payloads",
 			args: args{
 				payloads: []any{1, nil, 3},
 			},
-			want: Group{
-				&Signal{
-					payload: []any{1},
-				},
-				&Signal{
-					payload: []any{nil},
-				},
-				&Signal{
-					payload: []any{3},
-				},
+			assertions: func(t *testing.T, group *Group) {
+				signals, err := group.Signals()
+				assert.NoError(t, err)
+				assert.Len(t, signals, 3)
+				assert.Contains(t, signals, New(1))
+				assert.Contains(t, signals, New(nil))
+				assert.Contains(t, signals, New(3))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, NewGroup(tt.args.payloads...))
+			group := NewGroup(tt.args.payloads...)
+			if tt.assertions != nil {
+				tt.assertions(t, group)
+			}
 		})
 	}
 }
 
 func TestGroup_FirstPayload(t *testing.T) {
 	tests := []struct {
-		name      string
-		group     Group
-		want      any
-		wantPanic bool
+		name            string
+		group           *Group
+		want            any
+		wantErrorString string
+		wantPanic       bool
 	}{
 		{
 			name:      "empty group",
@@ -76,10 +82,16 @@ func TestGroup_FirstPayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.wantPanic {
 				assert.Panics(t, func() {
-					tt.group.FirstPayload()
+					_, _ = tt.group.FirstPayload()
 				})
 			} else {
-				assert.Equal(t, tt.want, tt.group.FirstPayload())
+				got, err := tt.group.FirstPayload()
+				if tt.wantErrorString != "" {
+					assert.Error(t, err)
+					assert.EqualError(t, err, tt.wantErrorString)
+				} else {
+					assert.Equal(t, tt.want, got)
+				}
 			}
 		})
 	}
@@ -87,9 +99,10 @@ func TestGroup_FirstPayload(t *testing.T) {
 
 func TestGroup_AllPayloads(t *testing.T) {
 	tests := []struct {
-		name  string
-		group Group
-		want  []any
+		name            string
+		group           *Group
+		want            []any
+		wantErrorString string
 	}{
 		{
 			name:  "empty group",
@@ -104,7 +117,13 @@ func TestGroup_AllPayloads(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.AllPayloads())
+			got, err := tt.group.AllPayloads()
+			if tt.wantErrorString != "" {
+				assert.Error(t, err)
+				assert.EqualError(t, err, tt.wantErrorString)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -115,9 +134,9 @@ func TestGroup_With(t *testing.T) {
 	}
 	tests := []struct {
 		name  string
-		group Group
+		group *Group
 		args  args
-		want  Group
+		want  *Group
 	}{
 		{
 			name:  "no addition to empty group",
@@ -139,7 +158,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to empty group",
 			group: NewGroup(),
 			args: args{
-				signals: NewGroup(3, 4, 5),
+				signals: NewGroup(3, 4, 5).SignalsOrNil(),
 			},
 			want: NewGroup(3, 4, 5),
 		},
@@ -147,14 +166,32 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to group",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				signals: NewGroup(4, 5, 6),
+				signals: NewGroup(4, 5, 6).SignalsOrNil(),
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
+		},
+		{
+			name: "error handling",
+			group: NewGroup(1, 2, 3).
+				With(New("valid before invalid")).
+				With(nil).
+				WithPayloads(4, 5, 6),
+			args: args{
+				signals: NewGroup(7, nil, 9).SignalsOrNil(),
+			},
+			want: NewGroup(1, 2, 3, "valid before invalid").WithError(errors.New("signal is nil")),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.With(tt.args.signals...))
+			got := tt.group.With(tt.args.signals...)
+			if tt.want.HasError() {
+				assert.Error(t, got.Error())
+				assert.EqualError(t, got.Error(), tt.want.Error().Error())
+			} else {
+				assert.NoError(t, got.Error())
+			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -165,9 +202,9 @@ func TestGroup_WithPayloads(t *testing.T) {
 	}
 	tests := []struct {
 		name  string
-		group Group
+		group *Group
 		args  args
-		want  Group
+		want  *Group
 	}{
 		{
 			name:  "no addition to empty group",
