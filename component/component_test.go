@@ -79,9 +79,11 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			component: componentWithAllOutputsSet,
 			destPort:  sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
-				assert.Contains(t, destPort.Signals().AllPayloads(), 777)
-				assert.Contains(t, destPort.Signals().AllPayloads(), 888)
-				assert.Len(t, destPort.Signals().AllPayloads(), 2)
+				allPayloads, err := destPort.Signals().AllPayloads()
+				assert.NoError(t, err)
+				assert.Contains(t, allPayloads, 777)
+				assert.Contains(t, allPayloads, 888)
+				assert.Len(t, allPayloads, 2)
 				// Signals are disposed when port is flushed
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
@@ -183,8 +185,8 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			assert.Equal(t, err1, err2)
 
 			//Compare signals without keys (because they are random)
-			assert.ElementsMatch(t, testOutputs1.ByName("out1").Signals(), testOutputs2.ByName("out1").Signals())
-			assert.ElementsMatch(t, testOutputs1.ByName("out2").Signals(), testOutputs2.ByName("out2").Signals())
+			assert.ElementsMatch(t, testOutputs1.ByName("out1").Signals().SignalsOrNil(), testOutputs2.ByName("out1").Signals().SignalsOrNil())
+			assert.ElementsMatch(t, testOutputs1.ByName("out2").Signals().SignalsOrNil(), testOutputs2.ByName("out2").Signals().SignalsOrNil())
 
 		})
 	}

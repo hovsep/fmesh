@@ -25,8 +25,11 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						num := inputs.ByName("num").Signals().FirstPayload().(int)
-						outputs.ByName("res").PutSignals(signal.New(num + 2))
+						num, err := inputs.ByName("num").Signals().FirstPayload()
+						if err != nil {
+							return err
+						}
+						outputs.ByName("res").PutSignals(signal.New(num.(int) + 2))
 						return nil
 					})
 
@@ -35,8 +38,11 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						num := inputs.ByName("num").Signals().FirstPayload().(int)
-						outputs.ByName("res").PutSignals(signal.New(num * 3))
+						num, err := inputs.ByName("num").Signals().FirstPayload()
+						if err != nil {
+							return err
+						}
+						outputs.ByName("res").PutSignals(signal.New(num.(int) * 3))
 						return nil
 					})
 
@@ -55,8 +61,10 @@ func Test_Math(t *testing.T) {
 				assert.Len(t, cycles, 3)
 
 				resultSignals := fm.Components().ByName("c2").Outputs().ByName("res").Signals()
-				assert.Len(t, resultSignals, 1)
-				assert.Equal(t, 102, resultSignals.FirstPayload().(int))
+				sig, err := resultSignals.FirstPayload()
+				assert.NoError(t, err)
+				assert.Len(t, resultSignals.SignalsOrNil(), 1)
+				assert.Equal(t, 102, sig.(int))
 			},
 		},
 	}

@@ -26,8 +26,11 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-							inputNum := inputs.ByName("i1").Signals().FirstPayload().(int)
-							outputs.ByName("o1").PutSignals(signal.New(inputNum * 2))
+							inputNum, err := inputs.ByName("i1").Signals().FirstPayload()
+							if err != nil {
+								return err
+							}
+							outputs.ByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 							return nil
 						})
 				}
@@ -47,9 +50,17 @@ func Test_WaitingForInputs(t *testing.T) {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1 := inputs.ByName("i1").Signals().FirstPayload().(int)
-						inputNum2 := inputs.ByName("i2").Signals().FirstPayload().(int)
-						outputs.ByName("o1").PutSignals(signal.New(inputNum1 + inputNum2))
+						inputNum1, err := inputs.ByName("i1").Signals().FirstPayload()
+						if err != nil {
+							return err
+						}
+
+						inputNum2, err := inputs.ByName("i2").Signals().FirstPayload()
+						if err != nil {
+							return err
+						}
+
+						outputs.ByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 						return nil
 					})
 
@@ -79,8 +90,9 @@ func Test_WaitingForInputs(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				assert.NoError(t, err)
-				result := fm.Components().ByName("sum").Outputs().ByName("o1").Signals().FirstPayload().(int)
-				assert.Equal(t, 16, result)
+				result, err := fm.Components().ByName("sum").Outputs().ByName("o1").Signals().FirstPayload()
+				assert.NoError(t, err)
+				assert.Equal(t, 16, result.(int))
 			},
 		},
 	}

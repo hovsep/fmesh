@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -20,7 +21,8 @@ func TestNew(t *testing.T) {
 				payload: nil,
 			},
 			want: &Signal{
-				payload: []any{nil},
+				payload:   []any{nil},
+				Chainable: &common.Chainable{},
 			},
 		},
 		{
@@ -28,8 +30,9 @@ func TestNew(t *testing.T) {
 			args: args{
 				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
-			want: &Signal{payload: []any{
-				[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
+			want: &Signal{
+				payload:   []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
+				Chainable: &common.Chainable{},
 			},
 		},
 	}
@@ -42,9 +45,10 @@ func TestNew(t *testing.T) {
 
 func TestSignal_Payload(t *testing.T) {
 	tests := []struct {
-		name   string
-		signal *Signal
-		want   any
+		name            string
+		signal          *Signal
+		want            any
+		wantErrorString string
 	}{
 		{
 			name:   "nil payload is valid",
@@ -59,7 +63,14 @@ func TestSignal_Payload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.signal.Payload())
+			got, err := tt.signal.Payload()
+			if tt.wantErrorString != "" {
+				assert.Error(t, err)
+				assert.EqualError(t, err, tt.wantErrorString)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
+
 		})
 	}
 }
