@@ -14,8 +14,8 @@ type Component struct {
 	common.NamedEntity
 	common.DescribedEntity
 	common.LabeledEntity
-	inputs  port.Collection
-	outputs port.Collection
+	inputs  *port.Collection
+	outputs *port.Collection
 	f       ActivationFunc
 }
 
