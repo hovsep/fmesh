@@ -25,7 +25,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						num, err := inputs.ByName("num").Signals().FirstPayload()
+						num, err := inputs.ByName("num").Buffer().FirstPayload()
 						if err != nil {
 							return err
 						}
@@ -38,7 +38,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
-						num, err := inputs.ByName("num").Signals().FirstPayload()
+						num, err := inputs.ByName("num").Buffer().FirstPayload()
 						if err != nil {
 							return err
 						}
@@ -60,7 +60,7 @@ func Test_Math(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, cycles, 3)
 
-				resultSignals := fm.Components().ByName("c2").Outputs().ByName("res").Signals()
+				resultSignals := fm.Components().ByName("c2").Outputs().ByName("res").Buffer()
 				sig, err := resultSignals.FirstPayload()
 				assert.NoError(t, err)
 				assert.Len(t, resultSignals.SignalsOrNil(), 1)
