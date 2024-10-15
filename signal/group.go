@@ -123,14 +123,20 @@ func (group *Group) SignalsOrNil() []*Signal {
 
 // SignalsOrDefault returns signals or default in case of any error
 func (group *Group) SignalsOrDefault(defaultSignals []*Signal) []*Signal {
-	if group.HasError() {
+	signals, err := group.Signals()
+	if err != nil {
 		return defaultSignals
 	}
-	return group.signals
+	return signals
 }
 
 // WithError returns group with error
 func (group *Group) WithError(err error) *Group {
 	group.SetError(err)
 	return group
+}
+
+// Len returns number of signals in group
+func (group *Group) Len() int {
+	return len(group.signals)
 }
