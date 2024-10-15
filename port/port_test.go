@@ -19,7 +19,7 @@ func TestPort_HasSignals(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "port has normal signals",
+			name: "port has normal buffer",
 			port: New("p").WithSignals(signal.New(123)),
 			want: true,
 		},
@@ -38,7 +38,7 @@ func TestPort_Signals(t *testing.T) {
 		want *signal.Group
 	}{
 		{
-			name: "no signals",
+			name: "no buffer",
 			port: New("noSignal"),
 			want: signal.NewGroup(),
 		},
@@ -50,7 +50,7 @@ func TestPort_Signals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Signals())
+			assert.Equal(t, tt.want, tt.port.Buffer())
 		})
 	}
 }
@@ -136,7 +136,7 @@ func TestPort_PutSignals(t *testing.T) {
 			},
 		},
 		{
-			name:         "multiple signals to empty port",
+			name:         "multiple buffer to empty port",
 			port:         New("p"),
 			signalsAfter: signal.NewGroup(11, 12).SignalsOrNil(),
 			args: args{
@@ -152,7 +152,7 @@ func TestPort_PutSignals(t *testing.T) {
 			},
 		},
 		{
-			name:         "single signals to port with multiple signals",
+			name:         "single buffer to port with multiple buffer",
 			port:         New("p").WithSignalGroups(signal.NewGroup(11, 12)),
 			signalsAfter: signal.NewGroup(11, 12, 13).SignalsOrNil(),
 			args: args{
@@ -160,7 +160,7 @@ func TestPort_PutSignals(t *testing.T) {
 			},
 		},
 		{
-			name:         "multiple signals to port with multiple signals",
+			name:         "multiple buffer to port with multiple buffer",
 			port:         New("p").WithSignalGroups(signal.NewGroup(55, 66)),
 			signalsAfter: signal.NewGroup(55, 66, 13, 14).SignalsOrNil(),
 			args: args{
@@ -171,7 +171,7 @@ func TestPort_PutSignals(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.port.PutSignals(tt.args.signals...)
-			assert.ElementsMatch(t, tt.signalsAfter, tt.port.Signals().SignalsOrNil())
+			assert.ElementsMatch(t, tt.signalsAfter, tt.port.Buffer().SignalsOrNil())
 		})
 	}
 }
@@ -238,11 +238,11 @@ func TestPort_Flush(t *testing.T) {
 		assertions func(t *testing.T, srcPort *Port)
 	}{
 		{
-			name:    "port with signals and no pipes is not flushed",
+			name:    "port with buffer and no pipes is not flushed",
 			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.True(t, srcPort.HasSignals())
-				assert.Len(t, srcPort.Signals().SignalsOrNil(), 3)
+				assert.Len(t, srcPort.Buffer().SignalsOrNil(), 3)
 				assert.False(t, srcPort.HasPipes())
 			},
 		},
@@ -265,8 +265,8 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.pipes {
 					assert.True(t, destPort.HasSignals())
-					assert.Len(t, destPort.Signals().SignalsOrNil(), 3)
-					allPayloads, err := destPort.Signals().AllPayloads()
+					assert.Len(t, destPort.Buffer().SignalsOrNil(), 3)
+					allPayloads, err := destPort.Buffer().AllPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
@@ -285,8 +285,8 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.pipes {
 					assert.True(t, destPort.HasSignals())
-					assert.Len(t, destPort.Signals().SignalsOrNil(), 6)
-					allPayloads, err := destPort.Signals().AllPayloads()
+					assert.Len(t, destPort.Buffer().SignalsOrNil(), 6)
+					allPayloads, err := destPort.Buffer().AllPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)

@@ -30,7 +30,7 @@ func (collection Collection) ByNames(names ...string) Collection {
 	return selectedPorts
 }
 
-// AnyHasSignals returns true if at least one port in collection has signals
+// AnyHasSignals returns true if at least one port in collection has buffer
 func (collection Collection) AnyHasSignals() bool {
 	for _, p := range collection {
 		if p.HasSignals() {
@@ -41,7 +41,7 @@ func (collection Collection) AnyHasSignals() bool {
 	return false
 }
 
-// AllHaveSignals returns true when all ports in collection have signals
+// AllHaveSignals returns true when all ports in collection have buffer
 func (collection Collection) AllHaveSignals() bool {
 	for _, p := range collection {
 		if !p.HasSignals() {
@@ -52,14 +52,14 @@ func (collection Collection) AllHaveSignals() bool {
 	return true
 }
 
-// PutSignals adds signals to every port in collection
+// PutSignals adds buffer to every port in collection
 func (collection Collection) PutSignals(signals ...*signal.Signal) {
 	for _, p := range collection {
 		p.PutSignals(signals...)
 	}
 }
 
-// withSignals adds signals to every port in collection and returns the collection
+// withSignals adds buffer to every port in collection and returns the collection
 func (collection Collection) withSignals(signals ...*signal.Signal) Collection {
 	collection.PutSignals(signals...)
 	return collection
@@ -100,11 +100,11 @@ func (collection Collection) WithIndexed(prefix string, startIndex int, endIndex
 	return collection.With(NewIndexedGroup(prefix, startIndex, endIndex)...)
 }
 
-// Signals returns all signals of all ports in the group
+// Signals returns all buffer of all ports in the group
 func (collection Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
 	for _, p := range collection {
-		signals, err := p.Signals().Signals()
+		signals, err := p.Buffer().Signals()
 		if err != nil {
 			return group.WithError(err)
 		}
