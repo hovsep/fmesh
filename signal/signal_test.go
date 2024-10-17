@@ -63,7 +63,7 @@ func TestSignal_Payload(t *testing.T) {
 		},
 		{
 			name:            "with error in chain",
-			signal:          New(123).WithError(errors.New("some error in chain")),
+			signal:          New(123).WithChainError(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
 		},
@@ -95,7 +95,7 @@ func TestSignal_PayloadOrNil(t *testing.T) {
 		},
 		{
 			name:   "nil returned",
-			signal: New(123).WithError(errors.New("some error in chain")),
+			signal: New(123).WithChainError(errors.New("some error in chain")),
 			want:   nil,
 		},
 	}

@@ -26,12 +26,12 @@ func NewGroup(payloads ...any) *Group {
 
 // First returns the first signal in the group
 func (group *Group) First() *Signal {
-	if group.HasError() {
-		return New(nil).WithError(group.Error())
+	if group.HasChainError() {
+		return New(nil).WithChainError(group.ChainError())
 	}
 
 	if len(group.signals) == 0 {
-		return New(nil).WithError(errors.New("group has no signals"))
+		return New(nil).WithChainError(errors.New("group has no signals"))
 	}
 
 	return group.signals[0]
@@ -39,8 +39,8 @@ func (group *Group) First() *Signal {
 
 // FirstPayload returns the first signal payload
 func (group *Group) FirstPayload() (any, error) {
-	if group.HasError() {
-		return nil, group.Error()
+	if group.HasChainError() {
+		return nil, group.ChainError()
 	}
 
 	return group.First().Payload()
@@ -48,8 +48,8 @@ func (group *Group) FirstPayload() (any, error) {
 
 // AllPayloads returns a slice with all payloads of the all signals in the group
 func (group *Group) AllPayloads() ([]any, error) {
-	if group.HasError() {
-		return nil, group.Error()
+	if group.HasChainError() {
+		return nil, group.ChainError()
 	}
 
 	all := make([]any, len(group.signals))
@@ -65,7 +65,7 @@ func (group *Group) AllPayloads() ([]any, error) {
 
 // With returns the group with added signals
 func (group *Group) With(signals ...*Signal) *Group {
-	if group.HasError() {
+	if group.HasChainError() {
 		// Do nothing, but propagate error
 		return group
 	}
@@ -74,11 +74,11 @@ func (group *Group) With(signals ...*Signal) *Group {
 	copy(newSignals, group.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			return group.WithError(errors.New("signal is nil"))
+			return group.WithChainError(errors.New("signal is nil"))
 		}
 
-		if sig.HasError() {
-			return group.WithError(sig.Error())
+		if sig.HasChainError() {
+			return group.WithChainError(sig.ChainError())
 		}
 
 		newSignals[len(group.signals)+i] = sig
@@ -89,7 +89,7 @@ func (group *Group) With(signals ...*Signal) *Group {
 
 // WithPayloads returns a group with added signals created from provided payloads
 func (group *Group) WithPayloads(payloads ...any) *Group {
-	if group.HasError() {
+	if group.HasChainError() {
 		// Do nothing, but propagate error
 		return group
 	}
@@ -110,8 +110,8 @@ func (group *Group) withSignals(signals []*Signal) *Group {
 
 // Signals getter
 func (group *Group) Signals() ([]*Signal, error) {
-	if group.HasError() {
-		return nil, group.Error()
+	if group.HasChainError() {
+		return nil, group.ChainError()
 	}
 	return group.signals, nil
 }
@@ -130,9 +130,9 @@ func (group *Group) SignalsOrDefault(defaultSignals []*Signal) []*Signal {
 	return signals
 }
 
-// WithError returns group with error
-func (group *Group) WithError(err error) *Group {
-	group.SetError(err)
+// WithChainError returns group with error
+func (group *Group) WithChainError(err error) *Group {
+	group.SetChainError(err)
 	return group
 }
 

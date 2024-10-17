@@ -76,7 +76,7 @@ func TestGroup_FirstPayload(t *testing.T) {
 		},
 		{
 			name:            "with error in chain",
-			group:           NewGroup(3, 4, 5).WithError(errors.New("some error in chain")),
+			group:           NewGroup(3, 4, 5).WithChainError(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
 		},
@@ -113,13 +113,13 @@ func TestGroup_AllPayloads(t *testing.T) {
 		},
 		{
 			name:            "with error in chain",
-			group:           NewGroup(1, 2, 3).WithError(errors.New("some error in chain")),
+			group:           NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
 		},
 		{
 			name:            "with error in signal",
-			group:           NewGroup().withSignals([]*Signal{New(33).WithError(errors.New("some error in signal"))}),
+			group:           NewGroup().withSignals([]*Signal{New(33).WithChainError(errors.New("some error in signal"))}),
 			want:            nil,
 			wantErrorString: "some error in signal",
 		},
@@ -188,28 +188,28 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				signals: NewGroup(7, nil, 9).SignalsOrNil(),
 			},
-			want: NewGroup(1, 2, 3, "valid before invalid").WithError(errors.New("signal is nil")),
+			want: NewGroup(1, 2, 3, "valid before invalid").WithChainError(errors.New("signal is nil")),
 		},
 		{
 			name:  "with error in signal",
-			group: NewGroup(1, 2, 3).With(New(44).WithError(errors.New("some error in signal"))),
+			group: NewGroup(1, 2, 3).With(New(44).WithChainError(errors.New("some error in signal"))),
 			args: args{
 				signals: []*Signal{New(456)},
 			},
 			want: NewGroup(1, 2, 3).
 				With(New(44).
-										WithError(errors.New("some error in signal"))).
-				WithError(errors.New("some error in signal")), // error propagated from signal to group
+											WithChainError(errors.New("some error in signal"))).
+				WithChainError(errors.New("some error in signal")), // error propagated from signal to group
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.With(tt.args.signals...)
-			if tt.want.HasError() {
-				assert.Error(t, got.Error())
-				assert.EqualError(t, got.Error(), tt.want.Error().Error())
+			if tt.want.HasChainError() {
+				assert.Error(t, got.ChainError())
+				assert.EqualError(t, got.ChainError(), tt.want.ChainError().Error())
 			} else {
-				assert.NoError(t, got.Error())
+				assert.NoError(t, got.ChainError())
 			}
 			assert.Equal(t, tt.want, got)
 		})
@@ -275,7 +275,7 @@ func TestGroup_First(t *testing.T) {
 		{
 			name:  "empty group",
 			group: NewGroup(),
-			want:  New(nil).WithError(errors.New("group has no signals")),
+			want:  New(nil).WithChainError(errors.New("group has no signals")),
 		},
 		{
 			name:  "happy path",
@@ -284,17 +284,17 @@ func TestGroup_First(t *testing.T) {
 		},
 		{
 			name:  "with error in chain",
-			group: NewGroup(1, 2, 3).WithError(errors.New("some error in chain")),
-			want:  New(nil).WithError(errors.New("some error in chain")),
+			group: NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
+			want:  New(nil).WithChainError(errors.New("some error in chain")),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.First()
-			if tt.want.HasError() {
-				assert.True(t, got.HasError())
-				assert.Error(t, got.Error())
-				assert.EqualError(t, got.Error(), tt.want.Error().Error())
+			if tt.want.HasChainError() {
+				assert.True(t, got.HasChainError())
+				assert.Error(t, got.ChainError())
+				assert.EqualError(t, got.ChainError(), tt.want.ChainError().Error())
 			} else {
 				assert.Equal(t, tt.want, tt.group.First())
 			}
@@ -323,7 +323,7 @@ func TestGroup_Signals(t *testing.T) {
 		},
 		{
 			name:            "with error in chain",
-			group:           NewGroup(1, 2, 3).WithError(errors.New("some error in chain")),
+			group:           NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
 		},
@@ -369,7 +369,7 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 		},
 		{
 			name:  "with error in chain and nil default",
-			group: NewGroup(1, 2, 3).WithError(errors.New("some error in chain")),
+			group: NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
 			args: args{
 				defaultSignals: nil,
 			},
@@ -377,7 +377,7 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 		},
 		{
 			name:  "with error in chain and default",
-			group: NewGroup(1, 2, 3).WithError(errors.New("some error in chain")),
+			group: NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
 			args: args{
 				defaultSignals: []*Signal{New(4), New(5)},
 			},

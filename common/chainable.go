@@ -8,14 +8,14 @@ func NewChainable() *Chainable {
 	return &Chainable{}
 }
 
-func (c *Chainable) SetError(err error) {
+func (c *Chainable) SetChainError(err error) {
 	c.err = err
 }
 
-func (c *Chainable) HasError() bool {
+func (c *Chainable) HasChainError() bool {
 	return c.err != nil
 }
 
-func (c *Chainable) Error() error {
+func (c *Chainable) ChainError() error {
 	return c.err
 }
