@@ -28,8 +28,8 @@ func New(name string) *Port {
 
 // Buffer getter
 func (p *Port) Buffer() *signal.Group {
-	if p.HasError() {
-		return p.buffer.WithError(p.Error())
+	if p.HasChainError() {
+		return p.buffer.WithChainError(p.ChainError())
 	}
 	return p.buffer
 }
@@ -37,8 +37,8 @@ func (p *Port) Buffer() *signal.Group {
 // Pipes getter
 // @TODO maybe better to return []*Port directly
 func (p *Port) Pipes() *Group {
-	if p.HasError() {
-		return p.pipes.WithError(p.Error())
+	if p.HasChainError() {
+		return p.pipes.WithChainError(p.ChainError())
 	}
 	return p.pipes
 }
@@ -51,7 +51,7 @@ func (p *Port) setSignals(signals *signal.Group) {
 // PutSignals adds signals to buffer
 // @TODO: rename
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 	p.setSignals(p.Buffer().With(signals...))
@@ -60,7 +60,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 
 // WithSignals puts buffer and returns the port
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 
@@ -69,16 +69,16 @@ func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 
 // WithSignalGroups puts groups of buffer and returns the port
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 	for _, group := range signalGroups {
 		signals, err := group.Signals()
 		if err != nil {
-			return p.WithError(err)
+			return p.WithChainError(err)
 		}
 		p.PutSignals(signals...)
-		if p.HasError() {
+		if p.HasChainError() {
 			return p
 		}
 	}
@@ -88,7 +88,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 
 // Clear removes all signals from the port buffer
 func (p *Port) Clear() *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 	p.setSignals(signal.NewGroup())
@@ -98,7 +98,7 @@ func (p *Port) Clear() *Port {
 // Flush pushes buffer to pipes and clears the port
 // @TODO: hide this method from user
 func (p *Port) Flush() *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 
@@ -109,14 +109,14 @@ func (p *Port) Flush() *Port {
 
 	pipes, err := p.pipes.Ports()
 	if err != nil {
-		return p.WithError(err)
+		return p.WithChainError(err)
 	}
 
 	for _, outboundPort := range pipes {
 		//Fan-Out
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
-			return p.WithError(err)
+			return p.WithChainError(err)
 		}
 	}
 	return p.Clear()
@@ -124,7 +124,7 @@ func (p *Port) Flush() *Port {
 
 // HasSignals says whether port buffer is set or not
 func (p *Port) HasSignals() bool {
-	if p.HasError() {
+	if p.HasChainError() {
 		//@TODO: add logging here
 		return false
 	}
@@ -138,7 +138,7 @@ func (p *Port) HasSignals() bool {
 
 // HasPipes says whether port has outbound pipes
 func (p *Port) HasPipes() bool {
-	if p.HasError() {
+	if p.HasChainError() {
 		//@TODO: add logging here
 		return false
 	}
@@ -154,7 +154,7 @@ func (p *Port) HasPipes() bool {
 // PipeTo creates one or multiple pipes to other port(s)
 // @TODO: hide this method from AF
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 	for _, destPort := range destPorts {
@@ -168,7 +168,7 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 
 // WithLabels sets labels and returns the port
 func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
-	if p.HasError() {
+	if p.HasChainError() {
 		return p
 	}
 
@@ -183,14 +183,14 @@ func ForwardSignals(source *Port, dest *Port) error {
 		return err
 	}
 	dest.PutSignals(signals...)
-	if dest.HasError() {
-		return dest.Error()
+	if dest.HasChainError() {
+		return dest.ChainError()
 	}
 	return nil
 }
 
-// WithError returns port with error
-func (p *Port) WithError(err error) *Port {
-	p.SetError(err)
+// WithChainError returns port with error
+func (p *Port) WithChainError(err error) *Port {
+	p.SetChainError(err)
 	return p
 }

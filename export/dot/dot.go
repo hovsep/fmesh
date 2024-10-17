@@ -90,14 +90,17 @@ func (d *dotExporter) ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.C
 func (d *dotExporter) buildGraph(fm *fmesh.FMesh, activationCycle *cycle.Cycle) (*dot.Graph, error) {
 	mainGraph, err := d.getMainGraph(fm, activationCycle)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get main graph: %w", err)
 	}
 
-	d.addComponents(mainGraph, fm.Components(), activationCycle)
+	err = d.addComponents(mainGraph, fm.Components(), activationCycle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add components: %w", err)
+	}
 
 	err = d.addPipes(mainGraph, fm.Components())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to add pipes: %w", err)
 	}
 	return mainGraph, nil
 }
@@ -119,8 +122,17 @@ func (d *dotExporter) getMainGraph(fm *fmesh.FMesh, activationCycle *cycle.Cycle
 // addPipes adds pipes representation to the graph
 func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Collection) error {
 	for _, c := range components {
-		for _, srcPort := range c.Outputs() {
-			for _, destPort := range srcPort.Pipes() {
+		srcPorts, err := c.Outputs().Ports()
+		if err != nil {
+			return err
+		}
+
+		for _, srcPort := range srcPorts {
+			destPorts, err := srcPort.Pipes().Ports()
+			if err != nil {
+				return err
+			}
+			for _, destPort := range destPorts {
 				// Any destination port in any pipe is input port, but we do not know in which component
 				// so we use the label we added earlier
 				destPortID, err := destPort.Label(nodeIDLabel)
@@ -144,7 +156,7 @@ func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Colle
 }
 
 // addComponents adds components representation to the graph
-func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.Collection, activationCycle *cycle.Cycle) {
+func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.Collection, activationCycle *cycle.Cycle) error {
 	for _, c := range components {
 		// Component
 		var activationResult *fmeshcomponent.ActivationResult
@@ -155,17 +167,26 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 		componentNode := d.getComponentNode(componentSubgraph, c, activationResult)
 
 		// Input ports
-		for _, p := range c.Inputs() {
+		inputPorts, err := c.Inputs().Ports()
+		if err != nil {
+			return err
+		}
+		for _, p := range inputPorts {
 			portNode := d.getPortNode(c, p, portKindInput, componentSubgraph)
 			componentSubgraph.Edge(portNode, componentNode)
 		}
 
 		// Output ports
-		for _, p := range c.Outputs() {
+		outputPorts, err := c.Outputs().Ports()
+		if err != nil {
+			return err
+		}
+		for _, p := range outputPorts {
 			portNode := d.getPortNode(c, p, portKindOutput, componentSubgraph)
 			componentSubgraph.Edge(componentNode, portNode)
 		}
 	}
+	return nil
 }
 
 // getPortNode creates and returns a node representing one port

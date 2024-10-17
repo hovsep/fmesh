@@ -43,7 +43,7 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 
 // With adds ports to group
 func (group *Group) With(ports ...*Port) *Group {
-	if group.HasError() {
+	if group.HasChainError() {
 		return group
 	}
 
@@ -64,8 +64,8 @@ func (group *Group) withPorts(ports []*Port) *Group {
 
 // Ports getter
 func (group *Group) Ports() ([]*Port, error) {
-	if group.HasError() {
-		return nil, group.Error()
+	if group.HasChainError() {
+		return nil, group.ChainError()
 	}
 	return group.ports, nil
 }
@@ -84,9 +84,9 @@ func (group *Group) PortsOrDefault(defaultPorts []*Port) []*Port {
 	return ports
 }
 
-// WithError returns group with error
-func (group *Group) WithError(err error) *Group {
-	group.SetError(err)
+// WithChainError returns group with error
+func (group *Group) WithChainError(err error) *Group {
+	group.SetChainError(err)
 	return group
 }
 

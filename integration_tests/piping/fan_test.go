@@ -26,7 +26,7 @@ func Test_Fan(t *testing.T) {
 					component.New("producer").
 						WithInputs("start").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 							outputs.ByName("o1").PutSignals(signal.New(time.Now()))
 							return nil
 						}),
@@ -34,7 +34,7 @@ func Test_Fan(t *testing.T) {
 					component.New("consumer1").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 							//Bypass received signal to output
 							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
@@ -43,7 +43,7 @@ func Test_Fan(t *testing.T) {
 					component.New("consumer2").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 							//Bypass received signal to output
 							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
@@ -52,7 +52,7 @@ func Test_Fan(t *testing.T) {
 					component.New("consumer3").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 							//Bypass received signal to output
 							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 							return nil
@@ -94,7 +94,7 @@ func Test_Fan(t *testing.T) {
 				producer1 := component.New("producer1").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
@@ -102,7 +102,7 @@ func Test_Fan(t *testing.T) {
 				producer2 := component.New("producer2").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
@@ -110,14 +110,14 @@ func Test_Fan(t *testing.T) {
 				producer3 := component.New("producer3").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 				consumer := component.New("consumer").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						//Bypass
 						port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 						return nil
