@@ -18,8 +18,8 @@ func New(payload any) *Signal {
 
 // Payload getter
 func (s *Signal) Payload() (any, error) {
-	if s.HasError() {
-		return nil, s.Error()
+	if s.HasChainError() {
+		return nil, s.ChainError()
 	}
 	return s.payload[0], nil
 }
@@ -38,8 +38,8 @@ func (s *Signal) PayloadOrDefault(defaultValue any) any {
 	return payload
 }
 
-// WithError returns signal with error
-func (s *Signal) WithError(err error) *Signal {
-	s.SetError(err)
+// WithChainError returns signal with error
+func (s *Signal) WithChainError(err error) *Signal {
+	s.SetChainError(err)
 	return s
 }

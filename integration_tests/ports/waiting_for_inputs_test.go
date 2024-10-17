@@ -25,7 +25,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithDescription("This component just doubles the input").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 							inputNum, err := inputs.ByName("i1").Buffer().FirstPayload()
 							if err != nil {
 								return err
@@ -45,7 +45,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					WithDescription("This component just sums 2 inputs").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
 							return component.NewErrWaitForInputs(true)
 						}

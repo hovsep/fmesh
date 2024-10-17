@@ -24,7 +24,7 @@ func Test_Math(t *testing.T) {
 					WithDescription("adds 2 to the input").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						num, err := inputs.ByName("num").Buffer().FirstPayload()
 						if err != nil {
 							return err
@@ -37,7 +37,7 @@ func Test_Math(t *testing.T) {
 					WithDescription("multiplies by 3").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs port.Collection, outputs port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
 						num, err := inputs.ByName("num").Buffer().FirstPayload()
 						if err != nil {
 							return err
