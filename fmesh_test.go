@@ -26,8 +26,11 @@ func TestNew(t *testing.T) {
 				name: "",
 			},
 			want: &FMesh{
-				components: component.Collection{},
-				config:     defaultConfig,
+				NamedEntity:     common.NewNamedEntity(""),
+				DescribedEntity: common.NewDescribedEntity(""),
+				Chainable:       common.NewChainable(),
+				components:      component.NewCollection(),
+				config:          defaultConfig,
 			},
 		},
 		{
@@ -36,9 +39,11 @@ func TestNew(t *testing.T) {
 				name: "fm1",
 			},
 			want: &FMesh{
-				NamedEntity: common.NewNamedEntity("fm1"),
-				components:  component.Collection{},
-				config:      defaultConfig,
+				NamedEntity:     common.NewNamedEntity("fm1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				Chainable:       common.NewChainable(),
+				components:      component.NewCollection(),
+				config:          defaultConfig,
 			},
 		},
 	}
@@ -68,7 +73,8 @@ func TestFMesh_WithDescription(t *testing.T) {
 			want: &FMesh{
 				NamedEntity:     common.NewNamedEntity("fm1"),
 				DescribedEntity: common.NewDescribedEntity(""),
-				components:      component.Collection{},
+				Chainable:       common.NewChainable(),
+				components:      component.NewCollection(),
 				config:          defaultConfig,
 			},
 		},
@@ -81,7 +87,8 @@ func TestFMesh_WithDescription(t *testing.T) {
 			want: &FMesh{
 				NamedEntity:     common.NewNamedEntity("fm1"),
 				DescribedEntity: common.NewDescribedEntity("descr"),
-				components:      component.Collection{},
+				Chainable:       common.NewChainable(),
+				components:      component.NewCollection(),
 				config:          defaultConfig,
 			},
 		},
@@ -113,8 +120,10 @@ func TestFMesh_WithConfig(t *testing.T) {
 				},
 			},
 			want: &FMesh{
-				NamedEntity: common.NewNamedEntity("fm1"),
-				components:  component.Collection{},
+				NamedEntity:     common.NewNamedEntity("fm1"),
+				DescribedEntity: common.NewDescribedEntity(""),
+				Chainable:       common.NewChainable(),
+				components:      component.NewCollection(),
 				config: Config{
 					ErrorHandlingStrategy: IgnoreAll,
 					CyclesLimit:           9999,
@@ -134,10 +143,10 @@ func TestFMesh_WithComponents(t *testing.T) {
 		components []*component.Component
 	}
 	tests := []struct {
-		name           string
-		fm             *FMesh
-		args           args
-		wantComponents component.Collection
+		name       string
+		fm         *FMesh
+		args       args
+		assertions func(t *testing.T, fm *FMesh)
 	}{
 		{
 			name: "no components",
@@ -145,7 +154,9 @@ func TestFMesh_WithComponents(t *testing.T) {
 			args: args{
 				components: nil,
 			},
-			wantComponents: component.Collection{},
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Zero(t, fm.Components().Len())
+			},
 		},
 		{
 			name: "with single component",
@@ -155,8 +166,9 @@ func TestFMesh_WithComponents(t *testing.T) {
 					component.New("c1"),
 				},
 			},
-			wantComponents: component.Collection{
-				"c1": component.New("c1"),
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, fm.Components().Len(), 1)
+				assert.NotNil(t, fm.Components().ByName("c1"))
 			},
 		},
 		{
@@ -168,9 +180,10 @@ func TestFMesh_WithComponents(t *testing.T) {
 					component.New("c2"),
 				},
 			},
-			wantComponents: component.Collection{
-				"c1": component.New("c1"),
-				"c2": component.New("c2"),
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, fm.Components().Len(), 2)
+				assert.NotNil(t, fm.Components().ByName("c1"))
+				assert.NotNil(t, fm.Components().ByName("c2"))
 			},
 		},
 		{
@@ -180,20 +193,25 @@ func TestFMesh_WithComponents(t *testing.T) {
 				components: []*component.Component{
 					component.New("c1").WithDescription("descr1"),
 					component.New("c2").WithDescription("descr2"),
-					component.New("c2").WithDescription("descr3"), //This will overwrite the previous one
+					component.New("c2").WithDescription("new descr for c2"), //This will overwrite the previous one
 					component.New("c4").WithDescription("descr4"),
 				},
 			},
-			wantComponents: component.Collection{
-				"c1": component.New("c1").WithDescription("descr1"),
-				"c2": component.New("c2").WithDescription("descr3"),
-				"c4": component.New("c4").WithDescription("descr4"),
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, fm.Components().Len(), 3)
+				assert.NotNil(t, fm.Components().ByName("c1"))
+				assert.NotNil(t, fm.Components().ByName("c2"))
+				assert.NotNil(t, fm.Components().ByName("c4"))
+				assert.Equal(t, "new descr for c2", fm.Components().ByName("c2").Description())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantComponents, tt.fm.WithComponents(tt.args.components...).Components())
+			fmAfter := tt.fm.WithComponents(tt.args.components...)
+			if tt.assertions != nil {
+				tt.assertions(t, fmAfter)
+			}
 		})
 	}
 }
@@ -209,8 +227,8 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name:    "empty mesh stops after first cycle",
 			fm:      New("fm"),
-			want:    cycle.NewCollection().With(cycle.New()),
-			wantErr: false,
+			want:    nil,
+			wantErr: true,
 		},
 		{
 			name: "unsupported error handling strategy",
@@ -567,15 +585,17 @@ func TestFMesh_Run(t *testing.T) {
 
 func TestFMesh_runCycle(t *testing.T) {
 	tests := []struct {
-		name   string
-		fm     *FMesh
-		initFM func(fm *FMesh)
-		want   *cycle.Cycle
+		name      string
+		fm        *FMesh
+		initFM    func(fm *FMesh)
+		want      *cycle.Cycle
+		wantError bool
 	}{
 		{
-			name: "empty mesh",
-			fm:   New("empty mesh"),
-			want: cycle.New(),
+			name:      "empty mesh",
+			fm:        New("empty mesh"),
+			want:      nil,
+			wantError: true,
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",
@@ -629,7 +649,13 @@ func TestFMesh_runCycle(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(tt.fm)
 			}
-			assert.Equal(t, tt.want, tt.fm.runCycle())
+			cycleResult, err := tt.fm.runCycle()
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, cycleResult)
+			}
 		})
 	}
 }

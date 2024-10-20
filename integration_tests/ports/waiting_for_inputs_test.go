@@ -26,10 +26,8 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-							inputNum, err := inputs.ByName("i1").FirstSignalPayload()
-							if err != nil {
-								return err
-							}
+							inputNum := inputs.ByName("i1").FirstSignalPayloadOrDefault(0)
+
 							outputs.ByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 							return nil
 						})
@@ -50,15 +48,8 @@ func Test_WaitingForInputs(t *testing.T) {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1, err := inputs.ByName("i1").FirstSignalPayload()
-						if err != nil {
-							return err
-						}
-
-						inputNum2, err := inputs.ByName("i2").FirstSignalPayload()
-						if err != nil {
-							return err
-						}
+						inputNum1 := inputs.ByName("i1").FirstSignalPayloadOrDefault(0)
+						inputNum2 := inputs.ByName("i2").FirstSignalPayloadOrDefault(0)
 
 						outputs.ByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 						return nil
