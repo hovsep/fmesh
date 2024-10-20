@@ -30,10 +30,10 @@ func (s *Signal) PayloadOrNil() any {
 }
 
 // PayloadOrDefault returns payload or provided default value in case of error
-func (s *Signal) PayloadOrDefault(defaultValue any) any {
+func (s *Signal) PayloadOrDefault(defaultPayload any) any {
 	payload, err := s.Payload()
 	if err != nil {
-		return defaultValue
+		return defaultPayload
 	}
 	return payload
 }

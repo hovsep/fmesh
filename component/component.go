@@ -126,6 +126,26 @@ func (c *Component) Outputs() *port.Collection {
 	return c.outputs
 }
 
+// OutputByName is shortcut method
+func (c *Component) OutputByName(name string) *port.Port {
+	outputPort := c.Outputs().ByName(name)
+	if outputPort.HasChainError() {
+		c.SetChainError(outputPort.ChainError())
+		return nil
+	}
+	return outputPort
+}
+
+// InputByName is shortcut method
+func (c *Component) InputByName(name string) *port.Port {
+	inputPort := c.Inputs().ByName(name)
+	if inputPort.HasChainError() {
+		c.SetChainError(inputPort.ChainError())
+		return nil
+	}
+	return inputPort
+}
+
 // hasActivationFunction checks when activation function is set
 func (c *Component) hasActivationFunction() bool {
 	if c.HasChainError() {

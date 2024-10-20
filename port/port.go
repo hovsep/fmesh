@@ -128,7 +128,7 @@ func (p *Port) HasSignals() bool {
 		//@TODO: add logging here
 		return false
 	}
-	signals, err := p.Buffer().Signals()
+	signals, err := p.AllSignals()
 	if err != nil {
 		//@TODO: add logging here
 		return false
@@ -178,7 +178,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 
 // ForwardSignals copies all buffer from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) error {
-	signals, err := source.Buffer().Signals()
+	signals, err := source.AllSignals()
 	if err != nil {
 		return err
 	}
@@ -193,4 +193,38 @@ func ForwardSignals(source *Port, dest *Port) error {
 func (p *Port) WithChainError(err error) *Port {
 	p.SetChainError(err)
 	return p
+}
+
+// FirstSignalPayload is shortcut method
+func (p *Port) FirstSignalPayload() (any, error) {
+	return p.Buffer().FirstPayload()
+}
+
+// FirstSignalPayloadOrNil is shortcut method
+func (p *Port) FirstSignalPayloadOrNil() any {
+	return p.Buffer().First().PayloadOrNil()
+}
+
+// FirstSignalPayloadOrDefault is shortcut method
+func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
+	return p.Buffer().First().PayloadOrDefault(defaultPayload)
+}
+
+// AllSignals is shortcut method
+func (p *Port) AllSignals() ([]*signal.Signal, error) {
+	return p.Buffer().Signals()
+}
+
+// AllSignalsOrNil is shortcut method
+func (p *Port) AllSignalsOrNil() []*signal.Signal {
+	return p.Buffer().SignalsOrNil()
+}
+
+func (p *Port) AllSignalsOrDefault(defaultSignals []*signal.Signal) []*signal.Signal {
+	return p.Buffer().SignalsOrDefault(defaultSignals)
+}
+
+// AllSignalsPayloads is shortcut method
+func (p *Port) AllSignalsPayloads() ([]any, error) {
+	return p.Buffer().AllPayloads()
 }

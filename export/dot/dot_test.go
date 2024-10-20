@@ -50,7 +50,7 @@ func Test_dotExporter_Export(t *testing.T) {
 							return nil
 						})
 
-					adder.Outputs().ByName("result").PipeTo(multiplier.Inputs().ByName("num"))
+					adder.OutputByName("result").PipeTo(multiplier.InputByName("num"))
 
 					fm := fmesh.New("fm").
 						WithDescription("This f-mesh has just one component").
@@ -104,12 +104,12 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithInputs("num1", "num2").
 						WithOutputs("result").
 						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-							num1, err := inputs.ByName("num1").Buffer().FirstPayload()
+							num1, err := inputs.ByName("num1").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
 
-							num2, err := inputs.ByName("num2").Buffer().FirstPayload()
+							num2, err := inputs.ByName("num2").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
@@ -123,7 +123,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithInputs("num").
 						WithOutputs("result").
 						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-							num, err := inputs.ByName("num").Buffer().FirstPayload()
+							num, err := inputs.ByName("num").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
@@ -131,14 +131,14 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 							return nil
 						})
 
-					adder.Outputs().ByName("result").PipeTo(multiplier.Inputs().ByName("num"))
+					adder.OutputByName("result").PipeTo(multiplier.InputByName("num"))
 
 					fm := fmesh.New("fm").
 						WithDescription("This f-mesh has just one component").
 						WithComponents(adder, multiplier)
 
-					adder.Inputs().ByName("num1").PutSignals(signal.New(15))
-					adder.Inputs().ByName("num2").PutSignals(signal.New(12))
+					adder.InputByName("num1").PutSignals(signal.New(15))
+					adder.InputByName("num2").PutSignals(signal.New(12))
 
 					return fm
 				}(),
