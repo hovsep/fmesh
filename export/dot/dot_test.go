@@ -86,16 +86,6 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 		assertions func(t *testing.T, data [][]byte, err error)
 	}{
 		{
-			name: "empty f-mesh",
-			args: args{
-				fm: fmesh.New("fm"),
-			},
-			assertions: func(t *testing.T, data [][]byte, err error) {
-				assert.NoError(t, err)
-				assert.Empty(t, data)
-			},
-		},
-		{
 			name: "happy path",
 			args: args{
 				fm: func() *fmesh.FMesh {

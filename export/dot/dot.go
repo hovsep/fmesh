@@ -42,7 +42,7 @@ func NewDotExporterWithConfig(config *Config) export.Exporter {
 
 // Export returns the f-mesh as DOT-graph
 func (d *dotExporter) Export(fm *fmesh.FMesh) ([]byte, error) {
-	if len(fm.Components()) == 0 {
+	if fm.Components().Len() == 0 {
 		return nil, nil
 	}
 
@@ -60,7 +60,7 @@ func (d *dotExporter) Export(fm *fmesh.FMesh) ([]byte, error) {
 
 // ExportWithCycles returns multiple graphs showing the state of the given f-mesh in each activation cycle
 func (d *dotExporter) ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.Collection) ([][]byte, error) {
-	if len(fm.Components()) == 0 {
+	if fm.Components().Len() == 0 {
 		return nil, nil
 	}
 
@@ -93,12 +93,17 @@ func (d *dotExporter) buildGraph(fm *fmesh.FMesh, activationCycle *cycle.Cycle) 
 		return nil, fmt.Errorf("failed to get main graph: %w", err)
 	}
 
-	err = d.addComponents(mainGraph, fm.Components(), activationCycle)
+	components, err := fm.Components().Components()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get components: %w", err)
+	}
+
+	err = d.addComponents(mainGraph, components, activationCycle)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add components: %w", err)
 	}
 
-	err = d.addPipes(mainGraph, fm.Components())
+	err = d.addPipes(mainGraph, components)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add pipes: %w", err)
 	}
@@ -120,7 +125,7 @@ func (d *dotExporter) getMainGraph(fm *fmesh.FMesh, activationCycle *cycle.Cycle
 }
 
 // addPipes adds pipes representation to the graph
-func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Collection) error {
+func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.ComponentsMap) error {
 	for _, c := range components {
 		srcPorts, err := c.Outputs().Ports()
 		if err != nil {
@@ -156,7 +161,7 @@ func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Colle
 }
 
 // addComponents adds components representation to the graph
-func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.Collection, activationCycle *cycle.Cycle) error {
+func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.ComponentsMap, activationCycle *cycle.Cycle) error {
 	for _, c := range components {
 		// Component
 		var activationResult *fmeshcomponent.ActivationResult
@@ -260,7 +265,7 @@ func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCyc
 	subgraph.Attr("label", "Legend:")
 
 	legendData := make(map[string]any)
-	legendData["meshDescription"] = fmt.Sprintf("This mesh consist of %d components", len(fm.Components()))
+	legendData["meshDescription"] = fmt.Sprintf("This mesh consist of %d components", fm.Components().Len())
 	if fm.Description() != "" {
 		legendData["meshDescription"] = fm.Description()
 	}

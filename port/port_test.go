@@ -119,12 +119,12 @@ func TestPort_PipeTo(t *testing.T) {
 
 func TestPort_PutSignals(t *testing.T) {
 	type args struct {
-		signals []*signal.Signal
+		signals signal.Signals
 	}
 	tests := []struct {
 		name         string
 		port         *Port
-		signalsAfter []*signal.Signal
+		signalsAfter signal.Signals
 		args         args
 	}{
 		{

@@ -211,16 +211,16 @@ func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
 }
 
 // AllSignals is shortcut method
-func (p *Port) AllSignals() ([]*signal.Signal, error) {
+func (p *Port) AllSignals() (signal.Signals, error) {
 	return p.Buffer().Signals()
 }
 
 // AllSignalsOrNil is shortcut method
-func (p *Port) AllSignalsOrNil() []*signal.Signal {
+func (p *Port) AllSignalsOrNil() signal.Signals {
 	return p.Buffer().SignalsOrNil()
 }
 
-func (p *Port) AllSignalsOrDefault(defaultSignals []*signal.Signal) []*signal.Signal {
+func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
 	return p.Buffer().SignalsOrDefault(defaultSignals)
 }
 
