@@ -119,7 +119,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 		},
 		{
 			name:            "with error in signal",
-			group:           NewGroup().withSignals([]*Signal{New(33).WithChainError(errors.New("some error in signal"))}),
+			group:           NewGroup().withSignals(Signals{New(33).WithChainError(errors.New("some error in signal"))}),
 			want:            nil,
 			wantErrorString: "some error in signal",
 		},
@@ -139,7 +139,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 
 func TestGroup_With(t *testing.T) {
 	type args struct {
-		signals []*Signal
+		signals Signals
 	}
 	tests := []struct {
 		name  string
@@ -194,7 +194,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "with error in signal",
 			group: NewGroup(1, 2, 3).With(New(44).WithChainError(errors.New("some error in signal"))),
 			args: args{
-				signals: []*Signal{New(456)},
+				signals: Signals{New(456)},
 			},
 			want: NewGroup(1, 2, 3).
 				With(New(44).
@@ -306,19 +306,19 @@ func TestGroup_Signals(t *testing.T) {
 	tests := []struct {
 		name            string
 		group           *Group
-		want            []*Signal
+		want            Signals
 		wantErrorString string
 	}{
 		{
 			name:            "empty group",
 			group:           NewGroup(),
-			want:            []*Signal{},
+			want:            Signals{},
 			wantErrorString: "",
 		},
 		{
 			name:            "with signals",
 			group:           NewGroup(1, nil, 3),
-			want:            []*Signal{New(1), New(nil), New(3)},
+			want:            Signals{New(1), New(nil), New(3)},
 			wantErrorString: "",
 		},
 		{
@@ -343,13 +343,13 @@ func TestGroup_Signals(t *testing.T) {
 
 func TestGroup_SignalsOrDefault(t *testing.T) {
 	type args struct {
-		defaultSignals []*Signal
+		defaultSignals Signals
 	}
 	tests := []struct {
 		name  string
 		group *Group
 		args  args
-		want  []*Signal
+		want  Signals
 	}{
 		{
 			name:  "empty group",
@@ -357,15 +357,15 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 			args: args{
 				defaultSignals: nil,
 			},
-			want: []*Signal{}, // Empty group has empty slice of signals
+			want: Signals{}, // Empty group has empty slice of signals
 		},
 		{
 			name:  "with signals",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				defaultSignals: []*Signal{New(4), New(5)}, //Default must be ignored
+				defaultSignals: Signals{New(4), New(5)}, //Default must be ignored
 			},
-			want: []*Signal{New(1), New(2), New(3)},
+			want: Signals{New(1), New(2), New(3)},
 		},
 		{
 			name:  "with error in chain and nil default",
@@ -379,9 +379,9 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 			name:  "with error in chain and default",
 			group: NewGroup(1, 2, 3).WithChainError(errors.New("some error in chain")),
 			args: args{
-				defaultSignals: []*Signal{New(4), New(5)},
+				defaultSignals: Signals{New(4), New(5)},
 			},
-			want: []*Signal{New(4), New(5)},
+			want: Signals{New(4), New(5)},
 		},
 	}
 	for _, tt := range tests {

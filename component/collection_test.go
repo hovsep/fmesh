@@ -11,7 +11,7 @@ func TestCollection_ByName(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		components Collection
+		components *Collection
 		args       args
 		want       *Component
 	}{
@@ -45,9 +45,9 @@ func TestCollection_With(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection Collection
+		collection *Collection
 		args       args
-		assertions func(t *testing.T, collection Collection)
+		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
 			name:       "adding nothing to empty collection",
@@ -55,8 +55,8 @@ func TestCollection_With(t *testing.T) {
 			args: args{
 				components: nil,
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 0)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Zero(t, collection.Len())
 			},
 		},
 		{
@@ -65,8 +65,8 @@ func TestCollection_With(t *testing.T) {
 			args: args{
 				components: []*Component{New("c1"), New("c2")},
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 2)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, 2, collection.Len())
 				assert.NotNil(t, collection.ByName("c1"))
 				assert.NotNil(t, collection.ByName("c2"))
 				assert.Nil(t, collection.ByName("c999"))
@@ -78,8 +78,8 @@ func TestCollection_With(t *testing.T) {
 			args: args{
 				components: []*Component{New("c3"), New("c4")},
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 4)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, 4, collection.Len())
 				assert.NotNil(t, collection.ByName("c1"))
 				assert.NotNil(t, collection.ByName("c2"))
 				assert.NotNil(t, collection.ByName("c3"))

@@ -25,10 +25,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num, err := inputs.ByName("num").FirstSignalPayload()
-						if err != nil {
-							return err
-						}
+						num := inputs.ByName("num").FirstSignalPayloadOrNil()
 						outputs.ByName("res").PutSignals(signal.New(num.(int) + 2))
 						return nil
 					})
@@ -38,10 +35,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num, err := inputs.ByName("num").FirstSignalPayload()
-						if err != nil {
-							return err
-						}
+						num := inputs.ByName("num").FirstSignalPayloadOrDefault(0)
 						outputs.ByName("res").PutSignals(signal.New(num.(int) * 3))
 						return nil
 					})

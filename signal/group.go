@@ -5,10 +5,12 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
+type Signals []*Signal
+
 // Group represents a list of signals
 type Group struct {
 	*common.Chainable
-	signals []*Signal
+	signals Signals
 }
 
 // NewGroup creates empty group
@@ -17,7 +19,7 @@ func NewGroup(payloads ...any) *Group {
 		Chainable: common.NewChainable(),
 	}
 
-	signals := make([]*Signal, len(payloads))
+	signals := make(Signals, len(payloads))
 	for i, payload := range payloads {
 		signals[i] = New(payload)
 	}
@@ -70,7 +72,7 @@ func (group *Group) With(signals ...*Signal) *Group {
 		return group
 	}
 
-	newSignals := make([]*Signal, len(group.signals)+len(signals))
+	newSignals := make(Signals, len(group.signals)+len(signals))
 	copy(newSignals, group.signals)
 	for i, sig := range signals {
 		if sig == nil {
@@ -94,7 +96,7 @@ func (group *Group) WithPayloads(payloads ...any) *Group {
 		return group
 	}
 
-	newSignals := make([]*Signal, len(group.signals)+len(payloads))
+	newSignals := make(Signals, len(group.signals)+len(payloads))
 	copy(newSignals, group.signals)
 	for i, p := range payloads {
 		newSignals[len(group.signals)+i] = New(p)
@@ -103,13 +105,13 @@ func (group *Group) WithPayloads(payloads ...any) *Group {
 }
 
 // withSignals sets signals
-func (group *Group) withSignals(signals []*Signal) *Group {
+func (group *Group) withSignals(signals Signals) *Group {
 	group.signals = signals
 	return group
 }
 
 // Signals getter
-func (group *Group) Signals() ([]*Signal, error) {
+func (group *Group) Signals() (Signals, error) {
 	if group.HasChainError() {
 		return nil, group.ChainError()
 	}
@@ -117,12 +119,12 @@ func (group *Group) Signals() ([]*Signal, error) {
 }
 
 // SignalsOrNil returns signals or nil in case of any error
-func (group *Group) SignalsOrNil() []*Signal {
+func (group *Group) SignalsOrNil() Signals {
 	return group.SignalsOrDefault(nil)
 }
 
 // SignalsOrDefault returns signals or default in case of any error
-func (group *Group) SignalsOrDefault(defaultSignals []*Signal) []*Signal {
+func (group *Group) SignalsOrDefault(defaultSignals Signals) Signals {
 	signals, err := group.Signals()
 	if err != nil {
 		return defaultSignals

@@ -6,19 +6,21 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
+type PortMap map[string]*Port
+
 // Collection is a port collection
 // indexed by name, hence it can not carry
 // 2 ports with same name. Optimized for lookups
 type Collection struct {
 	*common.Chainable
-	ports map[string]*Port
+	ports PortMap
 }
 
 // NewCollection creates empty collection
 func NewCollection() *Collection {
 	return &Collection{
 		Chainable: common.NewChainable(),
-		ports:     make(map[string]*Port),
+		ports:     make(PortMap),
 	}
 }
 
@@ -187,19 +189,9 @@ func (collection *Collection) Signals() *signal.Group {
 	return group
 }
 
-// withPorts sets ports
-func (collection *Collection) withPorts(ports map[string]*Port) *Collection {
-	if collection.HasChainError() {
-		return collection
-	}
-
-	collection.ports = ports
-	return collection
-}
-
 // Ports getter
 // @TODO:maybe better to hide all errors within chainable and ask user to check error ?
-func (collection *Collection) Ports() (map[string]*Port, error) {
+func (collection *Collection) Ports() (PortMap, error) {
 	if collection.HasChainError() {
 		return nil, collection.ChainError()
 	}
@@ -207,12 +199,12 @@ func (collection *Collection) Ports() (map[string]*Port, error) {
 }
 
 // PortsOrNil returns ports or nil in case of any error
-func (collection *Collection) PortsOrNil() map[string]*Port {
+func (collection *Collection) PortsOrNil() PortMap {
 	return collection.PortsOrDefault(nil)
 }
 
 // PortsOrDefault returns ports or default in case of any error
-func (collection *Collection) PortsOrDefault(defaultPorts map[string]*Port) map[string]*Port {
+func (collection *Collection) PortsOrDefault(defaultPorts PortMap) PortMap {
 	if collection.HasChainError() {
 		return defaultPorts
 	}
