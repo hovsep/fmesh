@@ -26,7 +26,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-							inputNum, err := inputs.ByName("i1").Buffer().FirstPayload()
+							inputNum, err := inputs.ByName("i1").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
@@ -50,12 +50,12 @@ func Test_WaitingForInputs(t *testing.T) {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1, err := inputs.ByName("i1").Buffer().FirstPayload()
+						inputNum1, err := inputs.ByName("i1").FirstSignalPayload()
 						if err != nil {
 							return err
 						}
 
-						inputNum2, err := inputs.ByName("i2").Buffer().FirstPayload()
+						inputNum2, err := inputs.ByName("i2").FirstSignalPayload()
 						if err != nil {
 							return err
 						}
@@ -65,15 +65,15 @@ func Test_WaitingForInputs(t *testing.T) {
 					})
 
 				//This chain consist of 3 components: d1->d2->d3
-				d1.Outputs().ByName("o1").PipeTo(d2.Inputs().ByName("i1"))
-				d2.Outputs().ByName("o1").PipeTo(d3.Inputs().ByName("i1"))
+				d1.OutputByName("o1").PipeTo(d2.InputByName("i1"))
+				d2.OutputByName("o1").PipeTo(d3.InputByName("i1"))
 
 				//This chain has only 2: d4->d5
-				d4.Outputs().ByName("o1").PipeTo(d5.Inputs().ByName("i1"))
+				d4.OutputByName("o1").PipeTo(d5.InputByName("i1"))
 
 				//Both chains go into summator
-				d3.Outputs().ByName("o1").PipeTo(s.Inputs().ByName("i1"))
-				d5.Outputs().ByName("o1").PipeTo(s.Inputs().ByName("i2"))
+				d3.OutputByName("o1").PipeTo(s.InputByName("i1"))
+				d5.OutputByName("o1").PipeTo(s.InputByName("i2"))
 
 				return fmesh.New("fm").
 					WithComponents(d1, d2, d3, d4, d5, s).
@@ -85,12 +85,12 @@ func Test_WaitingForInputs(t *testing.T) {
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				//Put 1 signal to each chain so they start in the same cycle
-				fm.Components().ByName("d1").Inputs().ByName("i1").PutSignals(signal.New(1))
-				fm.Components().ByName("d4").Inputs().ByName("i1").PutSignals(signal.New(2))
+				fm.Components().ByName("d1").InputByName("i1").PutSignals(signal.New(1))
+				fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				assert.NoError(t, err)
-				result, err := fm.Components().ByName("sum").Outputs().ByName("o1").Buffer().FirstPayload()
+				result, err := fm.Components().ByName("sum").OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)
 				assert.Equal(t, 16, result.(int))
 			},

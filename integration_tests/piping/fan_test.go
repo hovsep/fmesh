@@ -59,30 +59,30 @@ func Test_Fan(t *testing.T) {
 						}),
 				)
 
-				fm.Components().ByName("producer").Outputs().ByName("o1").PipeTo(
-					fm.Components().ByName("consumer1").Inputs().ByName("i1"),
-					fm.Components().ByName("consumer2").Inputs().ByName("i1"),
-					fm.Components().ByName("consumer3").Inputs().ByName("i1"))
+				fm.Components().ByName("producer").OutputByName("o1").PipeTo(
+					fm.Components().ByName("consumer1").InputByName("i1"),
+					fm.Components().ByName("consumer2").InputByName("i1"),
+					fm.Components().ByName("consumer3").InputByName("i1"))
 
 				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				//Fire the mesh
-				fm.Components().ByName("producer").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				//All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
-				assert.True(t, c1.Outputs().ByName("o1").HasSignals())
-				assert.True(t, c2.Outputs().ByName("o1").HasSignals())
-				assert.True(t, c3.Outputs().ByName("o1").HasSignals())
+				assert.True(t, c1.OutputByName("o1").HasSignals())
+				assert.True(t, c2.OutputByName("o1").HasSignals())
+				assert.True(t, c3.OutputByName("o1").HasSignals())
 
 				//All 3 signals are the same (literally the same address in memory)
-				sig1, err := c1.Outputs().ByName("o1").Buffer().FirstPayload()
+				sig1, err := c1.OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)
-				sig2, err := c2.Outputs().ByName("o1").Buffer().FirstPayload()
+				sig2, err := c2.OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)
-				sig3, err := c3.Outputs().ByName("o1").Buffer().FirstPayload()
+				sig3, err := c3.OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)
 				assert.Equal(t, sig1, sig2)
 				assert.Equal(t, sig2, sig3)
@@ -123,24 +123,24 @@ func Test_Fan(t *testing.T) {
 						return nil
 					})
 
-				producer1.Outputs().ByName("o1").PipeTo(consumer.Inputs().ByName("i1"))
-				producer2.Outputs().ByName("o1").PipeTo(consumer.Inputs().ByName("i1"))
-				producer3.Outputs().ByName("o1").PipeTo(consumer.Inputs().ByName("i1"))
+				producer1.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
+				producer2.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
+				producer3.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
 
 				return fmesh.New("multiplexer").WithComponents(producer1, producer2, producer3, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("producer1").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
-				fm.Components().ByName("producer2").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
-				fm.Components().ByName("producer3").Inputs().ByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer1").InputByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer2").InputByName("start").PutSignals(signal.New(struct{}{}))
+				fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				assert.NoError(t, err)
 				//Consumer received a signal
-				assert.True(t, fm.Components().ByName("consumer").Outputs().ByName("o1").HasSignals())
+				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())
 
 				//The signal is combined and consist of 3 payloads
-				resultSignals := fm.Components().ByName("consumer").Outputs().ByName("o1").Buffer()
+				resultSignals := fm.Components().ByName("consumer").OutputByName("o1").Buffer()
 				assert.Len(t, resultSignals.SignalsOrNil(), 3)
 
 				//And they are all different

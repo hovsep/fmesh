@@ -25,7 +25,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num, err := inputs.ByName("num").Buffer().FirstPayload()
+						num, err := inputs.ByName("num").FirstSignalPayload()
 						if err != nil {
 							return err
 						}
@@ -38,7 +38,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num, err := inputs.ByName("num").Buffer().FirstPayload()
+						num, err := inputs.ByName("num").FirstSignalPayload()
 						if err != nil {
 							return err
 						}
@@ -46,7 +46,7 @@ func Test_Math(t *testing.T) {
 						return nil
 					})
 
-				c1.Outputs().ByName("res").PipeTo(c2.Inputs().ByName("num"))
+				c1.OutputByName("res").PipeTo(c2.InputByName("num"))
 
 				return fmesh.New("fm").WithComponents(c1, c2).WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
@@ -54,13 +54,13 @@ func Test_Math(t *testing.T) {
 				})
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("c1").Inputs().ByName("num").PutSignals(signal.New(32))
+				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
 				assert.NoError(t, err)
 				assert.Len(t, cycles, 3)
 
-				resultSignals := fm.Components().ByName("c2").Outputs().ByName("res").Buffer()
+				resultSignals := fm.Components().ByName("c2").OutputByName("res").Buffer()
 				sig, err := resultSignals.FirstPayload()
 				assert.NoError(t, err)
 				assert.Len(t, resultSignals.SignalsOrNil(), 1)

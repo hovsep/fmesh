@@ -79,7 +79,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			component: componentWithAllOutputsSet,
 			destPort:  sink,
 			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
-				allPayloads, err := destPort.Buffer().AllPayloads()
+				allPayloads, err := destPort.AllSignalsPayloads()
 				assert.NoError(t, err)
 				assert.Contains(t, allPayloads, 777)
 				assert.Contains(t, allPayloads, 888)
@@ -179,8 +179,8 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			assert.Equal(t, err1, err2)
 
 			//Compare signals without keys (because they are random)
-			assert.ElementsMatch(t, testOutputs1.ByName("out1").Buffer().SignalsOrNil(), testOutputs2.ByName("out1").Buffer().SignalsOrNil())
-			assert.ElementsMatch(t, testOutputs1.ByName("out2").Buffer().SignalsOrNil(), testOutputs2.ByName("out2").Buffer().SignalsOrNil())
+			assert.ElementsMatch(t, testOutputs1.ByName("out1").AllSignalsOrNil(), testOutputs2.ByName("out1").AllSignalsOrNil())
+			assert.ElementsMatch(t, testOutputs1.ByName("out2").AllSignalsOrNil(), testOutputs2.ByName("out2").AllSignalsOrNil())
 
 		})
 	}
@@ -337,7 +337,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component with inputs set, but no activation func",
 			getComponent: func() *Component {
 				c := New("c1").WithInputs("i1")
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -368,7 +368,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 						return errors.New("test error")
 					})
 				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -386,7 +386,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 						return port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
 					})
 				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -404,7 +404,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 						return nil
 					})
 				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -423,7 +423,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 						return nil
 					})
 				//Only one input set
-				c.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -445,7 +445,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					})
 
 				// Only one input set
-				c1.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c1.InputByName("i1").PutSignals(signal.New(123))
 
 				return c1
 			},
@@ -470,7 +470,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					})
 
 				// Only one input set
-				c1.Inputs().ByName("i1").PutSignals(signal.New(123))
+				c1.InputByName("i1").PutSignals(signal.New(123))
 
 				return c1
 			},
