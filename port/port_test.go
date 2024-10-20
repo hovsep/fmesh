@@ -171,7 +171,7 @@ func TestPort_PutSignals(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			portAfter := tt.port.PutSignals(tt.args.signals...)
-			assert.ElementsMatch(t, tt.signalsAfter, portAfter.Buffer().SignalsOrNil())
+			assert.ElementsMatch(t, tt.signalsAfter, portAfter.AllSignalsOrNil())
 		})
 	}
 }
@@ -266,7 +266,7 @@ func TestPort_Flush(t *testing.T) {
 				for _, destPort := range srcPort.Pipes().PortsOrNil() {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, destPort.Buffer().Len(), 3)
-					allPayloads, err := destPort.Buffer().AllPayloads()
+					allPayloads, err := destPort.AllSignalsPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
@@ -286,7 +286,7 @@ func TestPort_Flush(t *testing.T) {
 				for _, destPort := range srcPort.Pipes().PortsOrNil() {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, destPort.Buffer().Len(), 6)
-					allPayloads, err := destPort.Buffer().AllPayloads()
+					allPayloads, err := destPort.AllSignalsPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
