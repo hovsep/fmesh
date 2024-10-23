@@ -45,6 +45,9 @@ func (p *Port) Pipes() *Group {
 
 // setSignals sets buffer field
 func (p *Port) setSignals(signals *signal.Group) {
+	if signals.HasChainError() {
+		p.SetChainError(signals.ChainError())
+	}
 	p.buffer = signals
 }
 

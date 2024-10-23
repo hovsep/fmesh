@@ -59,7 +59,7 @@ func (d *dotExporter) Export(fm *fmesh.FMesh) ([]byte, error) {
 }
 
 // ExportWithCycles returns multiple graphs showing the state of the given f-mesh in each activation cycle
-func (d *dotExporter) ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.Collection) ([][]byte, error) {
+func (d *dotExporter) ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.Cycles) ([][]byte, error) {
 	if fm.Components().Len() == 0 {
 		return nil, nil
 	}

@@ -72,6 +72,7 @@ const (
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
+		Chainable:     common.NewChainable(),
 	}
 }
 

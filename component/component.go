@@ -138,10 +138,12 @@ func (c *Component) OutputByName(name string) *port.Port {
 
 // InputByName is shortcut method
 func (c *Component) InputByName(name string) *port.Port {
+	if c.HasChainError() {
+		return port.New("").WithChainError(c.ChainError())
+	}
 	inputPort := c.Inputs().ByName(name)
 	if inputPort.HasChainError() {
 		c.SetChainError(inputPort.ChainError())
-		return nil
 	}
 	return inputPort
 }
@@ -159,6 +161,22 @@ func (c *Component) hasActivationFunction() bool {
 // @TODO: hide this method from user
 // @TODO: can we remove named return ?
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
+	//Bubble up chain errors from ports
+	for _, p := range c.Inputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.Inputs().SetChainError(p.ChainError())
+			c.SetChainError(c.Inputs().ChainError())
+			break
+		}
+	}
+	for _, p := range c.Outputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.Outputs().SetChainError(p.ChainError())
+			c.SetChainError(c.Outputs().ChainError())
+			break
+		}
+	}
+
 	if c.HasChainError() {
 		activationResult = NewActivationResult(c.Name()).WithChainError(c.ChainError())
 		return

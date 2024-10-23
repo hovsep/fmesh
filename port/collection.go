@@ -1,11 +1,11 @@
 package port
 
 import (
-	"errors"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 )
 
+// @TODO: make type unexported
 type PortMap map[string]*Port
 
 // Collection is a port collection
@@ -31,8 +31,7 @@ func (collection *Collection) ByName(name string) *Port {
 	}
 	port, ok := collection.ports[name]
 	if !ok {
-		collection.SetChainError(errors.New("port not found"))
-		return nil
+		return New("").WithChainError(ErrPortNotFoundInCollection)
 	}
 	return port
 }
