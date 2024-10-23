@@ -42,42 +42,42 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 }
 
 // With adds ports to group
-func (group *Group) With(ports ...*Port) *Group {
-	if group.HasChainError() {
-		return group
+func (g *Group) With(ports ...*Port) *Group {
+	if g.HasChainError() {
+		return g
 	}
 
-	newPorts := make([]*Port, len(group.ports)+len(ports))
-	copy(newPorts, group.ports)
+	newPorts := make([]*Port, len(g.ports)+len(ports))
+	copy(newPorts, g.ports)
 	for i, port := range ports {
-		newPorts[len(group.ports)+i] = port
+		newPorts[len(g.ports)+i] = port
 	}
 
-	return group.withPorts(newPorts)
+	return g.withPorts(newPorts)
 }
 
 // withPorts sets ports
-func (group *Group) withPorts(ports []*Port) *Group {
-	group.ports = ports
-	return group
+func (g *Group) withPorts(ports []*Port) *Group {
+	g.ports = ports
+	return g
 }
 
 // Ports getter
-func (group *Group) Ports() ([]*Port, error) {
-	if group.HasChainError() {
-		return nil, group.ChainError()
+func (g *Group) Ports() ([]*Port, error) {
+	if g.HasChainError() {
+		return nil, g.ChainError()
 	}
-	return group.ports, nil
+	return g.ports, nil
 }
 
 // PortsOrNil returns ports or nil in case of any error
-func (group *Group) PortsOrNil() []*Port {
-	return group.PortsOrDefault(nil)
+func (g *Group) PortsOrNil() []*Port {
+	return g.PortsOrDefault(nil)
 }
 
 // PortsOrDefault returns ports or default in case of any error
-func (group *Group) PortsOrDefault(defaultPorts []*Port) []*Port {
-	ports, err := group.Ports()
+func (g *Group) PortsOrDefault(defaultPorts []*Port) []*Port {
+	ports, err := g.Ports()
 	if err != nil {
 		return defaultPorts
 	}
@@ -85,12 +85,12 @@ func (group *Group) PortsOrDefault(defaultPorts []*Port) []*Port {
 }
 
 // WithChainError returns group with error
-func (group *Group) WithChainError(err error) *Group {
-	group.SetChainError(err)
-	return group
+func (g *Group) WithChainError(err error) *Group {
+	g.SetChainError(err)
+	return g
 }
 
 // Len returns number of ports in group
-func (group *Group) Len() int {
-	return len(group.ports)
+func (g *Group) Len() int {
+	return len(g.ports)
 }
