@@ -226,7 +226,7 @@ func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
 }
 
 // WithChainError returns f-mesh with error
-func (c *FMesh) WithChainError(err error) *FMesh {
-	c.SetChainError(err)
-	return c
+func (fm *FMesh) WithChainError(err error) *FMesh {
+	fm.SetChainError(err)
+	return fm
 }

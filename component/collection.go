@@ -22,15 +22,15 @@ func NewCollection() *Collection {
 }
 
 // ByName returns a component by its name
-func (collection *Collection) ByName(name string) *Component {
-	if collection.HasChainError() {
+func (c *Collection) ByName(name string) *Component {
+	if c.HasChainError() {
 		return nil
 	}
 
-	component, ok := collection.components[name]
+	component, ok := c.components[name]
 
 	if !ok {
-		collection.SetChainError(errors.New("component not found"))
+		c.SetChainError(errors.New("component not found"))
 		return nil
 	}
 
@@ -38,36 +38,36 @@ func (collection *Collection) ByName(name string) *Component {
 }
 
 // With adds components and returns the collection
-func (collection *Collection) With(components ...*Component) *Collection {
-	if collection.HasChainError() {
-		return collection
+func (c *Collection) With(components ...*Component) *Collection {
+	if c.HasChainError() {
+		return c
 	}
 
 	for _, component := range components {
-		collection.components[component.Name()] = component
+		c.components[component.Name()] = component
 
 		if component.HasChainError() {
-			return collection.WithChainError(component.ChainError())
+			return c.WithChainError(component.ChainError())
 		}
 	}
 
-	return collection
+	return c
 }
 
 // WithChainError returns group with error
-func (collection *Collection) WithChainError(err error) *Collection {
-	collection.SetChainError(err)
-	return collection
+func (c *Collection) WithChainError(err error) *Collection {
+	c.SetChainError(err)
+	return c
 }
 
 // Len returns number of ports in collection
-func (collection *Collection) Len() int {
-	return len(collection.components)
+func (c *Collection) Len() int {
+	return len(c.components)
 }
 
-func (collection *Collection) Components() (ComponentsMap, error) {
-	if collection.HasChainError() {
-		return nil, collection.ChainError()
+func (c *Collection) Components() (ComponentsMap, error) {
+	if c.HasChainError() {
+		return nil, c.ChainError()
 	}
-	return collection.components, nil
+	return c.components, nil
 }
