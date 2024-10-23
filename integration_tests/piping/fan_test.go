@@ -17,7 +17,7 @@ func Test_Fan(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
 	}{
 		{
 			name: "fan-out (3 pipes from 1 source port)",
@@ -70,7 +70,7 @@ func Test_Fan(t *testing.T) {
 				//Fire the mesh
 				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				//All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
 				assert.True(t, c1.OutputByName("o1").HasSignals())
@@ -134,7 +134,7 @@ func Test_Fan(t *testing.T) {
 				fm.Components().ByName("producer2").InputByName("start").PutSignals(signal.New(struct{}{}))
 				fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				assert.NoError(t, err)
 				//Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())

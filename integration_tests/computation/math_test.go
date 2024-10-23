@@ -15,7 +15,7 @@ func Test_Math(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
 	}{
 		{
 			name: "add and multiply",
@@ -50,7 +50,7 @@ func Test_Math(t *testing.T) {
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				assert.NoError(t, err)
 				assert.Len(t, cycles, 3)
 

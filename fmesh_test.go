@@ -221,7 +221,7 @@ func TestFMesh_Run(t *testing.T) {
 		name    string
 		fm      *FMesh
 		initFM  func(fm *FMesh)
-		want    cycle.Collection
+		want    cycle.Cycles
 		wantErr bool
 	}{
 		{
@@ -250,12 +250,12 @@ func TestFMesh_Run(t *testing.T) {
 				//Fire the mesh
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start c1"))
 			},
-			want: cycle.NewCollection().With(
+			want: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK)),
-			),
+			).CyclesOrNil(),
 			wantErr: true,
 		},
 		{
@@ -274,7 +274,7 @@ func TestFMesh_Run(t *testing.T) {
 			initFM: func(fm *FMesh) {
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start"))
 			},
-			want: cycle.NewCollection().With(
+			want: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -282,7 +282,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodeReturnedError).
 							WithError(errors.New("component returned an error: boom")),
 					),
-			),
+			).CyclesOrNil(),
 			wantErr: true,
 		},
 		{
@@ -334,7 +334,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewCollection().With(
+			want: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -382,7 +382,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodePanicked).
 							WithError(errors.New("panicked with: no way")),
 					),
-			),
+			).CyclesOrNil(),
 			wantErr: true,
 		},
 		{
@@ -447,7 +447,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewCollection().With(
+			want: cycle.NewGroup().With(
 				//c1 and c3 activated, c3 finishes with error
 				cycle.New().
 					WithActivationResults(
@@ -545,7 +545,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
-			),
+			).CyclesOrNil(),
 			wantErr: false,
 		},
 	}
@@ -746,11 +746,11 @@ func TestFMesh_mustStop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.fmesh.mustStop(tt.args.cycleResult)
+			got, _, stopErr := tt.fmesh.mustStop(tt.args.cycleResult)
 			if tt.wantErr != nil {
-				assert.EqualError(t, err, tt.wantErr.Error())
+				assert.EqualError(t, stopErr, tt.wantErr.Error())
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, stopErr)
 			}
 
 			assert.Equal(t, tt.want, got)

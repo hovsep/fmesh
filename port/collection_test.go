@@ -1,6 +1,7 @@
 package port
 
 import (
+	"errors"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -97,7 +98,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: nil,
+			want: New("").WithChainError(errors.New("port not found")),
 		},
 	}
 	for _, tt := range tests {

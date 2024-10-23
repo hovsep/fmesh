@@ -1,7 +1,6 @@
 package signal
 
 import (
-	"errors"
 	"github.com/hovsep/fmesh/common"
 )
 
@@ -33,7 +32,7 @@ func (g *Group) First() *Signal {
 	}
 
 	if len(g.signals) == 0 {
-		return New(nil).WithChainError(errors.New("group has no signals"))
+		return New(nil).WithChainError(ErrNoSignalsInGroup)
 	}
 
 	return g.signals[0]
@@ -76,7 +75,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 	copy(newSignals, g.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			return g.WithChainError(errors.New("signal is nil"))
+			return g.WithChainError(ErrInvalidSignal)
 		}
 
 		if sig.HasChainError() {
