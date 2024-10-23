@@ -27,36 +27,36 @@ func NewGroup(payloads ...any) *Group {
 }
 
 // First returns the first signal in the group
-func (group *Group) First() *Signal {
-	if group.HasChainError() {
-		return New(nil).WithChainError(group.ChainError())
+func (g *Group) First() *Signal {
+	if g.HasChainError() {
+		return New(nil).WithChainError(g.ChainError())
 	}
 
-	if len(group.signals) == 0 {
+	if len(g.signals) == 0 {
 		return New(nil).WithChainError(errors.New("group has no signals"))
 	}
 
-	return group.signals[0]
+	return g.signals[0]
 }
 
 // FirstPayload returns the first signal payload
-func (group *Group) FirstPayload() (any, error) {
-	if group.HasChainError() {
-		return nil, group.ChainError()
+func (g *Group) FirstPayload() (any, error) {
+	if g.HasChainError() {
+		return nil, g.ChainError()
 	}
 
-	return group.First().Payload()
+	return g.First().Payload()
 }
 
 // AllPayloads returns a slice with all payloads of the all signals in the group
-func (group *Group) AllPayloads() ([]any, error) {
-	if group.HasChainError() {
-		return nil, group.ChainError()
+func (g *Group) AllPayloads() ([]any, error) {
+	if g.HasChainError() {
+		return nil, g.ChainError()
 	}
 
-	all := make([]any, len(group.signals))
+	all := make([]any, len(g.signals))
 	var err error
-	for i, sig := range group.signals {
+	for i, sig := range g.signals {
 		all[i], err = sig.Payload()
 		if err != nil {
 			return nil, err
@@ -66,66 +66,66 @@ func (group *Group) AllPayloads() ([]any, error) {
 }
 
 // With returns the group with added signals
-func (group *Group) With(signals ...*Signal) *Group {
-	if group.HasChainError() {
+func (g *Group) With(signals ...*Signal) *Group {
+	if g.HasChainError() {
 		// Do nothing, but propagate error
-		return group
+		return g
 	}
 
-	newSignals := make(Signals, len(group.signals)+len(signals))
-	copy(newSignals, group.signals)
+	newSignals := make(Signals, len(g.signals)+len(signals))
+	copy(newSignals, g.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			return group.WithChainError(errors.New("signal is nil"))
+			return g.WithChainError(errors.New("signal is nil"))
 		}
 
 		if sig.HasChainError() {
-			return group.WithChainError(sig.ChainError())
+			return g.WithChainError(sig.ChainError())
 		}
 
-		newSignals[len(group.signals)+i] = sig
+		newSignals[len(g.signals)+i] = sig
 	}
 
-	return group.withSignals(newSignals)
+	return g.withSignals(newSignals)
 }
 
 // WithPayloads returns a group with added signals created from provided payloads
-func (group *Group) WithPayloads(payloads ...any) *Group {
-	if group.HasChainError() {
+func (g *Group) WithPayloads(payloads ...any) *Group {
+	if g.HasChainError() {
 		// Do nothing, but propagate error
-		return group
+		return g
 	}
 
-	newSignals := make(Signals, len(group.signals)+len(payloads))
-	copy(newSignals, group.signals)
+	newSignals := make(Signals, len(g.signals)+len(payloads))
+	copy(newSignals, g.signals)
 	for i, p := range payloads {
-		newSignals[len(group.signals)+i] = New(p)
+		newSignals[len(g.signals)+i] = New(p)
 	}
-	return group.withSignals(newSignals)
+	return g.withSignals(newSignals)
 }
 
 // withSignals sets signals
-func (group *Group) withSignals(signals Signals) *Group {
-	group.signals = signals
-	return group
+func (g *Group) withSignals(signals Signals) *Group {
+	g.signals = signals
+	return g
 }
 
 // Signals getter
-func (group *Group) Signals() (Signals, error) {
-	if group.HasChainError() {
-		return nil, group.ChainError()
+func (g *Group) Signals() (Signals, error) {
+	if g.HasChainError() {
+		return nil, g.ChainError()
 	}
-	return group.signals, nil
+	return g.signals, nil
 }
 
 // SignalsOrNil returns signals or nil in case of any error
-func (group *Group) SignalsOrNil() Signals {
-	return group.SignalsOrDefault(nil)
+func (g *Group) SignalsOrNil() Signals {
+	return g.SignalsOrDefault(nil)
 }
 
 // SignalsOrDefault returns signals or default in case of any error
-func (group *Group) SignalsOrDefault(defaultSignals Signals) Signals {
-	signals, err := group.Signals()
+func (g *Group) SignalsOrDefault(defaultSignals Signals) Signals {
+	signals, err := g.Signals()
 	if err != nil {
 		return defaultSignals
 	}
@@ -133,12 +133,12 @@ func (group *Group) SignalsOrDefault(defaultSignals Signals) Signals {
 }
 
 // WithChainError returns group with error
-func (group *Group) WithChainError(err error) *Group {
-	group.SetChainError(err)
-	return group
+func (g *Group) WithChainError(err error) *Group {
+	g.SetChainError(err)
+	return g
 }
 
 // Len returns number of signals in group
-func (group *Group) Len() int {
-	return len(group.signals)
+func (g *Group) Len() int {
+	return len(g.signals)
 }
