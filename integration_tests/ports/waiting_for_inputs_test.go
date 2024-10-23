@@ -15,7 +15,7 @@ func Test_WaitingForInputs(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
 	}{
 		{
 			name: "waiting for longer chain",
@@ -79,7 +79,7 @@ func Test_WaitingForInputs(t *testing.T) {
 				fm.Components().ByName("d1").InputByName("i1").PutSignals(signal.New(1))
 				fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Collection, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				assert.NoError(t, err)
 				result, err := fm.Components().ByName("sum").OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)

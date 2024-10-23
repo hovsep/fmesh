@@ -10,7 +10,7 @@ import (
 // no lookup methods
 type Group struct {
 	*common.Chainable
-	ports []*Port
+	ports []*Port //@TODO: extract type
 }
 
 // NewGroup creates multiple ports

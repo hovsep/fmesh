@@ -46,7 +46,7 @@ func New(name string) *FMesh {
 // Components getter
 func (fm *FMesh) Components() *component.Collection {
 	if fm.HasChainError() {
-		return nil
+		return component.NewCollection().WithChainError(fm.ChainError())
 	}
 	return fm.components
 }
@@ -106,6 +106,9 @@ func (fm *FMesh) runCycle() (*cycle.Cycle, error) {
 	}
 
 	for _, c := range components {
+		if c.HasChainError() {
+			fm.SetChainError(c.ChainError())
+		}
 		wg.Add(1)
 
 		go func(component *component.Component, cycle *cycle.Cycle) {
@@ -134,6 +137,10 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 
 	for _, c := range components {
 		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
+
+		if activationResult.HasChainError() {
+			return activationResult.ChainError()
+		}
 
 		if !activationResult.Activated() {
 			// Component did not activate, so it did not create new output signals, hence nothing to drain
@@ -164,24 +171,42 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
-func (fm *FMesh) Run() (cycle.Collection, error) {
+func (fm *FMesh) Run() (cycle.Cycles, error) {
 	if fm.HasChainError() {
 		return nil, fm.ChainError()
 	}
 
-	allCycles := cycle.NewCollection()
+	allCycles := cycle.NewGroup()
 	cycleNumber := 0
 	for {
 		cycleResult, err := fm.runCycle()
+
 		if err != nil {
 			return nil, err
 		}
+
+		//Bubble up chain errors from activation results
+		for _, ar := range cycleResult.ActivationResults() {
+			if ar.HasChainError() {
+				fm.SetChainError(ar.ChainError())
+				break
+			}
+		}
+
 		cycleResult.WithNumber(cycleNumber)
 		allCycles = allCycles.With(cycleResult)
 
-		mustStop, err := fm.mustStop(cycleResult)
+		mustStop, chainError, stopError := fm.mustStop(cycleResult)
+		if chainError != nil {
+			return nil, chainError
+		}
+
 		if mustStop {
-			return allCycles, err
+			cycles, err := allCycles.Cycles()
+			if err != nil {
+				return nil, err
+			}
+			return cycles, stopError
 		}
 
 		err = fm.drainComponents(cycleResult)
@@ -192,36 +217,37 @@ func (fm *FMesh) Run() (cycle.Collection, error) {
 	}
 }
 
-func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
+// mustStop defines when f-mesh must stop after activation cycle
+func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error, error) {
 	if fm.HasChainError() {
-		return false, fm.ChainError()
+		return false, fm.ChainError(), nil
 	}
 
 	if (fm.config.CyclesLimit > 0) && (cycleResult.Number() > fm.config.CyclesLimit) {
-		return true, ErrReachedMaxAllowedCycles
+		return true, nil, ErrReachedMaxAllowedCycles
 	}
 
 	//Check if we are done (no components activated during the cycle => all inputs are processed)
 	if !cycleResult.HasActivatedComponents() {
-		return true, nil
+		return true, nil, nil
 	}
 
 	//Check if mesh must stop because of configured error handling strategy
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if cycleResult.HasErrors() || cycleResult.HasPanics() {
-			return true, ErrHitAnErrorOrPanic
+			return true, nil, ErrHitAnErrorOrPanic
 		}
-		return false, nil
+		return false, nil, nil
 	case StopOnFirstPanic:
 		if cycleResult.HasPanics() {
-			return true, ErrHitAPanic
+			return true, nil, ErrHitAPanic
 		}
-		return false, nil
+		return false, nil, nil
 	case IgnoreAll:
-		return false, nil
+		return false, nil, nil
 	default:
-		return true, ErrUnsupportedErrorHandlingStrategy
+		return true, nil, ErrUnsupportedErrorHandlingStrategy
 	}
 }
 

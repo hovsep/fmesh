@@ -5,6 +5,7 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
+// @TODO: make type unexported
 type ComponentsMap map[string]*Component
 
 // Collection is a collection of components with useful methods
@@ -24,7 +25,7 @@ func NewCollection() *Collection {
 // ByName returns a component by its name
 func (c *Collection) ByName(name string) *Component {
 	if c.HasChainError() {
-		return nil
+		return New("").WithChainError(c.ChainError())
 	}
 
 	component, ok := c.components[name]
