@@ -17,6 +17,7 @@ type Cycle struct {
 // New creates a new cycle
 func New() *Cycle {
 	return &Cycle{
+		Chainable:         common.NewChainable(),
 		activationResults: component.NewActivationResultCollection(),
 	}
 }

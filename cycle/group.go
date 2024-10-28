@@ -56,3 +56,8 @@ func (g *Group) CyclesOrDefault(defaultCycles Cycles) Cycles {
 	}
 	return signals
 }
+
+// Len returns number of cycles in group
+func (g *Group) Len() int {
+	return len(g.cycles)
+}
