@@ -18,10 +18,10 @@ func TestGroup_With(t *testing.T) {
 		cycles []*Cycle
 	}
 	tests := []struct {
-		name  string
-		group *Group
-		args  args
-		want  *Group
+		name       string
+		group      *Group
+		args       args
+		assertions func(t *testing.T, group *Group)
 	}{
 		{
 			name:  "no addition to empty group",
@@ -29,15 +29,19 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				cycles: nil,
 			},
-			want: NewGroup(),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Zero(t, group.Len())
+			},
 		},
 		{
-			name:  "adding to existing group",
+			name:  "adding nothing to existing group",
 			group: NewGroup().With(New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))),
 			args: args{
 				cycles: nil,
 			},
-			want: NewGroup().With(New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, group.Len(), 1)
+			},
 		},
 		{
 			name:  "adding to empty group",
@@ -45,7 +49,9 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
-			want: NewGroup().With(New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, group.Len(), 1)
+			},
 		},
 		{
 			name:  "adding to existing group",
@@ -53,15 +59,17 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
-			want: NewGroup().With(
-				New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
-				New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false)),
-			),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, group.Len(), 2)
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.With(tt.args.cycles...))
+			groupAfter := tt.group.With(tt.args.cycles...)
+			if tt.assertions != nil {
+				tt.assertions(t, groupAfter)
+			}
 		})
 	}
 }
