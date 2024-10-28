@@ -8,22 +8,11 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	tests := []struct {
-		name string
-		want *Cycle
-	}{
-		{
-			name: "happy path",
-			want: &Cycle{
-				activationResults: component.ActivationResultCollection{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, New())
-		})
-	}
+	t.Run("happy path", func(t *testing.T) {
+		cycle := New()
+		assert.NotNil(t, cycle)
+		assert.False(t, cycle.HasChainError())
+	})
 }
 
 func TestCycle_ActivationResults(t *testing.T) {
@@ -170,10 +159,10 @@ func TestCycle_WithActivationResults(t *testing.T) {
 		activationResults []*component.ActivationResult
 	}
 	tests := []struct {
-		name        string
-		cycleResult *Cycle
-		args        args
-		want        *Cycle
+		name                  string
+		cycleResult           *Cycle
+		args                  args
+		wantActivationResults component.ActivationResultCollection
 	}{
 		{
 			name:        "nothing added",
@@ -181,7 +170,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 			args: args{
 				activationResults: nil,
 			},
-			want: New(),
+			wantActivationResults: component.NewActivationResultCollection(),
 		},
 		{
 			name:        "adding to empty collection",
@@ -192,11 +181,9 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				},
 			},
-			want: &Cycle{
-				activationResults: component.ActivationResultCollection{
-					"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-					"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				},
+			wantActivationResults: component.ActivationResultCollection{
+				"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 			},
 		},
 		{
@@ -215,19 +202,17 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 				},
 			},
-			want: &Cycle{
-				activationResults: component.ActivationResultCollection{
-					"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-					"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-					"c3": component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
-					"c4": component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
-				},
+			wantActivationResults: component.ActivationResultCollection{
+				"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				"c3": component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
+				"c4": component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.cycleResult.WithActivationResults(tt.args.activationResults...))
+			assert.Equal(t, tt.wantActivationResults, tt.cycleResult.WithActivationResults(tt.args.activationResults...).ActivationResults())
 		})
 	}
 }

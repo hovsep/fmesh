@@ -121,6 +121,15 @@ func (fm *FMesh) runCycle() (*cycle.Cycle, error) {
 	}
 
 	wg.Wait()
+
+	//Bubble up chain errors from activation results
+	for _, ar := range newCycle.ActivationResults() {
+		if ar.HasChainError() {
+			newCycle.SetChainError(ar.ChainError())
+			break
+		}
+	}
+
 	return newCycle, nil
 }
 
@@ -185,15 +194,13 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 			return nil, err
 		}
 
-		//Bubble up chain errors from activation results
-		for _, ar := range cycleResult.ActivationResults() {
-			if ar.HasChainError() {
-				fm.SetChainError(ar.ChainError())
-				break
-			}
+		cycleResult.WithNumber(cycleNumber)
+
+		if cycleResult.HasChainError() {
+			fm.SetChainError(cycleResult.ChainError())
+			return nil, fmt.Errorf("chain error occurred in cycle #%d : %w", cycleResult.Number(), cycleResult.ChainError())
 		}
 
-		cycleResult.WithNumber(cycleNumber)
 		allCycles = allCycles.With(cycleResult)
 
 		mustStop, chainError, stopError := fm.mustStop(cycleResult)
