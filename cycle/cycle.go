@@ -1,13 +1,15 @@
 package cycle
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"sync"
 )
 
-// Cycle contains the info about given activation cycle
+// Cycle contains the info about one activation cycle
 type Cycle struct {
 	sync.Mutex
+	*common.Chainable
 	number            int
 	activationResults component.ActivationResultCollection
 }
@@ -15,6 +17,7 @@ type Cycle struct {
 // New creates a new cycle
 func New() *Cycle {
 	return &Cycle{
+		Chainable:         common.NewChainable(),
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -53,5 +56,11 @@ func (cycle *Cycle) Number() int {
 // WithNumber sets the sequence number
 func (cycle *Cycle) WithNumber(number int) *Cycle {
 	cycle.number = number
+	return cycle
+}
+
+// WithChainError returns cycle with error
+func (cycle *Cycle) WithChainError(err error) *Cycle {
+	cycle.SetChainError(err)
 	return cycle
 }

@@ -3,10 +3,12 @@ package component
 import (
 	"errors"
 	"fmt"
+	"github.com/hovsep/fmesh/common"
 )
 
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
+	*common.Chainable
 	componentName string
 	activated     bool
 	code          ActivationResultCode
@@ -18,6 +20,8 @@ type ActivationResultCode int
 
 func (a ActivationResultCode) String() string {
 	switch a {
+	case ActivationCodeUndefined:
+		return "UNDEFINED"
 	case ActivationCodeOK:
 		return "OK"
 	case ActivationCodeNoInput:
@@ -38,8 +42,11 @@ func (a ActivationResultCode) String() string {
 }
 
 const (
+	// ActivationCodeUndefined : used for error handling as zero instance
+	ActivationCodeUndefined ActivationResultCode = iota
+
 	// ActivationCodeOK : component is activated and did not return any errors
-	ActivationCodeOK ActivationResultCode = iota
+	ActivationCodeOK
 
 	// ActivationCodeNoInput : component is not activated because it has no input set
 	ActivationCodeNoInput
@@ -65,6 +72,7 @@ const (
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
+		Chainable:     common.NewChainable(),
 	}
 }
 
@@ -172,4 +180,10 @@ func IsWaitingForInput(activationResult *ActivationResult) bool {
 
 func WantsToKeepInputs(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
+}
+
+// WithChainError returns activation result with chain error
+func (ar *ActivationResult) WithChainError(err error) *ActivationResult {
+	ar.SetChainError(err)
+	return ar
 }

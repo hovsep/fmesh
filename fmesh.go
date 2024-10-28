@@ -1,6 +1,8 @@
 package fmesh
 
 import (
+	"errors"
+	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -25,54 +27,88 @@ var defaultConfig = Config{
 type FMesh struct {
 	common.NamedEntity
 	common.DescribedEntity
-	components component.Collection
+	*common.Chainable
+	components *component.Collection
 	config     Config
 }
 
 // New creates a new f-mesh
 func New(name string) *FMesh {
 	return &FMesh{
-		NamedEntity: common.NewNamedEntity(name),
-		components:  component.NewCollection(),
-		config:      defaultConfig,
+		NamedEntity:     common.NewNamedEntity(name),
+		DescribedEntity: common.NewDescribedEntity(""),
+		Chainable:       common.NewChainable(),
+		components:      component.NewCollection(),
+		config:          defaultConfig,
 	}
 }
 
-func (fm *FMesh) Components() component.Collection {
+// Components getter
+func (fm *FMesh) Components() *component.Collection {
+	if fm.HasChainError() {
+		return component.NewCollection().WithChainError(fm.ChainError())
+	}
 	return fm.components
 }
 
 // WithDescription sets a description
 func (fm *FMesh) WithDescription(description string) *FMesh {
+	if fm.HasChainError() {
+		return fm
+	}
+
 	fm.DescribedEntity = common.NewDescribedEntity(description)
 	return fm
 }
 
 // WithComponents adds components to f-mesh
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
+	if fm.HasChainError() {
+		return fm
+	}
+
 	for _, c := range components {
 		fm.components = fm.components.With(c)
+		if c.HasChainError() {
+			return fm.WithChainError(c.ChainError())
+		}
 	}
 	return fm
 }
 
 // WithConfig sets the configuration and returns the f-mesh
 func (fm *FMesh) WithConfig(config Config) *FMesh {
+	if fm.HasChainError() {
+		return fm
+	}
+
 	fm.config = config
 	return fm
 }
 
 // runCycle runs one activation cycle (tries to activate ready components)
-func (fm *FMesh) runCycle() *cycle.Cycle {
-	newCycle := cycle.New()
-
-	if len(fm.components) == 0 {
-		return newCycle
+func (fm *FMesh) runCycle() (*cycle.Cycle, error) {
+	if fm.HasChainError() {
+		return nil, fm.ChainError()
 	}
+
+	if fm.Components().Len() == 0 {
+		return nil, errors.New("failed to run cycle: no components found")
+	}
+
+	newCycle := cycle.New()
 
 	var wg sync.WaitGroup
 
-	for _, c := range fm.components {
+	components, err := fm.Components().Components()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run cycle: %w", err)
+	}
+
+	for _, c := range components {
+		if c.HasChainError() {
+			fm.SetChainError(c.ChainError())
+		}
 		wg.Add(1)
 
 		go func(component *component.Component, cycle *cycle.Cycle) {
@@ -85,13 +121,35 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 	}
 
 	wg.Wait()
-	return newCycle
+
+	//Bubble up chain errors from activation results
+	for _, ar := range newCycle.ActivationResults() {
+		if ar.HasChainError() {
+			newCycle.SetChainError(ar.ChainError())
+			break
+		}
+	}
+
+	return newCycle, nil
 }
 
 // DrainComponents drains the data from activated components
-func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
-	for _, c := range fm.Components() {
+func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
+	if fm.HasChainError() {
+		return fm.ChainError()
+	}
+
+	components, err := fm.Components().Components()
+	if err != nil {
+		return fmt.Errorf("failed to drain components: %w", err)
+	}
+
+	for _, c := range components {
 		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
+
+		if activationResult.HasChainError() {
+			return activationResult.ChainError()
+		}
 
 		if !activationResult.Activated() {
 			// Component did not activate, so it did not create new output signals, hence nothing to drain
@@ -118,51 +176,90 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) {
 			c.ClearInputs()
 		}
 	}
+	return nil
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
-func (fm *FMesh) Run() (cycle.Collection, error) {
-	allCycles := cycle.NewCollection()
+func (fm *FMesh) Run() (cycle.Cycles, error) {
+	if fm.HasChainError() {
+		return nil, fm.ChainError()
+	}
+
+	allCycles := cycle.NewGroup()
 	cycleNumber := 0
 	for {
-		cycleResult := fm.runCycle().WithNumber(cycleNumber)
-		allCycles = allCycles.With(cycleResult)
+		cycleResult, err := fm.runCycle()
 
-		mustStop, err := fm.mustStop(cycleResult)
-		if mustStop {
-			return allCycles, err
+		if err != nil {
+			return nil, err
 		}
 
-		fm.drainComponents(cycleResult)
+		cycleResult.WithNumber(cycleNumber)
+
+		if cycleResult.HasChainError() {
+			fm.SetChainError(cycleResult.ChainError())
+			return nil, fmt.Errorf("chain error occurred in cycle #%d : %w", cycleResult.Number(), cycleResult.ChainError())
+		}
+
+		allCycles = allCycles.With(cycleResult)
+
+		mustStop, chainError, stopError := fm.mustStop(cycleResult)
+		if chainError != nil {
+			return nil, chainError
+		}
+
+		if mustStop {
+			cycles, err := allCycles.Cycles()
+			if err != nil {
+				return nil, err
+			}
+			return cycles, stopError
+		}
+
+		err = fm.drainComponents(cycleResult)
+		if err != nil {
+			return nil, err
+		}
 		cycleNumber++
 	}
 }
 
-func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error) {
+// mustStop defines when f-mesh must stop after activation cycle
+func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error, error) {
+	if fm.HasChainError() {
+		return false, fm.ChainError(), nil
+	}
+
 	if (fm.config.CyclesLimit > 0) && (cycleResult.Number() > fm.config.CyclesLimit) {
-		return true, ErrReachedMaxAllowedCycles
+		return true, nil, ErrReachedMaxAllowedCycles
 	}
 
 	//Check if we are done (no components activated during the cycle => all inputs are processed)
 	if !cycleResult.HasActivatedComponents() {
-		return true, nil
+		return true, nil, nil
 	}
 
 	//Check if mesh must stop because of configured error handling strategy
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if cycleResult.HasErrors() || cycleResult.HasPanics() {
-			return true, ErrHitAnErrorOrPanic
+			return true, nil, ErrHitAnErrorOrPanic
 		}
-		return false, nil
+		return false, nil, nil
 	case StopOnFirstPanic:
 		if cycleResult.HasPanics() {
-			return true, ErrHitAPanic
+			return true, nil, ErrHitAPanic
 		}
-		return false, nil
+		return false, nil, nil
 	case IgnoreAll:
-		return false, nil
+		return false, nil, nil
 	default:
-		return true, ErrUnsupportedErrorHandlingStrategy
+		return true, nil, ErrUnsupportedErrorHandlingStrategy
 	}
+}
+
+// WithChainError returns f-mesh with error
+func (fm *FMesh) WithChainError(err error) *FMesh {
+	fm.SetChainError(err)
+	return fm
 }

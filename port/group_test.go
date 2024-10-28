@@ -1,6 +1,7 @@
 package port
 
 import (
+	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,23 +13,27 @@ func TestNewGroup(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Group
+		want *Group
 	}{
 		{
 			name: "empty group",
 			args: args{
 				names: nil,
 			},
-			want: Group{},
+			want: &Group{
+				Chainable: common.NewChainable(),
+				ports:     []*Port{},
+			},
 		},
 		{
 			name: "non-empty group",
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: Group{
-				New("p1"),
-				New("p2"),
+			want: &Group{
+				Chainable: common.NewChainable(),
+				ports: []*Port{New("p1"),
+					New("p2")},
 			},
 		},
 	}
@@ -48,7 +53,7 @@ func TestNewIndexedGroup(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Group
+		want *Group
 	}{
 		{
 			name: "empty prefix is valid",
@@ -91,9 +96,9 @@ func TestGroup_With(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		group      Group
+		group      *Group
 		args       args
-		assertions func(t *testing.T, group Group)
+		assertions func(t *testing.T, group *Group)
 	}{
 		{
 			name:  "adding nothing to empty group",
@@ -101,28 +106,28 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				ports: nil,
 			},
-			assertions: func(t *testing.T, group Group) {
-				assert.Len(t, group, 0)
+			assertions: func(t *testing.T, group *Group) {
+				assert.Zero(t, group.Len())
 			},
 		},
 		{
 			name:  "adding to empty group",
 			group: NewGroup(),
 			args: args{
-				ports: NewGroup("p1", "p2", "p3"),
+				ports: NewGroup("p1", "p2", "p3").PortsOrNil(),
 			},
-			assertions: func(t *testing.T, group Group) {
-				assert.Len(t, group, 3)
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, group.Len(), 3)
 			},
 		},
 		{
 			name:  "adding to non-empty group",
 			group: NewIndexedGroup("p", 1, 3),
 			args: args{
-				ports: NewGroup("p4", "p5", "p6"),
+				ports: NewGroup("p4", "p5", "p6").PortsOrNil(),
 			},
-			assertions: func(t *testing.T, group Group) {
-				assert.Len(t, group, 6)
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, group.Len(), 6)
 			},
 		},
 	}

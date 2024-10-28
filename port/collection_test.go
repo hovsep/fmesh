@@ -1,23 +1,24 @@
 package port
 
 import (
+	"errors"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestCollection_AllHaveSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3")...).withSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").PortsOrNil()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
 		name  string
-		ports Collection
+		ports *Collection
 		want  bool
 	}{
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2")...),
+			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			want:  false,
 		},
 		{
@@ -27,7 +28,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 		},
 		{
 			name:  "all set",
-			ports: NewCollection().With(NewGroup("out1", "out2", "out3")...).withSignals(signal.New(77)),
+			ports: NewCollection().With(NewGroup("out1", "out2", "out3").PortsOrNil()...).PutSignals(signal.New(77)),
 			want:  true,
 		},
 	}
@@ -39,12 +40,12 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 }
 
 func TestCollection_AnyHasSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3")...).withSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").PortsOrNil()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
 		name  string
-		ports Collection
+		ports *Collection
 		want  bool
 	}{
 		{
@@ -54,7 +55,7 @@ func TestCollection_AnyHasSignal(t *testing.T) {
 		},
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2", "p3")...),
+			ports: NewCollection().With(NewGroup("p1", "p2", "p3").PortsOrNil()...),
 			want:  false,
 		},
 	}
@@ -71,21 +72,21 @@ func TestCollection_ByName(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection Collection
+		collection *Collection
 		args       args
 		want       *Port
 	}{
 		{
 			name:       "empty port found",
-			collection: NewCollection().With(NewGroup("p1", "p2")...),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				name: "p1",
 			},
 			want: New("p1"),
 		},
 		{
-			name:       "port with signals found",
-			collection: NewCollection().With(NewGroup("p1", "p2")...).withSignals(signal.New(12)),
+			name:       "port with buffer found",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).PutSignals(signal.New(12)),
 			args: args{
 				name: "p2",
 			},
@@ -93,21 +94,17 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "port not found",
-			collection: NewCollection().With(NewGroup("p1", "p2")...),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				name: "p3",
 			},
-			want: nil,
+			want: New("").WithChainError(errors.New("port not found")),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPort := tt.collection.ByName(tt.args.name)
-			if tt.want == nil {
-				assert.Nil(t, gotPort)
-			} else {
-				//Compare everything, but nror
-			}
+			got := tt.collection.ByName(tt.args.name)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -118,13 +115,13 @@ func TestCollection_ByNames(t *testing.T) {
 	}
 	tests := []struct {
 		name  string
-		ports Collection
+		ports *Collection
 		args  args
-		want  Collection
+		want  *Collection
 	}{
 		{
 			name:  "single port found",
-			ports: NewCollection().With(NewGroup("p1", "p2")...),
+			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p1"},
 			},
@@ -132,27 +129,27 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:  "multiple ports found",
-			ports: NewCollection().With(NewGroup("p1", "p2", "p3", "p4")...),
+			ports: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").PortsOrNil()...),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2")...),
+			want: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 		},
 		{
 			name:  "single port not found",
-			ports: NewCollection().With(NewGroup("p1", "p2")...),
+			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p7"},
 			},
-			want: Collection{},
+			want: NewCollection(),
 		},
 		{
 			name:  "some ports not found",
-			ports: NewCollection().With(NewGroup("p1", "p2")...),
+			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p1", "p2", "p3"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2")...),
+			want: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 		},
 	}
 	for _, tt := range tests {
@@ -164,7 +161,7 @@ func TestCollection_ByNames(t *testing.T) {
 
 func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		ports := NewCollection().With(NewGroup("p1", "p2", "p3")...).withSignals(signal.NewGroup(1, 2, 3)...)
+		ports := NewCollection().With(NewGroup("p1", "p2", "p3").PortsOrNil()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
 		ports.Clear()
 		assert.False(t, ports.AnyHasSignals())
@@ -177,9 +174,9 @@ func TestCollection_With(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection Collection
+		collection *Collection
 		args       args
-		assertions func(t *testing.T, collection Collection)
+		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
 			name:       "adding nothing to empty collection",
@@ -187,30 +184,30 @@ func TestCollection_With(t *testing.T) {
 			args: args{
 				ports: nil,
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 0)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Zero(t, collection.Len())
 			},
 		},
 		{
 			name:       "adding to empty collection",
 			collection: NewCollection(),
 			args: args{
-				ports: NewGroup("p1", "p2"),
+				ports: NewGroup("p1", "p2").PortsOrNil(),
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 2)
-				assert.Len(t, collection.ByNames("p1", "p2"), 2)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 2)
+				assert.Equal(t, collection.ByNames("p1", "p2").Len(), 2)
 			},
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2")...),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
-				ports: NewGroup("p3", "p4"),
+				ports: NewGroup("p3", "p4").PortsOrNil(),
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 4)
-				assert.Len(t, collection.ByNames("p1", "p2", "p3", "p4"), 4)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 4)
+				assert.Equal(t, collection.ByNames("p1", "p2", "p3", "p4").Len(), 4)
 			},
 		},
 	}
@@ -227,31 +224,33 @@ func TestCollection_With(t *testing.T) {
 func TestCollection_Flush(t *testing.T) {
 	tests := []struct {
 		name       string
-		collection Collection
-		assertions func(t *testing.T, collection Collection)
+		collection *Collection
+		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
 			name:       "empty collection",
 			collection: NewCollection(),
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 0)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Zero(t, collection.Len())
 			},
 		},
 		{
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
 				New("src").
-					WithSignals(signal.NewGroup(1, 2, 3)...).
-					withPipes(New("dst1"), New("dst2")),
+					WithSignalGroups(signal.NewGroup(1, 2, 3)).
+					PipeTo(New("dst1"), New("dst2")),
 			),
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 1)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 1)
 				assert.False(t, collection.ByName("src").HasSignals())
-				for _, destPort := range collection.ByName("src").pipes {
-					assert.Len(t, destPort.Signals(), 3)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 1)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 2)
-					assert.Contains(t, destPort.Signals().AllPayloads(), 3)
+				for _, destPort := range collection.ByName("src").Pipes().PortsOrNil() {
+					assert.Equal(t, destPort.Buffer().Len(), 3)
+					allPayloads, err := destPort.Buffer().AllPayloads()
+					assert.NoError(t, err)
+					assert.Contains(t, allPayloads, 1)
+					assert.Contains(t, allPayloads, 2)
+					assert.Contains(t, allPayloads, 3)
 				}
 			},
 		},
@@ -272,31 +271,31 @@ func TestCollection_PipeTo(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection Collection
+		collection *Collection
 		args       args
-		assertions func(t *testing.T, collection Collection)
+		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
 			name:       "empty collection",
 			collection: NewCollection(),
 			args: args{
-				destPorts: NewIndexedGroup("dest_", 1, 3),
+				destPorts: NewIndexedGroup("dest_", 1, 3).PortsOrNil(),
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 0)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Zero(t, collection.Len())
 			},
 		},
 		{
 			name:       "add pipes to each port in collection",
-			collection: NewCollection().With(NewIndexedGroup("p", 1, 3)...),
+			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).PortsOrNil()...),
 			args: args{
-				destPorts: NewIndexedGroup("dest", 1, 5),
+				destPorts: NewIndexedGroup("dest", 1, 5).PortsOrNil(),
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 3)
-				for _, p := range collection {
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 3)
+				for _, p := range collection.PortsOrNil() {
 					assert.True(t, p.HasPipes())
-					assert.Len(t, p.pipes, 5)
+					assert.Equal(t, p.Pipes().Len(), 5)
 				}
 			},
 		},
@@ -319,9 +318,9 @@ func TestCollection_WithIndexed(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection Collection
+		collection *Collection
 		args       args
-		assertions func(t *testing.T, collection Collection)
+		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
 			name:       "adding to empty collection",
@@ -331,20 +330,20 @@ func TestCollection_WithIndexed(t *testing.T) {
 				startIndex: 1,
 				endIndex:   3,
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 3)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 3)
 			},
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2", "p3")...),
+			collection: NewCollection().With(NewGroup("p1", "p2", "p3").PortsOrNil()...),
 			args: args{
 				prefix:     "p",
 				startIndex: 4,
 				endIndex:   5,
 			},
-			assertions: func(t *testing.T, collection Collection) {
-				assert.Len(t, collection, 5)
+			assertions: func(t *testing.T, collection *Collection) {
+				assert.Equal(t, collection.Len(), 5)
 			},
 		},
 	}
@@ -361,8 +360,8 @@ func TestCollection_WithIndexed(t *testing.T) {
 func TestCollection_Signals(t *testing.T) {
 	tests := []struct {
 		name       string
-		collection Collection
-		want       signal.Group
+		collection *Collection
+		want       *signal.Group
 	}{
 		{
 			name:       "empty collection",
@@ -373,8 +372,8 @@ func TestCollection_Signals(t *testing.T) {
 			name: "non-empty collection",
 			collection: NewCollection().
 				WithIndexed("p", 1, 3).
-				withSignals(signal.NewGroup(1, 2, 3)...).
-				withSignals(signal.New("test")),
+				PutSignals(signal.New(1), signal.New(2), signal.New(3)).
+				PutSignals(signal.New("test")),
 			want: signal.NewGroup(1, 2, 3, "test", 1, 2, 3, "test", 1, 2, 3, "test"),
 		},
 	}
