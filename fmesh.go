@@ -87,22 +87,22 @@ func (fm *FMesh) WithConfig(config Config) *FMesh {
 }
 
 // runCycle runs one activation cycle (tries to activate ready components)
-func (fm *FMesh) runCycle() (*cycle.Cycle, error) {
+func (fm *FMesh) runCycle() *cycle.Cycle {
+	newCycle := cycle.New()
+
 	if fm.HasChainError() {
-		return nil, fm.ChainError()
+		return newCycle.WithChainError(fm.ChainError())
 	}
 
 	if fm.Components().Len() == 0 {
-		return nil, errors.New("failed to run cycle: no components found")
+		return newCycle.WithChainError(errors.New("failed to run cycle: no components found"))
 	}
-
-	newCycle := cycle.New()
 
 	var wg sync.WaitGroup
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run cycle: %w", err)
+		return newCycle.WithChainError(fmt.Errorf("failed to run cycle: %w", err))
 	}
 
 	for _, c := range components {
@@ -130,7 +130,7 @@ func (fm *FMesh) runCycle() (*cycle.Cycle, error) {
 		}
 	}
 
-	return newCycle, nil
+	return newCycle
 }
 
 // DrainComponents drains the data from activated components
@@ -188,13 +188,7 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 	allCycles := cycle.NewGroup()
 	cycleNumber := 0
 	for {
-		cycleResult, err := fm.runCycle()
-
-		if err != nil {
-			return nil, err
-		}
-
-		cycleResult.WithNumber(cycleNumber)
+		cycleResult := fm.runCycle().WithNumber(cycleNumber)
 
 		if cycleResult.HasChainError() {
 			fm.SetChainError(cycleResult.ChainError())
@@ -216,7 +210,7 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 			return cycles, stopError
 		}
 
-		err = fm.drainComponents(cycleResult)
+		err := fm.drainComponents(cycleResult)
 		if err != nil {
 			return nil, err
 		}
