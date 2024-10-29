@@ -27,10 +27,11 @@ func NewCollection() *Collection {
 // ByName returns a port by its name
 func (collection *Collection) ByName(name string) *Port {
 	if collection.HasChainError() {
-		return nil
+		return New("").WithChainError(collection.ChainError())
 	}
 	port, ok := collection.ports[name]
 	if !ok {
+		collection.SetChainError(ErrPortNotFoundInCollection)
 		return New("").WithChainError(ErrPortNotFoundInCollection)
 	}
 	return port
@@ -39,7 +40,7 @@ func (collection *Collection) ByName(name string) *Port {
 // ByNames returns multiple ports by their names
 func (collection *Collection) ByNames(names ...string) *Collection {
 	if collection.HasChainError() {
-		return collection
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 
 	selectedPorts := NewCollection()
@@ -84,10 +85,9 @@ func (collection *Collection) AllHaveSignals() bool {
 }
 
 // PutSignals adds buffer to every port in collection
-// @TODO: return collection
 func (collection *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	if collection.HasChainError() {
-		return collection
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 
 	for _, p := range collection.ports {
@@ -115,7 +115,7 @@ func (collection *Collection) Clear() *Collection {
 // Flush flushes all ports in collection
 func (collection *Collection) Flush() *Collection {
 	if collection.HasChainError() {
-		return collection
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 
 	for _, p := range collection.ports {
@@ -144,15 +144,15 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 // With adds ports to collection and returns it
 func (collection *Collection) With(ports ...*Port) *Collection {
 	if collection.HasChainError() {
-		return collection
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 
 	for _, port := range ports {
-		collection.ports[port.Name()] = port
-
 		if port.HasChainError() {
 			return collection.WithChainError(port.ChainError())
 		}
+
+		collection.ports[port.Name()] = port
 	}
 
 	return collection
@@ -161,7 +161,7 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 // WithIndexed creates ports with names like "o1","o2","o3" and so on
 func (collection *Collection) WithIndexed(prefix string, startIndex int, endIndex int) *Collection {
 	if collection.HasChainError() {
-		return collection
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 
 	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).Ports()
