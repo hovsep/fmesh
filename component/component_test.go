@@ -41,44 +41,42 @@ func TestNewComponent(t *testing.T) {
 }
 
 func TestComponent_FlushOutputs(t *testing.T) {
-	sink := port.New("sink")
-
-	componentWithNoOutputs := New("c1")
-	componentWithCleanOutputs := New("c1").WithOutputs("o1", "o2")
-
-	componentWithAllOutputsSet := New("c1").WithOutputs("o1", "o2")
-	componentWithAllOutputsSet.Outputs().ByNames("o1").PutSignals(signal.New(777))
-	componentWithAllOutputsSet.Outputs().ByNames("o2").PutSignals(signal.New(888))
-	componentWithAllOutputsSet.Outputs().ByNames("o1", "o2").PipeTo(sink)
-
 	tests := []struct {
-		name       string
-		component  *Component
-		destPort   *port.Port //Where the component flushes ALL it's inputs
-		assertions func(t *testing.T, componentAfterFlush *Component, destPort *port.Port)
+		name         string
+		getComponent func() *Component
+		assertions   func(t *testing.T, componentAfterFlush *Component)
 	}{
 		{
-			name:      "no outputs",
-			component: componentWithNoOutputs,
-			destPort:  nil,
-			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
+			name: "no outputs",
+			getComponent: func() *Component {
+				return New("c1")
+			},
+			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
 				assert.Zero(t, componentAfterFlush.Outputs().Len())
 			},
 		},
 		{
-			name:      "output has no signal set",
-			component: componentWithCleanOutputs,
-			destPort:  nil,
-			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
+			name: "output has no signal set",
+			getComponent: func() *Component {
+				return New("c1").WithOutputs("o1", "o2")
+			},
+			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
 		},
 		{
-			name:      "happy path",
-			component: componentWithAllOutputsSet,
-			destPort:  sink,
-			assertions: func(t *testing.T, componentAfterFlush *Component, destPort *port.Port) {
+			name: "happy path",
+			getComponent: func() *Component {
+				sink := port.New("sink")
+				c := New("c1").WithOutputs("o1", "o2")
+				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
+				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
+				c.Outputs().ByNames("o1", "o2").PipeTo(sink)
+				return c
+			},
+			assertions: func(t *testing.T, componentAfterFlush *Component) {
+				destPort := componentAfterFlush.OutputByName("o1").Pipes().PortsOrNil()[0]
 				allPayloads, err := destPort.AllSignalsPayloads()
 				assert.NoError(t, err)
 				assert.Contains(t, allPayloads, 777)
@@ -88,11 +86,25 @@ func TestComponent_FlushOutputs(t *testing.T) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
 		},
+		{
+			name: "with chain error",
+			getComponent: func() *Component {
+				sink := port.New("sink")
+				c := New("c").WithOutputs("o1").WithChainError(errors.New("some error"))
+				//Lines below are ignored as error immediately propagates up to component level
+				c.Outputs().ByName("o1").PipeTo(sink)
+				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))
+				return c
+			},
+			assertions: func(t *testing.T, componentAfterFlush *Component) {
+				assert.False(t, componentAfterFlush.OutputByName("o1").HasPipes())
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.component.FlushOutputs()
-			tt.assertions(t, tt.component, tt.destPort)
+			componentAfter := tt.getComponent().FlushOutputs()
+			tt.assertions(t, componentAfter)
 		})
 	}
 }
@@ -481,6 +493,28 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				err:           NewErrWaitForInputs(true),
 			},
 		},
+		{
+			name: "with chain error from input port",
+			getComponent: func() *Component {
+				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c.Inputs().With(port.New("p").WithChainError(errors.New("some error")))
+				return c
+			},
+			wantActivationResult: NewActivationResult("c").
+				WithActivationCode(ActivationCodeUndefined).
+				WithChainError(errors.New("some error")),
+		},
+		{
+			name: "with chain error from output port",
+			getComponent: func() *Component {
+				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c.Outputs().With(port.New("p").WithChainError(errors.New("some error")))
+				return c
+			},
+			wantActivationResult: NewActivationResult("c").
+				WithActivationCode(ActivationCodeUndefined).
+				WithChainError(errors.New("some error")),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -624,6 +658,62 @@ func TestComponent_WithLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			componentAfter := tt.component.WithLabels(tt.args.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_ShortcutMethods(t *testing.T) {
+	t.Run("InputByName", func(t *testing.T) {
+		c := New("c").WithInputs("a", "b", "c")
+		assert.Equal(t, port.New("b"), c.InputByName("b"))
+	})
+
+	t.Run("OutputByName", func(t *testing.T) {
+		c := New("c").WithOutputs("a", "b", "c")
+		assert.Equal(t, port.New("b"), c.OutputByName("b"))
+	})
+}
+
+func TestComponent_ClearInputs(t *testing.T) {
+	tests := []struct {
+		name         string
+		getComponent func() *Component
+		assertions   func(t *testing.T, componentAfter *Component)
+	}{
+		{
+			name: "no side effects",
+			getComponent: func() *Component {
+				return New("c").WithInputs("i1").WithOutputs("o1")
+			},
+			assertions: func(t *testing.T, componentAfter *Component) {
+				assert.Equal(t, 1, componentAfter.Inputs().Len())
+				assert.Equal(t, 1, componentAfter.Outputs().Len())
+				assert.False(t, componentAfter.Inputs().AnyHasSignals())
+				assert.False(t, componentAfter.Outputs().AnyHasSignals())
+			},
+		},
+		{
+			name: "only inputs are cleared",
+			getComponent: func() *Component {
+				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c.Inputs().ByName("i1").PutSignals(signal.New(10))
+				c.Outputs().ByName("o1").PutSignals(signal.New(20))
+				return c
+			},
+			assertions: func(t *testing.T, componentAfter *Component) {
+				assert.Equal(t, 1, componentAfter.Inputs().Len())
+				assert.Equal(t, 1, componentAfter.Outputs().Len())
+				assert.False(t, componentAfter.Inputs().AnyHasSignals())
+				assert.True(t, componentAfter.Outputs().ByName("o1").HasSignals())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.getComponent().ClearInputs()
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}

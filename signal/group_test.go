@@ -24,6 +24,7 @@ func TestNewGroup(t *testing.T) {
 				signals, err := group.Signals()
 				assert.NoError(t, err)
 				assert.Len(t, signals, 0)
+				assert.Zero(t, group.Len())
 			},
 		},
 		{
@@ -34,7 +35,7 @@ func TestNewGroup(t *testing.T) {
 			assertions: func(t *testing.T, group *Group) {
 				signals, err := group.Signals()
 				assert.NoError(t, err)
-				assert.Len(t, signals, 3)
+				assert.Equal(t, group.Len(), 3)
 				assert.Contains(t, signals, New(1))
 				assert.Contains(t, signals, New(nil))
 				assert.Contains(t, signals, New(3))
