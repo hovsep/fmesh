@@ -1,6 +1,7 @@
 package port
 
 import (
+	"errors"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -31,14 +32,14 @@ func TestPort_HasSignals(t *testing.T) {
 	}
 }
 
-func TestPort_Signals(t *testing.T) {
+func TestPort_Buffer(t *testing.T) {
 	tests := []struct {
 		name string
 		port *Port
 		want *signal.Group
 	}{
 		{
-			name: "no buffer",
+			name: "empty buffer",
 			port: New("noSignal"),
 			want: signal.NewGroup(),
 		},
@@ -46,6 +47,11 @@ func TestPort_Signals(t *testing.T) {
 			name: "with signal",
 			port: New("p").WithSignals(signal.New(123)),
 			want: signal.NewGroup(123),
+		},
+		{
+			name: "with chain error",
+			port: New("p").WithChainError(errors.New("some error")),
+			want: signal.NewGroup().WithChainError(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
@@ -122,56 +128,90 @@ func TestPort_PutSignals(t *testing.T) {
 		signals signal.Signals
 	}
 	tests := []struct {
-		name         string
-		port         *Port
-		signalsAfter signal.Signals
-		args         args
+		name       string
+		port       *Port
+		args       args
+		assertions func(t *testing.T, portAfter *Port)
 	}{
 		{
-			name:         "single signal to empty port",
-			port:         New("emptyPort"),
-			signalsAfter: signal.NewGroup(11).SignalsOrNil(),
+			name: "single signal to empty port",
+			port: New("emptyPort"),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11), portAfter.Buffer())
+			},
 			args: args{
 				signals: signal.NewGroup(11).SignalsOrNil(),
 			},
 		},
 		{
-			name:         "multiple buffer to empty port",
-			port:         New("p"),
-			signalsAfter: signal.NewGroup(11, 12).SignalsOrNil(),
+			name: "multiple buffer to empty port",
+			port: New("p"),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
+			},
 			args: args{
 				signals: signal.NewGroup(11, 12).SignalsOrNil(),
 			},
 		},
 		{
-			name:         "single signal to port with single signal",
-			port:         New("p").WithSignals(signal.New(11)),
-			signalsAfter: signal.NewGroup(11, 12).SignalsOrNil(),
+			name: "single signal to port with single signal",
+			port: New("p").WithSignals(signal.New(11)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
+			},
 			args: args{
 				signals: signal.NewGroup(12).SignalsOrNil(),
 			},
 		},
 		{
-			name:         "single buffer to port with multiple buffer",
-			port:         New("p").WithSignalGroups(signal.NewGroup(11, 12)),
-			signalsAfter: signal.NewGroup(11, 12, 13).SignalsOrNil(),
+			name: "single buffer to port with multiple buffer",
+			port: New("p").WithSignalGroups(signal.NewGroup(11, 12)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Buffer())
+			},
 			args: args{
 				signals: signal.NewGroup(13).SignalsOrNil(),
 			},
 		},
 		{
-			name:         "multiple buffer to port with multiple buffer",
-			port:         New("p").WithSignalGroups(signal.NewGroup(55, 66)),
-			signalsAfter: signal.NewGroup(55, 66, 13, 14).SignalsOrNil(),
+			name: "multiple buffer to port with multiple buffer",
+			port: New("p").WithSignalGroups(signal.NewGroup(55, 66)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Buffer())
+			},
 			args: args{
 				signals: signal.NewGroup(13, 14).SignalsOrNil(),
+			},
+		},
+		{
+			name: "chain error propagated from buffer",
+			port: New("p"),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Zero(t, portAfter.Buffer().Len())
+				assert.True(t, portAfter.Buffer().HasChainError())
+			},
+			args: args{
+				signals: signal.Signals{signal.New(111).WithChainError(errors.New("some error in signal"))},
+			},
+		},
+		{
+			name: "with chain error",
+			port: New("p").WithChainError(errors.New("some error in port")),
+			args: args{
+				signals: signal.Signals{signal.New(123)},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.True(t, portAfter.HasChainError())
+				assert.Zero(t, portAfter.Buffer().Len())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			portAfter := tt.port.PutSignals(tt.args.signals...)
-			assert.ElementsMatch(t, tt.signalsAfter, portAfter.AllSignalsOrNil())
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
 		})
 	}
 }
@@ -338,4 +378,62 @@ func TestPort_WithLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPort_Pipes(t *testing.T) {
+	tests := []struct {
+		name string
+		port *Port
+		want *Group
+	}{
+		{
+			name: "no pipes",
+			port: New("p"),
+			want: NewGroup(),
+		},
+		{
+			name: "with pipes",
+			port: New("p1").PipeTo(New("p2"), New("p3")),
+			want: NewGroup("p2", "p3"),
+		},
+		{
+			name: "with chain error",
+			port: New("p").WithChainError(errors.New("some error")),
+			want: NewGroup().WithChainError(errors.New("some error")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.port.Pipes())
+		})
+	}
+}
+
+func TestPort_ShortcutGetters(t *testing.T) {
+	t.Run("FirstSignalPayload", func(t *testing.T) {
+		port := New("p").WithSignalGroups(signal.NewGroup(4, 7, 6, 5))
+		payload, err := port.FirstSignalPayload()
+		assert.NoError(t, err)
+		assert.Equal(t, 4, payload)
+	})
+
+	t.Run("FirstSignalPayloadOrNil", func(t *testing.T) {
+		port := New("p").WithSignals(signal.New(123).WithChainError(errors.New("some error")))
+		assert.Nil(t, port.FirstSignalPayloadOrNil())
+	})
+
+	t.Run("FirstSignalPayloadOrDefault", func(t *testing.T) {
+		port := New("p").WithSignals(signal.New(123).WithChainError(errors.New("some error")))
+		assert.Equal(t, 888, port.FirstSignalPayloadOrDefault(888))
+	})
+
+	t.Run("AllSignalsOrNil", func(t *testing.T) {
+		port := New("p").WithSignals(signal.New(123).WithChainError(errors.New("some error")))
+		assert.Nil(t, port.AllSignalsOrNil())
+	})
+
+	t.Run("AllSignalsOrDefault", func(t *testing.T) {
+		port := New("p").WithSignals(signal.New(123).WithChainError(errors.New("some error")))
+		assert.Equal(t, signal.NewGroup(999).SignalsOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).SignalsOrNil()))
+	})
 }

@@ -98,7 +98,15 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: New("").WithChainError(errors.New("port not found")),
+			want: New("").WithChainError(ErrPortNotFoundInCollection),
+		},
+		{
+			name:       "with chain error",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainError(errors.New("some error")),
+			args: args{
+				name: "p1",
+			},
+			want: New("").WithChainError(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
@@ -114,47 +122,55 @@ func TestCollection_ByNames(t *testing.T) {
 		names []string
 	}
 	tests := []struct {
-		name  string
-		ports *Collection
-		args  args
-		want  *Collection
+		name       string
+		collection *Collection
+		args       args
+		want       *Collection
 	}{
 		{
-			name:  "single port found",
-			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
+			name:       "single port found",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p1"},
 			},
 			want: NewCollection().With(New("p1")),
 		},
 		{
-			name:  "multiple ports found",
-			ports: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").PortsOrNil()...),
+			name:       "multiple ports found",
+			collection: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").PortsOrNil()...),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
 			want: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 		},
 		{
-			name:  "single port not found",
-			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
+			name:       "single port not found",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p7"},
 			},
 			want: NewCollection(),
 		},
 		{
-			name:  "some ports not found",
-			ports: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
+			name:       "some ports not found",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				names: []string{"p1", "p2", "p3"},
 			},
 			want: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
 		},
+		{
+			name:       "with chain error",
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainError(errors.New("some error")),
+			args: args{
+				names: []string{"p1", "p2"},
+			},
+			want: NewCollection().WithChainError(errors.New("some error")),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.ports.ByNames(tt.args.names...))
+			assert.Equal(t, tt.want, tt.collection.ByNames(tt.args.names...))
 		})
 	}
 }
@@ -246,7 +262,7 @@ func TestCollection_Flush(t *testing.T) {
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").Pipes().PortsOrNil() {
 					assert.Equal(t, destPort.Buffer().Len(), 3)
-					allPayloads, err := destPort.Buffer().AllPayloads()
+					allPayloads, err := destPort.AllSignalsPayloads()
 					assert.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
