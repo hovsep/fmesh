@@ -42,6 +42,25 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
+// withInputPorts sets input ports collection
+func (c *Component) withInputPorts(collection *port.Collection) *Component {
+	if collection.HasChainError() {
+		return c.WithChainError(collection.ChainError())
+	}
+	c.inputs = collection
+	return c
+}
+
+// withOutputPorts sets input ports collection
+func (c *Component) withOutputPorts(collection *port.Collection) *Component {
+	if collection.HasChainError() {
+		return c.WithChainError(collection.ChainError())
+	}
+
+	c.outputs = collection
+	return c
+}
+
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
 	if c.HasChainError() {
@@ -52,8 +71,7 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 	if err != nil {
 		return c.WithChainError(err)
 	}
-	c.inputs = c.Inputs().With(ports...)
-	return c
+	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
 // WithOutputs adds output ports
@@ -61,12 +79,12 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 	if c.HasChainError() {
 		return c
 	}
+
 	ports, err := port.NewGroup(portNames...).Ports()
 	if err != nil {
 		return c.WithChainError(err)
 	}
-	c.outputs = c.Outputs().With(ports...)
-	return c
+	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
 // WithInputsIndexed creates multiple prefixed ports
@@ -75,8 +93,7 @@ func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex in
 		return c
 	}
 
-	c.inputs = c.Inputs().WithIndexed(prefix, startIndex, endIndex)
-	return c
+	return c.withInputPorts(c.Inputs().WithIndexed(prefix, startIndex, endIndex))
 }
 
 // WithOutputsIndexed creates multiple prefixed ports
@@ -85,8 +102,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex i
 		return c
 	}
 
-	c.outputs = c.Outputs().WithIndexed(prefix, startIndex, endIndex)
-	return c
+	return c.withOutputPorts(c.Outputs().WithIndexed(prefix, startIndex, endIndex))
 }
 
 // WithActivationFunc sets activation function
@@ -130,8 +146,7 @@ func (c *Component) Outputs() *port.Collection {
 func (c *Component) OutputByName(name string) *port.Port {
 	outputPort := c.Outputs().ByName(name)
 	if outputPort.HasChainError() {
-		c.SetChainError(outputPort.ChainError())
-		return nil
+		return port.New("").WithChainError(outputPort.ChainError())
 	}
 	return outputPort
 }
@@ -143,7 +158,7 @@ func (c *Component) InputByName(name string) *port.Port {
 	}
 	inputPort := c.Inputs().ByName(name)
 	if inputPort.HasChainError() {
-		c.SetChainError(inputPort.ChainError())
+		return port.New("").WithChainError(inputPort.ChainError())
 	}
 	return inputPort
 }
@@ -157,25 +172,38 @@ func (c *Component) hasActivationFunction() bool {
 	return c.f != nil
 }
 
+// propagateChainErrors propagates up all chain errors that might have not been propagated yet
+func (c *Component) propagateChainErrors() {
+	if c.Inputs().HasChainError() {
+		c.SetChainError(c.Inputs().ChainError())
+		return
+	}
+
+	if c.Outputs().HasChainError() {
+		c.SetChainError(c.Outputs().ChainError())
+		return
+	}
+
+	for _, p := range c.Inputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.SetChainError(p.ChainError())
+			return
+		}
+	}
+
+	for _, p := range c.Outputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.SetChainError(p.ChainError())
+			return
+		}
+	}
+}
+
 // MaybeActivate tries to run the activation function if all required conditions are met
 // @TODO: hide this method from user
 // @TODO: can we remove named return ?
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
-	//Bubble up chain errors from ports
-	for _, p := range c.Inputs().PortsOrNil() {
-		if p.HasChainError() {
-			c.Inputs().SetChainError(p.ChainError())
-			c.SetChainError(c.Inputs().ChainError())
-			break
-		}
-	}
-	for _, p := range c.Outputs().PortsOrNil() {
-		if p.HasChainError() {
-			c.Outputs().SetChainError(p.ChainError())
-			c.SetChainError(c.Outputs().ChainError())
-			break
-		}
-	}
+	c.propagateChainErrors()
 
 	if c.HasChainError() {
 		activationResult = NewActivationResult(c.Name()).WithChainError(c.ChainError())

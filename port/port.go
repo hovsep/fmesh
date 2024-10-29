@@ -27,6 +27,7 @@ func New(name string) *Port {
 }
 
 // Buffer getter
+// @TODO: maybe we can hide this and return signals to user code
 func (p *Port) Buffer() *signal.Group {
 	if p.HasChainError() {
 		return p.buffer.WithChainError(p.ChainError())
@@ -43,12 +44,13 @@ func (p *Port) Pipes() *Group {
 	return p.pipes
 }
 
-// setSignals sets buffer field
-func (p *Port) setSignals(signals *signal.Group) {
-	if signals.HasChainError() {
-		p.SetChainError(signals.ChainError())
+// withBuffer sets buffer field
+func (p *Port) withBuffer(buffer *signal.Group) *Port {
+	if buffer.HasChainError() {
+		return p.WithChainError(buffer.ChainError())
 	}
-	p.buffer = signals
+	p.buffer = buffer
+	return p
 }
 
 // PutSignals adds signals to buffer
@@ -57,8 +59,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainError() {
 		return p
 	}
-	p.setSignals(p.Buffer().With(signals...))
-	return p
+	return p.withBuffer(p.Buffer().With(signals...))
 }
 
 // WithSignals puts buffer and returns the port
@@ -94,8 +95,7 @@ func (p *Port) Clear() *Port {
 	if p.HasChainError() {
 		return p
 	}
-	p.setSignals(signal.NewGroup())
-	return p
+	return p.withBuffer(signal.NewGroup())
 }
 
 // Flush pushes buffer to pipes and clears the port
@@ -107,7 +107,7 @@ func (p *Port) Flush() *Port {
 
 	if !p.HasSignals() || !p.HasPipes() {
 		//@TODO maybe better to return explicit errors
-		return nil
+		return New("").WithChainError(ErrPortNotReadyForFlush)
 	}
 
 	pipes, err := p.pipes.Ports()

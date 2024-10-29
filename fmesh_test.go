@@ -649,11 +649,13 @@ func TestFMesh_runCycle(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(tt.fm)
 			}
-			cycleResult, err := tt.fm.runCycle()
+			cycleResult := tt.fm.runCycle()
 			if tt.wantError {
-				assert.Error(t, err)
+				assert.True(t, cycleResult.HasChainError())
+				assert.Error(t, cycleResult.ChainError())
 			} else {
-				assert.NoError(t, err)
+				assert.False(t, cycleResult.HasChainError())
+				assert.NoError(t, cycleResult.ChainError())
 				assert.Equal(t, tt.want, cycleResult)
 			}
 		})

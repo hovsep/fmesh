@@ -29,7 +29,7 @@ func NewGroup(names ...string) *Group {
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0"
 func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 	if startIndex > endIndex {
-		return nil
+		return NewGroup().WithChainError(ErrInvalidRangeForIndexedGroup)
 	}
 
 	ports := make([]*Port, endIndex-startIndex+1)
