@@ -80,7 +80,7 @@ func TestNewIndexedGroup(t *testing.T) {
 				startIndex: 999,
 				endIndex:   5,
 			},
-			want: nil,
+			want: NewGroup().WithChainError(ErrInvalidRangeForIndexedGroup),
 		},
 	}
 	for _, tt := range tests {

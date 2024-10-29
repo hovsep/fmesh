@@ -172,17 +172,38 @@ func (c *Component) hasActivationFunction() bool {
 	return c.f != nil
 }
 
-// MaybeActivate tries to run the activation function if all required conditions are met
-// @TODO: hide this method from user
-// @TODO: can we remove named return ?
-func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
+// propagateChainErrors propagates up all chain errors that might have not been propagated yet
+func (c *Component) propagateChainErrors() {
 	if c.Inputs().HasChainError() {
 		c.SetChainError(c.Inputs().ChainError())
+		return
 	}
 
 	if c.Outputs().HasChainError() {
 		c.SetChainError(c.Outputs().ChainError())
+		return
 	}
+
+	for _, p := range c.Inputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.SetChainError(p.ChainError())
+			return
+		}
+	}
+
+	for _, p := range c.Outputs().PortsOrNil() {
+		if p.HasChainError() {
+			c.SetChainError(p.ChainError())
+			return
+		}
+	}
+}
+
+// MaybeActivate tries to run the activation function if all required conditions are met
+// @TODO: hide this method from user
+// @TODO: can we remove named return ?
+func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
+	c.propagateChainErrors()
 
 	if c.HasChainError() {
 		activationResult = NewActivationResult(c.Name()).WithChainError(c.ChainError())
