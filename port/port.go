@@ -107,7 +107,7 @@ func (p *Port) Flush() *Port {
 
 	if !p.HasSignals() || !p.HasPipes() {
 		//@TODO maybe better to return explicit errors
-		return nil
+		return New("").WithChainError(ErrPortNotReadyForFlush)
 	}
 
 	pipes, err := p.pipes.Ports()
