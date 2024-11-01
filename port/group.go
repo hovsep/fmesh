@@ -5,12 +5,14 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
+type Ports []*Port
+
 // Group represents a list of ports
 // can carry multiple ports with same name
 // no lookup methods
 type Group struct {
 	*common.Chainable
-	ports []*Port //@TODO: extract type
+	ports Ports
 }
 
 // NewGroup creates multiple ports
@@ -18,7 +20,7 @@ func NewGroup(names ...string) *Group {
 	newGroup := &Group{
 		Chainable: common.NewChainable(),
 	}
-	ports := make([]*Port, len(names))
+	ports := make(Ports, len(names))
 	for i, name := range names {
 		ports[i] = New(name)
 	}
@@ -32,7 +34,7 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 		return NewGroup().WithChainError(ErrInvalidRangeForIndexedGroup)
 	}
 
-	ports := make([]*Port, endIndex-startIndex+1)
+	ports := make(Ports, endIndex-startIndex+1)
 
 	for i := startIndex; i <= endIndex; i++ {
 		ports[i-startIndex] = New(fmt.Sprintf("%s%d", prefix, i))
@@ -47,7 +49,7 @@ func (g *Group) With(ports ...*Port) *Group {
 		return g
 	}
 
-	newPorts := make([]*Port, len(g.ports)+len(ports))
+	newPorts := make(Ports, len(g.ports)+len(ports))
 	copy(newPorts, g.ports)
 	for i, port := range ports {
 		newPorts[len(g.ports)+i] = port
@@ -57,13 +59,13 @@ func (g *Group) With(ports ...*Port) *Group {
 }
 
 // withPorts sets ports
-func (g *Group) withPorts(ports []*Port) *Group {
+func (g *Group) withPorts(ports Ports) *Group {
 	g.ports = ports
 	return g
 }
 
 // Ports getter
-func (g *Group) Ports() ([]*Port, error) {
+func (g *Group) Ports() (Ports, error) {
 	if g.HasChainError() {
 		return nil, g.ChainError()
 	}
@@ -71,12 +73,12 @@ func (g *Group) Ports() ([]*Port, error) {
 }
 
 // PortsOrNil returns ports or nil in case of any error
-func (g *Group) PortsOrNil() []*Port {
+func (g *Group) PortsOrNil() Ports {
 	return g.PortsOrDefault(nil)
 }
 
 // PortsOrDefault returns ports or default in case of any error
-func (g *Group) PortsOrDefault(defaultPorts []*Port) []*Port {
+func (g *Group) PortsOrDefault(defaultPorts Ports) Ports {
 	ports, err := g.Ports()
 	if err != nil {
 		return defaultPorts

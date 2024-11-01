@@ -22,7 +22,7 @@ func TestNewGroup(t *testing.T) {
 			},
 			want: &Group{
 				Chainable: common.NewChainable(),
-				ports:     []*Port{},
+				ports:     Ports{},
 			},
 		},
 		{
@@ -32,7 +32,7 @@ func TestNewGroup(t *testing.T) {
 			},
 			want: &Group{
 				Chainable: common.NewChainable(),
-				ports: []*Port{New("p1"),
+				ports: Ports{New("p1"),
 					New("p2")},
 			},
 		},
@@ -92,7 +92,7 @@ func TestNewIndexedGroup(t *testing.T) {
 
 func TestGroup_With(t *testing.T) {
 	type args struct {
-		ports []*Port
+		ports Ports
 	}
 	tests := []struct {
 		name       string
