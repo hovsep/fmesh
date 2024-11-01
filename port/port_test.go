@@ -90,7 +90,7 @@ func TestPort_PipeTo(t *testing.T) {
 	p1, p2, p3, p4 := New("p1"), New("p2"), New("p3"), New("p4")
 
 	type args struct {
-		toPorts []*Port
+		toPorts Ports
 	}
 	tests := []struct {
 		name   string
@@ -103,7 +103,7 @@ func TestPort_PipeTo(t *testing.T) {
 			before: p1,
 			after:  New("p1").PipeTo(p2, p3),
 			args: args{
-				toPorts: []*Port{p2, p3},
+				toPorts: Ports{p2, p3},
 			},
 		},
 		{
@@ -111,7 +111,7 @@ func TestPort_PipeTo(t *testing.T) {
 			before: p4,
 			after:  New("p4").PipeTo(p2),
 			args: args{
-				toPorts: []*Port{p2, nil},
+				toPorts: Ports{p2, nil},
 			},
 		},
 	}

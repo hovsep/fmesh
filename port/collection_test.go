@@ -186,7 +186,7 @@ func TestCollection_ClearSignal(t *testing.T) {
 
 func TestCollection_With(t *testing.T) {
 	type args struct {
-		ports []*Port
+		ports Ports
 	}
 	tests := []struct {
 		name       string
@@ -283,7 +283,7 @@ func TestCollection_Flush(t *testing.T) {
 
 func TestCollection_PipeTo(t *testing.T) {
 	type args struct {
-		destPorts []*Port
+		destPorts Ports
 	}
 	tests := []struct {
 		name       string
