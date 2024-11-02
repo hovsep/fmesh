@@ -1,8 +1,15 @@
 package port
 
 import (
+	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
+)
+
+const (
+	DirectionLabel = "fmesh:port:direction"
+	DirectionIn    = "in"
+	DirectionOut   = "out"
 )
 
 // Port defines a connectivity point of a component
@@ -106,8 +113,9 @@ func (p *Port) Flush() *Port {
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
-		//@TODO maybe better to return explicit errors
-		return New("").WithChainError(ErrPortNotReadyForFlush)
+		//Log,this
+		//Nothing to flush
+		return p
 	}
 
 	pipes, err := p.pipes.Ports()
@@ -127,31 +135,12 @@ func (p *Port) Flush() *Port {
 
 // HasSignals says whether port buffer is set or not
 func (p *Port) HasSignals() bool {
-	if p.HasChainError() {
-		//@TODO: add logging here
-		return false
-	}
-	signals, err := p.AllSignals()
-	if err != nil {
-		//@TODO: add logging here
-		return false
-	}
-	return len(signals) > 0
+	return len(p.AllSignalsOrNil()) > 0
 }
 
 // HasPipes says whether port has outbound pipes
 func (p *Port) HasPipes() bool {
-	if p.HasChainError() {
-		//@TODO: add logging here
-		return false
-	}
-	pipes, err := p.pipes.Ports()
-	if err != nil {
-		//@TODO: add logging here
-		return false
-	}
-
-	return len(pipes) > 0
+	return p.Pipes().Len() > 0
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
@@ -160,13 +149,33 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	if p.HasChainError() {
 		return p
 	}
+
 	for _, destPort := range destPorts {
-		if destPort == nil {
-			continue
+		if err := validatePipe(p, destPort); err != nil {
+			p.SetChainError(fmt.Errorf("pipe validation failed: %w", err))
+			return New("").WithChainError(p.ChainError())
 		}
 		p.pipes = p.pipes.With(destPort)
 	}
 	return p
+}
+
+func validatePipe(srcPort *Port, dstPort *Port) error {
+	if srcPort == nil || dstPort == nil {
+		return ErrNilPort
+	}
+
+	srcDir, dstDir := srcPort.LabelOrDefault(DirectionLabel, ""), dstPort.LabelOrDefault(DirectionLabel, "")
+
+	if srcDir == "" || dstDir == "" {
+		return ErrMissingLabel
+	}
+
+	if srcDir == "in" || dstDir == "out" {
+		return ErrInvalidPipeDirection
+	}
+
+	return nil
 }
 
 // WithLabels sets labels and returns the port

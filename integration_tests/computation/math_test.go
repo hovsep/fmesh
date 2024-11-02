@@ -41,7 +41,6 @@ func Test_Math(t *testing.T) {
 					})
 
 				c1.OutputByName("res").PipeTo(c2.InputByName("num"))
-
 				return fmesh.New("fm").WithComponents(c1, c2).WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,

@@ -87,38 +87,99 @@ func TestPort_Clear(t *testing.T) {
 }
 
 func TestPort_PipeTo(t *testing.T) {
-	p1, p2, p3, p4 := New("p1"), New("p2"), New("p3"), New("p4")
+	outputPorts := NewCollection().
+		WithDefaultLabels(
+			common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).With(
+		NewIndexedGroup("out", 1, 3).PortsOrNil()...,
+	)
+	inputPorts := NewCollection().
+		WithDefaultLabels(
+			common.LabelsCollection{
+				DirectionLabel: DirectionIn,
+			}).With(
+		NewIndexedGroup("in", 1, 3).PortsOrNil()...,
+	)
 
 	type args struct {
 		toPorts Ports
 	}
 	tests := []struct {
-		name   string
-		before *Port
-		after  *Port
-		args   args
+		name       string
+		before     *Port
+		assertions func(t *testing.T, portAfter *Port)
+		args       args
 	}{
 		{
 			name:   "happy path",
-			before: p1,
-			after:  New("p1").PipeTo(p2, p3),
+			before: outputPorts.ByName("out1"),
 			args: args{
-				toPorts: Ports{p2, p3},
+				toPorts: Ports{inputPorts.ByName("in2"), inputPorts.ByName("in3")},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.False(t, portAfter.HasChainError())
+				assert.NoError(t, portAfter.ChainError())
+				assert.Equal(t, 2, portAfter.Pipes().Len())
 			},
 		},
 		{
-			name:   "invalid ports are ignored",
-			before: p4,
-			after:  New("p4").PipeTo(p2),
+			name:   "port must have direction label",
+			before: New("out_without_dir"),
 			args: args{
-				toPorts: Ports{p2, nil},
+				toPorts: Ports{inputPorts.ByName("in1")},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, "", portAfter.Name())
+				assert.True(t, portAfter.HasChainError())
+				assert.Error(t, portAfter.ChainError())
+			},
+		},
+		{
+			name:   "nil port is not allowed",
+			before: outputPorts.ByName("out3"),
+			args: args{
+				toPorts: Ports{inputPorts.ByName("in2"), nil},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, "", portAfter.Name())
+				assert.True(t, portAfter.HasChainError())
+				assert.Error(t, portAfter.ChainError())
+			},
+		},
+		{
+			name:   "piping from input ports is not allowed",
+			before: inputPorts.ByName("in1"),
+			args: args{
+				toPorts: Ports{
+					inputPorts.ByName("in2"), outputPorts.ByName("out1"),
+				},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, "", portAfter.Name())
+				assert.True(t, portAfter.HasChainError())
+				assert.Error(t, portAfter.ChainError())
+			},
+		},
+		{
+			name:   "piping to output ports is not allowed",
+			before: outputPorts.ByName("out1"),
+			args: args{
+				toPorts: Ports{outputPorts.ByName("out2")},
+			},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, "", portAfter.Name())
+				assert.True(t, portAfter.HasChainError())
+				assert.Error(t, portAfter.ChainError())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.before.PipeTo(tt.args.toPorts...)
-			assert.Equal(t, tt.after, tt.before)
+			portAfter := tt.before.PipeTo(tt.args.toPorts...)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
 		})
 	}
 }
@@ -260,7 +321,11 @@ func TestPort_HasPipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").PipeTo(New("p2")),
+			port: New("p1").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).PipeTo(New("p2").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionIn,
+			})),
 			want: true,
 		},
 	}
@@ -287,8 +352,21 @@ func TestPort_Flush(t *testing.T) {
 			},
 		},
 		{
-			name:    "empty port with pipes is not flushed",
-			srcPort: New("p").PipeTo(New("p1"), New("p2")),
+			name: "empty port with pipes is not flushed",
+			srcPort: New("p").
+				WithLabels(
+					common.LabelsCollection{
+						DirectionLabel: DirectionOut,
+					}).PipeTo(
+				New("p1").
+					WithLabels(
+						common.LabelsCollection{
+							DirectionLabel: DirectionIn,
+						}), New("p2").
+					WithLabels(
+						common.LabelsCollection{
+							DirectionLabel: DirectionIn,
+						})),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -296,10 +374,16 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to empty ports",
-			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)).
+			srcPort: New("p").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).WithSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1"),
-					New("p2")),
+					New("p1").WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					}),
+					New("p2").WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					})),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -316,10 +400,17 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to non empty ports",
-			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)).
+			srcPort: New("p").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).
+				WithSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").WithSignalGroups(signal.NewGroup(4, 5, 6)),
-					New("p2").WithSignalGroups(signal.NewGroup(7, 8, 9))),
+					New("p1").WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					}).WithSignalGroups(signal.NewGroup(4, 5, 6)),
+					New("p2").WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					}).WithSignalGroups(signal.NewGroup(7, 8, 9))),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -337,9 +428,9 @@ func TestPort_Flush(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.srcPort.Flush()
+			portAfter := tt.srcPort.Flush()
 			if tt.assertions != nil {
-				tt.assertions(t, tt.srcPort)
+				tt.assertions(t, portAfter)
 			}
 		})
 	}
@@ -393,8 +484,20 @@ func TestPort_Pipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").PipeTo(New("p2"), New("p3")),
-			want: NewGroup("p2", "p3"),
+			port: New("p1").
+				WithLabels(common.LabelsCollection{
+					DirectionLabel: DirectionOut,
+				}).PipeTo(
+				New("p2").
+					WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					}), New("p3").
+					WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					})),
+			want: NewGroup("p2", "p3").WithPortLabels(common.LabelsCollection{
+				DirectionLabel: DirectionIn,
+			}),
 		},
 		{
 			name: "with chain error",

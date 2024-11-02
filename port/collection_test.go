@@ -2,6 +2,7 @@ package port
 
 import (
 	"errors"
+	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -77,20 +78,28 @@ func TestCollection_ByName(t *testing.T) {
 		want       *Port
 	}{
 		{
-			name:       "empty port found",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...),
+			name: "empty port found",
+			collection: NewCollection().WithDefaultLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				name: "p1",
 			},
-			want: New("p1"),
+			want: New("p1").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}),
 		},
 		{
-			name:       "port with buffer found",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).PutSignals(signal.New(12)),
+			name: "port with buffer found",
+			collection: NewCollection().WithDefaultLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).With(NewGroup("p1", "p2").PortsOrNil()...).PutSignals(signal.New(12)),
 			args: args{
 				name: "p2",
 			},
-			want: New("p2").WithSignals(signal.New(12)),
+			want: New("p2").WithLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).WithSignals(signal.New(12)),
 		},
 		{
 			name:       "port not found",
@@ -254,8 +263,17 @@ func TestCollection_Flush(t *testing.T) {
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
 				New("src").
+					WithLabels(common.LabelsCollection{
+						DirectionLabel: DirectionOut,
+					}).
 					WithSignalGroups(signal.NewGroup(1, 2, 3)).
-					PipeTo(New("dst1"), New("dst2")),
+					PipeTo(New("dst1").
+						WithLabels(common.LabelsCollection{
+							DirectionLabel: DirectionIn,
+						}), New("dst2").
+						WithLabels(common.LabelsCollection{
+							DirectionLabel: DirectionIn,
+						})),
 			),
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, collection.Len(), 1)
@@ -302,10 +320,16 @@ func TestCollection_PipeTo(t *testing.T) {
 			},
 		},
 		{
-			name:       "add pipes to each port in collection",
-			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).PortsOrNil()...),
+			name: "add pipes to each port in collection",
+			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).WithPortLabels(common.LabelsCollection{
+				DirectionLabel: DirectionOut,
+			}).PortsOrNil()...),
 			args: args{
-				destPorts: NewIndexedGroup("dest", 1, 5).PortsOrNil(),
+				destPorts: NewIndexedGroup("dest", 1, 5).
+					WithPortLabels(common.LabelsCollection{
+						DirectionLabel: DirectionIn,
+					}).
+					PortsOrNil(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, collection.Len(), 3)
