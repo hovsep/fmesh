@@ -96,3 +96,11 @@ func (g *Group) WithChainError(err error) *Group {
 func (g *Group) Len() int {
 	return len(g.ports)
 }
+
+// WithPortLabels sets labels on each port within the group and returns it
+func (g *Group) WithPortLabels(labels common.LabelsCollection) *Group {
+	for _, p := range g.PortsOrNil() {
+		p.WithLabels(labels)
+	}
+	return g
+}

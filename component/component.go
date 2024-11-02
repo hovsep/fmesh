@@ -27,8 +27,12 @@ func New(name string) *Component {
 		DescribedEntity: common.NewDescribedEntity(""),
 		LabeledEntity:   common.NewLabeledEntity(nil),
 		Chainable:       common.NewChainable(),
-		inputs:          port.NewCollection(),
-		outputs:         port.NewCollection(),
+		inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+			port.DirectionLabel: port.DirectionIn,
+		}),
+		outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+			port.DirectionLabel: port.DirectionOut,
+		}),
 	}
 }
 
@@ -144,9 +148,13 @@ func (c *Component) Outputs() *port.Collection {
 
 // OutputByName is shortcut method
 func (c *Component) OutputByName(name string) *port.Port {
+	if c.HasChainError() {
+		return port.New("").WithChainError(c.ChainError())
+	}
 	outputPort := c.Outputs().ByName(name)
 	if outputPort.HasChainError() {
-		return port.New("").WithChainError(outputPort.ChainError())
+		c.SetChainError(outputPort.ChainError())
+		return port.New("").WithChainError(c.ChainError())
 	}
 	return outputPort
 }
@@ -158,7 +166,8 @@ func (c *Component) InputByName(name string) *port.Port {
 	}
 	inputPort := c.Inputs().ByName(name)
 	if inputPort.HasChainError() {
-		return port.New("").WithChainError(inputPort.ChainError())
+		c.SetChainError(inputPort.ChainError())
+		return port.New("").WithChainError(c.ChainError())
 	}
 	return inputPort
 }
@@ -222,7 +231,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return
 	}
 
-	if !c.inputs.AnyHasSignals() {
+	if !c.Inputs().AnyHasSignals() {
 		//No inputs set, stop here
 		activationResult = c.newActivationResultNoInput()
 		return
@@ -251,7 +260,7 @@ func (c *Component) FlushOutputs() *Component {
 		return c
 	}
 
-	ports, err := c.outputs.Ports()
+	ports, err := c.Outputs().Ports()
 	if err != nil {
 		return c.WithChainError(err)
 	}

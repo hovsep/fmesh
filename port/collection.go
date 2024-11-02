@@ -14,13 +14,16 @@ type PortMap map[string]*Port
 type Collection struct {
 	*common.Chainable
 	ports PortMap
+	// Labels added by default to each port in collection
+	defaultLabels common.LabelsCollection
 }
 
 // NewCollection creates empty collection
 func NewCollection() *Collection {
 	return &Collection{
-		Chainable: common.NewChainable(),
-		ports:     make(PortMap),
+		Chainable:     common.NewChainable(),
+		ports:         make(PortMap),
+		defaultLabels: common.LabelsCollection{},
 	}
 }
 
@@ -32,7 +35,7 @@ func (collection *Collection) ByName(name string) *Port {
 	port, ok := collection.ports[name]
 	if !ok {
 		collection.SetChainError(ErrPortNotFoundInCollection)
-		return New("").WithChainError(ErrPortNotFoundInCollection)
+		return New("").WithChainError(collection.ChainError())
 	}
 	return port
 }
@@ -43,7 +46,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 		return NewCollection().WithChainError(collection.ChainError())
 	}
 
-	selectedPorts := NewCollection()
+	selectedPorts := NewCollection().WithDefaultLabels(collection.defaultLabels)
 
 	for _, name := range names {
 		if p, ok := collection.ports[name]; ok {
@@ -131,7 +134,7 @@ func (collection *Collection) Flush() *Collection {
 // PipeTo creates pipes from each port in collection to given destination ports
 func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 	for _, p := range collection.ports {
-		p.PipeTo(destPorts...)
+		p = p.PipeTo(destPorts...)
 
 		if p.HasChainError() {
 			return collection.WithChainError(p.ChainError())
@@ -151,7 +154,7 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 		if port.HasChainError() {
 			return collection.WithChainError(port.ChainError())
 		}
-
+		port.AddLabels(collection.defaultLabels)
 		collection.ports[port.Name()] = port
 	}
 
@@ -224,4 +227,9 @@ func (collection *Collection) WithChainError(err error) *Collection {
 // Len returns number of ports in collection
 func (collection *Collection) Len() int {
 	return len(collection.ports)
+}
+
+func (collection *Collection) WithDefaultLabels(labels common.LabelsCollection) *Collection {
+	collection.defaultLabels = labels
+	return collection
 }

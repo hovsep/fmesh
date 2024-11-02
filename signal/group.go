@@ -32,6 +32,7 @@ func (g *Group) First() *Signal {
 	}
 
 	if len(g.signals) == 0 {
+		g.SetChainError(ErrNoSignalsInGroup)
 		return New(nil).WithChainError(ErrNoSignalsInGroup)
 	}
 
