@@ -1,9 +1,13 @@
 package port
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrPortNotFoundInCollection    = errors.New("port not found")
-	ErrPortNotReadyForFlush        = errors.New("port is not ready for flush")
 	ErrInvalidRangeForIndexedGroup = errors.New("start index can not be greater than end index")
+	ErrNilPort                     = errors.New("port is nil")
+	ErrMissingLabel                = errors.New("port is missing required label")
+	ErrInvalidPipeDirection        = errors.New("pipe must go from output to input")
 )

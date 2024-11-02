@@ -11,7 +11,9 @@ type LabeledEntity struct {
 	labels LabelsCollection
 }
 
-var errLabelNotFound = errors.New("label not found")
+var (
+	ErrLabelNotFound = errors.New("label not found")
+)
 
 // NewLabeledEntity constructor
 func NewLabeledEntity(labels LabelsCollection) LabeledEntity {
@@ -28,10 +30,19 @@ func (e *LabeledEntity) Label(label string) (string, error) {
 	value, ok := e.labels[label]
 
 	if !ok {
-		return "", fmt.Errorf("%w , label: %s", errLabelNotFound, label)
+		return "", fmt.Errorf("label %s not found, %w", label, ErrLabelNotFound)
 	}
 
 	return value, nil
+}
+
+// LabelOrDefault returns label value or default value in case of any error
+func (e *LabeledEntity) LabelOrDefault(label string, defaultValue string) string {
+	value, err := e.Label(label)
+	if err != nil {
+		return defaultValue
+	}
+	return value
 }
 
 // SetLabels overwrites labels collection

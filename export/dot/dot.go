@@ -23,9 +23,7 @@ type dotExporter struct {
 }
 
 const (
-	nodeIDLabel    = "export/dot/id"
-	portKindInput  = "input"
-	portKindOutput = "output"
+	nodeIDLabel = "export/dot/id"
 )
 
 // NewDotExporter returns exporter with default configuration
@@ -148,7 +146,7 @@ func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Compo
 				destPort.DeleteLabel(nodeIDLabel)
 
 				// Any source port in any pipe is always output port, so we can build its node ID
-				srcPortNode := graph.FindNodeByID(getPortID(c.Name(), portKindOutput, srcPort.Name()))
+				srcPortNode := graph.FindNodeByID(getPortID(c.Name(), port.DirectionOut, srcPort.Name()))
 				destPortNode := graph.FindNodeByID(destPortID)
 
 				graph.Edge(srcPortNode, destPortNode, func(a *dot.AttributesMap) {
@@ -177,7 +175,7 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 			return err
 		}
 		for _, p := range inputPorts {
-			portNode := d.getPortNode(c, p, portKindInput, componentSubgraph)
+			portNode := d.getPortNode(c, p, componentSubgraph)
 			componentSubgraph.Edge(portNode, componentNode)
 		}
 
@@ -187,7 +185,7 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 			return err
 		}
 		for _, p := range outputPorts {
-			portNode := d.getPortNode(c, p, portKindOutput, componentSubgraph)
+			portNode := d.getPortNode(c, p, componentSubgraph)
 			componentSubgraph.Edge(componentNode, portNode)
 		}
 	}
@@ -195,15 +193,15 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 }
 
 // getPortNode creates and returns a node representing one port
-func (d *dotExporter) getPortNode(c *fmeshcomponent.Component, port *port.Port, portKind string, componentSubgraph *dot.Graph) *dot.Node {
-	portID := getPortID(c.Name(), portKind, port.Name())
+func (d *dotExporter) getPortNode(c *fmeshcomponent.Component, p *port.Port, componentSubgraph *dot.Graph) *dot.Node {
+	portID := getPortID(c.Name(), p.LabelOrDefault(port.DirectionLabel, ""), p.Name())
 
 	//Mark ports to be able to find their respective nodes later when adding pipes
-	port.AddLabel(nodeIDLabel, portID)
+	p.AddLabel(nodeIDLabel, portID)
 
 	portNode := componentSubgraph.NodeWithID(portID, func(a *dot.AttributesMap) {
 		setAttrMap(a, d.config.Port.Node)
-		a.Attr("label", port.Name()).Attr("group", c.Name())
+		a.Attr("label", p.Name()).Attr("group", c.Name())
 	})
 
 	return portNode
@@ -329,8 +327,8 @@ func getCycleStats(activationCycle *cycle.Cycle) []*statEntry {
 }
 
 // getPortID returns unique ID used to locate ports while building pipe edges
-func getPortID(componentName string, portKind string, portName string) string {
-	return fmt.Sprintf("component/%s/%s/%s", componentName, portKind, portName)
+func getPortID(componentName string, portDirection string, portName string) string {
+	return fmt.Sprintf("component/%s/%s/%s", componentName, portDirection, portName)
 }
 
 // setAttrMap sets all attributes to target
