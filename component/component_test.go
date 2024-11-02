@@ -68,7 +68,9 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "happy path",
 			getComponent: func() *Component {
-				sink := port.New("sink")
+				sink := port.New("sink").WithLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				})
 				c := New("c1").WithOutputs("o1", "o2")
 				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
 				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
@@ -118,12 +120,16 @@ func TestComponent_Inputs(t *testing.T) {
 		{
 			name:      "no inputs",
 			component: New("c1"),
-			want:      port.NewCollection(),
+			want: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				port.DirectionLabel: port.DirectionIn,
+			}),
 		},
 		{
 			name:      "with inputs",
 			component: New("c1").WithInputs("i1", "i2"),
-			want:      port.NewCollection().With(port.New("i1"), port.New("i2")),
+			want: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				port.DirectionLabel: port.DirectionIn,
+			}).With(port.New("i1"), port.New("i2")),
 		},
 	}
 	for _, tt := range tests {
@@ -142,12 +148,16 @@ func TestComponent_Outputs(t *testing.T) {
 		{
 			name:      "no outputs",
 			component: New("c1"),
-			want:      port.NewCollection(),
+			want: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				port.DirectionLabel: port.DirectionOut,
+			}),
 		},
 		{
 			name:      "with outputs",
 			component: New("c1").WithOutputs("o1", "o2"),
-			want:      port.NewCollection().With(port.New("o1"), port.New("o2")),
+			want: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				port.DirectionLabel: port.DirectionOut,
+			}).With(port.New("o1"), port.New("o2")),
 		},
 	}
 	for _, tt := range tests {
@@ -219,9 +229,13 @@ func TestComponent_WithDescription(t *testing.T) {
 				DescribedEntity: common.NewDescribedEntity("descr"),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
-				inputs:          port.NewCollection(),
-				outputs:         port.NewCollection(),
-				f:               nil,
+				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				}),
+				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionOut,
+				}),
+				f: nil,
 			},
 		},
 	}
@@ -253,9 +267,13 @@ func TestComponent_WithInputs(t *testing.T) {
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
-				inputs:          port.NewCollection().With(port.New("p1"), port.New("p2")),
-				outputs:         port.NewCollection(),
-				f:               nil,
+				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				}).With(port.New("p1"), port.New("p2")),
+				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionOut,
+				}),
+				f: nil,
 			},
 		},
 		{
@@ -269,9 +287,13 @@ func TestComponent_WithInputs(t *testing.T) {
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
-				inputs:          port.NewCollection(),
-				outputs:         port.NewCollection(),
-				f:               nil,
+				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				}),
+				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionOut,
+				}),
+				f: nil,
 			},
 		},
 	}
@@ -303,9 +325,13 @@ func TestComponent_WithOutputs(t *testing.T) {
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
-				inputs:          port.NewCollection(),
-				outputs:         port.NewCollection().With(port.New("p1"), port.New("p2")),
-				f:               nil,
+				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				}),
+				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionOut,
+				}).With(port.New("p1"), port.New("p2")),
+				f: nil,
 			},
 		},
 		{
@@ -319,9 +345,13 @@ func TestComponent_WithOutputs(t *testing.T) {
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
-				inputs:          port.NewCollection(),
-				outputs:         port.NewCollection(),
-				f:               nil,
+				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionIn,
+				}),
+				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+					port.DirectionLabel: port.DirectionOut,
+				}),
+				f: nil,
 			},
 		},
 	}
@@ -668,12 +698,16 @@ func TestComponent_WithLabels(t *testing.T) {
 func TestComponent_ShortcutMethods(t *testing.T) {
 	t.Run("InputByName", func(t *testing.T) {
 		c := New("c").WithInputs("a", "b", "c")
-		assert.Equal(t, port.New("b"), c.InputByName("b"))
+		assert.Equal(t, port.New("b").WithLabels(common.LabelsCollection{
+			port.DirectionLabel: port.DirectionIn,
+		}), c.InputByName("b"))
 	})
 
 	t.Run("OutputByName", func(t *testing.T) {
 		c := New("c").WithOutputs("a", "b", "c")
-		assert.Equal(t, port.New("b"), c.OutputByName("b"))
+		assert.Equal(t, port.New("b").WithLabels(common.LabelsCollection{
+			port.DirectionLabel: port.DirectionOut,
+		}), c.OutputByName("b"))
 	})
 }
 
