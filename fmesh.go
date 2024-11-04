@@ -170,13 +170,14 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 			shouldClearInputs = !component.WantsToKeepInputs(activationResult)
 		}
 
+		if shouldClearInputs {
+			c.ClearInputs()
+		}
+
 		if shouldFlushOutputs {
 			c.FlushOutputs()
 		}
 
-		if shouldClearInputs {
-			c.ClearInputs()
-		}
 	}
 	return nil
 }
