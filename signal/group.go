@@ -33,7 +33,7 @@ func (g *Group) First() *Signal {
 
 	if len(g.signals) == 0 {
 		g.SetChainError(ErrNoSignalsInGroup)
-		return New(nil).WithChainError(ErrNoSignalsInGroup)
+		return New(nil).WithChainError(g.ChainError())
 	}
 
 	return g.signals[0]
@@ -76,11 +76,13 @@ func (g *Group) With(signals ...*Signal) *Group {
 	copy(newSignals, g.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			return g.WithChainError(ErrInvalidSignal)
+			g.SetChainError(ErrInvalidSignal)
+			return NewGroup().WithChainError(g.ChainError())
 		}
 
 		if sig.HasChainError() {
-			return g.WithChainError(sig.ChainError())
+			g.SetChainError(sig.ChainError())
+			return NewGroup().WithChainError(g.ChainError())
 		}
 
 		newSignals[len(g.signals)+i] = sig

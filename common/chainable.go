@@ -16,6 +16,7 @@ func (c *Chainable) HasChainError() bool {
 	return c.err != nil
 }
 
+// @TODO: rename to Err()
 func (c *Chainable) ChainError() error {
 	return c.err
 }
