@@ -95,14 +95,16 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 	}
 
 	if fm.Components().Len() == 0 {
-		return newCycle.WithChainError(errors.New("failed to run cycle: no components found"))
+		fm.SetChainError(errors.New("failed to run cycle: no components found"))
+		return newCycle.WithChainError(fm.ChainError())
 	}
 
 	var wg sync.WaitGroup
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		return newCycle.WithChainError(fmt.Errorf("failed to run cycle: %w", err))
+		fm.SetChainError(fmt.Errorf("failed to run cycle: %w", err))
+		return newCycle.WithChainError(fm.ChainError())
 	}
 
 	for _, c := range components {

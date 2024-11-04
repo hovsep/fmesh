@@ -37,7 +37,7 @@ func New(name string) *Port {
 // @TODO: maybe we can hide this and return signals to user code
 func (p *Port) Buffer() *signal.Group {
 	if p.HasChainError() {
-		return p.buffer.WithChainError(p.ChainError())
+		return signal.NewGroup().WithChainError(p.ChainError())
 	}
 	return p.buffer
 }
@@ -46,15 +46,20 @@ func (p *Port) Buffer() *signal.Group {
 // @TODO maybe better to return []*Port directly
 func (p *Port) Pipes() *Group {
 	if p.HasChainError() {
-		return p.pipes.WithChainError(p.ChainError())
+		return NewGroup().WithChainError(p.ChainError())
 	}
 	return p.pipes
 }
 
 // withBuffer sets buffer field
 func (p *Port) withBuffer(buffer *signal.Group) *Port {
+	if p.HasChainError() {
+		return p
+	}
+
 	if buffer.HasChainError() {
-		return p.WithChainError(buffer.ChainError())
+		p.SetChainError(buffer.ChainError())
+		return New("").WithChainError(p.ChainError())
 	}
 	p.buffer = buffer
 	return p
@@ -86,11 +91,12 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	for _, group := range signalGroups {
 		signals, err := group.Signals()
 		if err != nil {
-			return p.WithChainError(err)
+			p.SetChainError(err)
+			return New("").WithChainError(p.ChainError())
 		}
 		p.PutSignals(signals...)
 		if p.HasChainError() {
-			return p
+			return New("").WithChainError(p.ChainError())
 		}
 	}
 
@@ -120,14 +126,16 @@ func (p *Port) Flush() *Port {
 
 	pipes, err := p.pipes.Ports()
 	if err != nil {
-		return p.WithChainError(err)
+		p.SetChainError(err)
+		return New("").WithChainError(p.ChainError())
 	}
 
 	for _, outboundPort := range pipes {
 		//Fan-Out
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
-			return p.WithChainError(err)
+			p.SetChainError(err)
+			return New("").WithChainError(p.ChainError())
 		}
 	}
 	return p.Clear()
