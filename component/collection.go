@@ -24,14 +24,14 @@ func NewCollection() *Collection {
 
 // ByName returns a component by its name
 func (c *Collection) ByName(name string) *Component {
-	if c.HasChainError() {
-		return New("").WithChainError(c.ChainError())
+	if c.HasErr() {
+		return New("").WithErr(c.Err())
 	}
 
 	component, ok := c.components[name]
 
 	if !ok {
-		c.SetChainError(errors.New("component not found"))
+		c.SetErr(errors.New("component not found"))
 		return nil
 	}
 
@@ -40,24 +40,24 @@ func (c *Collection) ByName(name string) *Component {
 
 // With adds components and returns the collection
 func (c *Collection) With(components ...*Component) *Collection {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
 	for _, component := range components {
 		c.components[component.Name()] = component
 
-		if component.HasChainError() {
-			return c.WithChainError(component.ChainError())
+		if component.HasErr() {
+			return c.WithErr(component.Err())
 		}
 	}
 
 	return c
 }
 
-// WithChainError returns group with error
-func (c *Collection) WithChainError(err error) *Collection {
-	c.SetChainError(err)
+// WithErr returns group with error
+func (c *Collection) WithErr(err error) *Collection {
+	c.SetErr(err)
 	return c
 }
 
@@ -67,8 +67,8 @@ func (c *Collection) Len() int {
 }
 
 func (c *Collection) Components() (ComponentsMap, error) {
-	if c.HasChainError() {
-		return nil, c.ChainError()
+	if c.HasErr() {
+		return nil, c.Err()
 	}
 	return c.components, nil
 }

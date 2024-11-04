@@ -31,7 +31,7 @@ func NewGroup(names ...string) *Group {
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0"
 func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 	if startIndex > endIndex {
-		return NewGroup().WithChainError(ErrInvalidRangeForIndexedGroup)
+		return NewGroup().WithErr(ErrInvalidRangeForIndexedGroup)
 	}
 
 	ports := make(Ports, endIndex-startIndex+1)
@@ -45,7 +45,7 @@ func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
 
 // With adds ports to group
 func (g *Group) With(ports ...*Port) *Group {
-	if g.HasChainError() {
+	if g.HasErr() {
 		return g
 	}
 
@@ -66,8 +66,8 @@ func (g *Group) withPorts(ports Ports) *Group {
 
 // Ports getter
 func (g *Group) Ports() (Ports, error) {
-	if g.HasChainError() {
-		return nil, g.ChainError()
+	if g.HasErr() {
+		return nil, g.Err()
 	}
 	return g.ports, nil
 }
@@ -86,9 +86,9 @@ func (g *Group) PortsOrDefault(defaultPorts Ports) Ports {
 	return ports
 }
 
-// WithChainError returns group with error
-func (g *Group) WithChainError(err error) *Group {
-	g.SetChainError(err)
+// WithErr returns group with error
+func (g *Group) WithErr(err error) *Group {
+	g.SetErr(err)
 	return g
 }
 

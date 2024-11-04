@@ -59,8 +59,8 @@ func (cycle *Cycle) WithNumber(number int) *Cycle {
 	return cycle
 }
 
-// WithChainError returns cycle with error
-func (cycle *Cycle) WithChainError(err error) *Cycle {
-	cycle.SetChainError(err)
+// WithErr returns cycle with error
+func (cycle *Cycle) WithErr(err error) *Cycle {
+	cycle.SetErr(err)
 	return cycle
 }

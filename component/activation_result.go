@@ -182,8 +182,8 @@ func WantsToKeepInputs(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }
 
-// WithChainError returns activation result with chain error
-func (ar *ActivationResult) WithChainError(err error) *ActivationResult {
-	ar.SetChainError(err)
+// WithErr returns activation result with chain error
+func (ar *ActivationResult) WithErr(err error) *ActivationResult {
+	ar.SetErr(err)
 	return ar
 }

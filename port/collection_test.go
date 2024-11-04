@@ -107,15 +107,15 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: New("").WithChainError(ErrPortNotFoundInCollection),
+			want: New("").WithErr(ErrPortNotFoundInCollection),
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainError(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithErr(errors.New("some error")),
 			args: args{
 				name: "p1",
 			},
-			want: New("").WithChainError(errors.New("some error")),
+			want: New("").WithErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
@@ -170,11 +170,11 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainError(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithErr(errors.New("some error")),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: NewCollection().WithChainError(errors.New("some error")),
+			want: NewCollection().WithErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
