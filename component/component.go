@@ -38,7 +38,7 @@ func New(name string) *Component {
 
 // WithDescription sets a description
 func (c *Component) WithDescription(description string) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
@@ -48,11 +48,11 @@ func (c *Component) WithDescription(description string) *Component {
 
 // withInputPorts sets input ports collection
 func (c *Component) withInputPorts(collection *port.Collection) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
-	if collection.HasChainError() {
-		return c.WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return c.WithErr(collection.Err())
 	}
 	c.inputs = collection
 	return c
@@ -60,11 +60,11 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 
 // withOutputPorts sets input ports collection
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
-	if collection.HasChainError() {
-		return c.WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return c.WithErr(collection.Err())
 	}
 
 	c.outputs = collection
@@ -73,14 +73,14 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 
 // WithInputs ads input ports
 func (c *Component) WithInputs(portNames ...string) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
 	ports, err := port.NewGroup(portNames...).Ports()
 	if err != nil {
-		c.SetChainError(err)
-		return New("").WithChainError(c.ChainError())
+		c.SetErr(err)
+		return New("").WithErr(c.Err())
 	}
 
 	return c.withInputPorts(c.Inputs().With(ports...))
@@ -88,21 +88,21 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 
 // WithOutputs adds output ports
 func (c *Component) WithOutputs(portNames ...string) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
 	ports, err := port.NewGroup(portNames...).Ports()
 	if err != nil {
-		c.SetChainError(err)
-		return New("").WithChainError(c.ChainError())
+		c.SetErr(err)
+		return New("").WithErr(c.Err())
 	}
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
 // WithInputsIndexed creates multiple prefixed ports
 func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
@@ -111,7 +111,7 @@ func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex in
 
 // WithOutputsIndexed creates multiple prefixed ports
 func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex int) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
@@ -120,7 +120,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex i
 
 // WithActivationFunc sets activation function
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
@@ -130,7 +130,7 @@ func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 
 // WithLabels sets labels and returns the component
 func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 	c.LabeledEntity.SetLabels(labels)
@@ -139,8 +139,8 @@ func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
 
 // Inputs getter
 func (c *Component) Inputs() *port.Collection {
-	if c.HasChainError() {
-		return port.NewCollection().WithChainError(c.ChainError())
+	if c.HasErr() {
+		return port.NewCollection().WithErr(c.Err())
 	}
 
 	return c.inputs
@@ -148,8 +148,8 @@ func (c *Component) Inputs() *port.Collection {
 
 // Outputs getter
 func (c *Component) Outputs() *port.Collection {
-	if c.HasChainError() {
-		return port.NewCollection().WithChainError(c.ChainError())
+	if c.HasErr() {
+		return port.NewCollection().WithErr(c.Err())
 	}
 
 	return c.outputs
@@ -157,33 +157,33 @@ func (c *Component) Outputs() *port.Collection {
 
 // OutputByName is shortcut method
 func (c *Component) OutputByName(name string) *port.Port {
-	if c.HasChainError() {
-		return port.New("").WithChainError(c.ChainError())
+	if c.HasErr() {
+		return port.New("").WithErr(c.Err())
 	}
 	outputPort := c.Outputs().ByName(name)
-	if outputPort.HasChainError() {
-		c.SetChainError(outputPort.ChainError())
-		return port.New("").WithChainError(c.ChainError())
+	if outputPort.HasErr() {
+		c.SetErr(outputPort.Err())
+		return port.New("").WithErr(c.Err())
 	}
 	return outputPort
 }
 
 // InputByName is shortcut method
 func (c *Component) InputByName(name string) *port.Port {
-	if c.HasChainError() {
-		return port.New("").WithChainError(c.ChainError())
+	if c.HasErr() {
+		return port.New("").WithErr(c.Err())
 	}
 	inputPort := c.Inputs().ByName(name)
-	if inputPort.HasChainError() {
-		c.SetChainError(inputPort.ChainError())
-		return port.New("").WithChainError(c.ChainError())
+	if inputPort.HasErr() {
+		c.SetErr(inputPort.Err())
+		return port.New("").WithErr(c.Err())
 	}
 	return inputPort
 }
 
 // hasActivationFunction checks when activation function is set
 func (c *Component) hasActivationFunction() bool {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return false
 	}
 
@@ -192,26 +192,26 @@ func (c *Component) hasActivationFunction() bool {
 
 // propagateChainErrors propagates up all chain errors that might have not been propagated yet
 func (c *Component) propagateChainErrors() {
-	if c.Inputs().HasChainError() {
-		c.SetChainError(c.Inputs().ChainError())
+	if c.Inputs().HasErr() {
+		c.SetErr(c.Inputs().Err())
 		return
 	}
 
-	if c.Outputs().HasChainError() {
-		c.SetChainError(c.Outputs().ChainError())
+	if c.Outputs().HasErr() {
+		c.SetErr(c.Outputs().Err())
 		return
 	}
 
 	for _, p := range c.Inputs().PortsOrNil() {
-		if p.HasChainError() {
-			c.SetChainError(p.ChainError())
+		if p.HasErr() {
+			c.SetErr(p.Err())
 			return
 		}
 	}
 
 	for _, p := range c.Outputs().PortsOrNil() {
-		if p.HasChainError() {
-			c.SetChainError(p.ChainError())
+		if p.HasErr() {
+			c.SetErr(p.Err())
 			return
 		}
 	}
@@ -223,8 +223,8 @@ func (c *Component) propagateChainErrors() {
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	c.propagateChainErrors()
 
-	if c.HasChainError() {
-		activationResult = NewActivationResult(c.Name()).WithChainError(c.ChainError())
+	if c.HasErr() {
+		activationResult = NewActivationResult(c.Name()).WithErr(c.Err())
 		return
 	}
 
@@ -265,19 +265,19 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 
 // FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
 func (c *Component) FlushOutputs() *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 
 	ports, err := c.Outputs().Ports()
 	if err != nil {
-		c.SetChainError(err)
-		return New("").WithChainError(c.ChainError())
+		c.SetErr(err)
+		return New("").WithErr(c.Err())
 	}
 	for _, out := range ports {
 		out = out.Flush()
-		if out.HasChainError() {
-			return c.WithChainError(out.ChainError())
+		if out.HasErr() {
+			return c.WithErr(out.Err())
 		}
 	}
 	return c
@@ -285,15 +285,15 @@ func (c *Component) FlushOutputs() *Component {
 
 // ClearInputs clears all input ports
 func (c *Component) ClearInputs() *Component {
-	if c.HasChainError() {
+	if c.HasErr() {
 		return c
 	}
 	c.Inputs().Clear()
 	return c
 }
 
-// WithChainError returns component with error
-func (c *Component) WithChainError(err error) *Component {
-	c.SetChainError(err)
+// WithErr returns component with error
+func (c *Component) WithErr(err error) *Component {
+	c.SetErr(err)
 	return c
 }

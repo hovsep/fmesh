@@ -4,19 +4,22 @@ type Chainable struct {
 	err error
 }
 
+// NewChainable initialises new chainable
 func NewChainable() *Chainable {
 	return &Chainable{}
 }
 
-func (c *Chainable) SetChainError(err error) {
+// SetErr sets chainable error
+func (c *Chainable) SetErr(err error) {
 	c.err = err
 }
 
-func (c *Chainable) HasChainError() bool {
+// HasErr returns true when chainable has error
+func (c *Chainable) HasErr() bool {
 	return c.err != nil
 }
 
-// @TODO: rename to Err()
-func (c *Chainable) ChainError() error {
+// Err returns chainable error
+func (c *Chainable) Err() error {
 	return c.err
 }

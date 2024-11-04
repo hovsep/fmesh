@@ -29,21 +29,21 @@ func NewCollection() *Collection {
 
 // ByName returns a port by its name
 func (collection *Collection) ByName(name string) *Port {
-	if collection.HasChainError() {
-		return New("").WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return New("").WithErr(collection.Err())
 	}
 	port, ok := collection.ports[name]
 	if !ok {
-		collection.SetChainError(ErrPortNotFoundInCollection)
-		return New("").WithChainError(collection.ChainError())
+		collection.SetErr(ErrPortNotFoundInCollection)
+		return New("").WithErr(collection.Err())
 	}
 	return port
 }
 
 // ByNames returns multiple ports by their names
 func (collection *Collection) ByNames(names ...string) *Collection {
-	if collection.HasChainError() {
-		return NewCollection().WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return NewCollection().WithErr(collection.Err())
 	}
 
 	//Preserve collection config
@@ -60,7 +60,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 
 // AnyHasSignals returns true if at least one port in collection has signals
 func (collection *Collection) AnyHasSignals() bool {
-	if collection.HasChainError() {
+	if collection.HasErr() {
 		return false
 	}
 
@@ -75,7 +75,7 @@ func (collection *Collection) AnyHasSignals() bool {
 
 // AllHaveSignals returns true when all ports in collection have signals
 func (collection *Collection) AllHaveSignals() bool {
-	if collection.HasChainError() {
+	if collection.HasErr() {
 		return false
 	}
 
@@ -90,14 +90,14 @@ func (collection *Collection) AllHaveSignals() bool {
 
 // PutSignals adds buffer to every port in collection
 func (collection *Collection) PutSignals(signals ...*signal.Signal) *Collection {
-	if collection.HasChainError() {
-		return NewCollection().WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return NewCollection().WithErr(collection.Err())
 	}
 
 	for _, p := range collection.ports {
 		p.PutSignals(signals...)
-		if p.HasChainError() {
-			return collection.WithChainError(p.ChainError())
+		if p.HasErr() {
+			return collection.WithErr(p.Err())
 		}
 	}
 
@@ -109,8 +109,8 @@ func (collection *Collection) Clear() *Collection {
 	for _, p := range collection.ports {
 		p.Clear()
 
-		if p.HasChainError() {
-			return collection.WithChainError(p.ChainError())
+		if p.HasErr() {
+			return collection.WithErr(p.Err())
 		}
 	}
 	return collection
@@ -118,15 +118,15 @@ func (collection *Collection) Clear() *Collection {
 
 // Flush flushes all ports in collection
 func (collection *Collection) Flush() *Collection {
-	if collection.HasChainError() {
-		return NewCollection().WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return NewCollection().WithErr(collection.Err())
 	}
 
 	for _, p := range collection.ports {
 		p = p.Flush()
 
-		if p.HasChainError() {
-			return collection.WithChainError(p.ChainError())
+		if p.HasErr() {
+			return collection.WithErr(p.Err())
 		}
 	}
 	return collection
@@ -137,8 +137,8 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 	for _, p := range collection.ports {
 		p = p.PipeTo(destPorts...)
 
-		if p.HasChainError() {
-			return collection.WithChainError(p.ChainError())
+		if p.HasErr() {
+			return collection.WithErr(p.Err())
 		}
 	}
 
@@ -147,13 +147,13 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 
 // With adds ports to collection and returns it
 func (collection *Collection) With(ports ...*Port) *Collection {
-	if collection.HasChainError() {
+	if collection.HasErr() {
 		return collection
 	}
 
 	for _, port := range ports {
-		if port.HasChainError() {
-			return collection.WithChainError(port.ChainError())
+		if port.HasErr() {
+			return collection.WithErr(port.Err())
 		}
 		port.AddLabels(collection.defaultLabels)
 		collection.ports[port.Name()] = port
@@ -164,30 +164,30 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 
 // WithIndexed creates ports with names like "o1","o2","o3" and so on
 func (collection *Collection) WithIndexed(prefix string, startIndex int, endIndex int) *Collection {
-	if collection.HasChainError() {
+	if collection.HasErr() {
 		return collection
 	}
 
 	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).Ports()
 	if err != nil {
-		collection.SetChainError(err)
-		return NewCollection().WithChainError(collection.ChainError())
+		collection.SetErr(err)
+		return NewCollection().WithErr(collection.Err())
 	}
 	return collection.With(indexedPorts...)
 }
 
 // Signals returns all signals of all ports in the collection
 func (collection *Collection) Signals() *signal.Group {
-	if collection.HasChainError() {
-		return signal.NewGroup().WithChainError(collection.ChainError())
+	if collection.HasErr() {
+		return signal.NewGroup().WithErr(collection.Err())
 	}
 
 	group := signal.NewGroup()
 	for _, p := range collection.ports {
 		signals, err := p.Buffer().Signals()
 		if err != nil {
-			collection.SetChainError(err)
-			return signal.NewGroup().WithChainError(collection.ChainError())
+			collection.SetErr(err)
+			return signal.NewGroup().WithErr(collection.Err())
 		}
 		group = group.With(signals...)
 	}
@@ -197,8 +197,8 @@ func (collection *Collection) Signals() *signal.Group {
 // Ports getter
 // @TODO:maybe better to hide all errors within chainable and ask user to check error ?
 func (collection *Collection) Ports() (PortMap, error) {
-	if collection.HasChainError() {
-		return nil, collection.ChainError()
+	if collection.HasErr() {
+		return nil, collection.Err()
 	}
 	return collection.ports, nil
 }
@@ -210,7 +210,7 @@ func (collection *Collection) PortsOrNil() PortMap {
 
 // PortsOrDefault returns ports or default in case of any error
 func (collection *Collection) PortsOrDefault(defaultPorts PortMap) PortMap {
-	if collection.HasChainError() {
+	if collection.HasErr() {
 		return defaultPorts
 	}
 
@@ -221,9 +221,9 @@ func (collection *Collection) PortsOrDefault(defaultPorts PortMap) PortMap {
 	return ports
 }
 
-// WithChainError returns group with error
-func (collection *Collection) WithChainError(err error) *Collection {
-	collection.SetChainError(err)
+// WithErr returns group with error
+func (collection *Collection) WithErr(err error) *Collection {
+	collection.SetErr(err)
 	return collection
 }
 

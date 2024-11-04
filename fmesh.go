@@ -45,15 +45,15 @@ func New(name string) *FMesh {
 
 // Components getter
 func (fm *FMesh) Components() *component.Collection {
-	if fm.HasChainError() {
-		return component.NewCollection().WithChainError(fm.ChainError())
+	if fm.HasErr() {
+		return component.NewCollection().WithErr(fm.Err())
 	}
 	return fm.components
 }
 
 // WithDescription sets a description
 func (fm *FMesh) WithDescription(description string) *FMesh {
-	if fm.HasChainError() {
+	if fm.HasErr() {
 		return fm
 	}
 
@@ -63,14 +63,14 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 
 // WithComponents adds components to f-mesh
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
-	if fm.HasChainError() {
+	if fm.HasErr() {
 		return fm
 	}
 
 	for _, c := range components {
 		fm.components = fm.components.With(c)
-		if c.HasChainError() {
-			return fm.WithChainError(c.ChainError())
+		if c.HasErr() {
+			return fm.WithErr(c.Err())
 		}
 	}
 	return fm
@@ -78,7 +78,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 
 // WithConfig sets the configuration and returns the f-mesh
 func (fm *FMesh) WithConfig(config Config) *FMesh {
-	if fm.HasChainError() {
+	if fm.HasErr() {
 		return fm
 	}
 
@@ -90,26 +90,26 @@ func (fm *FMesh) WithConfig(config Config) *FMesh {
 func (fm *FMesh) runCycle() *cycle.Cycle {
 	newCycle := cycle.New()
 
-	if fm.HasChainError() {
-		return newCycle.WithChainError(fm.ChainError())
+	if fm.HasErr() {
+		return newCycle.WithErr(fm.Err())
 	}
 
 	if fm.Components().Len() == 0 {
-		fm.SetChainError(errors.New("failed to run cycle: no components found"))
-		return newCycle.WithChainError(fm.ChainError())
+		fm.SetErr(errors.New("failed to run cycle: no components found"))
+		return newCycle.WithErr(fm.Err())
 	}
 
 	var wg sync.WaitGroup
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		fm.SetChainError(fmt.Errorf("failed to run cycle: %w", err))
-		return newCycle.WithChainError(fm.ChainError())
+		fm.SetErr(fmt.Errorf("failed to run cycle: %w", err))
+		return newCycle.WithErr(fm.Err())
 	}
 
 	for _, c := range components {
-		if c.HasChainError() {
-			fm.SetChainError(c.ChainError())
+		if c.HasErr() {
+			fm.SetErr(c.Err())
 		}
 		wg.Add(1)
 
@@ -126,8 +126,8 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 
 	//Bubble up chain errors from activation results
 	for _, ar := range newCycle.ActivationResults() {
-		if ar.HasChainError() {
-			newCycle.SetChainError(ar.ChainError())
+		if ar.HasErr() {
+			newCycle.SetErr(ar.Err())
 			break
 		}
 	}
@@ -137,8 +137,8 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 
 // DrainComponents drains the data from activated components
 func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
-	if fm.HasChainError() {
-		return fm.ChainError()
+	if fm.HasErr() {
+		return fm.Err()
 	}
 
 	components, err := fm.Components().Components()
@@ -149,8 +149,8 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 	for _, c := range components {
 		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
 
-		if activationResult.HasChainError() {
-			return activationResult.ChainError()
+		if activationResult.HasErr() {
+			return activationResult.Err()
 		}
 
 		if !activationResult.Activated() {
@@ -183,8 +183,8 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
 func (fm *FMesh) Run() (cycle.Cycles, error) {
-	if fm.HasChainError() {
-		return nil, fm.ChainError()
+	if fm.HasErr() {
+		return nil, fm.Err()
 	}
 
 	allCycles := cycle.NewGroup()
@@ -192,9 +192,9 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 	for {
 		cycleResult := fm.runCycle().WithNumber(cycleNumber)
 
-		if cycleResult.HasChainError() {
-			fm.SetChainError(cycleResult.ChainError())
-			return nil, fmt.Errorf("chain error occurred in cycle #%d : %w", cycleResult.Number(), cycleResult.ChainError())
+		if cycleResult.HasErr() {
+			fm.SetErr(cycleResult.Err())
+			return nil, fmt.Errorf("chain error occurred in cycle #%d : %w", cycleResult.Number(), cycleResult.Err())
 		}
 
 		allCycles = allCycles.With(cycleResult)
@@ -222,8 +222,8 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 
 // mustStop defines when f-mesh must stop after activation cycle
 func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error, error) {
-	if fm.HasChainError() {
-		return false, fm.ChainError(), nil
+	if fm.HasErr() {
+		return false, fm.Err(), nil
 	}
 
 	if (fm.config.CyclesLimit > 0) && (cycleResult.Number() > fm.config.CyclesLimit) {
@@ -254,8 +254,8 @@ func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error, error) {
 	}
 }
 
-// WithChainError returns f-mesh with error
-func (fm *FMesh) WithChainError(err error) *FMesh {
-	fm.SetChainError(err)
+// WithErr returns f-mesh with error
+func (fm *FMesh) WithErr(err error) *FMesh {
+	fm.SetErr(err)
 	return fm
 }
