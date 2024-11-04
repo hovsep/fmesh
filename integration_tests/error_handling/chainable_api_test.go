@@ -20,14 +20,14 @@ func Test_Signal(t *testing.T) {
 			test: func(t *testing.T) {
 				sig := signal.New(123)
 				_, err := sig.Payload()
-				assert.False(t, sig.HasChainError())
+				assert.False(t, sig.HasErr())
 				assert.NoError(t, err)
 
 				_ = sig.PayloadOrDefault(555)
-				assert.False(t, sig.HasChainError())
+				assert.False(t, sig.HasErr())
 
 				_ = sig.PayloadOrNil()
-				assert.False(t, sig.HasChainError())
+				assert.False(t, sig.HasErr())
 			},
 		},
 		{
@@ -36,8 +36,8 @@ func Test_Signal(t *testing.T) {
 				emptyGroup := signal.NewGroup()
 
 				sig := emptyGroup.First()
-				assert.True(t, sig.HasChainError())
-				assert.Error(t, sig.ChainError())
+				assert.True(t, sig.HasErr())
+				assert.Error(t, sig.Err())
 
 				_, err := sig.Payload()
 				assert.Error(t, err)
@@ -72,7 +72,7 @@ func Test_FMesh(t *testing.T) {
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.False(t, fm.HasChainError())
+				assert.False(t, fm.HasErr())
 				assert.NoError(t, err)
 			},
 		},
@@ -89,14 +89,14 @@ func Test_FMesh(t *testing.T) {
 							outputs.ByName("sum").PutSignals(signal.New(num1 + num2))
 							return nil
 						}).
-						WithChainError(errors.New("some error in component")),
+						WithErr(errors.New("some error in component")),
 				)
 
 				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasChainError())
+				assert.True(t, fm.HasErr())
 				assert.Error(t, err)
 				assert.EqualError(t, err, "some error in component")
 			},
@@ -121,7 +121,7 @@ func Test_FMesh(t *testing.T) {
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasChainError())
+				assert.True(t, fm.HasErr())
 				assert.Error(t, err)
 				assert.EqualError(t, err, "chain error occurred in cycle #0 : port not found")
 			},
@@ -139,11 +139,11 @@ func Test_FMesh(t *testing.T) {
 					}),
 				)
 
-				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10).WithChainError(errors.New("some error in input signal")))
+				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10).WithErr(errors.New("some error in input signal")))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasChainError())
+				assert.True(t, fm.HasErr())
 				assert.Error(t, err)
 				assert.EqualError(t, err, "chain error occurred in cycle #0 : some error in input signal")
 			},

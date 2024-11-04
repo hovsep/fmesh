@@ -11,7 +11,7 @@ func TestNew(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		cycle := New()
 		assert.NotNil(t, cycle)
-		assert.False(t, cycle.HasChainError())
+		assert.False(t, cycle.HasErr())
 	})
 }
 

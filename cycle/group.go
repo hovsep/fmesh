@@ -37,8 +37,8 @@ func (g *Group) withCycles(cycles Cycles) *Group {
 
 // Cycles getter
 func (g *Group) Cycles() (Cycles, error) {
-	if g.HasChainError() {
-		return nil, g.ChainError()
+	if g.HasErr() {
+		return nil, g.Err()
 	}
 	return g.cycles, nil
 }
