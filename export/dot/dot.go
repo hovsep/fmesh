@@ -239,12 +239,12 @@ func (d *dotExporter) getComponentNode(componentSubgraph *dot.Graph, component *
 	}
 
 	if activationResult != nil {
-		if activationResult.Error() != nil {
+		if activationResult.ActivationError() != nil {
 			errorNode := componentSubgraph.Node(func(a *dot.AttributesMap) {
 				setAttrMap(a, d.config.Component.ErrorNode)
 			})
 			errorNode.
-				Attr("label", activationResult.Error().Error())
+				Attr("label", activationResult.ActivationError().Error())
 			componentSubgraph.Edge(componentNode, errorNode)
 		}
 	}
