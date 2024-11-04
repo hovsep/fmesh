@@ -46,6 +46,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 		return NewCollection().WithChainError(collection.ChainError())
 	}
 
+	//Preserve collection config
 	selectedPorts := NewCollection().WithDefaultLabels(collection.defaultLabels)
 
 	for _, name := range names {
@@ -122,7 +123,7 @@ func (collection *Collection) Flush() *Collection {
 	}
 
 	for _, p := range collection.ports {
-		p.Flush()
+		p = p.Flush()
 
 		if p.HasChainError() {
 			return collection.WithChainError(p.ChainError())
@@ -147,7 +148,7 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 // With adds ports to collection and returns it
 func (collection *Collection) With(ports ...*Port) *Collection {
 	if collection.HasChainError() {
-		return NewCollection().WithChainError(collection.ChainError())
+		return collection
 	}
 
 	for _, port := range ports {
@@ -164,12 +165,13 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 // WithIndexed creates ports with names like "o1","o2","o3" and so on
 func (collection *Collection) WithIndexed(prefix string, startIndex int, endIndex int) *Collection {
 	if collection.HasChainError() {
-		return NewCollection().WithChainError(collection.ChainError())
+		return collection
 	}
 
 	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).Ports()
 	if err != nil {
-		return collection.WithChainError(err)
+		collection.SetChainError(err)
+		return NewCollection().WithChainError(collection.ChainError())
 	}
 	return collection.With(indexedPorts...)
 }
@@ -184,7 +186,8 @@ func (collection *Collection) Signals() *signal.Group {
 	for _, p := range collection.ports {
 		signals, err := p.Buffer().Signals()
 		if err != nil {
-			return group.WithChainError(err)
+			collection.SetChainError(err)
+			return signal.NewGroup().WithChainError(collection.ChainError())
 		}
 		group = group.With(signals...)
 	}

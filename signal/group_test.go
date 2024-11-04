@@ -189,7 +189,7 @@ func TestGroup_With(t *testing.T) {
 			args: args{
 				signals: NewGroup(7, nil, 9).SignalsOrNil(),
 			},
-			want: NewGroup(1, 2, 3, "valid before invalid").WithChainError(errors.New("signal is invalid")),
+			want: NewGroup().WithChainError(errors.New("signal is invalid")),
 		},
 		{
 			name:  "with error in signal",
