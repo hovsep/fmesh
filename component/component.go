@@ -48,6 +48,9 @@ func (c *Component) WithDescription(description string) *Component {
 
 // withInputPorts sets input ports collection
 func (c *Component) withInputPorts(collection *port.Collection) *Component {
+	if c.HasChainError() {
+		return c
+	}
 	if collection.HasChainError() {
 		return c.WithChainError(collection.ChainError())
 	}
@@ -57,6 +60,9 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 
 // withOutputPorts sets input ports collection
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
+	if c.HasChainError() {
+		return c
+	}
 	if collection.HasChainError() {
 		return c.WithChainError(collection.ChainError())
 	}
@@ -73,8 +79,10 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 
 	ports, err := port.NewGroup(portNames...).Ports()
 	if err != nil {
-		return c.WithChainError(err)
+		c.SetChainError(err)
+		return New("").WithChainError(c.ChainError())
 	}
+
 	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
@@ -86,7 +94,8 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 
 	ports, err := port.NewGroup(portNames...).Ports()
 	if err != nil {
-		return c.WithChainError(err)
+		c.SetChainError(err)
+		return New("").WithChainError(c.ChainError())
 	}
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
@@ -262,10 +271,11 @@ func (c *Component) FlushOutputs() *Component {
 
 	ports, err := c.Outputs().Ports()
 	if err != nil {
-		return c.WithChainError(err)
+		c.SetChainError(err)
+		return New("").WithChainError(c.ChainError())
 	}
 	for _, out := range ports {
-		out.Flush()
+		out = out.Flush()
 		if out.HasChainError() {
 			return c.WithChainError(out.ChainError())
 		}
