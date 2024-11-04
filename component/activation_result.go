@@ -9,10 +9,10 @@ import (
 // ActivationResult defines the result (possibly an error) of the activation of given component in given cycle
 type ActivationResult struct {
 	*common.Chainable
-	componentName string
-	activated     bool
-	code          ActivationResultCode
-	err           error
+	componentName   string
+	activated       bool
+	code            ActivationResultCode
+	activationError error //Error returned from component activation function
 }
 
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
@@ -86,9 +86,9 @@ func (ar *ActivationResult) Activated() bool {
 	return ar.activated
 }
 
-// Error getter
-func (ar *ActivationResult) Error() error {
-	return ar.err
+// ActivationError getter
+func (ar *ActivationResult) ActivationError() error {
+	return ar.activationError
 }
 
 // Code getter
@@ -98,12 +98,12 @@ func (ar *ActivationResult) Code() ActivationResultCode {
 
 // IsError returns true when activation result has an error
 func (ar *ActivationResult) IsError() bool {
-	return ar.code == ActivationCodeReturnedError && ar.Error() != nil
+	return ar.code == ActivationCodeReturnedError && ar.ActivationError() != nil
 }
 
 // IsPanic returns true when activation result is derived from panic
 func (ar *ActivationResult) IsPanic() bool {
-	return ar.code == ActivationCodePanicked && ar.Error() != nil
+	return ar.code == ActivationCodePanicked && ar.ActivationError() != nil
 }
 
 // SetActivated setter
@@ -118,9 +118,9 @@ func (ar *ActivationResult) WithActivationCode(code ActivationResultCode) *Activ
 	return ar
 }
 
-// WithError setter
-func (ar *ActivationResult) WithError(err error) *ActivationResult {
-	ar.err = err
+// WithActivationError sets the activation result error
+func (ar *ActivationResult) WithActivationError(activationError error) *ActivationResult {
+	ar.activationError = activationError
 	return ar
 }
 
@@ -151,7 +151,7 @@ func (c *Component) newActivationResultReturnedError(err error) *ActivationResul
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodeReturnedError).
-		WithError(fmt.Errorf("component returned an error: %w", err))
+		WithActivationError(fmt.Errorf("component returned an error: %w", err))
 }
 
 // newActivationResultPanicked builds a specific activation result
@@ -159,7 +159,7 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodePanicked).
-		WithError(err)
+		WithActivationError(err)
 }
 
 func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
@@ -170,7 +170,7 @@ func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationRe
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(activationCode).
-		WithError(err)
+		WithActivationError(err)
 }
 
 func IsWaitingForInput(activationResult *ActivationResult) bool {

@@ -280,7 +280,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeReturnedError).
-							WithError(errors.New("component returned an error: boom")),
+							WithActivationError(errors.New("component returned an error: boom")),
 					),
 			).CyclesOrNil(),
 			wantErr: true,
@@ -346,7 +346,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeReturnedError).
-							WithError(errors.New("component returned an error: boom")),
+							WithActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -380,7 +380,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodePanicked).
-							WithError(errors.New("panicked with: no way")),
+							WithActivationError(errors.New("panicked with: no way")),
 					),
 			).CyclesOrNil(),
 			wantErr: true,
@@ -460,7 +460,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeReturnedError).
-							WithError(errors.New("component returned an error: boom")),
+							WithActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -502,7 +502,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodePanicked).
-							WithError(errors.New("panicked with: no way")),
+							WithActivationError(errors.New("panicked with: no way")),
 						component.NewActivationResult("c5").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -573,7 +573,7 @@ func TestFMesh_Run(t *testing.T) {
 					assert.Equal(t, tt.want[i].ActivationResults()[componentName].Code(), gotActivationResult.Code())
 
 					if tt.want[i].ActivationResults()[componentName].IsError() {
-						assert.EqualError(t, tt.want[i].ActivationResults()[componentName].Error(), gotActivationResult.Error().Error())
+						assert.EqualError(t, tt.want[i].ActivationResults()[componentName].ActivationError(), gotActivationResult.ActivationError().Error())
 					} else {
 						assert.False(t, gotActivationResult.IsError())
 					}
@@ -723,7 +723,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeReturnedError).
-						WithError(errors.New("c1 activation finished with error")),
+						WithActivationError(errors.New("c1 activation finished with error")),
 				).WithNumber(5),
 			},
 			want:    true,
@@ -739,7 +739,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodePanicked).
-						WithError(errors.New("c1 panicked")),
+						WithActivationError(errors.New("c1 panicked")),
 				).WithNumber(5),
 			},
 			want:    true,
@@ -884,7 +884,7 @@ func TestFMesh_drainComponents(t *testing.T) {
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeWaitingForInputsClear).
-							WithError(component.NewErrWaitForInputs(false)),
+							WithActivationError(component.NewErrWaitForInputs(false)),
 						component.NewActivationResult("c2").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -936,7 +936,7 @@ func TestFMesh_drainComponents(t *testing.T) {
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeWaitingForInputsKeep).
-							WithError(component.NewErrWaitForInputs(true)),
+							WithActivationError(component.NewErrWaitForInputs(true)),
 						component.NewActivationResult("c2").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),

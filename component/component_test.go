@@ -416,7 +416,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				WithActivationCode(ActivationCodeReturnedError).
-				WithError(errors.New("component returned an error: test error")),
+				WithActivationError(errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -452,7 +452,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				WithActivationCode(ActivationCodePanicked).
-				WithError(errors.New("panicked with: oh shrimps")),
+				WithActivationError(errors.New("panicked with: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -471,7 +471,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				WithActivationCode(ActivationCodePanicked).
-				WithError(errors.New("panicked with: oh shrimps")),
+				WithActivationError(errors.New("panicked with: oh shrimps")),
 		},
 		{
 			name: "component is waiting for inputs",
@@ -492,10 +492,10 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				return c1
 			},
 			wantActivationResult: &ActivationResult{
-				componentName: "c1",
-				activated:     true,
-				code:          ActivationCodeWaitingForInputsClear,
-				err:           NewErrWaitForInputs(false),
+				componentName:   "c1",
+				activated:       true,
+				code:            ActivationCodeWaitingForInputsClear,
+				activationError: NewErrWaitForInputs(false),
 			},
 		},
 		{
@@ -517,10 +517,10 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				return c1
 			},
 			wantActivationResult: &ActivationResult{
-				componentName: "c1",
-				activated:     true,
-				code:          ActivationCodeWaitingForInputsKeep,
-				err:           NewErrWaitForInputs(true),
+				componentName:   "c1",
+				activated:       true,
+				code:            ActivationCodeWaitingForInputsKeep,
+				activationError: NewErrWaitForInputs(true),
 			},
 		},
 		{
@@ -553,7 +553,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
 			if tt.wantActivationResult.IsError() {
-				assert.EqualError(t, gotActivationResult.Error(), tt.wantActivationResult.Error().Error())
+				assert.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
 			} else {
 				assert.False(t, gotActivationResult.IsError())
 			}
