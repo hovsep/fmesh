@@ -1,7 +1,7 @@
 package component
 
 import (
-	"errors"
+	"fmt"
 	"github.com/hovsep/fmesh/common"
 )
 
@@ -31,8 +31,8 @@ func (c *Collection) ByName(name string) *Component {
 	component, ok := c.components[name]
 
 	if !ok {
-		c.SetErr(errors.New("component not found"))
-		return nil
+		c.SetErr(fmt.Errorf("%w, component name: %s", errNotFound, name))
+		return New("").WithErr(c.Err())
 	}
 
 	return component

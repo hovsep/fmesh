@@ -61,3 +61,12 @@ func (g *Group) CyclesOrDefault(defaultCycles Cycles) Cycles {
 func (g *Group) Len() int {
 	return len(g.cycles)
 }
+
+// Last returns the latest cycle added to the group
+func (g *Group) Last() *Cycle {
+	if g.Len() == 0 {
+		return New().WithErr(errNoCyclesInGroup)
+	}
+
+	return g.cycles[g.Len()-1]
+}

@@ -22,4 +22,8 @@ var (
 	ErrHitAPanic                        = errors.New("f-mesh hit a panic and will be stopped")
 	ErrUnsupportedErrorHandlingStrategy = errors.New("unsupported error handling strategy")
 	ErrReachedMaxAllowedCycles          = errors.New("reached max allowed cycles")
+	errFailedToRunCycle                 = errors.New("failed to run cycle")
+	errNoComponents                     = errors.New("no components found")
+	errFailedToClearInputs              = errors.New("failed to clear input ports")
+	ErrFailedToDrain                    = errors.New("failed to drain")
 )

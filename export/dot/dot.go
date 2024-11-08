@@ -77,7 +77,7 @@ func (d *dotExporter) ExportWithCycles(fm *fmesh.FMesh, activationCycles cycle.C
 		buf := new(bytes.Buffer)
 		graphForCycle.Write(buf)
 
-		results[activationCycle.Number()] = buf.Bytes()
+		results[activationCycle.Number()-1] = buf.Bytes()
 	}
 
 	return results, nil
@@ -143,7 +143,7 @@ func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Compo
 					return fmt.Errorf("failed to add pipe to port: %s : %w", destPort.Name(), err)
 				}
 				// Delete label, as it is not needed anymore
-				destPort.DeleteLabel(nodeIDLabel)
+				//destPort.DeleteLabel(nodeIDLabel)
 
 				// Any source port in any pipe is always output port, so we can build its node ID
 				srcPortNode := graph.FindNodeByID(getPortID(c.Name(), port.DirectionOut, srcPort.Name()))

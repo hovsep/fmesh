@@ -123,7 +123,7 @@ func Test_FMesh(t *testing.T) {
 				_, err := fm.Run()
 				assert.True(t, fm.HasErr())
 				assert.Error(t, err)
-				assert.EqualError(t, err, "chain error occurred in cycle #0 : port not found")
+				assert.ErrorContains(t, err, "port not found, port name: num777")
 			},
 		},
 		{
@@ -145,7 +145,7 @@ func Test_FMesh(t *testing.T) {
 				_, err := fm.Run()
 				assert.True(t, fm.HasErr())
 				assert.Error(t, err)
-				assert.EqualError(t, err, "chain error occurred in cycle #0 : some error in input signal")
+				assert.ErrorContains(t, err, "some error in input signal")
 			},
 		},
 	}

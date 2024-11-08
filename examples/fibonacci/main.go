@@ -8,9 +8,14 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// This example shows how a component can have a pipe looped into it's input.
-// This pattern allows to activate components multiple time using control plane (special output with looped-in pipe)
-// For example we can calculate Fibonacci numbers without actually having a code for loop (the loop is implemented by ports and pipes)
+// This example demonstrates how a component can have a pipe looped back into its own input,
+// enabling a pattern that reactivates the component multiple times.
+// By looping the output back into the input, the component can perform repeated calculations
+// without explicit looping constructs in the code.
+//
+// For instance, this approach can be used to calculate Fibonacci numbers without needing
+// traditional looping code. Instead, the loop is achieved by configuring ports and pipes,
+// where each cycle processes a new Fibonacci term.
 func main() {
 	c1 := component.New("fibonacci number generator").
 		WithInputs("i_cur", "i_prev").

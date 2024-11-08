@@ -2,6 +2,7 @@ package port
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -107,7 +108,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: New("").WithErr(ErrPortNotFoundInCollection),
+			want: New("").WithErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
 		},
 		{
 			name:       "with chain error",
