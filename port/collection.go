@@ -1,6 +1,7 @@
 package port
 
 import (
+	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 )
@@ -34,7 +35,7 @@ func (collection *Collection) ByName(name string) *Port {
 	}
 	port, ok := collection.ports[name]
 	if !ok {
-		collection.SetErr(ErrPortNotFoundInCollection)
+		collection.SetErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
 		return New("").WithErr(collection.Err())
 	}
 	return port

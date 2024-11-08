@@ -29,6 +29,7 @@ type FMesh struct {
 	common.DescribedEntity
 	*common.Chainable
 	components *component.Collection
+	cycles     *cycle.Group
 	config     Config
 }
 
@@ -39,6 +40,7 @@ func New(name string) *FMesh {
 		DescribedEntity: common.NewDescribedEntity(""),
 		Chainable:       common.NewChainable(),
 		components:      component.NewCollection(),
+		cycles:          cycle.NewGroup(),
 		config:          defaultConfig,
 	}
 }
@@ -50,6 +52,8 @@ func (fm *FMesh) Components() *component.Collection {
 	}
 	return fm.components
 }
+
+//@TODO: add shortcut method: ComponentByName()
 
 // WithDescription sets a description
 func (fm *FMesh) WithDescription(description string) *FMesh {
@@ -87,24 +91,22 @@ func (fm *FMesh) WithConfig(config Config) *FMesh {
 }
 
 // runCycle runs one activation cycle (tries to activate ready components)
-func (fm *FMesh) runCycle() *cycle.Cycle {
-	newCycle := cycle.New()
+func (fm *FMesh) runCycle() {
+	newCycle := cycle.New().WithNumber(fm.cycles.Len() + 1)
 
 	if fm.HasErr() {
-		return newCycle.WithErr(fm.Err())
+		newCycle.SetErr(fm.Err())
 	}
 
 	if fm.Components().Len() == 0 {
-		fm.SetErr(errors.New("failed to run cycle: no components found"))
-		return newCycle.WithErr(fm.Err())
+		newCycle.SetErr(errors.Join(errFailedToRunCycle, errNoComponents))
 	}
 
 	var wg sync.WaitGroup
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		fm.SetErr(fmt.Errorf("failed to run cycle: %w", err))
-		return newCycle.WithErr(fm.Err())
+		newCycle.SetErr(errors.Join(errFailedToRunCycle, err))
 	}
 
 	for _, c := range components {
@@ -132,25 +134,41 @@ func (fm *FMesh) runCycle() *cycle.Cycle {
 		}
 	}
 
-	return newCycle
+	if newCycle.HasErr() {
+		fm.SetErr(newCycle.Err())
+	}
+
+	fm.cycles = fm.cycles.With(newCycle)
+
+	return
 }
 
 // DrainComponents drains the data from activated components
-func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
+func (fm *FMesh) drainComponents() {
 	if fm.HasErr() {
-		return fm.Err()
+		fm.SetErr(errors.Join(ErrFailedToDrain, fm.Err()))
+		return
+	}
+
+	fm.clearInputs()
+	if fm.HasErr() {
+		return
 	}
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		return fmt.Errorf("failed to drain components: %w", err)
+		fm.SetErr(errors.Join(ErrFailedToDrain, err))
+		return
 	}
 
+	lastCycle := fm.cycles.Last()
+
 	for _, c := range components {
-		activationResult := cycle.ActivationResults().ByComponentName(c.Name())
+		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
 
 		if activationResult.HasErr() {
-			return activationResult.Err()
+			fm.SetErr(errors.Join(ErrFailedToDrain, activationResult.Err()))
+			return
 		}
 
 		if !activationResult.Activated() {
@@ -158,28 +176,52 @@ func (fm *FMesh) drainComponents(cycle *cycle.Cycle) error {
 			continue
 		}
 
-		// By default, all outputs are flushed and all inputs are cleared
-		shouldFlushOutputs := true
-		shouldClearInputs := true
-
+		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
-			// @TODO: maybe we should clear outputs
-			// in order to prevent leaking outputs from previous cycle
-			// (if outputs were set before returning errWaitingForInputs)
-			shouldFlushOutputs = false
-			shouldClearInputs = !component.WantsToKeepInputs(activationResult)
+			// @TODO: maybe we should additionally clear outputs
+			// because it is technically possible to set some output signals and then return errWaitingForInput in AF
+			continue
 		}
 
-		if shouldClearInputs {
-			c.ClearInputs()
-		}
-
-		if shouldFlushOutputs {
-			c.FlushOutputs()
-		}
+		c.FlushOutputs()
 
 	}
-	return nil
+}
+
+// clearInputs clears all the input ports of all components activated in latest cycle
+func (fm *FMesh) clearInputs() {
+	if fm.HasErr() {
+		return
+	}
+
+	components, err := fm.Components().Components()
+	if err != nil {
+		fm.SetErr(errors.Join(errFailedToClearInputs, err))
+		return
+	}
+
+	lastCycle := fm.cycles.Last()
+
+	for _, c := range components {
+		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
+
+		if activationResult.HasErr() {
+			fm.SetErr(errors.Join(errFailedToClearInputs, activationResult.Err()))
+		}
+
+		if !activationResult.Activated() {
+			// Component did not activate hence it's inputs must be clear
+			continue
+		}
+
+		if component.IsWaitingForInput(activationResult) && component.WantsToKeepInputs(activationResult) {
+			// Component want to keep inputs for the next cycle
+			//@TODO: add fine grained control on which ports to keep
+			continue
+		}
+
+		c.ClearInputs()
+	}
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
@@ -188,70 +230,55 @@ func (fm *FMesh) Run() (cycle.Cycles, error) {
 		return nil, fm.Err()
 	}
 
-	allCycles := cycle.NewGroup()
-	cycleNumber := 0
 	for {
-		cycleResult := fm.runCycle().WithNumber(cycleNumber)
+		fm.runCycle()
 
-		if cycleResult.HasErr() {
-			fm.SetErr(cycleResult.Err())
-			return nil, fmt.Errorf("chain error occurred in cycle #%d : %w", cycleResult.Number(), cycleResult.Err())
+		if mustStop, err := fm.mustStop(); mustStop {
+			return fm.cycles.CyclesOrNil(), err
 		}
 
-		allCycles = allCycles.With(cycleResult)
-
-		mustStop, chainError, stopError := fm.mustStop(cycleResult)
-		if chainError != nil {
-			return nil, chainError
+		fm.drainComponents()
+		if fm.HasErr() {
+			return nil, fm.Err()
 		}
-
-		if mustStop {
-			cycles, err := allCycles.Cycles()
-			if err != nil {
-				return nil, err
-			}
-			return cycles, stopError
-		}
-
-		err := fm.drainComponents(cycleResult)
-		if err != nil {
-			return nil, err
-		}
-		cycleNumber++
 	}
 }
 
-// mustStop defines when f-mesh must stop after activation cycle
-func (fm *FMesh) mustStop(cycleResult *cycle.Cycle) (bool, error, error) {
+// mustStop defines when f-mesh must stop (it always checks only last cycle)
+func (fm *FMesh) mustStop() (bool, error) {
 	if fm.HasErr() {
-		return false, fm.Err(), nil
+		return false, nil
 	}
 
-	if (fm.config.CyclesLimit > 0) && (cycleResult.Number() > fm.config.CyclesLimit) {
-		return true, nil, ErrReachedMaxAllowedCycles
+	lastCycle := fm.cycles.Last()
+
+	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
+		return true, ErrReachedMaxAllowedCycles
 	}
 
-	//Check if we are done (no components activated during the cycle => all inputs are processed)
-	if !cycleResult.HasActivatedComponents() {
-		return true, nil, nil
+	if !lastCycle.HasActivatedComponents() {
+		// Stop naturally (no components activated during the cycle => all inputs are processed)
+		return true, nil
 	}
 
 	//Check if mesh must stop because of configured error handling strategy
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
-		if cycleResult.HasErrors() || cycleResult.HasPanics() {
-			return true, nil, ErrHitAnErrorOrPanic
+		if lastCycle.HasErrors() || lastCycle.HasPanics() {
+			//@TODO: add failing components names to error
+			return true, fmt.Errorf("%w, cycle # %d", ErrHitAnErrorOrPanic, lastCycle.Number())
 		}
-		return false, nil, nil
+		return false, nil
 	case StopOnFirstPanic:
-		if cycleResult.HasPanics() {
-			return true, nil, ErrHitAPanic
+		// @TODO: add more context to error
+		if lastCycle.HasPanics() {
+			return true, ErrHitAPanic
 		}
-		return false, nil, nil
+		return false, nil
 	case IgnoreAll:
-		return false, nil, nil
+		return false, nil
 	default:
-		return true, nil, ErrUnsupportedErrorHandlingStrategy
+		return true, ErrUnsupportedErrorHandlingStrategy
 	}
 }
 

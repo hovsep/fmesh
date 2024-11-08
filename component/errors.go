@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	errNotFound             = errors.New("component not found")
 	errWaitingForInputs     = errors.New("component is waiting for some inputs")
 	errWaitingForInputsKeep = fmt.Errorf("%w: do not clear input ports", errWaitingForInputs)
 )
