@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -29,7 +30,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "c3",
 			},
-			want: nil,
+			want: New("").WithErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
 		},
 	}
 	for _, tt := range tests {
@@ -69,7 +70,6 @@ func TestCollection_With(t *testing.T) {
 				assert.Equal(t, 2, collection.Len())
 				assert.NotNil(t, collection.ByName("c1"))
 				assert.NotNil(t, collection.ByName("c2"))
-				assert.Nil(t, collection.ByName("c999"))
 			},
 		},
 		{
@@ -84,7 +84,6 @@ func TestCollection_With(t *testing.T) {
 				assert.NotNil(t, collection.ByName("c2"))
 				assert.NotNil(t, collection.ByName("c3"))
 				assert.NotNil(t, collection.ByName("c4"))
-				assert.Nil(t, collection.ByName("c999"))
 			},
 		},
 	}
