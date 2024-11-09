@@ -51,14 +51,12 @@ func main() {
 		WithDescription("Simple logger").
 		WithInputs("in").
 		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-			log := func(line string) {
-				fmt.Printf("LOG: %s", line)
+			log := func(data any) {
+				fmt.Printf("LOG: %v", data)
 			}
 
 			for _, sig := range inputs.ByName("in").AllSignalsOrNil() {
-				if logLine := sig.PayloadOrNil(); logLine != nil {
-					log(logLine.(string))
-				}
+				log(sig.PayloadOrNil())
 			}
 			return nil
 		})
