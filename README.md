@@ -14,7 +14,7 @@ You can think of it as a simple functions orchestrator.
 <h3>Main concepts:</h3>
 <ul>
 <li>F-Mesh consists of multiple <b>Components</b> - the main building blocks</li>
-<li>Components have unlimited number of input and output <p>Ports</p></li>
+<li>Components have unlimited number of input and output <b>Ports</b></li>
 <li>The main job of each component is to read inputs and provide outputs</li>
 <li>Any output port can be connected to any input port via <b>Pipes</b></li>
 <li>The component behaviour is defined by its <b>Activation function</b></li>
