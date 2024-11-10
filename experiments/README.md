@@ -1,1 +1,0 @@
-This directory contains experiments made to reach a proof of concept of FMesh. Each next experiment is started as a copy of previous one.
