@@ -1,31 +1,18 @@
-<div align="center">
-  <img src="./assets/img/logo.png" width="200" height="200" alt="f-mesh"/>
-  <h1>f-mesh</h1>
-  <p>Flow Based Programming inspired framework in Go</p>
-  <p><a href="https://jpaulm.github.io/fbp/">Learn more about FBP</a> (originally discovered by @jpaulm)</p>
-</div>
+package main
 
-<h1>What is it?</h1>
-<p>F-Mesh is a functions orchestrator inspired by FBP. 
-It allows you to express your program as a mesh of interconnected components (or more formally as a computational graph).
-</p>
-<h3>Main concepts:</h3>
-<ul>
-<li>F-Mesh consists of multiple <b>Components</b> - the main building blocks</li>
-<li>Components have unlimited number of input and output <b>Ports</b></li>
-<li>Any output port can be connected to any input port via <b>Pipes</b></li>
-<li>Ports and pipes are type agnostic, any data can be transferred to any port</li>
-<li>The framework works in discrete time, not it wall time. The quant of time is 1 activation cycle, which gives you "logical parallelism" out of the box (activation function is running in "frozen time")</li>
-</ul>
+import (
+	"fmt"
+	"github.com/hovsep/fmesh"
+	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/port"
+	"github.com/hovsep/fmesh/signal"
+	"os"
+	"strings"
+)
 
-<h1>What it is not?</h1>
-<p>F-mesh is not a classical FBP implementation, it does not support long-running components or wall-time events (like timers and tickers)</p>
-
-
-<h2>Example:</h2>
-
-```go
-fm := fmesh.New("hello world").
+// This example is used in readme.md
+func main() {
+	fm := fmesh.New("hello world").
 		WithComponents(
 			component.New("concat").
 				WithInputs("i1", "i2").
@@ -71,6 +58,4 @@ fm := fmesh.New("hello world").
 	//Extract results
 	results := fm.Components().ByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 	fmt.Printf("Result is : %v", results)
-```
-See more in ```examples``` directory.
-<h2>Version 0.1.0 coming soon</h2>
+}
