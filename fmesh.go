@@ -265,14 +265,12 @@ func (fm *FMesh) mustStop() (bool, error) {
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasErrors() || lastCycle.HasPanics() {
-			//@TODO: add failing components names to error
-			return true, fmt.Errorf("%w, cycle # %d", ErrHitAnErrorOrPanic, lastCycle.Number())
+			return true, fmt.Errorf("%w, cycle # %d", errors.Join(ErrHitAnErrorOrPanic, lastCycle.ConsolidatedError()), lastCycle.Number())
 		}
 		return false, nil
 	case StopOnFirstPanic:
-		// @TODO: add more context to error
 		if lastCycle.HasPanics() {
-			return true, ErrHitAPanic
+			return true, errors.Join(ErrHitAPanic, lastCycle.ConsolidatedError())
 		}
 		return false, nil
 	case IgnoreAll:
