@@ -72,5 +72,5 @@ fm := fmesh.New("hello world").
 	results := fm.Components().ByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 	fmt.Printf("Result is : %v", results)
 ```
-See more in ```examples``` directory.
+See more in [examples](https://github.com/hovsep/fmesh/tree/main/examples) directory.
 <h2>Version 0.1.0 coming soon</h2>
