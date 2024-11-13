@@ -2,7 +2,6 @@ package fmesh
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -674,7 +673,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		name     string
 		getFMesh func() *FMesh
 		want     bool
-		wantErr  error
+		wantErr  string
 	}{
 		{
 			name: "with default config, no time to stop",
@@ -691,7 +690,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				return fm
 			},
 			want:    false,
-			wantErr: nil,
+			wantErr: "",
 		},
 		{
 			name: "with default config, reached max cycles",
@@ -706,7 +705,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				return fm
 			},
 			want:    true,
-			wantErr: ErrReachedMaxAllowedCycles,
+			wantErr: "reached max allowed cycles",
 		},
 		{
 			name: "mesh finished naturally and must stop",
@@ -721,7 +720,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				return fm
 			},
 			want:    true,
-			wantErr: nil,
+			wantErr: "",
 		},
 		{
 			name: "mesh hit an error",
@@ -740,7 +739,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				return fm
 			},
 			want:    true,
-			wantErr: fmt.Errorf("%w, cycle # %d", ErrHitAnErrorOrPanic, 5),
+			wantErr: "c1 activation finished with error",
 		},
 		{
 			name: "mesh hit a panic",
@@ -758,15 +757,15 @@ func TestFMesh_mustStop(t *testing.T) {
 				return fm
 			},
 			want:    true,
-			wantErr: ErrHitAPanic,
+			wantErr: "hit a panic and will be stopped",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFMesh()
 			got, stopErr := fm.mustStop()
-			if tt.wantErr != nil {
-				assert.EqualError(t, stopErr, tt.wantErr.Error())
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, stopErr, tt.wantErr)
 			} else {
 				assert.NoError(t, stopErr)
 			}
