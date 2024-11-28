@@ -2,7 +2,8 @@
   <img src="./assets/img/logo.png" width="200" height="200" alt="f-mesh"/>
   <h1>f-mesh</h1>
   <p>Flow Based Programming inspired framework in Go</p>
-  <p><a href="https://jpaulm.github.io/fbp/">Learn more about FBP</a> (originally discovered by @jpaulm)</p>
+  
+[Learn more about FBP](https://jpaulm.github.io/fbp/) (originally discovered by @jpaulm) or read the [documentation](https://github.com/hovsep/fmesh/wiki)
 </div>
 
 <h1>What is it?</h1>
@@ -16,6 +17,10 @@ It allows you to express your program as a mesh of interconnected components (or
 <li>Any output port can be connected to any input port via <b>Pipes</b></li>
 <li>Ports and pipes are type agnostic, any data can be transferred to any port</li>
 <li>The framework works in discrete time, not it wall time. The quant of time is 1 activation cycle, which gives you "logical parallelism" out of the box (activation function is running in "frozen time")</li>
+<li>
+	
+Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
+</li>
 </ul>
 
 <h1>What it is not?</h1>
