@@ -12,9 +12,9 @@ It allows you to express your program as a mesh of interconnected components (or
 </p>
 <h3>Main concepts:</h3>
 <ul>
-<li>F-Mesh consists of multiple <b>Components</b> - the main building blocks</li>
+<li>F-Mesh consists of <b>Components</b> - the main building blocks</li>
 <li>Components have unlimited number of input and output <b>Ports</b></li>
-<li>Any output port can be connected to any input port via <b>Pipes</b></li>
+<li>Ports can be connected via <b>Pipes</b></li>
 <li>Ports and pipes are type agnostic, any data can be transferred to any port</li>
 <li>The framework works in discrete time, not it wall time. The quant of time is 1 activation cycle, which gives you "logical parallelism" out of the box (activation function is running in "frozen time")</li>
 <li>
