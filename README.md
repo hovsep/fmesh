@@ -6,6 +6,9 @@
 [Learn more about FBP](https://jpaulm.github.io/fbp/) (originally discovered by @jpaulm) or read the [documentation](https://github.com/hovsep/fmesh/wiki)
 </div>
 
+<img src="https://github.com/user-attachments/assets/045bb7ac-0852-4a0d-9158-6af2d6e66dbb" width="500px">
+
+
 <h1>What is it?</h1>
 <p>F-Mesh is a functions orchestrator inspired by FBP. 
 It allows you to express your program as a mesh of interconnected components (or more formally as a computational graph).
