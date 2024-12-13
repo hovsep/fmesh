@@ -81,4 +81,4 @@ fm := fmesh.New("hello world").
 	fmt.Printf("Result is : %v", results)
 ```
 See more in [examples](https://github.com/hovsep/fmesh/tree/main/examples) directory.
-<h2>Version 0.1.0 coming soon</h2>
+<h2>Version <a href="https://github.com/hovsep/fmesh/releases/tag/v0.0.1-alpha">0.1.0-Sugunia</a> is already released!</h2>
