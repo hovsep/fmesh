@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
+	"log"
 	"os"
 	"strings"
 )
@@ -17,7 +18,7 @@ func main() {
 			component.New("concat").
 				WithInputs("i1", "i2").
 				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 					word1 := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
 					word2 := inputs.ByName("i2").FirstSignalPayloadOrDefault("").(string)
 
@@ -27,7 +28,7 @@ func main() {
 			component.New("case").
 				WithInputs("i1").
 				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 					inputString := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
 
 					outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))

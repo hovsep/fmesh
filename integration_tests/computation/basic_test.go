@@ -8,6 +8,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -27,7 +28,7 @@ func Test_Math(t *testing.T) {
 					WithDescription("adds 2 to the input").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						num := inputs.ByName("num").FirstSignalPayloadOrNil()
 						outputs.ByName("res").PutSignals(signal.New(num.(int) + 2))
 						return nil
@@ -37,7 +38,7 @@ func Test_Math(t *testing.T) {
 					WithDescription("multiplies by 3").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						num := inputs.ByName("num").FirstSignalPayloadOrDefault(0)
 						outputs.ByName("res").PutSignals(signal.New(num.(int) * 3))
 						return nil
@@ -81,7 +82,7 @@ func Test_Readme(t *testing.T) {
 				component.New("concat").
 					WithInputs("i1", "i2").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						word1 := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
 						word2 := inputs.ByName("i2").FirstSignalPayloadOrDefault("").(string)
 
@@ -91,7 +92,7 @@ func Test_Readme(t *testing.T) {
 				component.New("case").
 					WithInputs("i1").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						inputString := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
 
 						outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))

@@ -7,6 +7,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
@@ -60,12 +61,13 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").WithInputs("num1", "num2").
-						WithOutputs("sum").WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num1 := inputs.ByName("num1").FirstSignalPayloadOrDefault(0).(int)
-						num2 := inputs.ByName("num2").FirstSignalPayloadOrDefault(0).(int)
-						outputs.ByName("sum").PutSignals(signal.New(num1 + num2))
-						return nil
-					}),
+						WithOutputs("sum").
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+							num1 := inputs.ByName("num1").FirstSignalPayloadOrDefault(0).(int)
+							num2 := inputs.ByName("num2").FirstSignalPayloadOrDefault(0).(int)
+							outputs.ByName("sum").PutSignals(signal.New(num1 + num2))
+							return nil
+						}),
 				)
 
 				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))
@@ -83,7 +85,7 @@ func Test_FMesh(t *testing.T) {
 					component.New("c1").
 						WithInputs("num1", "num2").
 						WithOutputs("sum").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							num1 := inputs.ByName("num1").FirstSignalPayloadOrDefault(0).(int)
 							num2 := inputs.ByName("num2").FirstSignalPayloadOrDefault(0).(int)
 							outputs.ByName("sum").PutSignals(signal.New(num1 + num2))
@@ -108,7 +110,7 @@ func Test_FMesh(t *testing.T) {
 					component.New("c1").
 						WithInputs("num1", "num2").
 						WithOutputs("sum").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							num1 := inputs.ByName("num1").FirstSignalPayloadOrDefault(0).(int)
 							num2 := inputs.ByName("num2").FirstSignalPayloadOrDefault(0).(int)
 							outputs.ByName("sum").PutSignals(signal.New(num1 + num2))
@@ -131,7 +133,7 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").WithInputs("num1", "num2").
-						WithOutputs("sum").WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithOutputs("sum").WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						num1 := inputs.ByName("num1").FirstSignalPayloadOrDefault(0).(int)
 						num2 := inputs.ByName("num2").FirstSignalPayloadOrDefault(0).(int)
 						outputs.ByName("sum").PutSignals(signal.New(num1 + num2))

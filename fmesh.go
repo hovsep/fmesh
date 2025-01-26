@@ -6,6 +6,8 @@ import (
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
+	"log"
+	"os"
 	"sync"
 )
 
@@ -31,6 +33,7 @@ type FMesh struct {
 	components *component.Collection
 	cycles     *cycle.Group
 	config     Config
+	logger     *log.Logger
 }
 
 // New creates a new f-mesh
@@ -42,6 +45,7 @@ func New(name string) *FMesh {
 		components:      component.NewCollection(),
 		cycles:          cycle.NewGroup(),
 		config:          defaultConfig,
+		logger:          getDefaultLogger(),
 	}
 }
 
@@ -72,7 +76,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	}
 
 	for _, c := range components {
-		fm.components = fm.components.With(c)
+		fm.components = fm.components.With(c.WithPrefixedLogger(fm.Logger()))
 		if c.HasErr() {
 			return fm.WithErr(c.Err())
 		}
@@ -286,4 +290,24 @@ func (fm *FMesh) mustStop() (bool, error) {
 func (fm *FMesh) WithErr(err error) *FMesh {
 	fm.SetErr(err)
 	return fm
+}
+
+func (fm *FMesh) WithLogger(logger *log.Logger) *FMesh {
+	if fm.HasErr() {
+		return fm
+	}
+
+	fm.logger = logger
+	return fm
+}
+
+func (fm *FMesh) Logger() *log.Logger {
+	return fm.logger
+}
+
+func getDefaultLogger() *log.Logger {
+	logger := log.Default()
+	logger.SetOutput(os.Stdout)
+	logger.SetFlags(log.LstdFlags | log.Lmsgprefix)
+	return logger
 }
