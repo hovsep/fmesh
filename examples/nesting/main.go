@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
+	"log"
 )
 
 type FactorizedNumber struct {
@@ -23,7 +24,7 @@ func main() {
 		WithDescription("This component just holds numbers we want to factorize").
 		WithInputs("in"). // Single port is enough, as it can hold any number of signals (as long as they fit into1 memory)
 		WithOutputs("out").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			// Pure bypass
 			return port.ForwardSignals(inputs.ByName("in"), outputs.ByName("out"))
 		})
@@ -32,7 +33,7 @@ func main() {
 		WithDescription("In this component we can do some optional filtering").
 		WithInputs("in").
 		WithOutputs("out", "log").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			isValid := func(num int) bool {
 				return num < 1000
 			}
@@ -50,13 +51,9 @@ func main() {
 	logger := component.New("logger").
 		WithDescription("Simple logger").
 		WithInputs("in").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-			log := func(data any) {
-				fmt.Printf("LOG: %v", data)
-			}
-
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			for _, sig := range inputs.ByName("in").AllSignalsOrNil() {
-				log(sig.PayloadOrNil())
+				log.Println(sig.PayloadOrNil())
 			}
 			return nil
 		})
@@ -65,7 +62,7 @@ func main() {
 		WithDescription("Prime factorization implemented as separate f-mesh").
 		WithInputs("in").
 		WithOutputs("out").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			//This activation function has no implementation of factorization algorithm,
 			//it only runs another f-mesh to get results
 
@@ -134,7 +131,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithDescription("Load the number to be factorized").
 		WithInputs("in").
 		WithOutputs("out").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			//For simplicity this f-mesh processes only one signal per run, so ignore all except first
 			outputs.ByName("out").PutSignals(inputs.ByName("in").Buffer().First())
 			return nil
@@ -144,7 +141,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithDescription("Divide by smallest prime (2) to handle even factors").
 		WithInputs("in").
 		WithOutputs("out", "factor").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			number := inputs.ByName("in").FirstSignalPayloadOrNil().(int)
 
 			for number%2 == 0 {
@@ -160,7 +157,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithDescription("Divide by odd primes starting from 3").
 		WithInputs("in").
 		WithOutputs("out", "factor").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			number := inputs.ByName("in").FirstSignalPayloadOrNil().(int)
 			divisor := 3
 			for number > 1 && divisor*divisor <= number {
@@ -178,7 +175,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithDescription("Store the last remaining prime factor, if any").
 		WithInputs("in").
 		WithOutputs("factor").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			number := inputs.ByName("in").FirstSignalPayloadOrNil().(int)
 			if number > 1 {
 				outputs.ByName("factor").PutSignals(signal.New(number))
@@ -190,7 +187,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithDescription("factors holder").
 		WithInputs("factor").
 		WithOutputs("factors").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			return port.ForwardSignals(inputs.ByName("factor"), outputs.ByName("factors"))
 		})
 

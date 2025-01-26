@@ -7,6 +7,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
@@ -25,7 +26,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithDescription("This component just doubles the input").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							inputNum := inputs.ByName("i1").FirstSignalPayloadOrDefault(0)
 
 							outputs.ByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
@@ -43,7 +44,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					WithDescription("This component just sums 2 inputs").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
 							return component.NewErrWaitForInputs(true)
 						}

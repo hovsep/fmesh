@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
+	"log"
 )
 
-type ActivationFunc func(inputs *port.Collection, outputs *port.Collection) error
+type ActivationFunc func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error
 
 // Component defines a main building block of FMesh
 type Component struct {
@@ -18,6 +19,7 @@ type Component struct {
 	inputs  *port.Collection
 	outputs *port.Collection
 	f       ActivationFunc
+	logger  *log.Logger
 }
 
 // New creates initialized component
@@ -218,8 +220,6 @@ func (c *Component) propagateChainErrors() {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met
-// @TODO: hide this method from user
-// @TODO: can we remove named return ?
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	c.propagateChainErrors()
 
@@ -247,7 +247,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	}
 
 	//Invoke the activation func
-	err := c.f(c.Inputs(), c.Outputs())
+	err := c.f(c.Inputs(), c.Outputs(), c.Logger())
 
 	if errors.Is(err, errWaitingForInputs) {
 		activationResult = c.newActivationResultWaitingForInputs(err)
@@ -296,4 +296,23 @@ func (c *Component) ClearInputs() *Component {
 func (c *Component) WithErr(err error) *Component {
 	c.SetErr(err)
 	return c
+}
+
+// WithPrefixedLogger creates a new logger prefixed with component name
+func (c *Component) WithPrefixedLogger(logger *log.Logger) *Component {
+	if c.HasErr() {
+		return c
+	}
+
+	if logger == nil {
+		return c
+	}
+
+	prefix := fmt.Sprintf("%s : ", c.Name())
+	c.logger = log.New(logger.Writer(), prefix, logger.Flags())
+	return c
+}
+
+func (c *Component) Logger() *log.Logger {
+	return c.logger
 }

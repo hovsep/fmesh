@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
@@ -36,7 +37,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithDescription("This component adds 2 numbers").
 						WithInputs("num1", "num2").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							//The activation func can be even empty, does not affect export
 							return nil
 						})
@@ -45,7 +46,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithDescription("This component multiplies number by 3").
 						WithInputs("num").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							//The activation func can be even empty, does not affect export
 							return nil
 						})
@@ -93,7 +94,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithDescription("This component adds 2 numbers").
 						WithInputs("num1", "num2").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							num1, err := inputs.ByName("num1").FirstSignalPayload()
 							if err != nil {
 								return err
@@ -112,7 +113,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithDescription("This component multiplies number by 3").
 						WithInputs("num").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 							num, err := inputs.ByName("num").FirstSignalPayload()
 							if err != nil {
 								return err
