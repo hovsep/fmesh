@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
+	"log"
 	"net/http"
 	"time"
 )
@@ -89,61 +90,63 @@ func getMesh() *fmesh.FMesh {
 	crawler := component.New("web crawler").
 		WithDescription("gets http headers from given url").
 		WithInputs("url").
-		WithOutputs("errors", "headers").WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-		if !inputs.ByName("url").HasSignals() {
-			return component.NewErrWaitForInputs(false)
-		}
+		WithOutputs("errors", "headers").
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+			if !inputs.ByName("url").HasSignals() {
+				return component.NewErrWaitForInputs(false)
+			}
 
-		allUrls, err := inputs.ByName("url").AllSignalsPayloads()
-		if err != nil {
-			return err
-		}
-
-		for _, urlVal := range allUrls {
-
-			url := urlVal.(string)
-			//All urls will be crawled sequentially
-			// in order to call them concurrently we need run each request in separate goroutine and handle synchronization (e.g. waitgroup)
-			response, err := client.Get(url)
+			allUrls, err := inputs.ByName("url").AllSignalsPayloads()
 			if err != nil {
-				outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("got error: %w from url: %s", err, url)))
-				continue
+				return err
 			}
 
-			if len(response.Header) == 0 {
-				outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("no headers for url %s", url)))
-				continue
+			for _, urlVal := range allUrls {
+
+				url := urlVal.(string)
+				//All urls will be crawled sequentially
+				// in order to call them concurrently we need run each request in separate goroutine and handle synchronization (e.g. waitgroup)
+				response, err := client.Get(url)
+				if err != nil {
+					outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("got error: %w from url: %s", err, url)))
+					continue
+				}
+
+				if len(response.Header) == 0 {
+					outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("no headers for url %s", url)))
+					continue
+				}
+
+				outputs.ByName("headers").PutSignals(signal.New(map[string]http.Header{
+					url: response.Header,
+				}))
 			}
 
-			outputs.ByName("headers").PutSignals(signal.New(map[string]http.Header{
-				url: response.Header,
-			}))
-		}
-
-		return nil
-	})
+			return nil
+		})
 
 	logger := component.New("error logger").
 		WithDescription("logs http errors").
-		WithInputs("error").WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-		if !inputs.ByName("error").HasSignals() {
-			return component.NewErrWaitForInputs(false)
-		}
-
-		allErrors, err := inputs.ByName("error").AllSignalsPayloads()
-		if err != nil {
-			return err
-		}
-
-		for _, errVal := range allErrors {
-			e := errVal.(error)
-			if e != nil {
-				fmt.Println("Error logger says:", e)
+		WithInputs("error").
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+			if !inputs.ByName("error").HasSignals() {
+				return component.NewErrWaitForInputs(false)
 			}
-		}
 
-		return nil
-	})
+			allErrors, err := inputs.ByName("error").AllSignalsPayloads()
+			if err != nil {
+				return err
+			}
+
+			for _, errVal := range allErrors {
+				e := errVal.(error)
+				if e != nil {
+					fmt.Println("Error logger says:", e)
+				}
+			}
+
+			return nil
+		})
 
 	//Define pipes
 	crawler.OutputByName("errors").PipeTo(logger.InputByName("error"))

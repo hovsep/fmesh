@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
+	"log"
 )
 
 // This example demonstrates how a component can have a pipe looped back into its own input,
@@ -20,7 +21,7 @@ func main() {
 	c1 := component.New("fibonacci number generator").
 		WithInputs("i_cur", "i_prev").
 		WithOutputs("o_cur", "o_prev").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
 			cur := inputs.ByName("i_cur").FirstSignalPayloadOrDefault(0).(int)
 			prev := inputs.ByName("i_prev").FirstSignalPayloadOrDefault(0).(int)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
+	"log"
 )
 
 const (
@@ -24,25 +25,24 @@ func main() {
 		WithDescription("electric battery with initial charge level").
 		WithInputs("power_demand").
 		WithOutputs("power_supply").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-			//@TODO add component level loggers
-			fmt.Println("battery:activated, level= ", batteryLevel)
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+			log.Println("activated, level= ", batteryLevel)
 			//Power demand/supply cycle
 			if inputs.ByName("power_demand").HasSignals() {
 				demandedCurrent := inputs.ByName("power_demand").FirstSignalPayloadOrDefault(0).(int)
-				fmt.Println("battery:consumption = ", demandedCurrent)
+				log.Println("consumption = ", demandedCurrent)
 
 				//Emit current represented as a number
 				suppliedCurrent := min(batteryLevel, demandedCurrent)
 				if suppliedCurrent > 0 {
 					outputs.ByName("power_supply").PutSignals(signal.New(suppliedCurrent))
-					fmt.Println("battery:emiting power ", suppliedCurrent)
+					log.Println("emiting power ", suppliedCurrent)
 
 					//Discharge
 					batteryLevel = max(0, batteryLevel-suppliedCurrent)
-					fmt.Println("battery:discharged to", batteryLevel)
+					log.Println("discharged to", batteryLevel)
 				} else {
-					fmt.Println("battery:LOW POWER")
+					log.Println("LOW POWER")
 				}
 			}
 
@@ -53,23 +53,23 @@ func main() {
 		WithDescription("electric lightbulb").
 		WithInputs("power_supply", "start_power_demand").
 		WithOutputs("light_supply", "power_demand").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-			fmt.Println("bulb:activated")
+		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+			log.Println("activated")
 			//Power consumption cycle (at constant rate)
 			inputPower := inputs.ByName("power_supply").FirstSignalPayloadOrDefault(0).(int)
-			fmt.Println("bulb:got power: ", inputPower)
+			log.Println("got power: ", inputPower)
 
 			if inputPower >= lightBulbPowerConsumption {
 				//Emit light
 				outputs.ByName("light_supply").PutSignals(signal.New(lightBulbLuminousFlux))
-				fmt.Println("bulb:emited light: ", lightBulbLuminousFlux)
+				log.Println("emited light: ", lightBulbLuminousFlux)
 			} else {
-				fmt.Println("bulb:LOW POWER")
+				log.Println("LOW POWER")
 			}
 
 			//Always continue demanding power
 			outputs.ByName("power_demand").PutSignals(signal.New(lightBulbPowerConsumption))
-			fmt.Println("bulb:demanded power: ", lightBulbPowerConsumption)
+			log.Println("demanded power: ", lightBulbPowerConsumption)
 			return nil
 		})
 
@@ -78,7 +78,10 @@ func main() {
 
 	fm := fmesh.New("battery_and_lightbulb").
 		WithDescription("simple electric simulation").
-		WithComponents(battery, lightbulb)
+		WithComponents(battery, lightbulb).
+		WithConfig(fmesh.Config{
+			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+		})
 
 	// Turn on the lightbulb (yes you can init an output port)
 	lightbulb.InputByName("start_power_demand").PutSignals(signal.New("start"))
