@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"log"
 	"net/http"
 	"time"
 )
@@ -91,12 +89,12 @@ func getMesh() *fmesh.FMesh {
 		WithDescription("gets http headers from given url").
 		WithInputs("url").
 		WithOutputs("errors", "headers").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-			if !inputs.ByName("url").HasSignals() {
+		WithActivationFunc(func(this *component.Component) error {
+			if !this.InputByName("url").HasSignals() {
 				return component.NewErrWaitForInputs(false)
 			}
 
-			allUrls, err := inputs.ByName("url").AllSignalsPayloads()
+			allUrls, err := this.InputByName("url").AllSignalsPayloads()
 			if err != nil {
 				return err
 			}
@@ -108,16 +106,16 @@ func getMesh() *fmesh.FMesh {
 				// in order to call them concurrently we need run each request in separate goroutine and handle synchronization (e.g. waitgroup)
 				response, err := client.Get(url)
 				if err != nil {
-					outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("got error: %w from url: %s", err, url)))
+					this.OutputByName("errors").PutSignals(signal.New(fmt.Errorf("got error: %w from url: %s", err, url)))
 					continue
 				}
 
 				if len(response.Header) == 0 {
-					outputs.ByName("errors").PutSignals(signal.New(fmt.Errorf("no headers for url %s", url)))
+					this.OutputByName("errors").PutSignals(signal.New(fmt.Errorf("no headers for url %s", url)))
 					continue
 				}
 
-				outputs.ByName("headers").PutSignals(signal.New(map[string]http.Header{
+				this.OutputByName("headers").PutSignals(signal.New(map[string]http.Header{
 					url: response.Header,
 				}))
 			}
@@ -128,12 +126,12 @@ func getMesh() *fmesh.FMesh {
 	logger := component.New("error logger").
 		WithDescription("logs http errors").
 		WithInputs("error").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-			if !inputs.ByName("error").HasSignals() {
+		WithActivationFunc(func(this *component.Component) error {
+			if !this.InputByName("error").HasSignals() {
 				return component.NewErrWaitForInputs(false)
 			}
 
-			allErrors, err := inputs.ByName("error").AllSignalsPayloads()
+			allErrors, err := this.InputByName("error").AllSignalsPayloads()
 			if err != nil {
 				return err
 			}

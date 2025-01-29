@@ -3,10 +3,8 @@ package dot
 import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"testing"
 )
 
@@ -37,7 +35,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithDescription("This component adds 2 numbers").
 						WithInputs("num1", "num2").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+						WithActivationFunc(func(this *component.Component) error {
 							//The activation func can be even empty, does not affect export
 							return nil
 						})
@@ -46,7 +44,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithDescription("This component multiplies number by 3").
 						WithInputs("num").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+						WithActivationFunc(func(this *component.Component) error {
 							//The activation func can be even empty, does not affect export
 							return nil
 						})
@@ -94,18 +92,18 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithDescription("This component adds 2 numbers").
 						WithInputs("num1", "num2").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-							num1, err := inputs.ByName("num1").FirstSignalPayload()
+						WithActivationFunc(func(this *component.Component) error {
+							num1, err := this.InputByName("num1").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
 
-							num2, err := inputs.ByName("num2").FirstSignalPayload()
+							num2, err := this.InputByName("num2").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
 
-							outputs.ByName("result").PutSignals(signal.New(num1.(int) + num2.(int)))
+							this.OutputByName("result").PutSignals(signal.New(num1.(int) + num2.(int)))
 							return nil
 						})
 
@@ -113,12 +111,12 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 						WithDescription("This component multiplies number by 3").
 						WithInputs("num").
 						WithOutputs("result").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-							num, err := inputs.ByName("num").FirstSignalPayload()
+						WithActivationFunc(func(this *component.Component) error {
+							num, err := this.InputByName("num").FirstSignalPayload()
 							if err != nil {
 								return err
 							}
-							outputs.ByName("result").PutSignals(signal.New(num.(int) * 3))
+							this.OutputByName("result").PutSignals(signal.New(num.(int) * 3))
 							return nil
 						})
 

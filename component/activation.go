@@ -3,11 +3,9 @@ package component
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/port"
-	"log"
 )
 
-type ActivationFunc func(state State, inputs *port.Collection, outputs *port.Collection, log *log.Logger) error
+type ActivationFunc func(this *Component) error
 
 // WithActivationFunc sets activation function
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
@@ -56,7 +54,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	}
 
 	//Invoke the activation func
-	err := c.f(c.state, c.Inputs(), c.Outputs(), c.Logger())
+	err := c.f(c)
 
 	if errors.Is(err, errWaitingForInputs) {
 		activationResult = c.newActivationResultWaitingForInputs(err)
