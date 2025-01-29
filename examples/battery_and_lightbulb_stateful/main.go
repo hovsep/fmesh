@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"log"
 )
@@ -48,23 +47,32 @@ const (
 //
 // The simulation runs until a termination condition is met, such as the battery depleting or the lightbulb burning out.
 func main() {
-	//Init battery level (state stored outside the component)
-	batteryLevel := 1000
-
 	battery := component.New("battery").
 		WithDescription("electric battery with initial charge level").
 		WithInputs("power_demand").
 		WithOutputs("power_supply").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-			log.Println("level: ", batteryLevel)
+		WithInitialState(func(state component.State) {
+			state["level"] = 1000
+		}).
+		WithActivationFunc(func(this *component.Component) error {
+
+			// Read state
+			level := this.State()["level"].(int)
+
+			defer func() {
+				// Write state
+				this.State()["level"] = level
+			}()
+
+			log.Println("level: ", level)
 			//Power demand/supply cycle
-			if inputs.ByName("power_demand").HasSignals() {
-				demandedCurrent := inputs.ByName("power_demand").FirstSignalPayloadOrDefault(0).(int)
+			if this.InputByName("power_demand").HasSignals() {
+				demandedCurrent := this.InputByName("power_demand").FirstSignalPayloadOrDefault(0).(int)
 
 				//Emit current represented as a number
-				suppliedCurrent := min(batteryLevel, demandedCurrent)
+				suppliedCurrent := min(level, demandedCurrent)
 				if suppliedCurrent > 0 {
-					outputs.ByName("power_supply").PutSignals(signal.New(suppliedCurrent))
+					this.OutputByName("power_supply").PutSignals(signal.New(suppliedCurrent))
 					log.Println("supplying power:", suppliedCurrent)
 
 					if suppliedCurrent < demandedCurrent {
@@ -72,8 +80,8 @@ func main() {
 					}
 
 					//Discharge
-					batteryLevel = max(0, batteryLevel-suppliedCurrent)
-					log.Println("discharged to: ", batteryLevel)
+					level = max(0, level-suppliedCurrent)
+					log.Println("discharged to: ", level)
 				} else {
 					log.Println("BATTERY DIED")
 				}
@@ -82,35 +90,44 @@ func main() {
 			return nil
 		})
 
-	//Init lightbulb state
-	lightbulbTemperature := 26.0 //room temperature
-
 	lightbulb := component.New("lightbulb").
 		WithDescription("electric lightbulb").
 		WithInputs("power_supply", "start_power_demand").
 		WithOutputs("light_supply", "power_demand").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+		WithInitialState(func(state component.State) {
+			state["temperature"] = 26.0
+		}).
+		WithActivationFunc(func(this *component.Component) error {
+
+			// Read state
+			temperature := this.State()["temperature"].(float64)
+
+			defer func() {
+				// Write state
+				this.State()["temperature"] = temperature
+			}()
+
 			//Skip power consumption on start (as power is not demanded yet)
-			if !inputs.ByName("start_power_demand").HasSignals() {
+			if !this.InputByName("start_power_demand").HasSignals() {
 				//Power consumption cycle (at constant rate)
-				inputPower := inputs.ByName("power_supply").FirstSignalPayloadOrDefault(0).(int)
+				inputPower := this.InputByName("power_supply").FirstSignalPayloadOrDefault(0).(int)
 				log.Println("got power: ", inputPower)
 
 				if inputPower >= lightBulbPowerConsumption {
-					//Emit light (here we simulate how the lighbulb performance degrades with warming)
-					lightEmission := lightBulbLuminousFlux / lightbulbTemperature * 100
-					if lightbulbTemperature >= lightbulbOverheatingThreshold {
+					//Emit light (here we simulate how the lightbulb performance degrades with warming)
+					lightEmission := lightBulbLuminousFlux / temperature * 100
+					if temperature >= lightbulbOverheatingThreshold {
 						log.Println("OVERHEATING. LIGHT EMISSION WILL SIGNIFICANTLY DEGRADE")
 						lightEmission *= lightbulbOverheatDegradation
 					}
-					outputs.ByName("light_supply").PutSignals(signal.New(lightEmission))
+					this.OutputByName("light_supply").PutSignals(signal.New(lightEmission))
 					log.Println("emited light: ", lightEmission)
-					log.Println("temperature:", lightbulbTemperature)
+					log.Println("temperature:", temperature)
 
 					//Get warmer
-					lightbulbTemperature += lightBulbWarmingPerCycle
+					temperature += lightBulbWarmingPerCycle
 
-					if lightbulbTemperature > lightbulbMaxWorkingTemperature {
+					if temperature > lightbulbMaxWorkingTemperature {
 						log.Println("BURNOUT")
 						return nil
 					}
@@ -120,7 +137,7 @@ func main() {
 			}
 
 			//Always continue demanding power
-			outputs.ByName("power_demand").PutSignals(signal.New(lightBulbPowerConsumption))
+			this.OutputByName("power_demand").PutSignals(signal.New(lightBulbPowerConsumption))
 			return nil
 		})
 

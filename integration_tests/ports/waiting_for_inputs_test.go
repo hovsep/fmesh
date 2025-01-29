@@ -4,10 +4,8 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"testing"
 )
 
@@ -26,10 +24,10 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithDescription("This component just doubles the input").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-							inputNum := inputs.ByName("i1").FirstSignalPayloadOrDefault(0)
+						WithActivationFunc(func(this *component.Component) error {
+							inputNum := this.InputByName("i1").FirstSignalPayloadOrDefault(0)
 
-							outputs.ByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
+							this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 							return nil
 						})
 				}
@@ -44,15 +42,15 @@ func Test_WaitingForInputs(t *testing.T) {
 					WithDescription("This component just sums 2 inputs").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+					WithActivationFunc(func(this *component.Component) error {
+						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1 := inputs.ByName("i1").FirstSignalPayloadOrDefault(0)
-						inputNum2 := inputs.ByName("i2").FirstSignalPayloadOrDefault(0)
+						inputNum1 := this.InputByName("i1").FirstSignalPayloadOrDefault(0)
+						inputNum2 := this.InputByName("i2").FirstSignalPayloadOrDefault(0)
 
-						outputs.ByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
+						this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 						return nil
 					})
 

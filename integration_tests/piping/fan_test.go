@@ -7,7 +7,6 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"math/rand"
 	"testing"
 	"time"
@@ -27,35 +26,35 @@ func Test_Fan(t *testing.T) {
 					component.New("producer").
 						WithInputs("start").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-							outputs.ByName("o1").PutSignals(signal.New(time.Now()))
+						WithActivationFunc(func(this *component.Component) error {
+							this.OutputByName("o1").PutSignals(signal.New(time.Now()))
 							return nil
 						}),
 
 					component.New("consumer1").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						}),
 
 					component.New("consumer2").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						}),
 
 					component.New("consumer3").
 						WithInputs("i1").
 						WithOutputs("o1").
-						WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						}),
 				)
@@ -95,32 +94,32 @@ func Test_Fan(t *testing.T) {
 				producer1 := component.New("producer1").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
+					WithActivationFunc(func(this *component.Component) error {
+						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
 				producer2 := component.New("producer2").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
+					WithActivationFunc(func(this *component.Component) error {
+						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
 				producer3 := component.New("producer3").
 					WithInputs("start").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						outputs.ByName("o1").PutSignals(signal.New(rand.Int()))
+					WithActivationFunc(func(this *component.Component) error {
+						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 				consumer := component.New("consumer").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+					WithActivationFunc(func(this *component.Component) error {
 						//Bypass
-						port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+						port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						return nil
 					})
 
