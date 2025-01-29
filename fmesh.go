@@ -76,7 +76,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	}
 
 	for _, c := range components {
-		fm.components = fm.components.With(c.WithPrefixedLogger(fm.Logger()))
+		fm.components = fm.components.With(c.WithLogger(fm.Logger()))
 		if c.HasErr() {
 			return fm.WithErr(c.Err())
 		}

@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"log"
 )
 
 // This example demonstrates how a component can have a pipe looped back into its own input,
@@ -21,17 +19,17 @@ func main() {
 	c1 := component.New("fibonacci number generator").
 		WithInputs("i_cur", "i_prev").
 		WithOutputs("o_cur", "o_prev").
-		WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-			cur := inputs.ByName("i_cur").FirstSignalPayloadOrDefault(0).(int)
-			prev := inputs.ByName("i_prev").FirstSignalPayloadOrDefault(0).(int)
+		WithActivationFunc(func(this *component.Component) error {
+			cur := this.InputByName("i_cur").FirstSignalPayloadOrDefault(0).(int)
+			prev := this.InputByName("i_prev").FirstSignalPayloadOrDefault(0).(int)
 
 			next := cur + prev
 
 			//Hardcoded limit
 			if next < 100 {
 				fmt.Println(next)
-				outputs.ByName("o_cur").PutSignals(signal.New(next))
-				outputs.ByName("o_prev").PutSignals(signal.New(cur))
+				this.OutputByName("o_cur").PutSignals(signal.New(next))
+				this.OutputByName("o_prev").PutSignals(signal.New(cur))
 			}
 
 			return nil

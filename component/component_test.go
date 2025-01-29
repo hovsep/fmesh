@@ -182,8 +182,8 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			name:      "happy path",
 			component: New("c1"),
 			args: args{
-				f: func(inputs *port.Collection, outputs *port.Collection, logger *log.Logger) error {
-					outputs.ByName("out1").PutSignals(signal.New(23))
+				f: func(this *Component) error {
+					this.OutputByName("out1").PutSignals(signal.New(23))
 					return nil
 				},
 			},
@@ -192,20 +192,17 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
-			logger := log.Default()
 
 			//Compare activation functions by they result and error
-			testInputs1 := port.NewCollection().With(port.NewGroup("in1", "in2").PortsOrNil()...)
-			testInputs2 := port.NewCollection().With(port.NewGroup("in1", "in2").PortsOrNil()...)
-			testOutputs1 := port.NewCollection().With(port.NewGroup("out1", "out2").PortsOrNil()...)
-			testOutputs2 := port.NewCollection().With(port.NewGroup("out1", "out2").PortsOrNil()...)
-			err1 := componentAfter.f(testInputs1, testOutputs1, logger)
-			err2 := tt.args.f(testInputs2, testOutputs2, logger)
+			dummyComponent1 := New("c1").WithInputs("i1", "i2").WithOutputs("o1", "o2")
+			dummyComponent2 := New("c2").WithInputs("i1", "i2").WithOutputs("o1", "o2")
+			err1 := componentAfter.f(dummyComponent1)
+			err2 := tt.args.f(dummyComponent2)
 			assert.Equal(t, err1, err2)
 
 			//Compare signals without keys (because they are random)
-			assert.ElementsMatch(t, testOutputs1.ByName("out1").AllSignalsOrNil(), testOutputs2.ByName("out1").AllSignalsOrNil())
-			assert.ElementsMatch(t, testOutputs1.ByName("out2").AllSignalsOrNil(), testOutputs2.ByName("out2").AllSignalsOrNil())
+			assert.ElementsMatch(t, dummyComponent1.OutputByName("o1").AllSignalsOrNil(), dummyComponent2.OutputByName("o1").AllSignalsOrNil())
+			assert.ElementsMatch(t, dummyComponent1.OutputByName("o2").AllSignalsOrNil(), dummyComponent2.OutputByName("o2").AllSignalsOrNil())
 
 		})
 	}
@@ -396,8 +393,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						return port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+					WithActivationFunc(func(this *Component) error {
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
 				return c
 			},
@@ -410,7 +407,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			getComponent: func() *Component {
 				c := New("c1").
 					WithInputs("i1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+					WithActivationFunc(func(this *Component) error {
 						return errors.New("test error")
 					})
 				//Only one input set
@@ -428,8 +425,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						return port.ForwardSignals(inputs.ByName("i1"), outputs.ByName("o1"))
+					WithActivationFunc(func(this *Component) error {
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
 				//Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
@@ -445,7 +442,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+					WithActivationFunc(func(this *Component) error {
 						panic(errors.New("oh shrimps"))
 						return nil
 					})
@@ -464,7 +461,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+					WithActivationFunc(func(this *Component) error {
 						panic("oh shrimps")
 						return nil
 					})
@@ -483,8 +480,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c1 := New("c1").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+					WithActivationFunc(func(this *Component) error {
+						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return NewErrWaitForInputs(false)
 						}
 						return nil
@@ -508,8 +505,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c1 := New("c1").
 					WithInputs("i1", "i2").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						if !inputs.ByNames("i1", "i2").AllHaveSignals() {
+					WithActivationFunc(func(this *Component) error {
+						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return NewErrWaitForInputs(true)
 						}
 						return nil
@@ -555,7 +552,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c := New("c1").
 					WithInputs("i1").
 					WithOutputs("o1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
+					WithActivationFunc(func(this *Component) error {
 						log.Println("This must not be logged, as component must not activate")
 						return nil
 					})
@@ -574,8 +571,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			getComponent: func() *Component {
 				c := New("c1").
 					WithInputs("i1").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection, log *log.Logger) error {
-						log.Println("This line must be logged")
+					WithActivationFunc(func(this *Component) error {
+						this.logger.Println("This line must be logged")
 						return errors.New("test error")
 					})
 				//Only one input set
@@ -598,7 +595,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			var loggerOutput bytes.Buffer
 			logger.SetOutput(&loggerOutput)
 
-			gotActivationResult := tt.getComponent().WithPrefixedLogger(logger).MaybeActivate()
+			gotActivationResult := tt.getComponent().WithLogger(logger).MaybeActivate()
 			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
 			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
