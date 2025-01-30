@@ -55,7 +55,6 @@ func main() {
 			state["level"] = 1000
 		}).
 		WithActivationFunc(func(this *component.Component) error {
-
 			// Read state
 			level := this.State()["level"].(int)
 
@@ -121,7 +120,7 @@ func main() {
 						lightEmission *= lightbulbOverheatDegradation
 					}
 					this.OutputByName("light_supply").PutSignals(signal.New(lightEmission))
-					log.Println("emited light: ", lightEmission)
+					log.Println("emitted light: ", lightEmission)
 					log.Println("temperature:", temperature)
 
 					//Get warmer
