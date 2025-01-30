@@ -22,6 +22,11 @@ jobs:
       - name: Run tests
         run: go test ./... -coverprofile=coverage.txt
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61
+
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4
         with:
