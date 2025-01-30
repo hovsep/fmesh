@@ -33,6 +33,7 @@ func New(name string) *Component {
 		outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 			port.DirectionLabel: port.DirectionOut,
 		}),
+		state: NewState(),
 	}
 }
 
