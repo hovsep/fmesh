@@ -131,7 +131,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						panic(errors.New("oh shrimps"))
-						return nil
 					})
 				//Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
@@ -150,7 +149,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						panic("oh shrimps")
-						return nil
 					})
 				//Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
