@@ -316,8 +316,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-							return nil
+							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 					component.New("c3").
 						WithDescription("This component returns an error, but the mesh is configured to ignore errors").
@@ -332,7 +331,6 @@ func TestFMesh_Run(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							panic("no way")
-							return nil
 						}),
 				),
 			initFM: func(fm *FMesh) {
@@ -416,7 +414,7 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						}),
 					component.New("c3").
@@ -431,20 +429,18 @@ func TestFMesh_Run(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 
 							// Even component panicked, it managed to set some data on output "o1"
 							// so that data will be available in next cycle
 							panic("no way")
-							return nil
 						}),
 					component.New("c5").
 						WithDescription("This component receives a number from c4").
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-							return nil
+							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 				),
 			initFM: func(fm *FMesh) {
