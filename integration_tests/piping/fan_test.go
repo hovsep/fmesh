@@ -1,4 +1,4 @@
-package integration_tests
+package piping
 
 import (
 	"github.com/hovsep/fmesh"
