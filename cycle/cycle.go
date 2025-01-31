@@ -1,6 +1,7 @@
 package cycle
 
 import (
+	"errors"
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"sync"
@@ -30,6 +31,18 @@ func (cycle *Cycle) ActivationResults() component.ActivationResultCollection {
 // HasErrors tells whether the cycle is ended wih activation errors (at lease one component returned an error)
 func (cycle *Cycle) HasErrors() bool {
 	return cycle.ActivationResults().HasErrors()
+}
+
+// AllErrorsCombined returns all errors occurred within the cycle as one error
+func (cycle *Cycle) AllErrorsCombined() error {
+	var allErrors error
+	for _, ar := range cycle.ActivationResults() {
+		if ar.IsError() {
+			allErrors = errors.Join(allErrors, ar.ActivationError())
+		}
+	}
+
+	return allErrors
 }
 
 // HasPanics tells whether the cycle is ended wih panic(at lease one component panicked)

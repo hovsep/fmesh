@@ -268,7 +268,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasErrors() || lastCycle.HasPanics() {
 			//@TODO: add failing components names to error
-			return true, fmt.Errorf("%w, cycle # %d", ErrHitAnErrorOrPanic, lastCycle.Number())
+			return true, fmt.Errorf("%w, cycle # %d, activation errors: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined())
 		}
 		return false, nil
 	case StopOnFirstPanic:
