@@ -143,8 +143,6 @@ func (fm *FMesh) runCycle() {
 	}
 
 	fm.cycles = fm.cycles.With(newCycle)
-
-	return
 }
 
 // DrainComponents drains the data from activated components

@@ -17,7 +17,7 @@ func Test_Fan(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error)
 	}{
 		{
 			name: "fan-out (3 pipes from 1 source port)",
@@ -36,8 +36,7 @@ func Test_Fan(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-							return nil
+							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
 					component.New("consumer2").
@@ -45,8 +44,7 @@ func Test_Fan(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-							return nil
+							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
 					component.New("consumer3").
@@ -54,8 +52,7 @@ func Test_Fan(t *testing.T) {
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							//Bypass received signal to output
-							port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-							return nil
+							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 				)
 
@@ -70,7 +67,8 @@ func Test_Fan(t *testing.T) {
 				//Fire the mesh
 				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
+				assert.NoError(t, runErr)
 				//All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
 				assert.True(t, c1.OutputByName("o1").HasSignals())
@@ -119,8 +117,7 @@ func Test_Fan(t *testing.T) {
 					WithOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						//Bypass
-						port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						return nil
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
 
 				producer1.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
@@ -134,8 +131,8 @@ func Test_Fan(t *testing.T) {
 				fm.Components().ByName("producer2").InputByName("start").PutSignals(signal.New(struct{}{}))
 				fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
-				assert.NoError(t, err)
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
+				assert.NoError(t, runErr)
 				//Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())
 
