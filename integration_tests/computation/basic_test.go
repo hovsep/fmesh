@@ -83,7 +83,6 @@ func Test_Readme(t *testing.T) {
 					WithActivationFunc(func(this *component.Component) error {
 						word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
 						word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
-
 						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 						return nil
 					}),
@@ -92,7 +91,6 @@ func Test_Readme(t *testing.T) {
 					WithOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
 						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
-
 						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 						return nil
 					})).

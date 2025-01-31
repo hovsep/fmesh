@@ -31,54 +31,53 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 
 
 <h2>Example:</h2>
-
 ```go
-fm := fmesh.New("hello world").
-		WithComponents(
-			component.New("concat").
-				WithInputs("i1", "i2").
-				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-					word1 := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
-					word2 := inputs.ByName("i2").FirstSignalPayloadOrDefault("").(string)
+	t.Run("readme test", func(t *testing.T) {
+		fm := fmesh.New("hello world").
+			WithComponents(
+				component.New("concat").
+					WithInputs("i1", "i2").
+					WithOutputs("res").
+					WithActivationFunc(func(this *component.Component) error {
+						word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
+						return nil
+					}),
+				component.New("case").
+					WithInputs("i1").
+					WithOutputs("res").
+					WithActivationFunc(func(this *component.Component) error {
+						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
+						return nil
+					})).
+			WithConfig(fmesh.Config{
+				ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+				CyclesLimit:           10,
+			})
 
-					outputs.ByName("res").PutSignals(signal.New(word1 + word2))
-					return nil
-				}),
-			component.New("case").
-				WithInputs("i1").
-				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-					inputString := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
+		fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
+			fm.Components().ByName("case").Inputs().ByName("i1"),
+		)
 
-					outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
-					return nil
-				})).
-		WithConfig(fmesh.Config{
-			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-			CyclesLimit:           10,
-		})
+		// Init inputs
+		fm.Components().ByName("concat").Inputs().ByName("i1").PutSignals(signal.New("hello "))
+		fm.Components().ByName("concat").Inputs().ByName("i2").PutSignals(signal.New("world !"))
 
-	fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
-		fm.Components().ByName("case").Inputs().ByName("i1"),
-	)
+		// Run the mesh
+		_, err := fm.Run()
 
-	// Init inputs
-	fm.Components().ByName("concat").InputByName("i1").PutSignals(signal.New("hello "))
-	fm.Components().ByName("concat").InputByName("i2").PutSignals(signal.New("world !"))
+		// Check for errors
+		if err != nil {
+			fmt.Println("F-Mesh returned an error")
+			os.Exit(1)
+		}
 
-	// Run the mesh
-	_, err := fm.Run()
-
-	// Check for errors
-	if err != nil {
-		fmt.Println("F-Mesh returned an error")
-		os.Exit(1)
-	}
-
-	//Extract results
-	results := fm.Components().ByName("case").OutputByName("res").FirstSignalPayloadOrNil()
-	fmt.Printf("Result is : %v", results)
+		//Extract results
+		results := fm.Components().ByName("case").Outputs().ByName("res").FirstSignalPayloadOrNil()
+		fmt.Printf("Result is :%v", results)
 ```
+
 See more in [examples](https://github.com/hovsep/fmesh/tree/main/examples) directory.
 <h2>Version <a href="https://github.com/hovsep/fmesh/releases/tag/v0.0.1-alpha">0.1.0-Sugunia</a> is already released!</h2>
