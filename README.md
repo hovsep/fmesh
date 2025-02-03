@@ -81,4 +81,3 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 ```
 
 See more in [examples](https://github.com/hovsep/fmesh/tree/main/examples) directory.
-<h2>Version <a href="https://github.com/hovsep/fmesh/releases/tag/v0.0.1-alpha">0.1.0-Sugunia</a> is already released!</h2>
