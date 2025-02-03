@@ -33,32 +33,30 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 <h2>Example:</h2>
 
 ```go
-
-fm := fmesh.New("hello world").
-		WithComponents(
-			component.New("concat").
-				WithInputs("i1", "i2").
-				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-					word1 := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
-					word2 := inputs.ByName("i2").FirstSignalPayloadOrDefault("").(string)
-
-					outputs.ByName("res").PutSignals(signal.New(word1 + word2))
-					return nil
-				}),
-			component.New("case").
-				WithInputs("i1").
-				WithOutputs("res").
-				WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-					inputString := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
-
-					outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
-					return nil
-				})).
-		WithConfig(fmesh.Config{
-			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-			CyclesLimit:           10,
-		})
+	t.Run("readme test", func(t *testing.T) {
+		fm := fmesh.New("hello world").
+			WithComponents(
+				component.New("concat").
+					WithInputs("i1", "i2").
+					WithOutputs("res").
+					WithActivationFunc(func(this *component.Component) error {
+						word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
+						return nil
+					}),
+				component.New("case").
+					WithInputs("i1").
+					WithOutputs("res").
+					WithActivationFunc(func(this *component.Component) error {
+						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
+						return nil
+					})).
+			WithConfig(fmesh.Config{
+				ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+				CyclesLimit:           10,
+			})
 
 	fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
 		fm.Components().ByName("case").Inputs().ByName("i1"),
@@ -81,5 +79,6 @@ fm := fmesh.New("hello world").
 	results := fm.Components().ByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 	fmt.Printf("Result is : %v", results)
 ```
+
 See more in [examples](https://github.com/hovsep/fmesh/tree/main/examples) directory.
 <h2>Version <a href="https://github.com/hovsep/fmesh/releases/tag/v0.0.1-alpha">0.1.0-Sugunia</a> is already released!</h2>
