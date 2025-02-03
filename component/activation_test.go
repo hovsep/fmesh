@@ -238,7 +238,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
-						log.Println("This must not be logged, as component must not activate")
+						this.Logger().Println("This must not be logged, as component must not activate")
 						return nil
 					})
 				return c

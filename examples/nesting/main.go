@@ -6,7 +6,6 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"log"
 )
 
 type FactorizedNumber struct {
@@ -53,7 +52,7 @@ func main() {
 		WithInputs("in").
 		WithActivationFunc(func(this *component.Component) error {
 			for _, sig := range this.InputByName("in").AllSignalsOrNil() {
-				log.Println(sig.PayloadOrNil())
+				this.Logger().Println(sig.PayloadOrNil())
 			}
 			return nil
 		})
