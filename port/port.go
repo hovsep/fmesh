@@ -198,6 +198,14 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 
 // ForwardSignals copies all buffer from source port to destination port, without clearing the source port
 func ForwardSignals(source *Port, dest *Port) error {
+	if source.HasErr() {
+		return source.Err()
+	}
+
+	if dest.HasErr() {
+		return dest.Err()
+	}
+
 	signals, err := source.AllSignals()
 	if err != nil {
 		return err

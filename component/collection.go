@@ -66,6 +66,7 @@ func (c *Collection) Len() int {
 	return len(c.components)
 }
 
+// Components returns underlying components map
 func (c *Collection) Components() (ComponentsMap, error) {
 	if c.HasErr() {
 		return nil, c.Err()

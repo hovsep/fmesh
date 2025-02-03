@@ -1,11 +1,10 @@
-package integration_tests
+package computation
 
 import (
 	"fmt"
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -27,9 +26,9 @@ func Test_Math(t *testing.T) {
 					WithDescription("adds 2 to the input").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num := inputs.ByName("num").FirstSignalPayloadOrNil()
-						outputs.ByName("res").PutSignals(signal.New(num.(int) + 2))
+					WithActivationFunc(func(this *component.Component) error {
+						num := this.InputByName("num").FirstSignalPayloadOrNil()
+						this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 						return nil
 					})
 
@@ -37,9 +36,9 @@ func Test_Math(t *testing.T) {
 					WithDescription("multiplies by 3").
 					WithInputs("num").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						num := inputs.ByName("num").FirstSignalPayloadOrDefault(0)
-						outputs.ByName("res").PutSignals(signal.New(num.(int) * 3))
+					WithActivationFunc(func(this *component.Component) error {
+						num := this.InputByName("num").FirstSignalPayloadOrDefault(0)
+						this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 						return nil
 					})
 
@@ -81,20 +80,18 @@ func Test_Readme(t *testing.T) {
 				component.New("concat").
 					WithInputs("i1", "i2").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						word1 := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
-						word2 := inputs.ByName("i2").FirstSignalPayloadOrDefault("").(string)
-
-						outputs.ByName("res").PutSignals(signal.New(word1 + word2))
+					WithActivationFunc(func(this *component.Component) error {
+						word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 						return nil
 					}),
 				component.New("case").
 					WithInputs("i1").
 					WithOutputs("res").
-					WithActivationFunc(func(inputs *port.Collection, outputs *port.Collection) error {
-						inputString := inputs.ByName("i1").FirstSignalPayloadOrDefault("").(string)
-
-						outputs.ByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
+					WithActivationFunc(func(this *component.Component) error {
+						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 						return nil
 					})).
 			WithConfig(fmesh.Config{
