@@ -33,6 +33,7 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 <h2>Example:</h2>
 
 ```go
+
 fm := fmesh.New("hello world").
 		WithComponents(
 			component.New("concat").
