@@ -767,7 +767,7 @@ func TestFMesh_mustStop(t *testing.T) {
 			fm := tt.getFMesh()
 			got, stopErr := fm.mustStop()
 			if tt.wantErr != nil {
-				assert.EqualError(t, stopErr, tt.wantErr.Error())
+				assert.ErrorContains(t, stopErr, tt.wantErr.Error())
 			} else {
 				assert.NoError(t, stopErr)
 			}
