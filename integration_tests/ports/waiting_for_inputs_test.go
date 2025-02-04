@@ -65,12 +65,11 @@ func Test_WaitingForInputs(t *testing.T) {
 				d3.OutputByName("o1").PipeTo(s.InputByName("i1"))
 				d5.OutputByName("o1").PipeTo(s.InputByName("i2"))
 
-				return fmesh.New("fm").
-					WithComponents(d1, d2, d3, d4, d5, s).
-					WithConfig(fmesh.Config{
-						ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-						CyclesLimit:           5,
-					})
+				return fmesh.NewWithConfig("fm", &fmesh.Config{
+					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+					CyclesLimit:           5,
+				}).
+					WithComponents(d1, d2, d3, d4, d5, s)
 
 			},
 			setInputs: func(fm *fmesh.FMesh) {

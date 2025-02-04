@@ -149,7 +149,7 @@ func getMesh() *fmesh.FMesh {
 	//Define pipes
 	crawler.OutputByName("errors").PipeTo(logger.InputByName("error"))
 
-	return fmesh.New("web scraper").WithConfig(fmesh.Config{
+	return fmesh.NewWithConfig("web scraper", &fmesh.Config{
 		ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 	}).WithComponents(crawler, logger)
 

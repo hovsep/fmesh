@@ -6,24 +6,8 @@ import (
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"log"
-	"os"
 	"sync"
 )
-
-const UnlimitedCycles = 0
-
-type Config struct {
-	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics
-	ErrorHandlingStrategy ErrorHandlingStrategy
-	// CyclesLimit defines max number of activation cycles, 0 means no limit
-	CyclesLimit int
-}
-
-var defaultConfig = Config{
-	ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-	CyclesLimit:           1000,
-}
 
 // FMesh is the functional mesh
 type FMesh struct {
@@ -32,11 +16,10 @@ type FMesh struct {
 	*common.Chainable
 	components *component.Collection
 	cycles     *cycle.Group
-	config     Config
-	logger     *log.Logger
+	config     *Config
 }
 
-// New creates a new f-mesh
+// New creates a new f-mesh with default config
 func New(name string) *FMesh {
 	return &FMesh{
 		NamedEntity:     common.NewNamedEntity(name),
@@ -45,8 +28,12 @@ func New(name string) *FMesh {
 		components:      component.NewCollection(),
 		cycles:          cycle.NewGroup(),
 		config:          defaultConfig,
-		logger:          getDefaultLogger(),
 	}
+}
+
+// NewWithConfig creates a new f-mesh with custom config
+func NewWithConfig(name string, config *Config) *FMesh {
+	return New(name).withConfig(config)
 }
 
 // Components getter
@@ -57,7 +44,10 @@ func (fm *FMesh) Components() *component.Collection {
 	return fm.components
 }
 
-//@TODO: add shortcut method: ComponentByName()
+// ComponentByName shortcut method
+func (fm *FMesh) ComponentByName(name string) *component.Component {
+	return fm.Components().ByName(name)
+}
 
 // WithDescription sets a description
 func (fm *FMesh) WithDescription(description string) *FMesh {
@@ -81,22 +71,16 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 			return fm.WithErr(c.Err())
 		}
 	}
-	return fm
-}
 
-// WithConfig sets the configuration and returns the f-mesh
-func (fm *FMesh) WithConfig(config Config) *FMesh {
-	if fm.HasErr() {
-		return fm
-	}
-
-	fm.config = config
+	fm.LogDebug(fmt.Sprintf("%d components added to mesh", fm.Components().Len()))
 	return fm
 }
 
 // runCycle runs one activation cycle (tries to activate ready components)
 func (fm *FMesh) runCycle() {
 	newCycle := cycle.New().WithNumber(fm.cycles.Len() + 1)
+
+	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
 	if fm.HasErr() {
 		newCycle.SetErr(fm.Err())
@@ -140,6 +124,12 @@ func (fm *FMesh) runCycle() {
 
 	if newCycle.HasErr() {
 		fm.SetErr(newCycle.Err())
+	}
+
+	if fm.IsDebug() {
+		for _, ar := range newCycle.ActivationResults() {
+			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+		}
 	}
 
 	fm.cycles = fm.cycles.With(newCycle)
@@ -186,7 +176,6 @@ func (fm *FMesh) drainComponents() {
 		}
 
 		c.FlushOutputs()
-
 	}
 }
 
@@ -288,24 +277,4 @@ func (fm *FMesh) mustStop() (bool, error) {
 func (fm *FMesh) WithErr(err error) *FMesh {
 	fm.SetErr(err)
 	return fm
-}
-
-func (fm *FMesh) WithLogger(logger *log.Logger) *FMesh {
-	if fm.HasErr() {
-		return fm
-	}
-
-	fm.logger = logger
-	return fm
-}
-
-func (fm *FMesh) Logger() *log.Logger {
-	return fm.logger
-}
-
-func getDefaultLogger() *log.Logger {
-	logger := log.Default()
-	logger.SetOutput(os.Stdout)
-	logger.SetFlags(log.LstdFlags | log.Lmsgprefix)
-	return logger
 }
