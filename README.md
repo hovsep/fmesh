@@ -52,11 +52,7 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
 						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 						return nil
-					})).
-			WithConfig(fmesh.Config{
-				ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-				CyclesLimit:           10,
-			})
+					}))
 
 	fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
 		fm.Components().ByName("case").Inputs().ByName("i1"),
