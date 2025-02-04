@@ -51,15 +51,15 @@ func main() {
 		WithInputs("power_demand").
 		WithOutputs("power_supply").
 		WithInitialState(func(state component.State) {
-			state["level"] = 1000
+			state.Set("level", 1000)
 		}).
 		WithActivationFunc(func(this *component.Component) error {
 			// Read state
-			level := this.State()["level"].(int)
+			level := this.State().Get("level").(int)
 
 			defer func() {
 				// Write state
-				this.State()["level"] = level
+				this.State().Set("level", level)
 			}()
 
 			this.Logger().Println("level: ", level)
@@ -93,16 +93,16 @@ func main() {
 		WithInputs("power_supply", "start_power_demand").
 		WithOutputs("light_supply", "power_demand").
 		WithInitialState(func(state component.State) {
-			state["temperature"] = 26.0
+			state.Set("temperature", 26.0)
 		}).
 		WithActivationFunc(func(this *component.Component) error {
 
 			// Read state
-			temperature := this.State()["temperature"].(float64)
+			temperature := this.State().Get("temperature").(float64)
 
 			defer func() {
 				// Write state
-				this.State()["temperature"] = temperature
+				this.State().Set("temperature", temperature)
 			}()
 
 			//Skip power consumption on start (as power is not demanded yet)
