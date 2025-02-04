@@ -87,12 +87,11 @@ func Test_State(t *testing.T) {
 				counter.OutputByName("bypass_out").PipeTo(consumer.InputByName("signal_in"))
 				consumer.OutputByName("demand_rate").PipeTo(producer.InputByName("demand_rate"))
 
-				return fmesh.New("fm").
-					WithComponents(producer, counter, consumer).
-					WithConfig(fmesh.Config{
-						ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-						CyclesLimit:           10000,
-					})
+				return fmesh.NewWithConfig("fm", &fmesh.Config{
+					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+					CyclesLimit:           10000,
+				}).
+					WithComponents(producer, counter, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 

@@ -142,12 +142,12 @@ func main() {
 	battery.OutputByName("power_supply").PipeTo(lightbulb.InputByName("power_supply"))
 	lightbulb.OutputByName("power_demand").PipeTo(battery.InputByName("power_demand"))
 
-	fm := fmesh.New("battery_and_lightbulb").
+	fm := fmesh.NewWithConfig("battery_and_lightbulb", &fmesh.Config{
+		ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+		Debug:                 false,
+	}).
 		WithDescription("simple electric simulation").
-		WithComponents(battery, lightbulb).
-		WithConfig(fmesh.Config{
-			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-		})
+		WithComponents(battery, lightbulb)
 
 	// Turn on the lightbulb (yes you can init an output port)
 	lightbulb.InputByName("start_power_demand").PutSignals(signal.New("start"))

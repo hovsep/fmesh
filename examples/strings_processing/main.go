@@ -11,7 +11,10 @@ import (
 
 // This example is used in readme.md
 func main() {
-	fm := fmesh.New("hello world").
+	fm := fmesh.NewWithConfig("hello world", &fmesh.Config{
+		ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+		CyclesLimit:           10,
+	}).
 		WithComponents(
 			component.New("concat").
 				WithInputs("i1", "i2").
@@ -31,11 +34,7 @@ func main() {
 
 					this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 					return nil
-				})).
-		WithConfig(fmesh.Config{
-			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-			CyclesLimit:           10,
-		})
+				}))
 
 	fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
 		fm.Components().ByName("case").Inputs().ByName("i1"),

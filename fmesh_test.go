@@ -33,7 +33,6 @@ func TestNew(t *testing.T) {
 				components:      component.NewCollection(),
 				cycles:          cycle.NewGroup(),
 				config:          defaultConfig,
-				logger:          getDefaultLogger(),
 			},
 		},
 		{
@@ -48,7 +47,6 @@ func TestNew(t *testing.T) {
 				components:      component.NewCollection(),
 				cycles:          cycle.NewGroup(),
 				config:          defaultConfig,
-				logger:          getDefaultLogger(),
 			},
 		},
 	}
@@ -82,7 +80,6 @@ func TestFMesh_WithDescription(t *testing.T) {
 				components:      component.NewCollection(),
 				cycles:          cycle.NewGroup(),
 				config:          defaultConfig,
-				logger:          getDefaultLogger(),
 			},
 		},
 		{
@@ -98,7 +95,6 @@ func TestFMesh_WithDescription(t *testing.T) {
 				components:      component.NewCollection(),
 				cycles:          cycle.NewGroup(),
 				config:          defaultConfig,
-				logger:          getDefaultLogger(),
 			},
 		},
 	}
@@ -111,7 +107,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 
 func TestFMesh_WithConfig(t *testing.T) {
 	type args struct {
-		config Config
+		config *Config
 	}
 	tests := []struct {
 		name string
@@ -123,7 +119,7 @@ func TestFMesh_WithConfig(t *testing.T) {
 			name: "custom config",
 			fm:   New("fm1"),
 			args: args{
-				config: Config{
+				config: &Config{
 					ErrorHandlingStrategy: IgnoreAll,
 					CyclesLimit:           9999,
 				},
@@ -134,17 +130,17 @@ func TestFMesh_WithConfig(t *testing.T) {
 				Chainable:       common.NewChainable(),
 				components:      component.NewCollection(),
 				cycles:          cycle.NewGroup(),
-				config: Config{
+				config: &Config{
 					ErrorHandlingStrategy: IgnoreAll,
 					CyclesLimit:           9999,
+					Logger:                getDefaultLogger(),
 				},
-				logger: getDefaultLogger(),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.WithConfig(tt.args.config))
+			assert.Equal(t, tt.want, tt.fm.withConfig(tt.args.config))
 		})
 	}
 }
@@ -243,7 +239,7 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			name: "unsupported error handling strategy",
-			fm: New("fm").WithConfig(Config{
+			fm: NewWithConfig("fm", &Config{
 				ErrorHandlingStrategy: 100,
 				CyclesLimit:           0,
 			}).
@@ -271,10 +267,9 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			name: "stop on first error on first cycle",
-			fm: New("fm").
-				WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-				}).
+			fm: NewWithConfig("fm", &Config{
+				ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+			}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just returns an unexpected error").
@@ -298,10 +293,9 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			name: "stop on first panic on cycle 3",
-			fm: New("fm").
-				WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstPanic,
-				}).
+			fm: NewWithConfig("fm", &Config{
+				ErrorHandlingStrategy: StopOnFirstPanic,
+			}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
@@ -396,10 +390,9 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			name: "all errors and panics are ignored",
-			fm: New("fm").
-				WithConfig(Config{
-					ErrorHandlingStrategy: IgnoreAll,
-				}).
+			fm: NewWithConfig("fm", &Config{
+				ErrorHandlingStrategy: IgnoreAll,
+			}).
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
@@ -727,7 +720,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit an error",
 			getFMesh: func() *FMesh {
-				fm := New("fm").WithConfig(Config{
+				fm := NewWithConfig("fm", &Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 					CyclesLimit:           UnlimitedCycles,
 				})
@@ -746,7 +739,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit a panic",
 			getFMesh: func() *FMesh {
-				fm := New("fm").WithConfig(Config{
+				fm := NewWithConfig("fm", &Config{
 					ErrorHandlingStrategy: StopOnFirstPanic,
 				})
 				c := cycle.New().WithActivationResults(

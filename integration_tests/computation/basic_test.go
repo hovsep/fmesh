@@ -43,10 +43,10 @@ func Test_Math(t *testing.T) {
 					})
 
 				c1.OutputByName("res").PipeTo(c2.InputByName("num"))
-				return fmesh.New("fm").WithComponents(c1, c2).WithConfig(fmesh.Config{
+				return fmesh.NewWithConfig("fm", &fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
-				})
+				}).WithComponents(c1, c2)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
@@ -75,7 +75,10 @@ func Test_Math(t *testing.T) {
 
 func Test_Readme(t *testing.T) {
 	t.Run("readme test", func(t *testing.T) {
-		fm := fmesh.New("hello world").
+		fm := fmesh.NewWithConfig("hello world", &fmesh.Config{
+			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+			CyclesLimit:           10,
+		}).
 			WithComponents(
 				component.New("concat").
 					WithInputs("i1", "i2").
@@ -93,11 +96,7 @@ func Test_Readme(t *testing.T) {
 						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
 						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 						return nil
-					})).
-			WithConfig(fmesh.Config{
-				ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-				CyclesLimit:           10,
-			})
+					}))
 
 		fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
 			fm.Components().ByName("case").Inputs().ByName("i1"),
