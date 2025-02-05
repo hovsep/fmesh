@@ -114,8 +114,8 @@ func Test_State(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			cycles, err := fm.Run()
-			tt.assertions(t, fm, cycles, err)
+			runResult, err := fm.Run()
+			tt.assertions(t, fm, runResult.Cycles.CyclesOrNil(), err)
 		})
 	}
 }

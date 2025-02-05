@@ -66,7 +66,6 @@ func (p *Port) withBuffer(buffer *signal.Group) *Port {
 }
 
 // PutSignals adds signals to buffer
-// @TODO: rename
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasErr() {
 		return p

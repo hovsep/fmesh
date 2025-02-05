@@ -67,8 +67,8 @@ func Test_Math(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			cycles, err := fm.Run()
-			tt.assertions(t, fm, cycles, err)
+			runResult, err := fm.Run()
+			tt.assertions(t, fm, runResult.Cycles.CyclesOrNil(), err)
 		})
 	}
 }
@@ -98,13 +98,13 @@ func Test_Readme(t *testing.T) {
 						return nil
 					}))
 
-		fm.Components().ByName("concat").Outputs().ByName("res").PipeTo(
-			fm.Components().ByName("case").Inputs().ByName("i1"),
+		fm.Components().ByName("concat").OutputByName("res").PipeTo(
+			fm.Components().ByName("case").InputByName("i1"),
 		)
 
 		// Init inputs
-		fm.Components().ByName("concat").Inputs().ByName("i1").PutSignals(signal.New("hello "))
-		fm.Components().ByName("concat").Inputs().ByName("i2").PutSignals(signal.New("world !"))
+		fm.Components().ByName("concat").InputByName("i1").PutSignals(signal.New("hello "))
+		fm.Components().ByName("concat").InputByName("i2").PutSignals(signal.New("world !"))
 
 		// Run the mesh
 		_, err := fm.Run()
@@ -116,7 +116,7 @@ func Test_Readme(t *testing.T) {
 		}
 
 		//Extract results
-		results := fm.Components().ByName("case").Outputs().ByName("res").FirstSignalPayloadOrNil()
+		results := fm.ComponentByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 		fmt.Printf("Result is :%v", results)
 		assert.Equal(t, "HELLO WORLD !", results)
 	})

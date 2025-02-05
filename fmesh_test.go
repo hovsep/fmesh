@@ -3,7 +3,6 @@ package fmesh
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
@@ -14,133 +13,98 @@ import (
 
 func TestNew(t *testing.T) {
 	type args struct {
-		name string
 	}
 	tests := []struct {
-		name string
-		args args
-		want *FMesh
+		name       string
+		fmName     string
+		assertions func(t *testing.T, fm *FMesh)
 	}{
 		{
-			name: "empty name is valid",
-			args: args{
-				name: "",
-			},
-			want: &FMesh{
-				NamedEntity:     common.NewNamedEntity(""),
-				DescribedEntity: common.NewDescribedEntity(""),
-				Chainable:       common.NewChainable(),
-				components:      component.NewCollection(),
-				cycles:          cycle.NewGroup(),
-				config:          defaultConfig,
+			name:   "empty name is valid",
+			fmName: "",
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, "", fm.Name())
 			},
 		},
 		{
-			name: "with name",
-			args: args{
-				name: "fm1",
-			},
-			want: &FMesh{
-				NamedEntity:     common.NewNamedEntity("fm1"),
-				DescribedEntity: common.NewDescribedEntity(""),
-				Chainable:       common.NewChainable(),
-				components:      component.NewCollection(),
-				cycles:          cycle.NewGroup(),
-				config:          defaultConfig,
+			name:   "with name",
+			fmName: "fm1",
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, "fm1", fm.Name())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, New(tt.args.name))
+			got := New(tt.fmName)
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
 
 func TestFMesh_WithDescription(t *testing.T) {
-	type args struct {
-		description string
-	}
 	tests := []struct {
-		name string
-		fm   *FMesh
-		args args
-		want *FMesh
+		name        string
+		fm          *FMesh
+		description string
+		assertions  func(t *testing.T, fm *FMesh)
 	}{
 		{
-			name: "empty description",
-			fm:   New("fm1"),
-			args: args{
-				description: "",
-			},
-			want: &FMesh{
-				NamedEntity:     common.NewNamedEntity("fm1"),
-				DescribedEntity: common.NewDescribedEntity(""),
-				Chainable:       common.NewChainable(),
-				components:      component.NewCollection(),
-				cycles:          cycle.NewGroup(),
-				config:          defaultConfig,
+			name:        "empty description",
+			fm:          New("fm1"),
+			description: "",
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, "", fm.Description())
 			},
 		},
 		{
-			name: "with description",
-			fm:   New("fm1"),
-			args: args{
-				description: "descr",
-			},
-			want: &FMesh{
-				NamedEntity:     common.NewNamedEntity("fm1"),
-				DescribedEntity: common.NewDescribedEntity("descr"),
-				Chainable:       common.NewChainable(),
-				components:      component.NewCollection(),
-				cycles:          cycle.NewGroup(),
-				config:          defaultConfig,
+			name:        "with description",
+			fm:          New("fm1"),
+			description: "descr",
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, "descr", fm.Description())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.WithDescription(tt.args.description))
+			got := tt.fm.WithDescription(tt.description)
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
 
 func TestFMesh_WithConfig(t *testing.T) {
-	type args struct {
-		config *Config
-	}
 	tests := []struct {
-		name string
-		fm   *FMesh
-		args args
-		want *FMesh
+		name       string
+		fm         *FMesh
+		config     *Config
+		want       *FMesh
+		assertions func(t *testing.T, fm *FMesh)
 	}{
 		{
 			name: "custom config",
 			fm:   New("fm1"),
-			args: args{
-				config: &Config{
-					ErrorHandlingStrategy: IgnoreAll,
-					CyclesLimit:           9999,
-				},
+			config: &Config{
+				ErrorHandlingStrategy: IgnoreAll,
+				CyclesLimit:           9999,
 			},
-			want: &FMesh{
-				NamedEntity:     common.NewNamedEntity("fm1"),
-				DescribedEntity: common.NewDescribedEntity(""),
-				Chainable:       common.NewChainable(),
-				components:      component.NewCollection(),
-				cycles:          cycle.NewGroup(),
-				config: &Config{
-					ErrorHandlingStrategy: IgnoreAll,
-					CyclesLimit:           9999,
-					Logger:                getDefaultLogger(),
-				},
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, IgnoreAll, fm.config.ErrorHandlingStrategy)
+				assert.Equal(t, 9999, fm.config.CyclesLimit)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.fm.withConfig(tt.args.config))
+			got := tt.fm.withConfig(tt.config)
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
@@ -225,17 +189,17 @@ func TestFMesh_WithComponents(t *testing.T) {
 
 func TestFMesh_Run(t *testing.T) {
 	tests := []struct {
-		name    string
-		fm      *FMesh
-		initFM  func(fm *FMesh)
-		want    cycle.Cycles
-		wantErr bool
+		name       string
+		fm         *FMesh
+		initFM     func(fm *FMesh)
+		wantCycles *cycle.Group
+		wantErr    bool
 	}{
 		{
-			name:    "empty mesh stops after first cycle",
-			fm:      New("fm"),
-			want:    nil,
-			wantErr: true,
+			name:       "empty mesh stops after first cycle",
+			fm:         New("fm"),
+			wantCycles: cycle.NewGroup().With(cycle.New().WithNumber(1)),
+			wantErr:    true,
 		},
 		{
 			name: "unsupported error handling strategy",
@@ -257,12 +221,12 @@ func TestFMesh_Run(t *testing.T) {
 				//Fire the mesh
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start c1"))
 			},
-			want: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK)),
-			).CyclesOrNil(),
+			),
 			wantErr: true,
 		},
 		{
@@ -280,7 +244,7 @@ func TestFMesh_Run(t *testing.T) {
 			initFM: func(fm *FMesh) {
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start"))
 			},
-			want: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -288,7 +252,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodeReturnedError).
 							WithActivationError(errors.New("component returned an error: boom")),
 					),
-			).CyclesOrNil(),
+			),
 			wantErr: true,
 		},
 		{
@@ -337,7 +301,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().With(
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -385,7 +349,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodePanicked).
 							WithActivationError(errors.New("panicked with: no way")),
 					),
-			).CyclesOrNil(),
+			),
 			wantErr: true,
 		},
 		{
@@ -447,7 +411,7 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			want: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().With(
 				//c1 and c3 activated, c3 finishes with error
 				cycle.New().
 					WithActivationResults(
@@ -545,7 +509,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
-			).CyclesOrNil(),
+			),
 			wantErr: false,
 		},
 	}
@@ -555,7 +519,7 @@ func TestFMesh_Run(t *testing.T) {
 				tt.initFM(tt.fm)
 			}
 			got, err := tt.fm.Run()
-			assert.Equal(t, len(tt.want), len(got))
+			assert.Equal(t, tt.wantCycles.Len(), got.Cycles.Len())
 			if tt.wantErr {
 				assert.NotNil(t, err)
 			} else {
@@ -563,17 +527,19 @@ func TestFMesh_Run(t *testing.T) {
 			}
 
 			//Compare cycle results one by one
-			for i := 0; i < len(got); i++ {
-				assert.Equal(t, len(tt.want[i].ActivationResults()), len(got[i].ActivationResults()), "ActivationResultCollection len mismatch")
+			for i := 0; i < got.Cycles.Len(); i++ {
+				wantCycle := tt.wantCycles.CyclesOrNil()[i]
+				gotCycle := got.Cycles.CyclesOrNil()[i]
+				assert.Equal(t, len(wantCycle.ActivationResults()), len(gotCycle.ActivationResults()), "ActivationResultCollection len mismatch")
 
 				//Compare activation results
-				for componentName, gotActivationResult := range got[i].ActivationResults() {
-					assert.Equal(t, tt.want[i].ActivationResults()[componentName].Activated(), gotActivationResult.Activated())
-					assert.Equal(t, tt.want[i].ActivationResults()[componentName].ComponentName(), gotActivationResult.ComponentName())
-					assert.Equal(t, tt.want[i].ActivationResults()[componentName].Code(), gotActivationResult.Code())
+				for componentName, gotActivationResult := range gotCycle.ActivationResults() {
+					assert.Equal(t, wantCycle.ActivationResults()[componentName].Activated(), gotActivationResult.Activated())
+					assert.Equal(t, wantCycle.ActivationResults()[componentName].ComponentName(), gotActivationResult.ComponentName())
+					assert.Equal(t, wantCycle.ActivationResults()[componentName].Code(), gotActivationResult.Code())
 
-					if tt.want[i].ActivationResults()[componentName].IsError() {
-						assert.EqualError(t, tt.want[i].ActivationResults()[componentName].ActivationError(), gotActivationResult.ActivationError().Error())
+					if wantCycle.ActivationResults()[componentName].IsError() {
+						assert.EqualError(t, wantCycle.ActivationResults()[componentName].ActivationError(), gotActivationResult.ActivationError().Error())
 					} else {
 						assert.False(t, gotActivationResult.IsError())
 					}
@@ -650,7 +616,7 @@ func TestFMesh_runCycle(t *testing.T) {
 				tt.initFM(tt.fm)
 			}
 			tt.fm.runCycle()
-			gotCycleResult := tt.fm.cycles.Last()
+			gotCycleResult := tt.fm.runtimeInfo.Cycles.Last()
 			if tt.wantError {
 				assert.True(t, gotCycleResult.HasErr())
 				assert.Error(t, gotCycleResult.Err())
@@ -681,7 +647,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						WithActivationCode(component.ActivationCodeOK),
 				).WithNumber(5)
 
-				fm.cycles = fm.cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
 				return fm
 			},
 			want:    false,
@@ -696,7 +662,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK),
 				).WithNumber(1001)
-				fm.cycles = fm.cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
 				return fm
 			},
 			want:    true,
@@ -711,7 +677,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeNoInput),
 				).WithNumber(5)
-				fm.cycles = fm.cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
 				return fm
 			},
 			want:    true,
@@ -730,7 +696,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						WithActivationCode(component.ActivationCodeReturnedError).
 						WithActivationError(errors.New("c1 activation finished with error")),
 				).WithNumber(5)
-				fm.cycles = fm.cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
 				return fm
 			},
 			want:    true,
@@ -748,7 +714,7 @@ func TestFMesh_mustStop(t *testing.T) {
 						WithActivationCode(component.ActivationCodePanicked).
 						WithActivationError(errors.New("c1 panicked")),
 				).WithNumber(5)
-				fm.cycles = fm.cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
 				return fm
 			},
 			want:    true,

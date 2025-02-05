@@ -7,16 +7,24 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"sync"
+	"time"
 )
+
+type RuntimeInfo struct {
+	Cycles    *cycle.Group
+	StartedAt time.Time
+	StoppedAt time.Time
+	Duration  time.Duration
+}
 
 // FMesh is the functional mesh
 type FMesh struct {
 	common.NamedEntity
 	common.DescribedEntity
 	*common.Chainable
-	components *component.Collection
-	cycles     *cycle.Group
-	config     *Config
+	components  *component.Collection
+	runtimeInfo *RuntimeInfo
+	config      *Config
 }
 
 // New creates a new f-mesh with default config
@@ -26,8 +34,11 @@ func New(name string) *FMesh {
 		DescribedEntity: common.NewDescribedEntity(""),
 		Chainable:       common.NewChainable(),
 		components:      component.NewCollection(),
-		cycles:          cycle.NewGroup(),
-		config:          defaultConfig,
+		runtimeInfo: &RuntimeInfo{
+			Cycles:   cycle.NewGroup(),
+			Duration: 0,
+		},
+		config: defaultConfig,
 	}
 }
 
@@ -78,7 +89,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 
 // runCycle runs one activation cycle (tries to activate ready components)
 func (fm *FMesh) runCycle() {
-	newCycle := cycle.New().WithNumber(fm.cycles.Len() + 1)
+	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
 	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
@@ -132,7 +143,7 @@ func (fm *FMesh) runCycle() {
 		}
 	}
 
-	fm.cycles = fm.cycles.With(newCycle)
+	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(newCycle)
 }
 
 // DrainComponents drains the data from activated components
@@ -153,7 +164,7 @@ func (fm *FMesh) drainComponents() {
 		return
 	}
 
-	lastCycle := fm.cycles.Last()
+	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
@@ -191,7 +202,7 @@ func (fm *FMesh) clearInputs() {
 		return
 	}
 
-	lastCycle := fm.cycles.Last()
+	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
@@ -216,21 +227,27 @@ func (fm *FMesh) clearInputs() {
 }
 
 // Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
-func (fm *FMesh) Run() (cycle.Cycles, error) {
+func (fm *FMesh) Run() (*RuntimeInfo, error) {
+	fm.runtimeInfo.StartedAt = time.Now()
+	defer func() {
+		fm.runtimeInfo.StoppedAt = time.Now()
+		fm.runtimeInfo.Duration = time.Since(fm.runtimeInfo.StartedAt)
+	}()
+
 	if fm.HasErr() {
-		return nil, fm.Err()
+		return fm.runtimeInfo, fm.Err()
 	}
 
 	for {
 		fm.runCycle()
 
 		if mustStop, err := fm.mustStop(); mustStop {
-			return fm.cycles.CyclesOrNil(), err
+			return fm.runtimeInfo, err
 		}
 
 		fm.drainComponents()
 		if fm.HasErr() {
-			return nil, fm.Err()
+			return fm.runtimeInfo, fm.Err()
 		}
 	}
 }
@@ -241,7 +258,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 		return false, nil
 	}
 
-	lastCycle := fm.cycles.Last()
+	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
 		return true, ErrReachedMaxAllowedCycles

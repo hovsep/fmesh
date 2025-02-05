@@ -141,12 +141,12 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			cycles, err := tt.args.fm.Run()
+			runResult, err := tt.args.fm.Run()
 			assert.NoError(t, err)
 
 			exporter := NewDotExporter()
 
-			got, err := exporter.ExportWithCycles(tt.args.fm, cycles)
+			got, err := exporter.ExportWithCycles(tt.args.fm, runResult.Cycles.CyclesOrNil())
 			if tt.assertions != nil {
 				tt.assertions(t, got, err)
 			}

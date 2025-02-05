@@ -152,12 +152,12 @@ func main() {
 	// Turn on the lightbulb (yes you can init an output port)
 	lightbulb.InputByName("start_power_demand").PutSignals(signal.New("start"))
 
-	cycles, err := fm.Run()
+	runResult, err := fm.Run()
 
 	if err != nil {
 		fmt.Println("Simulation failed with error: ", err)
 		return
 	}
 
-	fmt.Println(fmt.Sprintf("Simulation finished after %d cycles", len(cycles)))
+	fmt.Println(fmt.Sprintf("Simulation finished after %d cycles", runResult.Cycles.Len()))
 }
