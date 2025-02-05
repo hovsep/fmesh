@@ -146,3 +146,8 @@ func (c *Component) ClearInputs() *Component {
 	c.Inputs().Clear()
 	return c
 }
+
+// LoopbackPipe creates a pipe between ports of the component
+func (c *Component) LoopbackPipe(out string, in string) {
+	c.OutputByName(out).PipeTo(c.InputByName(in))
+}
