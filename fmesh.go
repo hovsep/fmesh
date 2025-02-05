@@ -260,12 +260,27 @@ func (fm *FMesh) mustStop() (bool, error) {
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
+	// Check if cycles limit is hit
 	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
+		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrReachedMaxAllowedCycles))
+
 		return true, ErrReachedMaxAllowedCycles
 	}
 
+	// Check if time constraint is hit
+	if fm.config.TimeLimit != UnlimitedTime {
+		if time.Since(fm.runtimeInfo.StartedAt) >= fm.config.TimeLimit {
+			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
+
+			return true, ErrTimeLimitExceeded
+		}
+	}
+
+	// Check if the mesh finished naturally (no component activated during the last cycle)
 	if !lastCycle.HasActivatedComponents() {
 		// Stop naturally (no components activated during the cycle => all inputs are processed)
+		fm.LogDebug("going to stop naturally")
+
 		return true, nil
 	}
 
@@ -274,18 +289,25 @@ func (fm *FMesh) mustStop() (bool, error) {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasErrors() || lastCycle.HasPanics() {
 			//@TODO: add failing components names to error
-			return true, fmt.Errorf("%w, cycle # %d, activation errors: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined())
+			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined())
+			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
+
+			return true, runError
 		}
 		return false, nil
 	case StopOnFirstPanic:
 		// @TODO: add more context to error
 		if lastCycle.HasPanics() {
+			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrHitAPanic))
+
 			return true, ErrHitAPanic
 		}
 		return false, nil
 	case IgnoreAll:
 		return false, nil
 	default:
+		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrUnsupportedErrorHandlingStrategy))
+
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
 }

@@ -1,17 +1,30 @@
 package fmesh
 
-import "log"
+import (
+	"log"
+	"time"
+)
 
-const UnlimitedCycles = 0
+const (
+	UnlimitedCycles = 0
+	UnlimitedTime   = 0
+)
 
 type Config struct {
 	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics
 	ErrorHandlingStrategy ErrorHandlingStrategy
+
+	// Debug enables debug mode, which logs additional detailed information for troubleshooting and analysis.
+	Debug bool
+
+	Logger *log.Logger
+
 	// CyclesLimit defines max number of activation cycles, 0 means no limit
 	CyclesLimit int
-	// Debug flag enabled debug mode, when additional information will be logged
-	Debug  bool
-	Logger *log.Logger
+
+	// TimeLimit defines the maximum duration F-Mesh can run before being forcefully stopped.
+	// A value of 0 disables the time constraint, allowing indefinite execution.
+	TimeLimit time.Duration
 }
 
 var defaultConfig = &Config{
@@ -19,6 +32,7 @@ var defaultConfig = &Config{
 	CyclesLimit:           1000,
 	Debug:                 false,
 	Logger:                getDefaultLogger(),
+	TimeLimit:             UnlimitedTime,
 }
 
 // withConfig sets the configuration and returns the f-mesh
