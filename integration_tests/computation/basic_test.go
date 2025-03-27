@@ -115,7 +115,7 @@ func Test_Readme(t *testing.T) {
 			os.Exit(1)
 		}
 
-		//Extract results
+		// Extract results
 		results := fm.ComponentByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 		fmt.Printf("Result is :%v", results)
 		assert.Equal(t, "HELLO WORLD !", results)

@@ -1,5 +1,6 @@
 package common
 
+// DescribedEntity is a base struct for described entities
 type DescribedEntity struct {
 	description string
 }

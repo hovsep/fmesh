@@ -1,5 +1,6 @@
 package common
 
+// NamedEntity is a base struct for named entities
 type NamedEntity struct {
 	name string
 }

@@ -12,7 +12,7 @@ type ActivationResult struct {
 	componentName   string
 	activated       bool
 	code            ActivationResultCode
-	activationError error //Error returned from component activation function
+	activationError error // Error returned from component activation function
 }
 
 // ActivationResultCode denotes a specific info about how a component been activated or why not activated at all
@@ -60,7 +60,7 @@ const (
 	// ActivationCodePanicked : component is activated, but panicked
 	ActivationCodePanicked
 
-	// ActivationCodeWaitingForInputsClear : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behaviour)
+	// ActivationCodeWaitingForInputsClear : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behavior)
 	ActivationCodeWaitingForInputsClear
 
 	// ActivationCodeWaitingForInputsKeep : component waits for specific inputs, but wants to keep current input signals for the next cycle
@@ -173,11 +173,13 @@ func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationRe
 		WithActivationError(err)
 }
 
+// IsWaitingForInput returns true if the component was waiting for inputs
 func IsWaitingForInput(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsClear ||
 		activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }
 
+// WantsToKeepInputs returns true if the component wants to keep inputs
 func WantsToKeepInputs(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }

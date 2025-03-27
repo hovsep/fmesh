@@ -36,7 +36,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithInputs("num1", "num2").
 						WithOutputs("result").
 						WithActivationFunc(func(this *component.Component) error {
-							//The activation func can be even empty, does not affect export
+							// The activation func can be even empty, does not affect export
 							return nil
 						})
 
@@ -45,7 +45,7 @@ func Test_dotExporter_Export(t *testing.T) {
 						WithInputs("num").
 						WithOutputs("result").
 						WithActivationFunc(func(this *component.Component) error {
-							//The activation func can be even empty, does not affect export
+							// The activation func can be even empty, does not affect export
 							return nil
 						})
 

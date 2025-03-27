@@ -5,7 +5,7 @@ import "github.com/hovsep/fmesh/common"
 // Signal is a wrapper around the data flowing between components
 type Signal struct {
 	*common.Chainable
-	payload []any //Slice is used in order to support nil payload
+	payload []any // Slice is used in order to support nil payload
 }
 
 // New creates a new signal from the given payloads

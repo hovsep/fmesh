@@ -1,10 +1,11 @@
 package common
 
+// Chainable is a base struct for chainable objects
 type Chainable struct {
 	err error
 }
 
-// NewChainable initialises new chainable
+// NewChainable initializes new chainable
 func NewChainable() *Chainable {
 	return &Chainable{}
 }

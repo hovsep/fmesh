@@ -7,9 +7,12 @@ import (
 )
 
 const (
+	// DirectionLabel is the label for the port direction
 	DirectionLabel = "fmesh:port:direction"
-	DirectionIn    = "in"
-	DirectionOut   = "out"
+	// DirectionIn is the direction for input ports
+	DirectionIn = "in"
+	// DirectionOut is the direction for output ports
+	DirectionOut = "out"
 )
 
 // Port defines a connectivity point of a component
@@ -18,7 +21,7 @@ type Port struct {
 	common.LabeledEntity
 	*common.Chainable
 	buffer *signal.Group
-	pipes  *Group //Outbound pipes
+	pipes  *Group // Outbound pipes
 }
 
 // New creates a new port
@@ -118,8 +121,8 @@ func (p *Port) Flush() *Port {
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
-		//Log,this
-		//Nothing to flush
+		// Log,this
+		// Nothing to flush
 		return p
 	}
 
@@ -130,7 +133,7 @@ func (p *Port) Flush() *Port {
 	}
 
 	for _, outboundPort := range pipes {
-		//Fan-Out
+		// Fan-Out
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
 			p.SetErr(err)
@@ -167,7 +170,7 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	return p
 }
 
-func validatePipe(srcPort *Port, dstPort *Port) error {
+func validatePipe(srcPort, dstPort *Port) error {
 	if srcPort == nil || dstPort == nil {
 		return ErrNilPort
 	}
@@ -196,7 +199,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 }
 
 // ForwardSignals copies all buffer from source port to destination port, without clearing the source port
-func ForwardSignals(source *Port, dest *Port) error {
+func ForwardSignals(source, dest *Port) error {
 	if source.HasErr() {
 		return source.Err()
 	}
@@ -247,6 +250,7 @@ func (p *Port) AllSignalsOrNil() signal.Signals {
 	return p.Buffer().SignalsOrNil()
 }
 
+// AllSignalsOrDefault is shortcut method
 func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
 	return p.Buffer().SignalsOrDefault(defaultSignals)
 }

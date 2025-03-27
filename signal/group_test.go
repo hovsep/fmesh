@@ -364,7 +364,7 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 			name:  "with signals",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				defaultSignals: Signals{New(4), New(5)}, //Default must be ignored
+				defaultSignals: Signals{New(4), New(5)}, // Default must be ignored
 			},
 			want: Signals{New(1), New(2), New(3)},
 		},

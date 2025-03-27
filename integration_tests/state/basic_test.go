@@ -62,7 +62,7 @@ func Test_State(t *testing.T) {
 					WithInputs("signal_in", "start").
 					WithOutputs("consumed_signals", "demand_rate").
 					WithInitialState(func(state component.State) {
-						//Simulate uneven demand
+						// Simulate uneven demand
 						state.Set("demand_shape", []int{3, 70, 22, 1350})
 					}).
 					WithActivationFunc(func(this *component.Component) error {
@@ -72,14 +72,14 @@ func Test_State(t *testing.T) {
 						}()
 
 						if len(demandShape) > 0 {
-							//Pop demand rate
+							// Pop demand rate
 							demandRate := demandShape[0]
 							demandShape = demandShape[1:]
 
 							this.OutputByName("demand_rate").PutSignals(signal.New(demandRate))
 						}
 
-						//Consume signals
+						// Consume signals
 						return port.ForwardSignals(this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
 					})
 

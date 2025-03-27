@@ -2,9 +2,10 @@ package cycle
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNew(t *testing.T) {
@@ -19,19 +20,17 @@ func TestCycle_ActivationResults(t *testing.T) {
 	tests := []struct {
 		name        string
 		cycleResult *Cycle
-		want        component.ActivationResultCollection
+		want        *component.ActivationResultCollection
 	}{
 		{
 			name:        "no activation results",
 			cycleResult: New(),
-			want:        component.ActivationResultCollection{},
+			want:        component.NewActivationResultCollection(),
 		},
 		{
 			name:        "happy path",
 			cycleResult: New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
-			want: component.ActivationResultCollection{
-				"c1": component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-			},
+			want:        component.NewActivationResultCollection().Add(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
 		},
 	}
 	for _, tt := range tests {
@@ -162,7 +161,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 		name                  string
 		cycleResult           *Cycle
 		args                  args
-		wantActivationResults component.ActivationResultCollection
+		wantActivationResults *component.ActivationResultCollection
 	}{
 		{
 			name:        "nothing added",
@@ -181,10 +180,10 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				},
 			},
-			wantActivationResults: component.ActivationResultCollection{
-				"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-			},
+			wantActivationResults: component.NewActivationResultCollection().Add(
+				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+			),
 		},
 		{
 			name: "adding to non-empty collection",
@@ -202,12 +201,12 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 				},
 			},
-			wantActivationResults: component.ActivationResultCollection{
-				"c1": component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				"c2": component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-				"c3": component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
-				"c4": component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
-			},
+			wantActivationResults: component.NewActivationResultCollection().Add(
+				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
+				component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
+			),
 		},
 	}
 	for _, tt := range tests {

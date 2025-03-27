@@ -4,6 +4,7 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
+// Signals is a slice of signals
 type Signals []*Signal
 
 // Group represents a list of signals
