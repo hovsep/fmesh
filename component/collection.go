@@ -2,23 +2,24 @@ package component
 
 import (
 	"fmt"
+
 	"github.com/hovsep/fmesh/common"
 )
 
-// @TODO: make type unexported
-type ComponentsMap map[string]*Component
+// Map is a map of components
+type Map map[string]*Component
 
 // Collection is a collection of components with useful methods
 type Collection struct {
 	*common.Chainable
-	components ComponentsMap
+	components Map
 }
 
 // NewCollection creates empty collection
 func NewCollection() *Collection {
 	return &Collection{
 		Chainable:  common.NewChainable(),
-		components: make(ComponentsMap),
+		components: make(Map),
 	}
 }
 
@@ -67,7 +68,7 @@ func (c *Collection) Len() int {
 }
 
 // Components returns underlying components map
-func (c *Collection) Components() (ComponentsMap, error) {
+func (c *Collection) Components() (Map, error) {
 	if c.HasErr() {
 		return nil, c.Err()
 	}

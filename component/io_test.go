@@ -396,7 +396,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			getComponent: func() *Component {
 				sink := port.New("sink")
 				c := New("c").WithOutputs("o1").WithErr(errors.New("some error"))
-				//Lines below are ignored as error immediately propagates up to component level
+				// Lines below are ignored as error immediately propagates up to component level
 				c.Outputs().ByName("o1").PipeTo(sink)
 				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))
 				return c

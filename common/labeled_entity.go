@@ -5,15 +5,16 @@ import (
 	"fmt"
 )
 
+// LabelsCollection is a map of labels
 type LabelsCollection map[string]string
 
+// LabeledEntity is a base struct for labeled entities
 type LabeledEntity struct {
 	labels LabelsCollection
 }
 
-var (
-	ErrLabelNotFound = errors.New("label not found")
-)
+// ErrLabelNotFound is returned when a label is not found
+var ErrLabelNotFound = errors.New("label not found")
 
 // NewLabeledEntity constructor
 func NewLabeledEntity(labels LabelsCollection) LabeledEntity {
@@ -37,7 +38,7 @@ func (e *LabeledEntity) Label(label string) (string, error) {
 }
 
 // LabelOrDefault returns label value or default value in case of any error
-func (e *LabeledEntity) LabelOrDefault(label string, defaultValue string) string {
+func (e *LabeledEntity) LabelOrDefault(label, defaultValue string) string {
 	value, err := e.Label(label)
 	if err != nil {
 		return defaultValue
@@ -51,7 +52,7 @@ func (e *LabeledEntity) SetLabels(labels LabelsCollection) {
 }
 
 // AddLabel adds or updates(if label already exists) single label
-func (e *LabeledEntity) AddLabel(label string, value string) {
+func (e *LabeledEntity) AddLabel(label, value string) {
 	if e.labels == nil {
 		e.labels = make(LabelsCollection)
 	}

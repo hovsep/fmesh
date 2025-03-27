@@ -2,17 +2,16 @@ package cycle
 
 import (
 	"errors"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
-	"sync"
 )
 
 // Cycle contains the info about one activation cycle
 type Cycle struct {
-	sync.Mutex
 	*common.Chainable
 	number            int
-	activationResults component.ActivationResultCollection
+	activationResults *component.ActivationResultCollection
 }
 
 // New creates a new cycle
@@ -24,11 +23,11 @@ func New() *Cycle {
 }
 
 // ActivationResults getter
-func (cycle *Cycle) ActivationResults() component.ActivationResultCollection {
+func (cycle *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return cycle.activationResults
 }
 
-// HasErrors tells whether the cycle is ended wih activation errors (at lease one component returned an error)
+// HasErrors tells whether the cycle is ended with activation errors (at lease one component returned an error)
 func (cycle *Cycle) HasErrors() bool {
 	return cycle.ActivationResults().HasErrors()
 }
@@ -36,7 +35,7 @@ func (cycle *Cycle) HasErrors() bool {
 // AllErrorsCombined returns all errors occurred within the cycle as one error
 func (cycle *Cycle) AllErrorsCombined() error {
 	var allErrors error
-	for _, ar := range cycle.ActivationResults() {
+	for _, ar := range cycle.ActivationResults().All() {
 		if ar.IsError() {
 			allErrors = errors.Join(allErrors, ar.ActivationError())
 		}
@@ -45,7 +44,7 @@ func (cycle *Cycle) AllErrorsCombined() error {
 	return allErrors
 }
 
-// HasPanics tells whether the cycle is ended wih panic(at lease one component panicked)
+// HasPanics tells whether the cycle is ended with panic (at lease one component panicked)
 func (cycle *Cycle) HasPanics() bool {
 	return cycle.ActivationResults().HasPanics()
 }
@@ -58,6 +57,12 @@ func (cycle *Cycle) HasActivatedComponents() bool {
 // WithActivationResults adds multiple activation results
 func (cycle *Cycle) WithActivationResults(activationResults ...*component.ActivationResult) *Cycle {
 	cycle.activationResults = cycle.ActivationResults().Add(activationResults...)
+	return cycle
+}
+
+// AddActivationResult adds a single activation result in a thread-safe way
+func (cycle *Cycle) AddActivationResult(result *component.ActivationResult) *Cycle {
+	cycle.activationResults = cycle.ActivationResults().Add(result)
 	return cycle
 }
 

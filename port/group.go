@@ -5,6 +5,7 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
+// Ports is a list of ports
 type Ports []*Port
 
 // Group represents a list of ports
@@ -29,7 +30,7 @@ func NewGroup(names ...string) *Group {
 
 // NewIndexedGroup is useful to create group of ports with same prefix
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0"
-func NewIndexedGroup(prefix string, startIndex int, endIndex int) *Group {
+func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	if startIndex > endIndex {
 		return NewGroup().WithErr(ErrInvalidRangeForIndexedGroup)
 	}

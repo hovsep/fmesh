@@ -5,6 +5,7 @@ import "github.com/hovsep/fmesh/common"
 // Cycles contains the results of several activation cycles
 type Cycles []*Cycle
 
+// Group contains multiple activation cycles
 type Group struct {
 	*common.Chainable
 	cycles Cycles

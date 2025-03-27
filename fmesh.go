@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// RuntimeInfo contains information about the runtime of the f-mesh
 type RuntimeInfo struct {
 	Cycles    *cycle.Group
 	StartedAt time.Time
@@ -117,16 +118,14 @@ func (fm *FMesh) runCycle() {
 		go func(component *component.Component, cycle *cycle.Cycle) {
 			defer wg.Done()
 
-			cycle.Lock()
-			cycle.ActivationResults().Add(c.MaybeActivate())
-			cycle.Unlock()
+			cycle.ActivationResults().Add(component.MaybeActivate())
 		}(c, newCycle)
 	}
 
 	wg.Wait()
 
-	//Bubble up chain errors from activation results
-	for _, ar := range newCycle.ActivationResults() {
+	// Bubble up chain errors from activation results
+	for _, ar := range newCycle.ActivationResults().All() {
 		if ar.HasErr() {
 			newCycle.SetErr(ar.Err())
 			break
@@ -138,7 +137,7 @@ func (fm *FMesh) runCycle() {
 	}
 
 	if fm.IsDebug() {
-		for _, ar := range newCycle.ActivationResults() {
+		for _, ar := range newCycle.ActivationResults().All() {
 			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
 		}
 	}
@@ -218,7 +217,7 @@ func (fm *FMesh) clearInputs() {
 
 		if component.IsWaitingForInput(activationResult) && component.WantsToKeepInputs(activationResult) {
 			// Component want to keep inputs for the next cycle
-			//@TODO: add fine grained control on which ports to keep
+			// @TODO: add fine grained control on which ports to keep
 			continue
 		}
 
@@ -284,11 +283,11 @@ func (fm *FMesh) mustStop() (bool, error) {
 		return true, nil
 	}
 
-	//Check if mesh must stop because of configured error handling strategy
+	// Check if mesh must stop because of configured error handling strategy
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasErrors() || lastCycle.HasPanics() {
-			//@TODO: add failing components names to error
+			// @TODO: add failing components names to error
 			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
 

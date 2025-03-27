@@ -6,10 +6,13 @@ import (
 )
 
 const (
+	// UnlimitedCycles defines the maximum number of activation cycles, 0 means no limit
 	UnlimitedCycles = 0
+	// UnlimitedTime defines the maximum duration F-Mesh can run before being forcefully stopped, 0 means no limit
 	UnlimitedTime   = 0
 )
 
+// Config defines the configuration for the f-mesh
 type Config struct {
 	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics
 	ErrorHandlingStrategy ErrorHandlingStrategy

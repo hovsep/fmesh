@@ -1,4 +1,4 @@
-package error_handling
+package errorhandling
 
 import (
 	"errors"
@@ -116,7 +116,7 @@ func Test_FMesh(t *testing.T) {
 						}),
 				)
 
-				//Trying to search port by wrong name must lead to error which will bubble up at f-mesh level
+				// Trying to search port by wrong name must lead to error which will bubble up at f-mesh level
 				fm.Components().ByName("c1").InputByName("num777").PutSignals(signal.New(10))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 

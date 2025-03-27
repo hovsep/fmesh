@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// ActivationFunc is the function that will be called when the component is activated
 type ActivationFunc func(this *Component) error
 
 // WithActivationFunc sets activation function
@@ -31,8 +32,7 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	c.propagateChainErrors()
 
 	if c.HasErr() {
-		activationResult = NewActivationResult(c.Name()).WithErr(c.Err())
-		return
+		return NewActivationResult(c.Name()).WithErr(c.Err())
 	}
 
 	defer func() {
@@ -42,30 +42,25 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	}()
 
 	if !c.hasActivationFunction() {
-		//Activation function is not set (maybe useful while the mesh is under development)
-		activationResult = c.newActivationResultNoFunction()
-		return
+		// Activation function is not set (maybe useful while the mesh is under development)
+		return c.newActivationResultNoFunction()
 	}
 
 	if !c.Inputs().AnyHasSignals() {
-		//No inputs set, stop here
-		activationResult = c.newActivationResultNoInput()
-		return
+		// No inputs set, stop here
+		return c.newActivationResultNoInput()
 	}
 
-	//Invoke the activation func
+	// Invoke the activation func
 	err := c.f(c)
 
 	if errors.Is(err, errWaitingForInputs) {
-		activationResult = c.newActivationResultWaitingForInputs(err)
-		return
+		return c.newActivationResultWaitingForInputs(err)
 	}
 
 	if err != nil {
-		activationResult = c.newActivationResultReturnedError(err)
-		return
+		return c.newActivationResultReturnedError(err)
 	}
 
-	activationResult = c.newActivationResultOK()
-	return
+	return c.newActivationResultOK()
 }

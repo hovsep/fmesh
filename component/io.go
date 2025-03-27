@@ -57,7 +57,7 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 }
 
 // WithInputsIndexed creates multiple prefixed ports
-func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex int) *Component {
+func (c *Component) WithInputsIndexed(prefix string, startIndex , endIndex int) *Component {
 	if c.HasErr() {
 		return c
 	}
@@ -66,7 +66,7 @@ func (c *Component) WithInputsIndexed(prefix string, startIndex int, endIndex in
 }
 
 // WithOutputsIndexed creates multiple prefixed ports
-func (c *Component) WithOutputsIndexed(prefix string, startIndex int, endIndex int) *Component {
+func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) *Component {
 	if c.HasErr() {
 		return c
 	}
@@ -148,6 +148,6 @@ func (c *Component) ClearInputs() *Component {
 }
 
 // LoopbackPipe creates a pipe between ports of the component
-func (c *Component) LoopbackPipe(out string, in string) {
+func (c *Component) LoopbackPipe(out, in string) {
 	c.OutputByName(out).PipeTo(c.InputByName(in))
 }

@@ -2,8 +2,9 @@ package component
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestActivationResultCollection_Add(t *testing.T) {
@@ -12,9 +13,9 @@ func TestActivationResultCollection_Add(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		collection ActivationResultCollection
+		collection *ActivationResultCollection
 		args       args
-		assertions func(t *testing.T, collection ActivationResultCollection)
+		assertions func(t *testing.T, collection *ActivationResultCollection)
 	}{
 		{
 			name:       "adding nothing to empty collection",
@@ -22,8 +23,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			args: args{
 				activationResults: nil,
 			},
-			assertions: func(t *testing.T, collection ActivationResultCollection) {
-				assert.Len(t, collection, 0)
+			assertions: func(t *testing.T, collection *ActivationResultCollection) {
+				assert.Equal(t, collection.Len(), 0)
 				assert.False(t, collection.HasErrors())
 				assert.False(t, collection.HasPanics())
 				assert.False(t, collection.HasActivatedComponents())
@@ -38,8 +39,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 					New("c2").newActivationResultReturnedError(errors.New("oops")),
 				},
 			},
-			assertions: func(t *testing.T, collection ActivationResultCollection) {
-				assert.Len(t, collection, 2)
+			assertions: func(t *testing.T, collection *ActivationResultCollection) {
+				assert.Equal(t, collection.Len(), 2)
 				assert.True(t, collection.HasActivatedComponents())
 				assert.True(t, collection.HasErrors())
 				assert.False(t, collection.HasPanics())
@@ -57,8 +58,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 					New("c5").newActivationResultPanicked(errors.New("panic")),
 				},
 			},
-			assertions: func(t *testing.T, collection ActivationResultCollection) {
-				assert.Len(t, collection, 4)
+			assertions: func(t *testing.T, collection *ActivationResultCollection) {
+				assert.Equal(t, collection.Len(), 4)
 				assert.True(t, collection.HasPanics())
 				assert.False(t, collection.HasErrors())
 				assert.True(t, collection.HasActivatedComponents())

@@ -34,14 +34,14 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
-			//Compare activation functions by they result and error
+			// Compare activation functions by they result and error
 			dummyComponent1 := New("c1").WithInputs("i1", "i2").WithOutputs("o1", "o2")
 			dummyComponent2 := New("c2").WithInputs("i1", "i2").WithOutputs("o1", "o2")
 			err1 := componentAfter.f(dummyComponent1)
 			err2 := tt.args.f(dummyComponent2)
 			assert.Equal(t, err1, err2)
 
-			//Compare signals without keys (because they are random)
+			// Compare signals without keys (because they are random)
 			assert.ElementsMatch(t, dummyComponent1.OutputByName("o1").AllSignalsOrNil(), dummyComponent2.OutputByName("o1").AllSignalsOrNil())
 			assert.ElementsMatch(t, dummyComponent1.OutputByName("o2").AllSignalsOrNil(), dummyComponent2.OutputByName("o2").AllSignalsOrNil())
 
@@ -97,7 +97,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithActivationFunc(func(this *Component) error {
 						return errors.New("test error")
 					})
-				//Only one input set
+				// Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -115,7 +115,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithActivationFunc(func(this *Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
-				//Only one input set
+				// Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -132,7 +132,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithActivationFunc(func(this *Component) error {
 						panic(errors.New("oh shrimps"))
 					})
-				//Only one input set
+				// Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -150,7 +150,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					WithActivationFunc(func(this *Component) error {
 						panic("oh shrimps")
 					})
-				//Only one input set
+				// Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -260,7 +260,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 						this.logger.Println("This line must be logged")
 						return errors.New("test error")
 					})
-				//Only one input set
+				// Only one input set
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -269,7 +269,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				WithActivationCode(ActivationCodeReturnedError).
 				WithActivationError(errors.New("component returned an error: test error")),
 			loggerAssertions: func(t *testing.T, output []byte) {
-				assert.Len(t, output, 2+3+21+24) //lengths of component name, prefix, flags and logged message
+				assert.Len(t, output, 2+3+21+24) // lengths of component name, prefix, flags and logged message
 			},
 		},
 	}

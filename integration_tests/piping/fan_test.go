@@ -35,7 +35,7 @@ func Test_Fan(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							//Bypass received signal to output
+							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
@@ -43,7 +43,7 @@ func Test_Fan(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							//Bypass received signal to output
+							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
@@ -51,7 +51,7 @@ func Test_Fan(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							//Bypass received signal to output
+							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 				)
@@ -64,18 +64,18 @@ func Test_Fan(t *testing.T) {
 				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				//Fire the mesh
+				// Fire the mesh
 				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
 				assert.NoError(t, runErr)
-				//All consumers received a signal
+				// All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
 				assert.True(t, c1.OutputByName("o1").HasSignals())
 				assert.True(t, c2.OutputByName("o1").HasSignals())
 				assert.True(t, c3.OutputByName("o1").HasSignals())
 
-				//All 3 signals are the same (literally the same address in memory)
+				// All 3 signals are the same (literally the same address in memory)
 				sig1, err := c1.OutputByName("o1").FirstSignalPayload()
 				assert.NoError(t, err)
 				sig2, err := c2.OutputByName("o1").FirstSignalPayload()
@@ -116,7 +116,7 @@ func Test_Fan(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
-						//Bypass
+						// Bypass
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
 
@@ -133,14 +133,14 @@ func Test_Fan(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
 				assert.NoError(t, runErr)
-				//Consumer received a signal
+				// Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())
 
-				//The signal is combined and consist of 3 payloads
+				// The signal is combined and consist of 3 payloads
 				resultSignals := fm.Components().ByName("consumer").OutputByName("o1").Buffer()
 				assert.Len(t, resultSignals.SignalsOrNil(), 3)
 
-				//And they are all different
+				// And they are all different
 				sig0, err := resultSignals.FirstPayload()
 				assert.NoError(t, err)
 				sig1, err := resultSignals.SignalsOrNil()[1].Payload()

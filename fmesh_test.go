@@ -162,7 +162,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 				components: []*component.Component{
 					component.New("c1").WithDescription("descr1"),
 					component.New("c2").WithDescription("descr2"),
-					component.New("c2").WithDescription("new descr for c2"), //This will overwrite the previous one
+					component.New("c2").WithDescription("new descr for c2"), // This will overwrite the previous one
 					component.New("c4").WithDescription("descr4"),
 				},
 			},
@@ -216,7 +216,7 @@ func TestFMesh_Run(t *testing.T) {
 						}),
 				),
 			initFM: func(fm *FMesh) {
-				//Fire the mesh
+				// Fire the mesh
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start c1"))
 			},
 			wantCycles: cycle.NewGroup().With(
@@ -291,11 +291,11 @@ func TestFMesh_Run(t *testing.T) {
 				),
 			initFM: func(fm *FMesh) {
 				c1, c2, c3, c4 := fm.Components().ByName("c1"), fm.Components().ByName("c2"), fm.Components().ByName("c3"), fm.Components().ByName("c4")
-				//Piping
+				// Piping
 				c1.OutputByName("o1").PipeTo(c2.InputByName("i1"))
 				c2.OutputByName("o1").PipeTo(c4.InputByName("i1"))
 
-				//Input data
+				// Input data
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
@@ -400,17 +400,17 @@ func TestFMesh_Run(t *testing.T) {
 				),
 			initFM: func(fm *FMesh) {
 				c1, c2, c3, c4, c5 := fm.Components().ByName("c1"), fm.Components().ByName("c2"), fm.Components().ByName("c3"), fm.Components().ByName("c4"), fm.Components().ByName("c5")
-				//Piping
+				// Piping
 				c1.OutputByName("o1").PipeTo(c2.InputByName("i1"))
 				c2.OutputByName("o1").PipeTo(c4.InputByName("i1"))
 				c4.OutputByName("o1").PipeTo(c5.InputByName("i1"))
 
-				//Input data
+				// Input data
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
 			wantCycles: cycle.NewGroup().With(
-				//c1 and c3 activated, c3 finishes with error
+				// c1 and c3 activated, c3 finishes with error
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -449,7 +449,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
-				//Only c4 is activated and panicked
+				// Only c4 is activated and panicked
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -469,7 +469,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
-				//Only c5 is activated (after c4 panicked in previous cycle)
+				// Only c5 is activated (after c4 panicked in previous cycle)
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -488,7 +488,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeOK),
 					),
-				//Last (control) cycle, no component activated, so f-mesh stops naturally
+				// Last (control) cycle, no component activated, so f-mesh stops naturally
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").
@@ -524,20 +524,20 @@ func TestFMesh_Run(t *testing.T) {
 				assert.Nil(t, err)
 			}
 
-			//Compare cycle results one by one
+			// Compare cycle results one by one
 			for i := 0; i < got.Cycles.Len(); i++ {
 				wantCycle := tt.wantCycles.CyclesOrNil()[i]
 				gotCycle := got.Cycles.CyclesOrNil()[i]
-				assert.Equal(t, len(wantCycle.ActivationResults()), len(gotCycle.ActivationResults()), "ActivationResultCollection len mismatch")
+				assert.Equal(t, len(wantCycle.ActivationResults().All()), len(gotCycle.ActivationResults().All()), "ActivationResultCollection len mismatch")
 
-				//Compare activation results
-				for componentName, gotActivationResult := range gotCycle.ActivationResults() {
-					assert.Equal(t, wantCycle.ActivationResults()[componentName].Activated(), gotActivationResult.Activated())
-					assert.Equal(t, wantCycle.ActivationResults()[componentName].ComponentName(), gotActivationResult.ComponentName())
-					assert.Equal(t, wantCycle.ActivationResults()[componentName].Code(), gotActivationResult.Code())
+				// Compare activation results
+				for componentName, gotActivationResult := range gotCycle.ActivationResults().All() {
+					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).Activated(), gotActivationResult.Activated())
+					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).ComponentName(), gotActivationResult.ComponentName())
+					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).Code(), gotActivationResult.Code())
 
-					if wantCycle.ActivationResults()[componentName].IsError() {
-						assert.EqualError(t, wantCycle.ActivationResults()[componentName].ActivationError(), gotActivationResult.ActivationError().Error())
+					if wantCycle.ActivationResults().ByComponentName(componentName).IsError() {
+						assert.EqualError(t, wantCycle.ActivationResults().ByComponentName(componentName).ActivationError(), gotActivationResult.ActivationError().Error())
 					} else {
 						assert.False(t, gotActivationResult.IsError())
 					}
@@ -730,208 +730,6 @@ func TestFMesh_mustStop(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TO_BE_REWRITTEN_FMesh_drainComponents(t *testing.T) {
-	type args struct {
-		cycle *cycle.Cycle
-	}
-	tests := []struct {
-		name       string
-		getFM      func() *FMesh
-		args       args
-		assertions func(t *testing.T, fm *FMesh)
-	}{
-		{
-			name: "component not activated",
-			getFM: func() *FMesh {
-				fm := New("fm").
-					WithComponents(
-						component.New("c1").
-							WithDescription("This component has no activation function").
-							WithInputs("i1").
-							WithOutputs("o1"))
-
-				fm.Components().
-					ByName("c1").
-					Inputs().
-					ByName("i1").
-					PutSignals(signal.New("input signal"))
-
-				return fm
-			},
-			args: args{
-				cycle: cycle.New().
-					WithActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput)),
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				// Assert that inputs are not cleared
-				assert.True(t, fm.Components().ByName("c1").InputByName("i1").HasSignals())
-			},
-		},
-		{
-			name: "component fully drained",
-			getFM: func() *FMesh {
-				c1 := component.New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				c2 := component.New("c2").
-					WithInputs("i1").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				// Pipe
-				c1.OutputByName("o1").PipeTo(c2.InputByName("i1"))
-
-				// Simulate activation of c1
-				c1.OutputByName("o1").PutSignals(signal.New("this signal is generated by c1"))
-
-				return New("fm").WithComponents(c1, c2)
-			},
-			args: args{
-				cycle: cycle.New().
-					WithActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput)),
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				// c1 output is cleared
-				assert.False(t, fm.Components().ByName("c1").OutputByName("o1").HasSignals())
-
-				// c2 input received flushed signal
-				assert.True(t, fm.Components().ByName("c2").InputByName("i1").HasSignals())
-				sig, err := fm.Components().ByName("c2").InputByName("i1").FirstSignalPayload()
-				assert.NoError(t, err)
-				assert.Equal(t, "this signal is generated by c1", sig.(string))
-			},
-		},
-		{
-			name: "component is waiting for inputs",
-			getFM: func() *FMesh {
-
-				c1 := component.New("c1").
-					WithInputs("i1", "i2").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				c2 := component.New("c2").
-					WithInputs("i1").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				// Pipe
-				c1.OutputByName("o1").PipeTo(c2.InputByName("i1"))
-
-				// Simulate activation of c1
-				// NOTE: normally component should not create any output signal if it is waiting for inputs
-				// but technically there is no limitation to do that and then return the special error to wait for inputs.
-				// F-mesh just never flushes components waiting for inputs, so this test checks that
-				c1.OutputByName("o1").PutSignals(signal.New("this signal is generated by c1"))
-
-				// Also simulate input signal on one port
-				c1.InputByName("i1").PutSignals(signal.New("this is input signal for c1"))
-
-				return New("fm").WithComponents(c1, c2)
-			},
-			args: args{
-				cycle: cycle.New().
-					WithActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							WithActivationCode(component.ActivationCodeWaitingForInputsClear).
-							WithActivationError(component.NewErrWaitForInputs(false)),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
-					),
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				// As c1 is waiting for inputs it's outputs must not be flushed
-				assert.False(t, fm.Components().ByName("c2").InputByName("i1").HasSignals())
-
-				// The inputs must be cleared
-				assert.False(t, fm.Components().ByName("c1").Inputs().AnyHasSignals())
-			},
-		},
-		{
-			name: "component is waiting for inputs and wants to keep input signals",
-			getFM: func() *FMesh {
-
-				c1 := component.New("c1").
-					WithInputs("i1", "i2").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				c2 := component.New("c2").
-					WithInputs("i1").
-					WithOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						return nil
-					})
-
-				// Pipe
-				c1.OutputByName("o1").PipeTo(c2.InputByName("i1"))
-
-				// Simulate activation of c1
-				// NOTE: normally component should not create any output signal if it is waiting for inputs
-				// but technically there is no limitation to do that and then return the special error to wait for inputs.
-				// F-mesh just never flushes components waiting for inputs, so this test checks that
-				c1.OutputByName("o1").PutSignals(signal.New("this signal is generated by c1"))
-
-				// Also simulate input signal on one port
-				c1.InputByName("i1").PutSignals(signal.New("this is input signal for c1"))
-
-				return New("fm").WithComponents(c1, c2)
-			},
-			args: args{
-				cycle: cycle.New().
-					WithActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							WithActivationCode(component.ActivationCodeWaitingForInputsKeep).
-							WithActivationError(component.NewErrWaitForInputs(true)),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
-					),
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				// As c1 is waiting for inputs it's outputs must not be flushed
-				assert.False(t, fm.Components().ByName("c2").InputByName("i1").HasSignals())
-
-				// The inputs must NOT be cleared
-				assert.True(t, fm.Components().ByName("c1").Inputs().AnyHasSignals())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fm := tt.getFM()
-			fm.drainComponents()
-			if tt.assertions != nil {
-				tt.assertions(t, fm)
-			}
 		})
 	}
 }

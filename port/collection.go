@@ -2,19 +2,20 @@ package port
 
 import (
 	"fmt"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 )
 
-// @TODO: make type unexported
-type PortMap map[string]*Port
+// Map is a map of ports
+type Map map[string]*Port
 
 // Collection is a port collection
 // indexed by name, hence it can not carry
 // 2 ports with same name. Optimized for lookups
 type Collection struct {
 	*common.Chainable
-	ports PortMap
+	ports Map
 	// Labels added by default to each port in collection
 	defaultLabels common.LabelsCollection
 }
@@ -23,7 +24,7 @@ type Collection struct {
 func NewCollection() *Collection {
 	return &Collection{
 		Chainable:     common.NewChainable(),
-		ports:         make(PortMap),
+		ports:         make(Map),
 		defaultLabels: common.LabelsCollection{},
 	}
 }
@@ -47,7 +48,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 		return NewCollection().WithErr(collection.Err())
 	}
 
-	//Preserve collection config
+	// Preserve collection config
 	selectedPorts := NewCollection().WithDefaultLabels(collection.defaultLabels)
 
 	for _, name := range names {
@@ -164,7 +165,7 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 }
 
 // WithIndexed creates ports with names like "o1","o2","o3" and so on
-func (collection *Collection) WithIndexed(prefix string, startIndex int, endIndex int) *Collection {
+func (collection *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Collection {
 	if collection.HasErr() {
 		return collection
 	}
@@ -197,7 +198,7 @@ func (collection *Collection) Signals() *signal.Group {
 
 // Ports getter
 // @TODO:maybe better to hide all errors within chainable and ask user to check error ?
-func (collection *Collection) Ports() (PortMap, error) {
+func (collection *Collection) Ports() (Map, error) {
 	if collection.HasErr() {
 		return nil, collection.Err()
 	}
@@ -205,12 +206,12 @@ func (collection *Collection) Ports() (PortMap, error) {
 }
 
 // PortsOrNil returns ports or nil in case of any error
-func (collection *Collection) PortsOrNil() PortMap {
+func (collection *Collection) PortsOrNil() Map {
 	return collection.PortsOrDefault(nil)
 }
 
 // PortsOrDefault returns ports or default in case of any error
-func (collection *Collection) PortsOrDefault(defaultPorts PortMap) PortMap {
+func (collection *Collection) PortsOrDefault(defaultPorts Map) Map {
 	if collection.HasErr() {
 		return defaultPorts
 	}
@@ -233,6 +234,7 @@ func (collection *Collection) Len() int {
 	return len(collection.ports)
 }
 
+// WithDefaultLabels adds default labels to all ports in collection
 func (collection *Collection) WithDefaultLabels(labels common.LabelsCollection) *Collection {
 	collection.defaultLabels = labels
 	return collection

@@ -54,14 +54,14 @@ func Test_WaitingForInputs(t *testing.T) {
 						return nil
 					})
 
-				//This chain consist of 3 components: d1->d2->d3
+				// This chain consist of 3 components: d1->d2->d3
 				d1.OutputByName("o1").PipeTo(d2.InputByName("i1"))
 				d2.OutputByName("o1").PipeTo(d3.InputByName("i1"))
 
-				//This chain has only 2: d4->d5
+				// This chain has only 2: d4->d5
 				d4.OutputByName("o1").PipeTo(d5.InputByName("i1"))
 
-				//Both chains go into summator
+				// Both chains go into summator
 				d3.OutputByName("o1").PipeTo(s.InputByName("i1"))
 				d5.OutputByName("o1").PipeTo(s.InputByName("i2"))
 
@@ -73,7 +73,7 @@ func Test_WaitingForInputs(t *testing.T) {
 
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				//Put 1 signal to each chain so they start in the same cycle
+				// Put 1 signal to each chain so they start in the same cycle
 				fm.Components().ByName("d1").InputByName("i1").PutSignals(signal.New(1))
 				fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2))
 			},
