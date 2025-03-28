@@ -1,0 +1,8 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; generator [label="Generator
+(requests)"]; distributor [label="Round-Robin
+Distributor
+(requests)
+(worker1,2,3)"]; worker1 [label="Worker 1
+(requests)"]; worker2 [label="Worker 2
+(requests)"]; worker3 [label="Worker 3
+(requests)"]; generator -> distributor; distributor -> worker1; distributor -> worker2; distributor -> worker3; }

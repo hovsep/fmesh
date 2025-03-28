@@ -1,0 +1,7 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; source1 [label="Source 1
+(data)"]; source2 [label="Source 2
+(data)"]; source3 [label="Source 3
+(data)"]; aggregator [label="Aggregator
+(input-1,2,3)
+(aggregated)"]; consumer [label="Consumer
+(data)"]; source1 -> aggregator; source2 -> aggregator; source3 -> aggregator; aggregator -> consumer; }

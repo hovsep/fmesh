@@ -1,0 +1,9 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; generator [label="Generator
+(data)"]; stage1 [label="Stage 1
+(data)
+(prepared)"]; stage2 [label="Stage 2
+(data)
+(processed)"]; stage3 [label="Stage 3
+(data)
+(transformed)"]; collector [label="Collector
+(data)"]; generator -> stage1; stage1 -> stage2; stage2 -> stage3; stage3 -> collector; }

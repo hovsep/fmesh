@@ -1,0 +1,9 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; broadcaster [label="Broadcaster
+(messages)
+(acks)"]; receiver1 [label="Receiver 1
+(messages)
+(acks)"]; receiver2 [label="Receiver 2
+(messages)
+(acks)"]; receiver3 [label="Receiver 3
+(messages)
+(acks)"]; broadcaster -> receiver1; broadcaster -> receiver2; broadcaster -> receiver3; receiver1 -> broadcaster; receiver2 -> broadcaster; receiver3 -> broadcaster; }

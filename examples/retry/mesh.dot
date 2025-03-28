@@ -1,0 +1,5 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [fontsize=10]; generator [label="generator
+(requests)"]; retry [label="retry
+(requests) -> (success, failure, retry)"]; successHandler [label="success-handler
+(requests)"]; failureHandler [label="failure-handler
+(requests)"]; generator -> retry [label="requests"]; retry -> successHandler [label="success"]; retry -> failureHandler [label="failure"]; retry -> retry [label="retry"]; }

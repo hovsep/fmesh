@@ -1,0 +1,4 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [fontsize=10]; generator [label="generator
+(data)"]; splitter [label="splitter
+(data) -> (words)"]; processor [label="processor
+(words)"]; generator -> splitter [label="data"]; splitter -> processor [label="words"]; }

@@ -1,0 +1,7 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; generator [label="Generator
+(requests)"]; balancer [label="Load Balancer
+(requests)
+(worker1,2,3)"]; worker1 [label="Worker 1
+(requests)"]; worker2 [label="Worker 2
+(requests)"]; worker3 [label="Worker 3
+(requests)"]; generator -> balancer; balancer -> worker1; balancer -> worker2; balancer -> worker3; }

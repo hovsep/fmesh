@@ -1,0 +1,5 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [fontsize=10]; generator [label="generator
+(requests)"]; rateLimiter [label="rate-limiter
+(requests) -> (allowed, rejected)"]; allowedHandler [label="allowed-handler
+(requests)"]; rejectedHandler [label="rejected-handler
+(requests)"]; generator -> rateLimiter [label="requests"]; rateLimiter -> allowedHandler [label="allowed"]; rateLimiter -> rejectedHandler [label="rejected"]; }

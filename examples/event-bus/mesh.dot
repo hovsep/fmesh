@@ -1,0 +1,5 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; publisher [label="Publisher
+(events)"]; sub1 [label="Subscriber 1
+(events)"]; sub2 [label="Subscriber 2
+(events)"]; sub3 [label="Subscriber 3
+(events)"]; publisher -> sub1; publisher -> sub2; publisher -> sub3; }

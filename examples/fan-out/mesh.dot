@@ -1,0 +1,5 @@
+digraph G { rankdir=LR; node [shape=box, style=filled, fillcolor=lightblue]; edge [color=blue]; producer [label="Producer
+(messages)"]; worker1 [label="Worker 1
+(messages)"]; worker2 [label="Worker 2
+(messages)"]; worker3 [label="Worker 3
+(messages)"]; producer -> worker1; producer -> worker2; producer -> worker3; }

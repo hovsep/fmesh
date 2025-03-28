@@ -1,0 +1,43 @@
+digraph G {
+    rankdir=LR;
+    node [shape=box, style=filled, fillcolor=lightblue];
+    edge [color=blue];
+
+    // Components
+    generator [label="Generator\n(event)"];
+    stateRouter [label="State Router\n(event, current-state)"];
+    idleState [label="Idle State\n(event)"];
+    runningState [label="Running State\n(event)"];
+    pausedState [label="Paused State\n(event)"];
+    stoppedState [label="Stopped State\n(event)"];
+    collector [label="Collector\n(state)"];
+
+    // Connections
+    generator -> stateRouter [label="event"];
+    stateRouter -> idleState [label="event"];
+    stateRouter -> runningState [label="event"];
+    stateRouter -> pausedState [label="event"];
+    stateRouter -> stoppedState [label="event"];
+
+    idleState -> stateRouter [label="state"];
+    runningState -> stateRouter [label="state"];
+    pausedState -> stateRouter [label="state"];
+    stoppedState -> stateRouter [label="state"];
+
+    stateRouter -> collector [label="state"];
+
+    // State transitions
+    subgraph cluster_0 {
+        label="State Transitions";
+        style=filled;
+        color=lightgrey;
+        node [style=filled, fillcolor=white];
+        edge [color=red];
+
+        idle -> running [label="start"];
+        running -> paused [label="pause"];
+        running -> stopped [label="stop"];
+        paused -> running [label="resume"];
+        stopped -> idle [label="restart"];
+    }
+} 
