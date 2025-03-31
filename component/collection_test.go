@@ -147,6 +147,35 @@ func TestCollection_ByLabelValue(t *testing.T) {
 	}
 }
 
+func TestCollection_First(t *testing.T) {
+	tests := []struct {
+		name       string
+		components *Collection
+		want       *Component
+	}{
+		{
+			name:       "empty collection",
+			components: NewCollection(),
+			want:       New("").WithErr(errNotFound),
+		},
+		{
+			name:       "one component",
+			components: NewCollection().With(New("c1")),
+			want:       New("c1"),
+		},
+		{
+			name:       "multiple components",
+			components: NewCollection().With(New("c1"), New("c2"), New("c3")),
+			want:       New("c1"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.components.First())
+		})
+	}
+}
+
 func TestCollection_With(t *testing.T) {
 	type args struct {
 		components []*Component

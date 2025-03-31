@@ -91,3 +91,17 @@ func (c *Collection) Components() (Map, error) {
 	}
 	return c.components, nil
 }
+
+// First returns the first component in the collection (ORDER IS NOT GUARANTEED)
+func (c *Collection) First() *Component {
+	if c.HasErr() {
+		return New("").WithErr(c.Err())
+	}
+
+	for _, component := range c.components {
+		return component
+	}
+
+	c.SetErr(errNotFound)
+	return New("").WithErr(c.Err())
+}
