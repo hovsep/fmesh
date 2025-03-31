@@ -5,6 +5,7 @@ import (
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -119,7 +120,7 @@ func TestPort_PipeTo(t *testing.T) {
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.False(t, portAfter.HasErr())
-				assert.NoError(t, portAfter.Err())
+				require.NoError(t, portAfter.Err())
 				assert.Equal(t, 2, portAfter.Pipes().Len())
 			},
 		},
@@ -130,7 +131,7 @@ func TestPort_PipeTo(t *testing.T) {
 				toPorts: Ports{inputPorts.ByName("in1")},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, "", portAfter.Name())
+				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasErr())
 				assert.Error(t, portAfter.Err())
 			},
@@ -142,7 +143,7 @@ func TestPort_PipeTo(t *testing.T) {
 				toPorts: Ports{inputPorts.ByName("in2"), nil},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, "", portAfter.Name())
+				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasErr())
 				assert.Error(t, portAfter.Err())
 			},
@@ -156,7 +157,7 @@ func TestPort_PipeTo(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, "", portAfter.Name())
+				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasErr())
 				assert.Error(t, portAfter.Err())
 			},
@@ -168,7 +169,7 @@ func TestPort_PipeTo(t *testing.T) {
 				toPorts: Ports{outputPorts.ByName("out2")},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, "", portAfter.Name())
+				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasErr())
 				assert.Error(t, portAfter.Err())
 			},
@@ -347,7 +348,7 @@ func TestPort_Flush(t *testing.T) {
 			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.True(t, srcPort.HasSignals())
-				assert.Equal(t, srcPort.Buffer().Len(), 3)
+				assert.Equal(t, 3, srcPort.Buffer().Len())
 				assert.False(t, srcPort.HasPipes())
 			},
 		},
@@ -389,9 +390,9 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.Pipes().PortsOrNil() {
 					assert.True(t, destPort.HasSignals())
-					assert.Equal(t, destPort.Buffer().Len(), 3)
+					assert.Equal(t, 3, destPort.Buffer().Len())
 					allPayloads, err := destPort.AllSignalsPayloads()
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -416,9 +417,9 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.Pipes().PortsOrNil() {
 					assert.True(t, destPort.HasSignals())
-					assert.Equal(t, destPort.Buffer().Len(), 6)
+					assert.Equal(t, 6, destPort.Buffer().Len())
 					allPayloads, err := destPort.AllSignalsPayloads()
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -516,7 +517,7 @@ func TestPort_ShortcutGetters(t *testing.T) {
 	t.Run("FirstSignalPayload", func(t *testing.T) {
 		port := New("p").WithSignalGroups(signal.NewGroup(4, 7, 6, 5))
 		payload, err := port.FirstSignalPayload()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 4, payload)
 	})
 

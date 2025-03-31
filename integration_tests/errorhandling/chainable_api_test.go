@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func Test_Signal(t *testing.T) {
 				sig := signal.New(123)
 				_, err := sig.Payload()
 				assert.False(t, sig.HasErr())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				_ = sig.PayloadOrDefault(555)
 				assert.False(t, sig.HasErr())
@@ -36,11 +37,11 @@ func Test_Signal(t *testing.T) {
 
 				sig := emptyGroup.First()
 				assert.True(t, sig.HasErr())
-				assert.Error(t, sig.Err())
+				require.Error(t, sig.Err())
 
 				_, err := sig.Payload()
-				assert.Error(t, err)
-				assert.EqualError(t, err, signal.ErrNoSignalsInGroup.Error())
+				require.Error(t, err)
+				require.EqualError(t, err, signal.ErrNoSignalsInGroup.Error())
 			},
 		},
 	}
@@ -97,8 +98,8 @@ func Test_FMesh(t *testing.T) {
 
 				_, err := fm.Run()
 				assert.True(t, fm.HasErr())
-				assert.Error(t, err)
-				assert.EqualError(t, err, "some error in component")
+				require.Error(t, err)
+				require.EqualError(t, err, "some error in component")
 			},
 		},
 		{
@@ -122,8 +123,8 @@ func Test_FMesh(t *testing.T) {
 
 				_, err := fm.Run()
 				assert.True(t, fm.HasErr())
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, "port not found, port name: num777")
+				require.Error(t, err)
+				require.ErrorContains(t, err, "port not found, port name: num777")
 			},
 		},
 		{
@@ -144,8 +145,8 @@ func Test_FMesh(t *testing.T) {
 
 				_, err := fm.Run()
 				assert.True(t, fm.HasErr())
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, "some error in input signal")
+				require.Error(t, err)
+				require.ErrorContains(t, err, "some error in input signal")
 			},
 		},
 	}

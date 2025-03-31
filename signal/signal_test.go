@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -72,8 +73,8 @@ func TestSignal_Payload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.signal.Payload()
 			if tt.wantErrorString != "" {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.wantErrorString)
+				require.Error(t, err)
+				require.EqualError(t, err, tt.wantErrorString)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}

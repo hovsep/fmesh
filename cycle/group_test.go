@@ -40,7 +40,7 @@ func TestGroup_With(t *testing.T) {
 				cycles: nil,
 			},
 			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, group.Len(), 1)
+				assert.Equal(t, 1, group.Len())
 			},
 		},
 		{
@@ -50,7 +50,7 @@ func TestGroup_With(t *testing.T) {
 				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, group.Len(), 1)
+				assert.Equal(t, 1, group.Len())
 			},
 		},
 		{
@@ -60,7 +60,7 @@ func TestGroup_With(t *testing.T) {
 				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, group.Len(), 2)
+				assert.Equal(t, 2, group.Len())
 			},
 		},
 	}

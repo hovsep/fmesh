@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -78,9 +79,9 @@ func Test_WaitingForInputs(t *testing.T) {
 				fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				result, err := fm.Components().ByName("sum").OutputByName("o1").FirstSignalPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, 16, result.(int))
 			},
 		},

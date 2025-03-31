@@ -24,7 +24,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 				activationResults: nil,
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
-				assert.Equal(t, collection.Len(), 0)
+				assert.Zero(t, collection.Len())
 				assert.False(t, collection.HasErrors())
 				assert.False(t, collection.HasPanics())
 				assert.False(t, collection.HasActivatedComponents())
@@ -40,7 +40,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
-				assert.Equal(t, collection.Len(), 2)
+				assert.Equal(t, 2, collection.Len())
 				assert.True(t, collection.HasActivatedComponents())
 				assert.True(t, collection.HasErrors())
 				assert.False(t, collection.HasPanics())
@@ -59,7 +59,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
-				assert.Equal(t, collection.Len(), 4)
+				assert.Equal(t, 4, collection.Len())
 				assert.True(t, collection.HasPanics())
 				assert.False(t, collection.HasErrors())
 				assert.True(t, collection.HasActivatedComponents())

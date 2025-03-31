@@ -117,7 +117,7 @@ func TestGroup_With(t *testing.T) {
 				ports: NewGroup("p1", "p2", "p3").PortsOrNil(),
 			},
 			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, group.Len(), 3)
+				assert.Equal(t, 3, group.Len())
 			},
 		},
 		{
@@ -127,7 +127,7 @@ func TestGroup_With(t *testing.T) {
 				ports: NewGroup("p4", "p5", "p6").PortsOrNil(),
 			},
 			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, group.Len(), 6)
+				assert.Equal(t, 6, group.Len())
 			},
 		},
 	}

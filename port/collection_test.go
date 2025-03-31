@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -221,8 +222,8 @@ func TestCollection_With(t *testing.T) {
 				ports: NewGroup("p1", "p2").PortsOrNil(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 2)
-				assert.Equal(t, collection.ByNames("p1", "p2").Len(), 2)
+				assert.Equal(t, 2, collection.Len())
+				assert.Equal(t, 2, collection.ByNames("p1", "p2").Len())
 			},
 		},
 		{
@@ -232,8 +233,8 @@ func TestCollection_With(t *testing.T) {
 				ports: NewGroup("p3", "p4").PortsOrNil(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 4)
-				assert.Equal(t, collection.ByNames("p1", "p2", "p3", "p4").Len(), 4)
+				assert.Equal(t, 4, collection.Len())
+				assert.Equal(t, 4, collection.ByNames("p1", "p2", "p3", "p4").Len())
 			},
 		},
 	}
@@ -277,12 +278,12 @@ func TestCollection_Flush(t *testing.T) {
 						})),
 			),
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 1)
+				assert.Equal(t, 1, collection.Len())
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").Pipes().PortsOrNil() {
-					assert.Equal(t, destPort.Buffer().Len(), 3)
+					assert.Equal(t, 3, destPort.Buffer().Len())
 					allPayloads, err := destPort.AllSignalsPayloads()
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -333,10 +334,10 @@ func TestCollection_PipeTo(t *testing.T) {
 					PortsOrNil(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 3)
+				assert.Equal(t, 3, collection.Len())
 				for _, p := range collection.PortsOrNil() {
 					assert.True(t, p.HasPipes())
-					assert.Equal(t, p.Pipes().Len(), 5)
+					assert.Equal(t, 5, p.Pipes().Len())
 				}
 			},
 		},
@@ -372,7 +373,7 @@ func TestCollection_WithIndexed(t *testing.T) {
 				endIndex:   3,
 			},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 3)
+				assert.Equal(t, 3, collection.Len())
 			},
 		},
 		{
@@ -384,7 +385,7 @@ func TestCollection_WithIndexed(t *testing.T) {
 				endIndex:   5,
 			},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, collection.Len(), 5)
+				assert.Equal(t, 5, collection.Len())
 			},
 		},
 	}

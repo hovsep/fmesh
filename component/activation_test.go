@@ -248,7 +248,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoInput),
 			loggerAssertions: func(t *testing.T, output []byte) {
-				assert.Len(t, output, 0)
+				assert.Empty(t, output)
 			},
 		},
 		{
