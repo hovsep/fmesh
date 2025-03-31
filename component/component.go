@@ -52,7 +52,7 @@ func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
 	if c.HasErr() {
 		return c
 	}
-	c.LabeledEntity.SetLabels(labels)
+	c.SetLabels(labels)
 	return c
 }
 

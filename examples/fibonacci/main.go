@@ -25,7 +25,7 @@ func main() {
 
 			next := cur + prev
 
-			//Hardcoded limit
+			// Hardcoded limit
 			if next < 100 {
 				fmt.Println(next)
 				this.OutputByName("o_cur").PutSignals(signal.New(next))
@@ -35,14 +35,14 @@ func main() {
 			return nil
 		})
 
-	//Define pipes
+	// Define pipes
 	c1.Outputs().ByName("o_cur").PipeTo(c1.Inputs().ByName("i_cur"))
 	c1.Outputs().ByName("o_prev").PipeTo(c1.Inputs().ByName("i_prev"))
 
-	//Build mesh
+	// Build mesh
 	fm := fmesh.New("fibonacci example").WithComponents(c1)
 
-	//Set inputs (first 2 Fibonacci numbers)
+	// Set inputs (first 2 Fibonacci numbers)
 	f0, f1 := signal.New(0), signal.New(1)
 
 	c1.Inputs().ByName("i_prev").PutSignals(f0)
@@ -51,7 +51,7 @@ func main() {
 	fmt.Println(f0.PayloadOrNil())
 	fmt.Println(f1.PayloadOrNil())
 
-	//Run the mesh
+	// Run the mesh
 	_, err := fm.Run()
 
 	if err != nil {

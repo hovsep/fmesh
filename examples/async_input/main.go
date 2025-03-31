@@ -29,51 +29,48 @@ func main() {
 	resultsChan := make(chan []any)
 	doneChan := make(chan struct{}) // Signals when all urls are processed
 
-	//Producer goroutine
+	// Producer goroutine
 	go func() {
 		for {
-			select {
-			case <-ticker.C:
-				if len(urls) == 0 {
-					close(resultsChan)
-					return
-				}
-				//Pop an url
-				url := urls[0]
-				urls = urls[1:]
+			<-ticker.C
+			if len(urls) == 0 {
+				close(resultsChan)
+				return
+			}
+			// Pop url
+			url := urls[0]
+			urls = urls[1:]
 
-				fmt.Println("produce:", url)
+			fmt.Println("produce:", url)
 
-				fm.Components().ByName("web crawler").InputByName("url").PutSignals(signal.New(url))
-				_, err := fm.Run()
+			fm.Components().ByName("web crawler").InputByName("url").PutSignals(signal.New(url))
+			_, err := fm.Run()
+			if err != nil {
+				fmt.Println("fmesh returned error ", err)
+			}
+
+			if fm.Components().ByName("web crawler").OutputByName("headers").HasSignals() {
+				results, err := fm.Components().ByName("web crawler").OutputByName("headers").AllSignalsPayloads()
 				if err != nil {
-					fmt.Println("fmesh returned error ", err)
+					fmt.Println("Failed to get results ", err)
 				}
-
-				if fm.Components().ByName("web crawler").OutputByName("headers").HasSignals() {
-					results, err := fm.Components().ByName("web crawler").OutputByName("headers").AllSignalsPayloads()
-					if err != nil {
-						fmt.Println("Failed to get results ", err)
-					}
-					fm.Components().ByName("web crawler").OutputByName("headers").Clear() //@TODO maybe we can add fm.Reset() for cases when FMesh is reused (instead of cleaning ports explicitly)
-					resultsChan <- results
-				}
+				fm.Components().ByName("web crawler").OutputByName("headers").Clear() // @TODO maybe we can add fm.Reset() for cases when FMesh is reused (instead of cleaning ports explicitly)
+				resultsChan <- results
 			}
 		}
 	}()
 
-	//Consumer goroutine
+	// Consumer goroutine
 	go func() {
 		for {
-			select {
-			case r, ok := <-resultsChan:
-				if !ok {
-					fmt.Println("results chan is closed. shutting down the reader")
-					doneChan <- struct{}{}
-					return
-				}
-				fmt.Println(fmt.Sprintf("consume: %v", r))
+			r, ok := <-resultsChan
+			if !ok {
+				fmt.Println("results chan is closed. shutting down the reader")
+				doneChan <- struct{}{}
+				return
 			}
+			fmt.Printf("consume: %v \n", r)
+
 		}
 	}()
 
@@ -81,10 +78,10 @@ func main() {
 }
 
 func getMesh() *fmesh.FMesh {
-	//Setup dependencies
+	// Setup dependencies
 	client := &http.Client{}
 
-	//Define components
+	// Define components
 	crawler := component.New("web crawler").
 		WithDescription("gets http headers from given url").
 		WithInputs("url").
@@ -102,7 +99,7 @@ func getMesh() *fmesh.FMesh {
 			for _, urlVal := range allUrls {
 
 				url := urlVal.(string)
-				//All urls will be crawled sequentially
+				// All urls will be crawled sequentially
 				// in order to call them concurrently we need run each request in separate goroutine and handle synchronization (e.g. waitgroup)
 				response, err := client.Get(url)
 				if err != nil {
@@ -146,7 +143,7 @@ func getMesh() *fmesh.FMesh {
 			return nil
 		})
 
-	//Define pipes
+	// Define pipes
 	crawler.OutputByName("errors").PipeTo(logger.InputByName("error"))
 
 	return fmesh.NewWithConfig("web scraper", &fmesh.Config{

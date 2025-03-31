@@ -53,7 +53,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	//Extract results
+	// Extract results
 	results := fm.Components().ByName("case").OutputByName("res").FirstSignalPayloadOrNil()
 	fmt.Printf("Result is : %v", results)
 }

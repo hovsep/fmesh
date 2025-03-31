@@ -63,11 +63,11 @@ func main() {
 			}()
 
 			this.Logger().Println("level: ", level)
-			//Power demand/supply cycle
+			// Power demand/supply cycle
 			if this.InputByName("power_demand").HasSignals() {
 				demandedCurrent := this.InputByName("power_demand").FirstSignalPayloadOrDefault(0).(int)
 
-				//Emit current represented as a number
+				// Emit current represented as a number
 				suppliedCurrent := min(level, demandedCurrent)
 				if suppliedCurrent > 0 {
 					this.OutputByName("power_supply").PutSignals(signal.New(suppliedCurrent))
@@ -77,7 +77,7 @@ func main() {
 						this.Logger().Println("LOW BATTERY")
 					}
 
-					//Discharge
+					// Discharge
 					level = max(0, level-suppliedCurrent)
 					this.Logger().Println("discharged to: ", level)
 				} else {
@@ -105,14 +105,14 @@ func main() {
 				this.State().Set("temperature", temperature)
 			}()
 
-			//Skip power consumption on start (as power is not demanded yet)
+			// Skip power consumption on start (as power is not demanded yet)
 			if !this.InputByName("start_power_demand").HasSignals() {
-				//Power consumption cycle (at constant rate)
+				// Power consumption cycle (at constant rate)
 				inputPower := this.InputByName("power_supply").FirstSignalPayloadOrDefault(0).(int)
 				this.Logger().Println("got power: ", inputPower)
 
 				if inputPower >= lightBulbPowerConsumption {
-					//Emit light (here we simulate how the lightbulb performance degrades with warming)
+					// Emit light (here we simulate how the lightbulb performance degrades with warming)
 					lightEmission := lightBulbLuminousFlux / temperature * 100
 					if temperature >= lightbulbOverheatingThreshold {
 						this.Logger().Println("OVERHEATING. LIGHT EMISSION WILL SIGNIFICANTLY DEGRADE")
@@ -122,7 +122,7 @@ func main() {
 					this.Logger().Println("emitted light: ", lightEmission)
 					this.Logger().Println("temperature:", temperature)
 
-					//Get warmer
+					// Get warmer
 					temperature += lightBulbWarmingPerCycle
 
 					if temperature > lightbulbMaxWorkingTemperature {
@@ -134,7 +134,7 @@ func main() {
 				}
 			}
 
-			//Always continue demanding power
+			// Always continue demanding power
 			this.OutputByName("power_demand").PutSignals(signal.New(lightBulbPowerConsumption))
 			return nil
 		})
@@ -159,5 +159,5 @@ func main() {
 		return
 	}
 
-	fmt.Println(fmt.Sprintf("Simulation finished after %d cycles", runResult.Cycles.Len()))
+	fmt.Printf("Simulation finished after %d cycles \n", runResult.Cycles.Len())
 }

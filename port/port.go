@@ -194,7 +194,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 		return p
 	}
 
-	p.LabeledEntity.SetLabels(labels)
+	p.SetLabels(labels)
 	return p
 }
 
