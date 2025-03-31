@@ -39,6 +39,23 @@ func (c *Collection) ByName(name string) *Component {
 	return component
 }
 
+// ByLabelValue returns all components which have a given label with given value
+func (c *Collection) ByLabelValue(label, value string) *Collection {
+	if c.HasErr() {
+		return NewCollection().WithErr(c.Err())
+	}
+
+	selectedComponents := NewCollection()
+
+	for _, component := range c.components {
+		if component.LabelIs(label, value) {
+			selectedComponents = selectedComponents.With(component)
+		}
+	}
+
+	return selectedComponents
+}
+
 // With adds components and returns the collection
 func (c *Collection) With(components ...*Component) *Collection {
 	if c.HasErr() {

@@ -26,7 +26,7 @@ func (e *LabeledEntity) Labels() LabelsCollection {
 	return e.labels
 }
 
-// Label returns the value of single label or nil if it is not found
+// Label returns the value of single label or empty string if it is not found
 func (e *LabeledEntity) Label(label string) (string, error) {
 	value, ok := e.labels[label]
 
@@ -95,4 +95,18 @@ func (e *LabeledEntity) HasAnyLabel(label ...string) bool {
 		}
 	}
 	return false
+}
+
+// LabelIs returns true when entity has given label with given value
+func (e *LabeledEntity) LabelIs(label, value string) bool {
+	if !e.HasLabel(label) {
+		return false
+	}
+
+	l, err := e.Label(label)
+	if err != nil {
+		return false
+	}
+
+	return l == value
 }

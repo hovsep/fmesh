@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -36,6 +37,112 @@ func TestCollection_ByName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.components.ByName(tt.args.name))
+		})
+	}
+}
+
+func TestCollection_ByLabelValue(t *testing.T) {
+	type args struct {
+		labelName  string
+		labelValue string
+	}
+	tests := []struct {
+		name       string
+		components *Collection
+		args       args
+		want       *Collection
+	}{
+		{
+			name:       "no labels, nothing found",
+			components: NewCollection().With(New("c1"), New("c2")),
+			args: args{
+				labelName:  "version",
+				labelValue: "v100",
+			},
+			want: NewCollection(),
+		},
+		{
+			name: "no relevant labels, nothing found",
+			components: NewCollection().With(New("c1").
+				WithLabels(common.LabelsCollection{
+					"l1": "v1",
+					"l2": "v2",
+				}),
+				New("c2").
+					WithLabels(common.LabelsCollection{
+						"l1": "v1",
+						"l2": "v2",
+					})),
+			args: args{
+				labelName:  "version",
+				labelValue: "v100",
+			},
+			want: NewCollection(),
+		},
+		{
+			name: "found one",
+			components: NewCollection().With(New("c1").
+				WithLabels(common.LabelsCollection{
+					"version": "v1",
+				}),
+				New("c2").
+					WithLabels(common.LabelsCollection{
+						"version": "v2",
+					}),
+				New("c3").
+					WithLabels(common.LabelsCollection{
+						"version": "v3",
+					}),
+				New("c4").
+					WithLabels(common.LabelsCollection{
+						"version": "v4",
+					})),
+
+			args: args{
+				labelName:  "version",
+				labelValue: "v2",
+			},
+			want: NewCollection().With(New("c2").
+				WithLabels(common.LabelsCollection{
+					"version": "v2",
+				})),
+		},
+		{
+			name: "found several",
+			components: NewCollection().With(New("c1").
+				WithLabels(common.LabelsCollection{
+					"env": "stage",
+				}),
+				New("c2").
+					WithLabels(common.LabelsCollection{
+						"env": "prod",
+					}),
+				New("c3").
+					WithLabels(common.LabelsCollection{
+						"env": "stage",
+					}),
+				New("c4").
+					WithLabels(common.LabelsCollection{
+						"env": "prod",
+					})),
+
+			args: args{
+				labelName:  "env",
+				labelValue: "prod",
+			},
+			want: NewCollection().With(New("c2").
+				WithLabels(common.LabelsCollection{
+					"env": "prod",
+				}),
+				New("c4").
+					WithLabels(common.LabelsCollection{
+						"env": "prod",
+					})),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.components.ByLabelValue(tt.args.labelName, tt.args.labelValue))
 		})
 	}
 }
