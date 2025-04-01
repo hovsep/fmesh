@@ -92,8 +92,10 @@ func (c *Collection) Components() (Map, error) {
 	return c.components, nil
 }
 
-// First returns the first component in the collection (ORDER IS NOT GUARANTEED)
-func (c *Collection) First() *Component {
+// One returns an arbitrary component from the collection without guaranteeing order.
+// This is useful when the collection is expected to contain exactly one component.
+// If the collection is empty, it sets an error and returns a placeholder component.
+func (c *Collection) One() *Component {
 	if c.HasErr() {
 		return New("").WithErr(c.Err())
 	}

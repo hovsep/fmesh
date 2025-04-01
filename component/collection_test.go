@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -147,31 +148,48 @@ func TestCollection_ByLabelValue(t *testing.T) {
 	}
 }
 
-func TestCollection_First(t *testing.T) {
+func TestCollection_One(t *testing.T) {
 	tests := []struct {
 		name       string
 		components *Collection
-		want       *Component
+		assertions func(t *testing.T, component *Component)
 	}{
 		{
 			name:       "empty collection",
 			components: NewCollection(),
-			want:       New("").WithErr(errNotFound),
+			assertions: func(t *testing.T, component *Component) {
+				t.Helper()
+				assert.True(t, component.HasErr())
+				require.Error(t, component.Err())
+				require.ErrorIs(t, component.Err(), errNotFound)
+			},
 		},
 		{
 			name:       "one component",
 			components: NewCollection().With(New("c1")),
-			want:       New("c1"),
+			assertions: func(t *testing.T, component *Component) {
+				t.Helper()
+				assert.False(t, component.HasErr())
+				assert.Equal(t, "c1", component.Name())
+			},
 		},
 		{
 			name:       "multiple components",
 			components: NewCollection().With(New("c1"), New("c2"), New("c3")),
-			want:       New("c1"),
+			assertions: func(t *testing.T, component *Component) {
+				t.Helper()
+				assert.False(t, component.HasErr())
+				require.NoError(t, component.Err())
+				// As map iteration is not determined - any component can be returned,so we do not check for name
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.components.First())
+			got := tt.components.One()
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }

@@ -49,7 +49,7 @@ func main() {
 	// While we could directly reference the entry-point component using fm.ComponentByName("read-stdin"),
 	// leveraging our custom "stage" label provides a more flexible and semantically meaningful approach.
 	// This ensures cleaner and more maintainable code, especially if component names change in the future.
-	fm.Components().ByLabelValue("stage", "1").First().InputByName(portIn).PutSignals(signal.New("start"))
+	fm.Components().ByLabelValue("stage", "1").One().InputByName(portIn).PutSignals(signal.New("start"))
 
 	_, err := fm.Run()
 	if err != nil {
@@ -57,10 +57,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Extract the filename from the latest stage
-	resultFileName := fm.Components().ByLabelValue("stage", strconv.Itoa(fm.Components().Len())).First().OutputByName(portOut).FirstSignalPayloadOrDefault("")
+	fmt.Println("Pipeline finished successfully")
 
-	fmt.Println("Pipeline finished successfully. Check results in the file: ", resultFileName)
+	// Extract the filename from the latest stage
+	resultFileName := fm.Components().ByLabelValue("stage", strconv.Itoa(fm.Components().Len())).One().OutputByName(portOut).FirstSignalPayloadOrDefault("")
+
+	if resultFileName != "" {
+		fmt.Println("Check results in the file: ", resultFileName)
+	}
 }
 
 // getFileReader creates a component that reads the whole file
@@ -164,11 +168,9 @@ func getStdInReader(name, prompt string) *component.Component {
 			}
 			input := scanner.Text()
 
-			if input == "" {
-				return errors.New("no input typed")
+			if len(input) > 0 {
+				this.OutputByName(portOut).PutSignals(signal.New(scanner.Text()))
 			}
-
-			this.OutputByName(portOut).PutSignals(signal.New(scanner.Text()))
 
 			return nil
 		})
@@ -194,7 +196,11 @@ func getTokenizer(name, delimiter string) *component.Component {
 			}
 
 			for _, t := range tokens {
-				this.OutputByName(portOut).PutSignals(signal.New(strings.TrimSuffix(t, "\n")))
+				t = strings.TrimSuffix(t, "\n")
+				if len(t) == 0 {
+					continue
+				}
+				this.OutputByName(portOut).PutSignals(signal.New(t))
 			}
 
 			return nil
@@ -258,7 +264,7 @@ func buildPipeline(name string, components ...*component.Component) *fmesh.FMesh
 			// Use stage-index semantics to connect components
 			fm.Components().
 				ByLabelValue("stage", strconv.Itoa(stageIndex-1)). // Get previous stage component
-				First().                                           // We are sure there is only one such
+				One().                                             // We are sure there is only one such
 				OutputByName(portOut).                             // Connect from
 				PipeTo(c.InputByName(portIn))                      // Connect to
 		}
