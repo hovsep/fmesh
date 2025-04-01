@@ -91,6 +91,11 @@ func (ar *ActivationResult) ActivationError() error {
 	return ar.activationError
 }
 
+// ActivationErrorWithComponentName returns activation error enriched with component name
+func (ar *ActivationResult) ActivationErrorWithComponentName() error {
+	return fmt.Errorf("component %s has activation error: %w", ar.componentName, ar.ActivationError())
+}
+
 // Code getter
 func (ar *ActivationResult) Code() ActivationResultCode {
 	return ar.code

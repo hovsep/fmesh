@@ -6,6 +6,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -150,8 +151,8 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 				endIndex:   3,
 			},
 			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, component.Outputs().Len(), 2)
-				assert.Equal(t, component.Inputs().Len(), 3)
+				assert.Equal(t, 2, component.Outputs().Len())
+				assert.Equal(t, 3, component.Inputs().Len())
 			},
 		},
 		{
@@ -163,8 +164,8 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 				endIndex:   3,
 			},
 			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, component.Outputs().Len(), 2)
-				assert.Equal(t, component.Inputs().Len(), 5)
+				assert.Equal(t, 2, component.Outputs().Len())
+				assert.Equal(t, 5, component.Inputs().Len())
 			},
 		},
 	}
@@ -199,8 +200,8 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 				endIndex:   3,
 			},
 			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, component.Inputs().Len(), 2)
-				assert.Equal(t, component.Outputs().Len(), 3)
+				assert.Equal(t, 2, component.Inputs().Len())
+				assert.Equal(t, 3, component.Outputs().Len())
 			},
 		},
 		{
@@ -212,8 +213,8 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 				endIndex:   3,
 			},
 			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, component.Inputs().Len(), 2)
-				assert.Equal(t, component.Outputs().Len(), 5)
+				assert.Equal(t, 2, component.Inputs().Len())
+				assert.Equal(t, 5, component.Outputs().Len())
 			},
 		},
 	}
@@ -383,7 +384,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				destPort := componentAfterFlush.OutputByName("o1").Pipes().PortsOrNil()[0]
 				allPayloads, err := destPort.AllSignalsPayloads()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Contains(t, allPayloads, 777)
 				assert.Contains(t, allPayloads, 888)
 				assert.Len(t, allPayloads, 2)

@@ -8,6 +8,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestNew(t *testing.T) {
 			name:   "empty name is valid",
 			fmName: "",
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, "", fm.Name())
+				assert.Empty(t, fm.Name())
 			},
 		},
 		{
@@ -54,7 +55,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 			fm:          New("fm1"),
 			description: "",
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, "", fm.Description())
+				assert.Empty(t, fm.Description())
 			},
 		},
 		{
@@ -136,7 +137,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, fm.Components().Len(), 1)
+				assert.Equal(t, 1, fm.Components().Len())
 				assert.NotNil(t, fm.Components().ByName("c1"))
 			},
 		},
@@ -150,7 +151,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, fm.Components().Len(), 2)
+				assert.Equal(t, 2, fm.Components().Len())
 				assert.NotNil(t, fm.Components().ByName("c1"))
 				assert.NotNil(t, fm.Components().ByName("c2"))
 			},
@@ -167,7 +168,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, fm.Components().Len(), 3)
+				assert.Equal(t, 3, fm.Components().Len())
 				assert.NotNil(t, fm.Components().ByName("c1"))
 				assert.NotNil(t, fm.Components().ByName("c2"))
 				assert.NotNil(t, fm.Components().ByName("c4"))
@@ -519,16 +520,16 @@ func TestFMesh_Run(t *testing.T) {
 			got, err := tt.fm.Run()
 			assert.Equal(t, tt.wantCycles.Len(), got.Cycles.Len())
 			if tt.wantErr {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 
 			// Compare cycle results one by one
 			for i := 0; i < got.Cycles.Len(); i++ {
 				wantCycle := tt.wantCycles.CyclesOrNil()[i]
 				gotCycle := got.Cycles.CyclesOrNil()[i]
-				assert.Equal(t, len(wantCycle.ActivationResults().All()), len(gotCycle.ActivationResults().All()), "ActivationResultCollection len mismatch")
+				assert.Len(t, wantCycle.ActivationResults().All(), len(gotCycle.ActivationResults().All()), "ActivationResultCollection len mismatch")
 
 				// Compare activation results
 				for componentName, gotActivationResult := range gotCycle.ActivationResults().All() {
@@ -620,7 +621,7 @@ func TestFMesh_runCycle(t *testing.T) {
 				assert.Error(t, gotCycleResult.Err())
 			} else {
 				assert.False(t, gotCycleResult.HasErr())
-				assert.NoError(t, gotCycleResult.Err())
+				require.NoError(t, gotCycleResult.Err())
 				assert.Equal(t, tt.want, gotCycleResult)
 			}
 		})
@@ -724,9 +725,9 @@ func TestFMesh_mustStop(t *testing.T) {
 			fm := tt.getFMesh()
 			got, stopErr := fm.mustStop()
 			if tt.wantErr != nil {
-				assert.ErrorContains(t, stopErr, tt.wantErr.Error())
+				require.ErrorContains(t, stopErr, tt.wantErr.Error())
 			} else {
-				assert.NoError(t, stopErr)
+				require.NoError(t, stopErr)
 			}
 
 			assert.Equal(t, tt.want, got)

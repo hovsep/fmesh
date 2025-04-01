@@ -39,6 +39,23 @@ func (c *Collection) ByName(name string) *Component {
 	return component
 }
 
+// ByLabelValue returns all components which have a given label with given value
+func (c *Collection) ByLabelValue(label, value string) *Collection {
+	if c.HasErr() {
+		return NewCollection().WithErr(c.Err())
+	}
+
+	selectedComponents := NewCollection()
+
+	for _, component := range c.components {
+		if component.LabelIs(label, value) {
+			selectedComponents = selectedComponents.With(component)
+		}
+	}
+
+	return selectedComponents
+}
+
 // With adds components and returns the collection
 func (c *Collection) With(components ...*Component) *Collection {
 	if c.HasErr() {
@@ -73,4 +90,20 @@ func (c *Collection) Components() (Map, error) {
 		return nil, c.Err()
 	}
 	return c.components, nil
+}
+
+// One returns an arbitrary component from the collection without guaranteeing order.
+// This is useful when the collection is expected to contain exactly one component.
+// If the collection is empty, it sets an error and returns a placeholder component.
+func (c *Collection) One() *Component {
+	if c.HasErr() {
+		return New("").WithErr(c.Err())
+	}
+
+	for _, component := range c.components {
+		return component
+	}
+
+	c.SetErr(errNotFound)
+	return New("").WithErr(c.Err())
 }

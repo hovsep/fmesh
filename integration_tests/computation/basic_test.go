@@ -7,6 +7,7 @@ import (
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"strings"
 	"testing"
@@ -52,12 +53,12 @@ func Test_Math(t *testing.T) {
 				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Len(t, cycles, 3)
 
 				resultSignals := fm.Components().ByName("c2").OutputByName("res").Buffer()
 				sig, err := resultSignals.FirstPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Len(t, resultSignals.SignalsOrNil(), 1)
 				assert.Equal(t, 102, sig.(int))
 			},

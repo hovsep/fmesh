@@ -6,12 +6,12 @@ import (
 	"html/template"
 	"sort"
 
+	"github.com/emicklei/dot"
 	"github.com/hovsep/fmesh"
 	fmeshcomponent "github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/export"
 	"github.com/hovsep/fmesh/port"
-	"github.com/lucasepe/dot"
 )
 
 type statEntry struct {
@@ -147,12 +147,18 @@ func (d *dotExporter) addPipes(graph *dot.Graph, components fmeshcomponent.Map) 
 				// destPort.DeleteLabel(nodeIDLabel)
 
 				// Any source port in any pipe is always output port, so we can build its node ID
-				srcPortNode := graph.FindNodeByID(getPortID(c.Name(), port.DirectionOut, srcPort.Name()))
-				destPortNode := graph.FindNodeByID(destPortID)
+				srcPortNode, ok := graph.FindNodeById(getPortID(c.Name(), port.DirectionOut, srcPort.Name()))
+				if !ok {
+					return fmt.Errorf("source port %s node not found in graph", srcPort.Name())
+				}
 
-				graph.Edge(srcPortNode, destPortNode, func(a *dot.AttributesMap) {
-					setAttrMap(a, d.config.Pipe.Edge)
-				})
+				destPortNode, ok := graph.FindNodeById(destPortID)
+				if !ok {
+					return fmt.Errorf("destination port node %s not found in graph", destPortID)
+				}
+
+				e := graph.Edge(srcPortNode, destPortNode)
+				setAttrMap(&e.AttributesMap, d.config.Pipe.Edge)
 			}
 		}
 	}
@@ -177,7 +183,7 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 		}
 		for _, p := range inputPorts {
 			portNode := d.getPortNode(c, p, componentSubgraph)
-			componentSubgraph.Edge(portNode, componentNode)
+			componentSubgraph.Edge(*portNode, *componentNode)
 		}
 
 		// Output ports
@@ -187,7 +193,7 @@ func (d *dotExporter) addComponents(graph *dot.Graph, components fmeshcomponent.
 		}
 		for _, p := range outputPorts {
 			portNode := d.getPortNode(c, p, componentSubgraph)
-			componentSubgraph.Edge(componentNode, portNode)
+			componentSubgraph.Edge(*componentNode, *portNode)
 		}
 	}
 	return nil
@@ -200,19 +206,19 @@ func (d *dotExporter) getPortNode(c *fmeshcomponent.Component, p *port.Port, com
 	// Mark ports to be able to find their respective nodes later when adding pipes
 	p.AddLabel(nodeIDLabel, portID)
 
-	portNode := componentSubgraph.NodeWithID(portID, func(a *dot.AttributesMap) {
-		setAttrMap(a, d.config.Port.Node)
-		a.Attr("label", p.Name()).Attr("group", c.Name())
-	})
+	portNode := componentSubgraph.Node(portID).Label(p.Name()).Attr("group", c.Name())
+	setAttrMap(&portNode.AttributesMap, d.config.Port.Node)
 
-	return portNode
+	return &portNode
 }
 
 // getComponentSubgraph creates component subgraph and returns it
 func (d *dotExporter) getComponentSubgraph(graph *dot.Graph, component *fmeshcomponent.Component, activationResult *fmeshcomponent.ActivationResult) *dot.Graph {
-	componentSubgraph := graph.NewSubgraph()
+	componentSubgraph := graph.Subgraph("components-subgraph")
+	componentSubgraph.NodeInitializer(func(n dot.Node) {
+		setAttrMap(&n.AttributesMap, d.config.Component.SubgraphNodeBaseAttrs)
+	})
 
-	setAttrMap(componentSubgraph.NodeBaseAttrs(), d.config.Component.SubgraphNodeBaseAttrs)
 	setAttrMap(&componentSubgraph.AttributesMap, d.config.Component.Subgraph)
 
 	// Set cycle specific attributes
@@ -229,9 +235,8 @@ func (d *dotExporter) getComponentSubgraph(graph *dot.Graph, component *fmeshcom
 
 // getComponentNode creates component node and returns it
 func (d *dotExporter) getComponentNode(componentSubgraph *dot.Graph, component *fmeshcomponent.Component, activationResult *fmeshcomponent.ActivationResult) *dot.Node {
-	componentNode := componentSubgraph.Node(func(a *dot.AttributesMap) {
-		setAttrMap(a, d.config.Component.Node)
-	})
+	componentNode := componentSubgraph.Node("id-" + component.Name())
+	setAttrMap(&componentNode.AttributesMap, d.config.Component.Node)
 
 	label := d.config.Component.NodeDefaultLabel
 
@@ -241,11 +246,9 @@ func (d *dotExporter) getComponentNode(componentSubgraph *dot.Graph, component *
 
 	if activationResult != nil {
 		if activationResult.ActivationError() != nil {
-			errorNode := componentSubgraph.Node(func(a *dot.AttributesMap) {
-				setAttrMap(a, d.config.Component.ErrorNode)
-			})
-			errorNode.
-				Attr("label", activationResult.ActivationError().Error())
+			errorNode := componentSubgraph.Node("id-error-" + activationResult.ComponentName())
+			setAttrMap(&errorNode.AttributesMap, d.config.Component.ErrorNode)
+			errorNode.Label(activationResult.ActivationError().Error())
 			componentSubgraph.Edge(componentNode, errorNode)
 		}
 	}
@@ -253,12 +256,12 @@ func (d *dotExporter) getComponentNode(componentSubgraph *dot.Graph, component *
 	componentNode.
 		Attr("label", label).
 		Attr("group", component.Name())
-	return componentNode
+	return &componentNode
 }
 
 // addLegend adds useful information about f-mesh and (optionally) current activation cycle
 func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCycle *cycle.Cycle) error {
-	subgraph := graph.NewSubgraph()
+	subgraph := graph.Subgraph("id-legend")
 
 	setAttrMap(&subgraph.AttributesMap, d.config.Legend.Subgraph)
 	subgraph.Attr("label", "Legend:")
@@ -284,10 +287,9 @@ func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCyc
 		return fmt.Errorf("failed to render legend: %w", err)
 	}
 
-	subgraph.Node(func(a *dot.AttributesMap) {
-		setAttrMap(a, d.config.Legend.Node)
-		a.Attr("label", dot.HTML(legendHTML.String()))
-	})
+	legendNode := subgraph.Node("legend-subgraph")
+	setAttrMap(&legendNode.AttributesMap, d.config.Legend.Node)
+	legendNode.Label(legendHTML.String())
 
 	return nil
 }

@@ -63,9 +63,9 @@ func Test_StateManipulations(t *testing.T) {
 
 	t.Run("Delete", func(t *testing.T) {
 		c := New("c1")
-		assert.Len(t, c.State(), 0)
+		assert.Empty(t, c.State())
 		c.State().Delete("non-existent")
-		assert.Len(t, c.State(), 0)
+		assert.Empty(t, c.State())
 
 		c.WithInitialState(func(state State) {
 			state.Set("name", "Leon")
@@ -85,6 +85,6 @@ func Test_StateManipulations(t *testing.T) {
 		assert.Len(t, c.State(), 2)
 
 		c.ResetState()
-		assert.Len(t, c.State(), 0)
+		assert.Empty(t, c.State())
 	})
 }

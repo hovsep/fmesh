@@ -5,6 +5,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -53,7 +54,7 @@ func Test_TimeConstraint(t *testing.T) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.GreaterOrEqual(t, runResult.Duration, 2*time.Second)
 				assert.LessOrEqual(t, runResult.Duration, 3*time.Second)
 			},
@@ -95,7 +96,7 @@ func Test_TimeConstraint(t *testing.T) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Greater(t, runResult.Duration, 3*time.Second)
 				assert.LessOrEqual(t, runResult.Duration, 4*time.Second)
 			},

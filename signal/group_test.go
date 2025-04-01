@@ -3,6 +3,7 @@ package signal
 import (
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -22,8 +23,8 @@ func TestNewGroup(t *testing.T) {
 			},
 			assertions: func(t *testing.T, group *Group) {
 				signals, err := group.Signals()
-				assert.NoError(t, err)
-				assert.Len(t, signals, 0)
+				require.NoError(t, err)
+				assert.Empty(t, signals)
 				assert.Zero(t, group.Len())
 			},
 		},
@@ -34,8 +35,8 @@ func TestNewGroup(t *testing.T) {
 			},
 			assertions: func(t *testing.T, group *Group) {
 				signals, err := group.Signals()
-				assert.NoError(t, err)
-				assert.Equal(t, group.Len(), 3)
+				require.NoError(t, err)
+				assert.Equal(t, 3, group.Len())
 				assert.Contains(t, signals, New(1))
 				assert.Contains(t, signals, New(nil))
 				assert.Contains(t, signals, New(3))
@@ -86,8 +87,8 @@ func TestGroup_FirstPayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.group.FirstPayload()
 			if tt.wantErrorString != "" {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.wantErrorString)
+				require.Error(t, err)
+				require.EqualError(t, err, tt.wantErrorString)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}
@@ -129,8 +130,8 @@ func TestGroup_AllPayloads(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.group.AllPayloads()
 			if tt.wantErrorString != "" {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.wantErrorString)
+				require.Error(t, err)
+				require.EqualError(t, err, tt.wantErrorString)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}
@@ -333,8 +334,8 @@ func TestGroup_Signals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.group.Signals()
 			if tt.wantErrorString != "" {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.wantErrorString)
+				require.Error(t, err)
+				require.EqualError(t, err, tt.wantErrorString)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}

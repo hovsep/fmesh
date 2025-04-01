@@ -7,6 +7,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 	"time"
@@ -68,7 +69,7 @@ func Test_Fan(t *testing.T) {
 				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
-				assert.NoError(t, runErr)
+				require.NoError(t, runErr)
 				// All consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
 				assert.True(t, c1.OutputByName("o1").HasSignals())
@@ -77,11 +78,11 @@ func Test_Fan(t *testing.T) {
 
 				// All 3 signals are the same (literally the same address in memory)
 				sig1, err := c1.OutputByName("o1").FirstSignalPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				sig2, err := c2.OutputByName("o1").FirstSignalPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				sig3, err := c3.OutputByName("o1").FirstSignalPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, sig1, sig2)
 				assert.Equal(t, sig2, sig3)
 			},
@@ -132,7 +133,7 @@ func Test_Fan(t *testing.T) {
 				fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{}))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
-				assert.NoError(t, runErr)
+				require.NoError(t, runErr)
 				// Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())
 
@@ -142,11 +143,11 @@ func Test_Fan(t *testing.T) {
 
 				// And they are all different
 				sig0, err := resultSignals.FirstPayload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				sig1, err := resultSignals.SignalsOrNil()[1].Payload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				sig2, err := resultSignals.SignalsOrNil()[2].Payload()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.NotEqual(t, sig0, sig1)
 				assert.NotEqual(t, sig1, sig2)

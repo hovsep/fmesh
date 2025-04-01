@@ -37,7 +37,7 @@ func (cycle *Cycle) AllErrorsCombined() error {
 	var allErrors error
 	for _, ar := range cycle.ActivationResults().All() {
 		if ar.IsError() {
-			allErrors = errors.Join(allErrors, ar.ActivationError())
+			allErrors = errors.Join(allErrors, ar.ActivationErrorWithComponentName())
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 )
@@ -98,7 +99,7 @@ func Test_State(t *testing.T) {
 				fm.Components().ByName("consumer").InputByName("start").PutSignals(signal.New("start demand"))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				consumedSignals := fm.Components().ByName("consumer").OutputByName("consumed_signals").Buffer()
 

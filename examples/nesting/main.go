@@ -8,7 +8,7 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-type FactorizedNumber struct {
+type factorizedNumber struct {
 	Num     int
 	Factors []any
 }
@@ -62,18 +62,18 @@ func main() {
 		WithInputs("in").
 		WithOutputs("out").
 		WithActivationFunc(func(this *component.Component) error {
-			//This activation function has no implementation of factorization algorithm,
-			//it only runs another f-mesh to get results
+			// This activation function has no implementation of factorization algorithm,
+			// it only runs another f-mesh to get results
 
-			//Get nested mesh or meshes
+			// Get nested mesh or meshes
 			factorization := getPrimeFactorizationMesh()
 
 			// As nested f-mesh processes 1 signal per run we run it in the loop per each number
 			for _, numSig := range this.InputByName("in").AllSignalsOrNil() {
-				//Set init data to nested mesh (pass signals from outer mesh to inner one)
+				// Set init data to nested mesh (pass signals from outer mesh to inner one)
 				factorization.Components().ByName("starter").InputByName("in").PutSignals(numSig)
 
-				//Run nested mesh
+				// Run nested mesh
 				_, err := factorization.Run()
 
 				if err != nil {
@@ -86,9 +86,9 @@ func main() {
 					return fmt.Errorf("failed to get factors: %w", err)
 				}
 
-				//Pass results to outer mesh
+				// Pass results to outer mesh
 				number := numSig.PayloadOrNil().(int)
-				this.OutputByName("out").PutSignals(signal.New(FactorizedNumber{
+				this.OutputByName("out").PutSignals(signal.New(factorizedNumber{
 					Num:     number,
 					Factors: factors,
 				}))
@@ -97,7 +97,7 @@ func main() {
 			return nil
 		})
 
-	//Setup pipes
+	// Setup pipes
 	starter.OutputByName("out").PipeTo(filter.InputByName("in"))
 	filter.OutputByName("log").PipeTo(logger.InputByName("in"))
 	filter.OutputByName("out").PipeTo(factorizer.InputByName("in"))
@@ -105,23 +105,23 @@ func main() {
 	// Build the mesh
 	outerMesh := fmesh.New("outer").WithComponents(starter, filter, logger, factorizer)
 
-	//Set init data
+	// Set init data
 	outerMesh.Components().
 		ByName("starter").
 		InputByName("in").
 		PutSignals(signal.NewGroup(315).SignalsOrNil()...)
 
-	//Run outer mesh
+	// Run outer mesh
 	_, err := outerMesh.Run()
 
 	if err != nil {
 		fmt.Println(fmt.Errorf("outer mesh failed with error: %w", err))
 	}
 
-	//Read results
+	// Read results
 	for _, resSig := range outerMesh.Components().ByName("factorizer").OutputByName("out").AllSignalsOrNil() {
-		result := resSig.PayloadOrNil().(FactorizedNumber)
-		fmt.Println(fmt.Sprintf("Factors of number %d : %v", result.Num, result.Factors))
+		result := resSig.PayloadOrNil().(factorizedNumber)
+		fmt.Printf("Factors of number %d : %v \n", result.Num, result.Factors)
 	}
 }
 
@@ -131,7 +131,7 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 		WithInputs("in").
 		WithOutputs("out").
 		WithActivationFunc(func(this *component.Component) error {
-			//For simplicity this f-mesh processes only one signal per run, so ignore all except first
+			// For simplicity this f-mesh processes only one signal per run, so ignore all except first
 			this.OutputByName("out").PutSignals(this.InputByName("in").Buffer().First())
 			return nil
 		})
@@ -190,12 +190,12 @@ func getPrimeFactorizationMesh() *fmesh.FMesh {
 			return port.ForwardSignals(this.InputByName("factor"), this.OutputByName("factors"))
 		})
 
-	//Main pipeline starter->d2->dodd->finalPrime
+	// Main pipeline starter->d2->dodd->finalPrime
 	starter.OutputByName("out").PipeTo(d2.InputByName("in"))
 	d2.OutputByName("out").PipeTo(dodd.InputByName("in"))
 	dodd.OutputByName("out").PipeTo(finalPrime.InputByName("in"))
 
-	//All found factors are accumulated in results
+	// All found factors are accumulated in results
 	d2.OutputByName("factor").PipeTo(results.InputByName("factor"))
 	dodd.OutputByName("factor").PipeTo(results.InputByName("factor"))
 	finalPrime.OutputByName("factor").PipeTo(results.InputByName("factor"))

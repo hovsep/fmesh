@@ -5,6 +5,7 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func Test_dotExporter_Export(t *testing.T) {
 				fm: fmesh.New("fm"),
 			},
 			assertions: func(t *testing.T, data []byte, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, data)
 			},
 		},
@@ -58,7 +59,7 @@ func Test_dotExporter_Export(t *testing.T) {
 				}(),
 			},
 			assertions: func(t *testing.T, data []byte, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, data)
 			},
 		},
@@ -133,7 +134,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 				}(),
 			},
 			assertions: func(t *testing.T, data [][]byte, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, data)
 			},
 		},
@@ -142,7 +143,7 @@ func Test_dotExporter_ExportWithCycles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			runResult, err := tt.args.fm.Run()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			exporter := NewDotExporter()
 
