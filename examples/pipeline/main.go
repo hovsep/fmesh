@@ -135,7 +135,7 @@ func getFileWriter(name string) *component.Component {
 				}
 			}(file)
 
-			//Write all signals into the file (we assume they all are strings)
+			// Write all signals into the file (we assume they all are strings)
 			for _, sig := range this.InputByName(portIn).AllSignalsOrNil() {
 				_, err = file.WriteString(sig.PayloadOrDefault("").(string) + "\n")
 				if err != nil {
@@ -168,7 +168,7 @@ func getStdInReader(name, prompt string) *component.Component {
 			}
 			input := scanner.Text()
 
-			if len(input) > 0 {
+			if input != "" {
 				this.OutputByName(portOut).PutSignals(signal.New(scanner.Text()))
 			}
 
@@ -197,7 +197,7 @@ func getTokenizer(name, delimiter string) *component.Component {
 
 			for _, t := range tokens {
 				t = strings.TrimSuffix(t, "\n")
-				if len(t) == 0 {
+				if t != "" {
 					continue
 				}
 				this.OutputByName(portOut).PutSignals(signal.New(t))
