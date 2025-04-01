@@ -89,7 +89,7 @@ func getFileReader(name string) *component.Component {
 			if err != nil {
 				return err
 			}
-			defer func(file *os.File) {
+			defer func() {
 				err = file.Close()
 				if err != nil {
 					this.Logger().Println("failed to close file: ", fileName)
@@ -99,7 +99,7 @@ func getFileReader(name string) *component.Component {
 				if err != nil {
 					this.Logger().Println("failed to close root")
 				}
-			}(file)
+			}()
 
 			contents, err := io.ReadAll(file)
 			if err != nil {
@@ -128,12 +128,17 @@ func getFileWriter(name string) *component.Component {
 			if err != nil {
 				return err
 			}
-			defer func(file *os.File) {
+			defer func() {
 				err = file.Close()
 				if err != nil {
 					this.Logger().Println("failed to close file: ", fileName)
 				}
-			}(file)
+
+				err = root.Close()
+				if err != nil {
+					this.Logger().Println("failed to close root")
+				}
+			}()
 
 			// Write all signals into the file (we assume they all are strings)
 			for _, sig := range this.InputByName(portIn).AllSignalsOrNil() {
