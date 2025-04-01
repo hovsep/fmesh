@@ -38,11 +38,11 @@ func main() {
 		// Just pass stages in desired order:
 		getStdInReader("read-stdin", "Please input some words separated by space and press ENTER"),
 		getFileWriter("persist-input"),
-		getFileReader("read-input"),
-		getTokenizer("tokenizer", tokenizerDelimiter),
-		getFilter("remove-newlines", map[string]bool{"yes": true, "no": true}),
-		getTokenCounter("token-counter"),
-		getFileWriter("persist-counts"),
+		getFileReader("read-file"),
+		getTokenizer("tokenize", tokenizerDelimiter),
+		getFilter("remove-stop-words", map[string]bool{"yes": true, "no": true, "and": true, "is": true}),
+		getTokenCounter("counter-tokens"),
+		getFileWriter("persist-results"),
 	)
 
 	// Initialize the pipeline by sending the first signal.
@@ -197,7 +197,7 @@ func getTokenizer(name, delimiter string) *component.Component {
 
 			for _, t := range tokens {
 				t = strings.TrimSuffix(t, "\n")
-				if t != "" {
+				if t == "" {
 					continue
 				}
 				this.OutputByName(portOut).PutSignals(signal.New(t))
