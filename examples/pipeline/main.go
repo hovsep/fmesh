@@ -36,11 +36,11 @@ func main() {
 	fm := buildPipeline(
 		"demo-pipeline",
 		// Just pass stages in desired order:
-		getStdInReader("read-stdin", "Please input some words separated by space and press ENTER"),
+		getStdInReader("read-stdin", "Please input text and press ENTER"),
 		getFileWriter("persist-input"),
 		getFileReader("read-file"),
 		getTokenizer("tokenize", tokenizerDelimiter),
-		getFilter("remove-stop-words", map[string]bool{"yes": true, "no": true, "and": true, "is": true}),
+		getFilter("remove-stop-words", map[string]bool{"yes": true, "no": true}),
 		getTokenCounter("counter-tokens"),
 		getFileWriter("persist-results"),
 	)
