@@ -31,9 +31,11 @@ func main() {
 
 	// Run multiple waves (traffic spikes) to demonstrate that LB evenly distributes requests even when interrupted
 	// you can play with number of workers, waves and requests per wave to check that
+	// #nosec G404 -- it's okay to use math/rand here for non-security purposes
 	waves := 3 + rand.Intn(5)
 	fmt.Println("Will run", waves, "waves")
 	for i := 1; i <= waves; i++ {
+		// #nosec G404 -- it's okay to use math/rand here for non-security purposes
 		requestsPerWave := 5 + rand.Intn(10)
 		fmt.Println("Wave", i, "will have", requestsPerWave, "requests")
 		requests := signal.NewGroup()
