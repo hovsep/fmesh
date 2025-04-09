@@ -267,9 +267,9 @@ func TestLabeledEntity_AddLabels(t *testing.T) {
 	}
 }
 
-func TestLabeledEntity_DeleteLabel(t *testing.T) {
+func TestLabeledEntity_DeleteLabels(t *testing.T) {
 	type args struct {
-		label string
+		labels []string
 	}
 	tests := []struct {
 		name          string
@@ -284,7 +284,7 @@ func TestLabeledEntity_DeleteLabel(t *testing.T) {
 				"l2": "v2",
 			}),
 			args: args{
-				label: "l1",
+				labels: []string{"l1"},
 			},
 			assertions: func(t *testing.T, labeledEntity LabeledEntity) {
 				assert.Equal(t, LabelsCollection{
@@ -299,7 +299,7 @@ func TestLabeledEntity_DeleteLabel(t *testing.T) {
 				"l2": "v2",
 			}),
 			args: args{
-				label: "l3",
+				labels: []string{"l3"},
 			},
 			assertions: func(t *testing.T, labeledEntity LabeledEntity) {
 				assert.Equal(t, LabelsCollection{
@@ -311,7 +311,7 @@ func TestLabeledEntity_DeleteLabel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.labeledEntity.DeleteLabel(tt.args.label)
+			tt.labeledEntity.DeleteLabels(tt.args.labels...)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.labeledEntity)
 			}

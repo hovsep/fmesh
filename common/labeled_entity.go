@@ -66,9 +66,11 @@ func (e *LabeledEntity) AddLabels(labels LabelsCollection) {
 	}
 }
 
-// DeleteLabel deletes given label
-func (e *LabeledEntity) DeleteLabel(label string) {
-	delete(e.labels, label)
+// DeleteLabels deletes given labels
+func (e *LabeledEntity) DeleteLabels(labels ...string) {
+	for _, label := range labels {
+		delete(e.labels, label)
+	}
 }
 
 // HasLabel returns true when entity has given label or false otherwise
@@ -87,10 +89,30 @@ func (e *LabeledEntity) HasAllLabels(label ...string) bool {
 	return true
 }
 
+// HasAllLabelsWithValues returns true if the entity contains all key-value pairs from the given label collection.
+func (e *LabeledEntity) HasAllLabelsWithValues(labels LabelsCollection) bool {
+	for label, labelValue := range labels {
+		if !e.LabelIs(label, labelValue) {
+			return false
+		}
+	}
+	return true
+}
+
 // HasAnyLabel checks if entity has at least one of given labels
 func (e *LabeledEntity) HasAnyLabel(label ...string) bool {
 	for _, l := range label {
 		if e.HasLabel(l) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasAnyLabelWithValue returns true if the entity contains any key-value pair from the given label collection.
+func (e *LabeledEntity) HasAnyLabelWithValue(labels LabelsCollection) bool {
+	for label, labelValue := range labels {
+		if e.LabelIs(label, labelValue) {
 			return true
 		}
 	}
@@ -109,4 +131,9 @@ func (e *LabeledEntity) LabelIs(label, value string) bool {
 	}
 
 	return l == value
+}
+
+// LabelsCount return the number of labels
+func (e *LabeledEntity) LabelsCount() int {
+	return len(e.Labels())
 }
