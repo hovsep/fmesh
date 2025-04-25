@@ -264,7 +264,7 @@ func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCyc
 	subgraph := graph.Subgraph("id-legend", dot.ClusterOption{})
 
 	setAttrMap(&subgraph.AttributesMap, d.config.Legend.Subgraph)
-	subgraph.AttributesMap.Delete("label")
+	subgraph.Delete("label")
 
 	legendData := make(map[string]any)
 	legendData["meshDescription"] = fmt.Sprintf("A mesh with %d components", fm.Components().Len())
