@@ -214,7 +214,7 @@ func (d *dotExporter) getPortNode(c *fmeshcomponent.Component, p *port.Port, com
 
 // getComponentSubgraph creates component subgraph and returns it
 func (d *dotExporter) getComponentSubgraph(graph *dot.Graph, component *fmeshcomponent.Component, activationResult *fmeshcomponent.ActivationResult) *dot.Graph {
-	componentSubgraph := graph.Subgraph("components-subgraph")
+	componentSubgraph := graph.Subgraph("id-subgraph-"+component.Name(), dot.ClusterOption{})
 	componentSubgraph.NodeInitializer(func(n dot.Node) {
 		setAttrMap(&n.AttributesMap, d.config.Component.SubgraphNodeBaseAttrs)
 	})
@@ -228,7 +228,7 @@ func (d *dotExporter) getComponentSubgraph(graph *dot.Graph, component *fmeshcom
 		}
 	}
 
-	componentSubgraph.Attr("label", component.Name())
+	componentSubgraph.Label(component.Name())
 
 	return componentSubgraph
 }
@@ -254,20 +254,20 @@ func (d *dotExporter) getComponentNode(componentSubgraph *dot.Graph, component *
 	}
 
 	componentNode.
-		Attr("label", label).
+		Label(label).
 		Attr("group", component.Name())
 	return &componentNode
 }
 
 // addLegend adds useful information about f-mesh and (optionally) current activation cycle
 func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCycle *cycle.Cycle) error {
-	subgraph := graph.Subgraph("id-legend")
+	subgraph := graph.Subgraph("id-legend", dot.ClusterOption{})
 
 	setAttrMap(&subgraph.AttributesMap, d.config.Legend.Subgraph)
-	subgraph.Attr("label", "Legend:")
+	subgraph.Delete("label")
 
 	legendData := make(map[string]any)
-	legendData["meshDescription"] = fmt.Sprintf("This mesh consist of %d components", fm.Components().Len())
+	legendData["meshDescription"] = fmt.Sprintf("A mesh with %d components", fm.Components().Len())
 	if fm.Description() != "" {
 		legendData["meshDescription"] = fm.Description()
 	}
@@ -289,7 +289,7 @@ func (d *dotExporter) addLegend(graph *dot.Graph, fm *fmesh.FMesh, activationCyc
 
 	legendNode := subgraph.Node("legend-subgraph")
 	setAttrMap(&legendNode.AttributesMap, d.config.Legend.Node)
-	legendNode.Label(legendHTML.String())
+	legendNode.Attr("label", dot.HTML(legendHTML.String()))
 
 	return nil
 }

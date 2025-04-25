@@ -1,0 +1,91 @@
+<svg width="732pt" height="691pt" viewBox="0.00 0.00 732.00 691.29" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 687.29)">
+<polygon fill="white" stroke="none" points="-4,4 -4,-687.29 728,-687.29 728,4 -4,4"/>
+<g id="clust1" class="cluster">
+<title>cluster_s1</title>
+<polygon fill="#e2c6fc" stroke="black" stroke-dasharray="5,2" points="8,-562.09 8,-626.89 380,-626.89 380,-562.09 8,-562.09"/>
+</g>
+<g id="clust2" class="cluster">
+<title>cluster_s8</title>
+<path fill="none" stroke="black" stroke-width="5" d="M424,-8C424,-8 590,-8 590,-8 596,-8 602,-14 602,-20 602,-20 602,-240.8 602,-240.8 602,-246.8 596,-252.8 590,-252.8 590,-252.8 424,-252.8 424,-252.8 418,-252.8 412,-246.8 412,-240.8 412,-240.8 412,-20 412,-20 412,-14 418,-8 424,-8"/>
+<text text-anchor="middle" x="507" y="-236.2" font-family="Times,serif" font-size="14.00">error logger</text>
+</g>
+<g id="clust3" class="cluster">
+<title>cluster_s3</title>
+<path fill="none" stroke="black" stroke-width="5" d="M404,-314.8C404,-314.8 704,-314.8 704,-314.8 710,-314.8 716,-320.8 716,-326.8 716,-326.8 716,-663.29 716,-663.29 716,-669.29 710,-675.29 704,-675.29 704,-675.29 404,-675.29 404,-675.29 398,-675.29 392,-669.29 392,-663.29 392,-663.29 392,-326.8 392,-326.8 392,-320.8 398,-314.8 404,-314.8"/>
+<text text-anchor="middle" x="554" y="-658.69" font-family="Times,serif" font-size="14.00">web crawler</text>
+</g>
+<!-- n2 -->
+<g id="node1" class="node">
+<title>n2</title>
+<text text-anchor="start" x="35.78" y="-590.29" font-family="Courier New" font-size="14.00">Description:</text>
+<text text-anchor="start" x="150.59" y="-590.29" font-family="Courier New" font-size="14.00">A mesh with 2 components</text>
+</g>
+<!-- n10 -->
+<g id="node2" class="node">
+<title>n10</title>
+<ellipse fill="lightgrey" stroke="black" stroke-width="2.5" cx="507" cy="-172" rx="36" ry="36"/>
+<text text-anchor="middle" x="507" y="-167.8" font-family="Courier New" font-size="14.00">error</text>
+</g>
+<!-- n9 -->
+<g id="node3" class="node">
+<title>n9</title>
+<polygon fill="#9dddea" stroke="#9dddea" stroke-width="2.5" points="582.21,-100 431.79,-100 431.79,-28 582.21,-28 582.21,-100"/>
+<text text-anchor="middle" x="507" y="-59.8" font-family="Courier New" font-size="14.00">logs http errors</text>
+</g>
+<!-- n10&#45;&gt;n9 -->
+<g id="edge1" class="edge">
+<title>n10-&gt;n9</title>
+<path fill="none" stroke="black" d="M507,-135.13C507,-135.13 507,-112.21 507,-112.21"/>
+<polygon fill="black" stroke="black" points="510.5,-112.21 507,-102.21 503.5,-112.21 510.5,-112.21"/>
+</g>
+<!-- n5 -->
+<g id="node4" class="node">
+<title>n5</title>
+<ellipse fill="lightgrey" stroke="black" stroke-width="2.5" cx="554" cy="-594.49" rx="36" ry="36"/>
+<text text-anchor="middle" x="554" y="-590.29" font-family="Courier New" font-size="14.00">url</text>
+</g>
+<!-- n4 -->
+<g id="node7" class="node">
+<title>n4</title>
+<polygon fill="#9dddea" stroke="#9dddea" stroke-width="2.5" points="696.42,-522.49 411.58,-522.49 411.58,-450.49 696.42,-450.49 696.42,-522.49"/>
+<text text-anchor="middle" x="554" y="-482.29" font-family="Courier New" font-size="14.00">gets http headers from given url</text>
+</g>
+<!-- n5&#45;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n5-&gt;n4</title>
+<path fill="none" stroke="black" d="M554,-557.62C554,-557.62 554,-534.7 554,-534.7"/>
+<polygon fill="black" stroke="black" points="557.5,-534.7 554,-524.7 550.5,-534.7 557.5,-534.7"/>
+</g>
+<!-- n6 -->
+<g id="node5" class="node">
+<title>n6</title>
+<ellipse fill="lightgrey" stroke="black" stroke-width="2.5" cx="507" cy="-374.64" rx="36" ry="36"/>
+<text text-anchor="middle" x="507" y="-370.44" font-family="Courier New" font-size="14.00">errors</text>
+</g>
+<!-- n6&#45;&gt;n10 -->
+<g id="edge5" class="edge">
+<title>n6-&gt;n10</title>
+<path fill="none" stroke="#e437ea" stroke-width="2" d="M507,-337.95C507,-337.95 507,-221.79 507,-221.79"/>
+<polygon fill="#e437ea" stroke="#e437ea" stroke-width="2" points="510.5,-221.79 507,-211.79 503.5,-221.79 510.5,-221.79"/>
+</g>
+<!-- n7 -->
+<g id="node6" class="node">
+<title>n7</title>
+<ellipse fill="lightgrey" stroke="black" stroke-width="2.5" cx="601" cy="-374.64" rx="39.84" ry="39.84"/>
+<text text-anchor="middle" x="601" y="-370.44" font-family="Courier New" font-size="14.00">headers</text>
+</g>
+<!-- n4&#45;&gt;n6 -->
+<g id="edge3" class="edge">
+<title>n4-&gt;n6</title>
+<path fill="none" stroke="black" d="M507,-449.55C507,-449.55 507,-423.05 507,-423.05"/>
+<polygon fill="black" stroke="black" points="510.5,-423.05 507,-413.05 503.5,-423.05 510.5,-423.05"/>
+</g>
+<!-- n4&#45;&gt;n7 -->
+<g id="edge4" class="edge">
+<title>n4-&gt;n7</title>
+<path fill="none" stroke="black" d="M601,-449.55C601,-449.55 601,-426.91 601,-426.91"/>
+<polygon fill="black" stroke="black" points="604.5,-426.91 601,-416.91 597.5,-426.91 604.5,-426.91"/>
+</g>
+</g>
+</svg>

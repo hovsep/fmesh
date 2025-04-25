@@ -47,7 +47,6 @@ var (
 		},
 		Component: ComponentConfig{
 			Subgraph: attributesMap{
-				"cluster":  "true",
 				"style":    "rounded",
 				"color":    "black",
 				"margin":   "20",
