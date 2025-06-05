@@ -287,19 +287,18 @@ func (fm *FMesh) mustStop() (bool, error) {
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasErrors() || lastCycle.HasPanics() {
-			// @TODO: add failing components names to error
-			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined())
+			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
 
 			return true, runError
 		}
 		return false, nil
 	case StopOnFirstPanic:
-		// @TODO: add more context to error
 		if lastCycle.HasPanics() {
-			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrHitAPanic))
+			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w", ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
+			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
 
-			return true, ErrHitAPanic
+			return true, runError
 		}
 		return false, nil
 	case IgnoreAll:

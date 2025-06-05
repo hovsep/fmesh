@@ -44,6 +44,18 @@ func (cycle *Cycle) AllErrorsCombined() error {
 	return allErrors
 }
 
+// AllPanicsCombined returns all panics occurred within the cycle as one error
+func (cycle *Cycle) AllPanicsCombined() error {
+	var allPanics error
+	for _, ar := range cycle.ActivationResults().All() {
+		if ar.IsPanic() {
+			allPanics = errors.Join(allPanics, ar.ActivationErrorWithComponentName())
+		}
+	}
+
+	return allPanics
+}
+
 // HasPanics tells whether the cycle is ended with panic (at lease one component panicked)
 func (cycle *Cycle) HasPanics() bool {
 	return cycle.ActivationResults().HasPanics()
