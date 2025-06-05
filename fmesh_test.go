@@ -470,7 +470,7 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
-				// Only c5 is activated (after c4 panicked in previous cycle)
+				// Only c5 is activated (after c4 panicked in the previous cycle)
 				cycle.New().
 					WithActivationResults(
 						component.NewActivationResult("c1").

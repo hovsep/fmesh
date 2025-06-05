@@ -101,12 +101,12 @@ func (ar *ActivationResult) Code() ActivationResultCode {
 	return ar.code
 }
 
-// IsError returns true when activation result has an error
+// IsError returns true when an activation result has an error
 func (ar *ActivationResult) IsError() bool {
 	return ar.code == ActivationCodeReturnedError && ar.ActivationError() != nil
 }
 
-// IsPanic returns true when activation result is derived from panic
+// IsPanic returns true when an activation result is derived from panic
 func (ar *ActivationResult) IsPanic() bool {
 	return ar.code == ActivationCodePanicked && ar.ActivationError() != nil
 }
