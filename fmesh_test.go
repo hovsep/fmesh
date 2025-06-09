@@ -9,6 +9,8 @@ import (
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
+	"log"
 	"testing"
 )
 
@@ -173,6 +175,29 @@ func TestFMesh_WithComponents(t *testing.T) {
 				assert.NotNil(t, fm.Components().ByName("c2"))
 				assert.NotNil(t, fm.Components().ByName("c4"))
 				assert.Equal(t, "new descr for c2", fm.Components().ByName("c2").Description())
+			},
+		},
+
+		{
+			name: "components inherit logger from fmesh when custom one is not set",
+			fm:   New("fm1"),
+			args: args{
+				components: []*component.Component{
+					component.New("c1"), // Must get default logger
+					component.New("c2").WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
+				},
+			},
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, 2, fm.Components().Len())
+				assert.NotNil(t, fm.ComponentByName("c1"))
+				assert.NotNil(t, fm.ComponentByName("c2"))
+
+				assert.Equal(t, "c1:  ", fm.ComponentByName("c1").Logger().Prefix())
+				assert.NotEqual(t, io.Discard, fm.ComponentByName("c1").Logger().Writer())
+
+				assert.Equal(t, "c2: custom ", fm.ComponentByName("c2").Logger().Prefix())
+				assert.Equal(t, io.Discard, fm.ComponentByName("c2").Logger().Writer())
+
 			},
 		},
 	}
