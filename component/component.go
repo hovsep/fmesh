@@ -99,7 +99,7 @@ func (c *Component) WithLogger(logger *log.Logger) *Component {
 		return c
 	}
 
-	prefix := fmt.Sprintf("%s : ", c.Name())
+	prefix := fmt.Sprintf("%s: %s ", c.Name(), logger.Prefix())
 	c.logger = log.New(logger.Writer(), prefix, logger.Flags())
 	return c
 }

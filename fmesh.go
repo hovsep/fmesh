@@ -78,7 +78,11 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	}
 
 	for _, c := range components {
-		fm.components = fm.components.With(c.WithLogger(fm.Logger()))
+		if c.Logger() == nil {
+			// Inherit logger from fm if component does not have its own
+			c = c.WithLogger(fm.Logger())
+		}
+		fm.components = fm.components.With(c)
 		if c.HasErr() {
 			return fm.WithErr(c.Err())
 		}
