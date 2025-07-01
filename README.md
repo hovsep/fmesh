@@ -19,7 +19,7 @@ It allows you to express your program as a mesh of interconnected components (or
 <li>Components have unlimited number of input and output <a href="https://github.com/hovsep/fmesh/wiki/3.-Ports">Ports</a></li>
 <li>Ports can be connected via <a href="https://github.com/hovsep/fmesh/wiki/4.-Pipes">Pipes</a></li>
 <li>Ports and pipes are type agnostic, any data can be transferred to any port in form of <a href="https://github.com/hovsep/fmesh/wiki/2.-Signals">Signals</a></li>
-<li>The framework works in discrete time, not it wall time. The quant of time is 1 <a href="https://github.com/hovsep/fmesh/wiki/6.-Scheduling-rules#phases-of-an-activation-cycle">activation cycle</a>, which gives you "logical parallelism" out of the box (activation function is running in "frozen time")</li>
+<li>The framework works in discrete time, not in wall time. The quant of time is 1 <a href="https://github.com/hovsep/fmesh/wiki/6.-Scheduling-rules#phases-of-an-activation-cycle">activation cycle</a>, which gives you "logical parallelism" out of the box (activation function is running in "frozen time")</li>
 <li>
 	
 Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
