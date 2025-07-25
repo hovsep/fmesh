@@ -14,7 +14,10 @@ func NewState() State {
 
 // WithInitialState sets initial state (optional)
 func (c *Component) WithInitialState(init func(state State)) *Component {
-	init(c.state)
+	if init != nil {
+		init(c.state)
+	}
+
 	return c
 }
 
