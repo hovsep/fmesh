@@ -31,6 +31,11 @@ func TestComponent_WithInitialState(t *testing.T) {
 				"secret":  "LEON",
 			},
 		},
+		{
+			name:      "with nil state initializer",
+			component: New("c1").WithInitialState(nil),
+			wantState: NewState(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
