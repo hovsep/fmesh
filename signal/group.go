@@ -145,3 +145,11 @@ func (g *Group) WithErr(err error) *Group {
 func (g *Group) Len() int {
 	return len(g.signals)
 }
+
+// WithSignalLabels sets labels on each signal within the group and returns it
+func (g *Group) WithSignalLabels(labels common.LabelsCollection) *Group {
+	for _, p := range g.SignalsOrNil() {
+		p.WithLabels(labels)
+	}
+	return g
+}
