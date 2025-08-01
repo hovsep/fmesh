@@ -2,9 +2,11 @@ package signal
 
 import (
 	"errors"
+	"testing"
+
+	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewGroup(t *testing.T) {
@@ -328,6 +330,23 @@ func TestGroup_Signals(t *testing.T) {
 			group:           NewGroup(1, 2, 3).WithErr(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
+		},
+		{
+			name: "with labeled signals",
+			group: NewGroup(1, nil, 3).WithSignalLabels(common.LabelsCollection{
+				"flavor": "banana",
+			}),
+			want: Signals{
+				New(1).WithLabels(common.LabelsCollection{
+					"flavor": "banana",
+				}),
+				New(nil).WithLabels(common.LabelsCollection{
+					"flavor": "banana",
+				}),
+				New(3).WithLabels(common.LabelsCollection{
+					"flavor": "banana",
+				})},
+			wantErrorString: "",
 		},
 	}
 	for _, tt := range tests {
