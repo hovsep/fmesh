@@ -230,12 +230,7 @@ func ForwardWithFilter(source, dest *Port, filterFunc signal.Filter) error {
 		return dest.Err()
 	}
 
-	signals, err := source.AllSignals()
-	if err != nil {
-		return err
-	}
-
-	filteredSignals := signal.NewGroup().With(signals...).Filter(filterFunc).SignalsOrNil()
+	filteredSignals := source.Buffer().Filter(filterFunc).SignalsOrNil()
 
 	dest.PutSignals(filteredSignals...)
 	if dest.HasErr() {
