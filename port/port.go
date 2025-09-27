@@ -220,6 +220,30 @@ func ForwardSignals(source, dest *Port) error {
 	return nil
 }
 
+// ForwardWithFilter copies signals that pass filter function from source to dest port
+func ForwardWithFilter(source, dest *Port, filterFunc signal.Filter) error {
+	if source.HasErr() {
+		return source.Err()
+	}
+
+	if dest.HasErr() {
+		return dest.Err()
+	}
+
+	signals, err := source.AllSignals()
+	if err != nil {
+		return err
+	}
+
+	filteredSignals := signal.NewGroup().With(signals...).Filter(filterFunc).SignalsOrNil()
+
+	dest.PutSignals(filteredSignals...)
+	if dest.HasErr() {
+		return dest.Err()
+	}
+	return nil
+}
+
 // WithErr returns port with error
 func (p *Port) WithErr(err error) *Port {
 	p.SetErr(err)

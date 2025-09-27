@@ -560,7 +560,7 @@ func TestPort_ForwardSignals(t *testing.T) {
 				destPort: New("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, 3, destPortAfter.Buffer().Len())
 				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
 			},
@@ -572,7 +572,7 @@ func TestPort_ForwardSignals(t *testing.T) {
 				destPort: New("p2").WithSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, 9, destPortAfter.Buffer().Len())
 				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
 			},
@@ -584,7 +584,7 @@ func TestPort_ForwardSignals(t *testing.T) {
 				destPort: New("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, 0, destPortAfter.Buffer().Len())
 				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
 			},
@@ -596,7 +596,7 @@ func TestPort_ForwardSignals(t *testing.T) {
 				destPort: New("p2").WithErr(errors.New("some error")),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, 0, destPortAfter.Buffer().Len())
 				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
 			},
@@ -605,6 +605,97 @@ func TestPort_ForwardSignals(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ForwardSignals(tt.args.srcPort, tt.args.destPort)
+			if tt.assertions != nil {
+				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
+			}
+		})
+	}
+}
+
+func TestPort_ForwardWithFilter(t *testing.T) {
+	type args struct {
+		srcPort    *Port
+		destPort   *Port
+		filterFunc signal.Filter
+	}
+	tests := []struct {
+		name       string
+		args       args
+		assertions func(t *testing.T, srcPortAfter, destPortAfter *Port, err error)
+	}{
+		{
+			name: "all kept",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: New("p2"),
+				filterFunc: func(signal *signal.Signal) bool {
+					return signal.PayloadOrDefault(0).(int) > 0
+				},
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.NoError(t, err)
+				assert.Equal(t, 3, destPortAfter.Buffer().Len())
+				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+			},
+		},
+		{
+			name: "some dropped",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
+				destPort: New("p2").WithSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
+				filterFunc: func(signal *signal.Signal) bool {
+					return signal.PayloadOrDefault(0).(int) > 10
+				},
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.NoError(t, err)
+				assert.Equal(t, 9, destPortAfter.Buffer().Len())
+				assert.Equal(t, 7, srcPortAfter.Buffer().Len())
+			},
+		},
+		{
+			name: "all dropped",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
+				destPort: New("p2").WithSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
+				filterFunc: func(signal *signal.Signal) bool {
+					return signal.PayloadOrDefault(0).(int) > 99
+				},
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.NoError(t, err)
+				assert.Equal(t, 6, destPortAfter.Buffer().Len())
+				assert.Equal(t, 7, srcPortAfter.Buffer().Len())
+			},
+		},
+		{
+			name: "src with chain error",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)).WithErr(errors.New("some error")),
+				destPort: New("p2"),
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.Error(t, err)
+				assert.Equal(t, 0, destPortAfter.Buffer().Len())
+				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
+			},
+		},
+		{
+			name: "dest with chain error",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: New("p2").WithErr(errors.New("some error")),
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.Error(t, err)
+				assert.Equal(t, 0, destPortAfter.Buffer().Len())
+				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ForwardWithFilter(tt.args.srcPort, tt.args.destPort, tt.args.filterFunc)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
 			}

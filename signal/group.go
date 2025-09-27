@@ -159,6 +159,7 @@ func (g *Group) WithSignalLabels(labels common.LabelsCollection) *Group {
 	return g
 }
 
+// Filter returns a new group with signals that pass the filter
 func (g *Group) Filter(filter Filter) *Group {
 	if g.HasErr() {
 		// Do nothing but propagate the error
