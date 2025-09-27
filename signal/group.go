@@ -69,7 +69,7 @@ func (g *Group) AllPayloads() ([]any, error) {
 // With returns the group with added signals
 func (g *Group) With(signals ...*Signal) *Group {
 	if g.HasErr() {
-		// Do nothing, but propagate error
+		// Do nothing but propagate the error
 		return g
 	}
 
@@ -95,7 +95,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 // WithPayloads returns a group with added signals created from provided payloads
 func (g *Group) WithPayloads(payloads ...any) *Group {
 	if g.HasErr() {
-		// Do nothing, but propagate error
+		// Do nothing but propagate the error
 		return g
 	}
 
@@ -148,8 +148,30 @@ func (g *Group) Len() int {
 
 // WithSignalLabels sets labels on each signal within the group and returns it
 func (g *Group) WithSignalLabels(labels common.LabelsCollection) *Group {
-	for _, p := range g.SignalsOrNil() {
-		p.WithLabels(labels)
+	if g.HasErr() {
+		// Do nothing but propagate the error
+		return g
+	}
+
+	for _, s := range g.SignalsOrNil() {
+		s.WithLabels(labels)
 	}
 	return g
+}
+
+// Filter returns a new group with signals that pass the filter
+func (g *Group) Filter(filter Filter) *Group {
+	if g.HasErr() {
+		// Do nothing but propagate the error
+		return g
+	}
+
+	filteredSignals := make(Signals, 0)
+	for _, s := range g.SignalsOrNil() {
+		if filter(s) {
+			filteredSignals = append(filteredSignals, s)
+		}
+	}
+
+	return NewGroup().withSignals(filteredSignals)
 }

@@ -201,8 +201,7 @@ func TestGroup_With(t *testing.T) {
 				signals: Signals{New(456)},
 			},
 			want: NewGroup(1, 2, 3).
-				With(New(44).
-										WithErr(errors.New("some error in signal"))).
+				With(New(44).WithErr(errors.New("some error in signal"))).
 				WithErr(errors.New("some error in signal")), // error propagated from signal to group
 		},
 	}
@@ -408,6 +407,71 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.group.SignalsOrDefault(tt.args.defaultSignals))
+		})
+	}
+}
+
+func TestGroup_Filter(t *testing.T) {
+	type args struct {
+		filterFunc Filter
+	}
+	tests := []struct {
+		name  string
+		group *Group
+		args  args
+		want  *Group
+	}{
+		{
+			name:  "empty group",
+			group: NewGroup(),
+			args: args{
+				filterFunc: func(signal *Signal) bool {
+					return true
+				},
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "nothing filtered out",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				filterFunc: func(signal *Signal) bool {
+					return true
+				},
+			},
+			want: NewGroup(1, 2, 3),
+		},
+		{
+			name:  "some filtered out",
+			group: NewGroup(1, 2, 3, 4),
+			args: args{
+				filterFunc: func(signal *Signal) bool {
+					return signal.PayloadOrDefault(0).(int) <= 2
+				},
+			},
+			want: NewGroup(1, 2),
+		},
+		{
+			name:  "all dropped",
+			group: NewGroup(1, 2, 3, 4),
+			args: args{
+				filterFunc: func(signal *Signal) bool {
+					return signal.PayloadOrDefault(0).(int) > 10
+				},
+			},
+			want: NewGroup(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.group.Filter(tt.args.filterFunc)
+			if tt.want.HasErr() {
+				assert.Error(t, got.Err())
+				assert.EqualError(t, got.Err(), tt.want.Err().Error())
+			} else {
+				assert.NoError(t, got.Err())
+			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

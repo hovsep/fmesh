@@ -2,6 +2,7 @@ package port
 
 import (
 	"fmt"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/signal"
 )
@@ -198,7 +199,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 	return p
 }
 
-// ForwardSignals copies all buffer from source port to destination port, without clearing the source port
+// ForwardSignals copies all signals from source port to destination port, without clearing the source port
 func ForwardSignals(source, dest *Port) error {
 	if source.HasErr() {
 		return source.Err()
@@ -213,6 +214,25 @@ func ForwardSignals(source, dest *Port) error {
 		return err
 	}
 	dest.PutSignals(signals...)
+	if dest.HasErr() {
+		return dest.Err()
+	}
+	return nil
+}
+
+// ForwardWithFilter copies signals that pass filter function from source to dest port
+func ForwardWithFilter(source, dest *Port, filterFunc signal.Filter) error {
+	if source.HasErr() {
+		return source.Err()
+	}
+
+	if dest.HasErr() {
+		return dest.Err()
+	}
+
+	filteredSignals := source.Buffer().Filter(filterFunc).SignalsOrNil()
+
+	dest.PutSignals(filteredSignals...)
 	if dest.HasErr() {
 		return dest.Err()
 	}
