@@ -199,7 +199,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 	return p
 }
 
-// ForwardSignals copies all buffers from source port to destination port, without clearing the source port
+// ForwardSignals copies all signals from source port to destination port, without clearing the source port
 func ForwardSignals(source, dest *Port) error {
 	if source.HasErr() {
 		return source.Err()
