@@ -79,44 +79,32 @@ func (e *LabeledEntity) HasLabel(label string) bool {
 	return ok
 }
 
-// HasAllLabels checks if an entity has all labels
+// HasAllLabels checks if an entity has all given labels.
 func (e *LabeledEntity) HasAllLabels(label ...string) bool {
+	labelsMap := make(LabelsCollection, len(label))
 	for _, l := range label {
-		if !e.HasLabel(l) {
-			return false
-		}
+		labelsMap[l] = "" // value is ignored
 	}
-	return true
+	return e.All(labelsMap, func(l, _ string) bool { return e.HasLabel(l) })
 }
 
-// HasAllLabelsWithValues returns true if the entity contains all key-value pairs from the given label collection.
+// HasAllLabelsWithValues returns true if the entity contains all key-value pairs from the given collection.
 func (e *LabeledEntity) HasAllLabelsWithValues(labels LabelsCollection) bool {
-	for label, labelValue := range labels {
-		if !e.LabelIs(label, labelValue) {
-			return false
-		}
-	}
-	return true
+	return e.All(labels, e.LabelIs)
 }
 
-// HasAnyLabel checks if an entity has at least one of given labels
+// HasAnyLabel checks if an entity has any of the given labels.
 func (e *LabeledEntity) HasAnyLabel(label ...string) bool {
+	labelsMap := make(LabelsCollection, len(label))
 	for _, l := range label {
-		if e.HasLabel(l) {
-			return true
-		}
+		labelsMap[l] = ""
 	}
-	return false
+	return e.Any(labelsMap, func(l, _ string) bool { return e.HasLabel(l) })
 }
 
-// HasAnyLabelWithValue returns true if the entity contains any key-value pair from the given label collection.
+// HasAnyLabelWithValue returns true if the entity contains any key-value pair from the given collection.
 func (e *LabeledEntity) HasAnyLabelWithValue(labels LabelsCollection) bool {
-	for label, labelValue := range labels {
-		if e.LabelIs(label, labelValue) {
-			return true
-		}
-	}
-	return false
+	return e.Any(labels, e.LabelIs)
 }
 
 // LabelIs returns true when an entity has given label with a given value
