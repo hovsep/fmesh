@@ -57,11 +57,11 @@ func (s *Signal) WithLabels(labels common.LabelsCollection) *Signal {
 }
 
 // Map applies a given mapper func and returns a new signal
-func (s *Signal) Map(mapper Mapper) *Signal {
+func (s *Signal) Map(m Mapper) *Signal {
 	if s.HasErr() {
 		return s
 	}
-	return mapper(s)
+	return m(s)
 }
 
 // MapPayload sets labels and returns the signal

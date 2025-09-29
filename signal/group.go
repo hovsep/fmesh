@@ -13,7 +13,7 @@ type Group struct {
 	signals Signals
 }
 
-// NewGroup creates empty group
+// NewGroup creates an empty group
 func NewGroup(payloads ...any) *Group {
 	newGroup := &Group{
 		Chainable: common.NewChainable(),
@@ -26,13 +26,13 @@ func NewGroup(payloads ...any) *Group {
 	return newGroup.withSignals(signals)
 }
 
-// First returns the first signal in the group
-func (g *Group) First() *Signal {
+// FirstSignal returns the first signal in the group
+func (g *Group) FirstSignal() *Signal {
 	if g.HasErr() {
 		return New(nil).WithErr(g.Err())
 	}
 
-	if len(g.signals) == 0 {
+	if g.Len() == 0 {
 		g.SetErr(ErrNoSignalsInGroup)
 		return New(nil).WithErr(g.Err())
 	}
@@ -40,13 +40,77 @@ func (g *Group) First() *Signal {
 	return g.signals[0]
 }
 
-// FirstPayload returns the first signal payload
+// IsEmpty returns true when there are no signals in the group
+func (g *Group) IsEmpty() bool {
+	return g.Len() == 0
+}
+
+// Any returns true if at least one signal matches the predicate
+func (g *Group) Any(p Predicate) bool {
+	if g.HasErr() {
+		return false
+	}
+
+	if g.Len() == 0 {
+		return false
+	}
+
+	for _, sig := range g.signals {
+		if p(sig) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// All returns true if all signals match the predicate
+func (g *Group) All(p Predicate) bool {
+	if g.HasErr() {
+		return false
+	}
+
+	if g.IsEmpty() {
+		return false
+	}
+
+	for _, sig := range g.signals {
+		if !p(sig) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// First returns the first signal that passes the predicate
+func (g *Group) First(p Predicate) *Signal {
+	if g.HasErr() {
+		return New(nil).WithErr(g.Err())
+	}
+
+	if g.IsEmpty() {
+		g.SetErr(ErrNoSignalsInGroup)
+		return New(nil).WithErr(g.Err())
+	}
+
+	for _, sig := range g.signals {
+		if p(sig) {
+			return sig
+		}
+	}
+
+	g.SetErr(ErrNotFound)
+	return New(nil).WithErr(g.Err())
+}
+
+// FirstPayload returns the payload of the first signal
 func (g *Group) FirstPayload() (any, error) {
 	if g.HasErr() {
 		return nil, g.Err()
 	}
 
-	return g.First().Payload()
+	return g.FirstSignal().Payload()
 }
 
 // AllPayloads returns a slice with all payloads of the all signals in the group
@@ -55,7 +119,7 @@ func (g *Group) AllPayloads() ([]any, error) {
 		return nil, g.Err()
 	}
 
-	all := make([]any, len(g.signals))
+	all := make([]any, g.Len())
 	var err error
 	for i, sig := range g.signals {
 		all[i], err = sig.Payload()
@@ -73,7 +137,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 		return g
 	}
 
-	newSignals := make(Signals, len(g.signals)+len(signals))
+	newSignals := make(Signals, g.Len()+len(signals))
 	copy(newSignals, g.signals)
 	for i, sig := range signals {
 		if sig == nil {
@@ -86,7 +150,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 			return NewGroup().WithErr(g.Err())
 		}
 
-		newSignals[len(g.signals)+i] = sig
+		newSignals[g.Len()+i] = sig
 	}
 
 	return g.withSignals(newSignals)
@@ -99,10 +163,10 @@ func (g *Group) WithPayloads(payloads ...any) *Group {
 		return g
 	}
 
-	newSignals := make(Signals, len(g.signals)+len(payloads))
+	newSignals := make(Signals, g.Len()+len(payloads))
 	copy(newSignals, g.signals)
 	for i, p := range payloads {
-		newSignals[len(g.signals)+i] = New(p)
+		newSignals[g.Len()+i] = New(p)
 	}
 	return g.withSignals(newSignals)
 }
@@ -141,7 +205,7 @@ func (g *Group) WithErr(err error) *Group {
 	return g
 }
 
-// Len returns number of signals in group
+// Len returns a number of signals in a group
 func (g *Group) Len() int {
 	return len(g.signals)
 }
@@ -160,7 +224,7 @@ func (g *Group) WithSignalLabels(labels common.LabelsCollection) *Group {
 }
 
 // Filter returns a new group with signals that pass the filter
-func (g *Group) Filter(filter Filter) *Group {
+func (g *Group) Filter(p Predicate) *Group {
 	if g.HasErr() {
 		// Do nothing but propagate the error
 		return g
@@ -168,7 +232,7 @@ func (g *Group) Filter(filter Filter) *Group {
 
 	filteredSignals := make(Signals, 0)
 	for _, s := range g.SignalsOrNil() {
-		if filter(s) {
+		if p(s) {
 			filteredSignals = append(filteredSignals, s)
 		}
 	}
@@ -177,7 +241,7 @@ func (g *Group) Filter(filter Filter) *Group {
 }
 
 // Map returns a new group with signals transformed by the mapper function
-func (g *Group) Map(mapper Mapper) *Group {
+func (g *Group) Map(m Mapper) *Group {
 	if g.HasErr() {
 		// Do nothing but propagate the error
 		return g
@@ -185,7 +249,7 @@ func (g *Group) Map(mapper Mapper) *Group {
 
 	mappedSignals := make(Signals, 0)
 	for _, s := range g.SignalsOrNil() {
-		mappedSignals = append(mappedSignals, s.Map(mapper))
+		mappedSignals = append(mappedSignals, s.Map(m))
 	}
 
 	return NewGroup().withSignals(mappedSignals)

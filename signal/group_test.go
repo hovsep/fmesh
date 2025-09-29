@@ -293,13 +293,13 @@ func TestGroup_First(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.First()
+			got := tt.group.FirstSignal()
 			if tt.want.HasErr() {
 				assert.True(t, got.HasErr())
 				assert.Error(t, got.Err())
 				assert.EqualError(t, got.Err(), tt.want.Err().Error())
 			} else {
-				assert.Equal(t, tt.want, tt.group.First())
+				assert.Equal(t, tt.want, tt.group.FirstSignal())
 			}
 		})
 	}
@@ -413,7 +413,7 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 
 func TestGroup_Filter(t *testing.T) {
 	type args struct {
-		filterFunc Filter
+		predicate Predicate
 	}
 	tests := []struct {
 		name  string
@@ -425,7 +425,7 @@ func TestGroup_Filter(t *testing.T) {
 			name:  "empty group",
 			group: NewGroup(),
 			args: args{
-				filterFunc: func(signal *Signal) bool {
+				predicate: func(signal *Signal) bool {
 					return true
 				},
 			},
@@ -435,7 +435,7 @@ func TestGroup_Filter(t *testing.T) {
 			name:  "nothing filtered out",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				filterFunc: func(signal *Signal) bool {
+				predicate: func(signal *Signal) bool {
 					return true
 				},
 			},
@@ -445,7 +445,7 @@ func TestGroup_Filter(t *testing.T) {
 			name:  "some filtered out",
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
-				filterFunc: func(signal *Signal) bool {
+				predicate: func(signal *Signal) bool {
 					return signal.PayloadOrDefault(0).(int) <= 2
 				},
 			},
@@ -455,7 +455,7 @@ func TestGroup_Filter(t *testing.T) {
 			name:  "all dropped",
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
-				filterFunc: func(signal *Signal) bool {
+				predicate: func(signal *Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 10
 				},
 			},
@@ -464,7 +464,7 @@ func TestGroup_Filter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.Filter(tt.args.filterFunc)
+			got := tt.group.Filter(tt.args.predicate)
 			if tt.want.HasErr() {
 				assert.Error(t, got.Err())
 				assert.EqualError(t, got.Err(), tt.want.Err().Error())

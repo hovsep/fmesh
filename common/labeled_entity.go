@@ -26,7 +26,7 @@ func (e *LabeledEntity) Labels() LabelsCollection {
 	return e.labels
 }
 
-// Label returns the value of single label or empty string if it is not found
+// Label returns the value of a single label or empty string if it is not found
 func (e *LabeledEntity) Label(label string) (string, error) {
 	value, ok := e.labels[label]
 
@@ -46,7 +46,7 @@ func (e *LabeledEntity) LabelOrDefault(label, defaultValue string) string {
 	return value
 }
 
-// SetLabels overwrites labels collection
+// SetLabels overwrites a labels collection
 func (e *LabeledEntity) SetLabels(labels LabelsCollection) {
 	e.labels = labels
 }
@@ -73,13 +73,13 @@ func (e *LabeledEntity) DeleteLabels(labels ...string) {
 	}
 }
 
-// HasLabel returns true when entity has given label or false otherwise
+// HasLabel returns true when the entity has given label or false otherwise
 func (e *LabeledEntity) HasLabel(label string) bool {
 	_, ok := e.labels[label]
 	return ok
 }
 
-// HasAllLabels checks if entity has all labels
+// HasAllLabels checks if an entity has all labels
 func (e *LabeledEntity) HasAllLabels(label ...string) bool {
 	for _, l := range label {
 		if !e.HasLabel(l) {
@@ -99,7 +99,7 @@ func (e *LabeledEntity) HasAllLabelsWithValues(labels LabelsCollection) bool {
 	return true
 }
 
-// HasAnyLabel checks if entity has at least one of given labels
+// HasAnyLabel checks if an entity has at least one of given labels
 func (e *LabeledEntity) HasAnyLabel(label ...string) bool {
 	for _, l := range label {
 		if e.HasLabel(l) {
@@ -119,7 +119,7 @@ func (e *LabeledEntity) HasAnyLabelWithValue(labels LabelsCollection) bool {
 	return false
 }
 
-// LabelIs returns true when entity has given label with given value
+// LabelIs returns true when an entity has given label with a given value
 func (e *LabeledEntity) LabelIs(label, value string) bool {
 	if !e.HasLabel(label) {
 		return false
