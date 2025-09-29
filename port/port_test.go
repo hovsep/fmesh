@@ -614,9 +614,9 @@ func TestPort_ForwardSignals(t *testing.T) {
 
 func TestPort_ForwardWithFilter(t *testing.T) {
 	type args struct {
-		srcPort    *Port
-		destPort   *Port
-		filterFunc signal.Filter
+		srcPort   *Port
+		destPort  *Port
+		predicate signal.Predicate
 	}
 	tests := []struct {
 		name       string
@@ -628,7 +628,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			args: args{
 				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 				destPort: New("p2"),
-				filterFunc: func(signal *signal.Signal) bool {
+				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 0
 				},
 			},
@@ -643,7 +643,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			args: args{
 				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
 				destPort: New("p2").WithSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
-				filterFunc: func(signal *signal.Signal) bool {
+				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 10
 				},
 			},
@@ -658,7 +658,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			args: args{
 				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
 				destPort: New("p2").WithSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
-				filterFunc: func(signal *signal.Signal) bool {
+				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 99
 				},
 			},
@@ -695,7 +695,73 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ForwardWithFilter(tt.args.srcPort, tt.args.destPort, tt.args.filterFunc)
+			err := ForwardWithFilter(tt.args.srcPort, tt.args.destPort, tt.args.predicate)
+			if tt.assertions != nil {
+				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
+			}
+		})
+	}
+}
+
+func TestPort_ForwardWithMap(t *testing.T) {
+	type args struct {
+		srcPort    *Port
+		destPort   *Port
+		mapperFunc signal.Mapper
+	}
+	tests := []struct {
+		name       string
+		args       args
+		assertions func(t *testing.T, srcPortAfter, destPortAfter *Port, err error)
+	}{
+		{
+			name: "happy path",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: New("p2"),
+				mapperFunc: func(signal *signal.Signal) *signal.Signal {
+					return signal.WithLabels(common.LabelsCollection{
+						"l1": "v1",
+					})
+				},
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.NoError(t, err)
+				assert.Equal(t, 3, destPortAfter.Buffer().Len())
+				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.True(t, destPortAfter.Buffer().All(func(signal *signal.Signal) bool {
+					return signal.LabelIs("l1", "v1")
+				}))
+			},
+		},
+		{
+			name: "src with chain error",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)).WithErr(errors.New("some error")),
+				destPort: New("p2"),
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.Error(t, err)
+				assert.Equal(t, 0, destPortAfter.Buffer().Len())
+				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
+			},
+		},
+		{
+			name: "dest with chain error",
+			args: args{
+				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: New("p2").WithErr(errors.New("some error")),
+			},
+			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
+				require.Error(t, err)
+				assert.Equal(t, 0, destPortAfter.Buffer().Len())
+				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ForwardWithMap(tt.args.srcPort, tt.args.destPort, tt.args.mapperFunc)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
 			}
