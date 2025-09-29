@@ -20,18 +20,18 @@ const (
 
 var (
 	// ErrHitAnErrorOrPanic is returned when f-mesh hit an error or panic and will be stopped
-	ErrHitAnErrorOrPanic                = errors.New("f-mesh hit an error or panic and will be stopped")
+	ErrHitAnErrorOrPanic = errors.New("f-mesh hit an error or panic and will be stopped")
 	// ErrHitAPanic is returned when f-mesh hit a panic and will be stopped
-	ErrHitAPanic                        = errors.New("f-mesh hit a panic and will be stopped")
+	ErrHitAPanic = errors.New("f-mesh hit a panic and will be stopped")
 	// ErrUnsupportedErrorHandlingStrategy is returned when an unsupported error handling strategy is used
 	ErrUnsupportedErrorHandlingStrategy = errors.New("unsupported error handling strategy")
 	// ErrReachedMaxAllowedCycles is returned when the maximum number of allowed cycles is reached
-	ErrReachedMaxAllowedCycles          = errors.New("reached max allowed cycles")
+	ErrReachedMaxAllowedCycles = errors.New("reached max allowed cycles")
 	// ErrTimeLimitExceeded is returned when the time limit is exceeded
-	ErrTimeLimitExceeded                = errors.New("time limit exceeded")
-	errFailedToRunCycle                 = errors.New("failed to run cycle")
-	errNoComponents                     = errors.New("no components found")
-	errFailedToClearInputs              = errors.New("failed to clear input ports")
+	ErrTimeLimitExceeded   = errors.New("time limit exceeded")
+	errFailedToRunCycle    = errors.New("failed to run cycle")
+	errNoComponents        = errors.New("no components found")
+	errFailedToClearInputs = errors.New("failed to clear input ports")
 	// ErrFailedToDrain is returned when failed to drain
-	ErrFailedToDrain                    = errors.New("failed to drain")
+	ErrFailedToDrain = errors.New("failed to drain")
 )

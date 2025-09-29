@@ -2,12 +2,13 @@ package errorhandling
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_Signal(t *testing.T) {
@@ -35,7 +36,7 @@ func Test_Signal(t *testing.T) {
 			test: func(t *testing.T) {
 				emptyGroup := signal.NewGroup()
 
-				sig := emptyGroup.First()
+				sig := emptyGroup.FirstSignal()
 				assert.True(t, sig.HasErr())
 				require.Error(t, sig.Err())
 
