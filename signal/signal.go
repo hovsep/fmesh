@@ -2,14 +2,14 @@ package signal
 
 import "github.com/hovsep/fmesh/common"
 
-// Signal is a wrapper around the data flowing between components
+// Signal is a wrapper around the data flowing between components.
 type Signal struct {
 	*common.Chainable
 	common.LabeledEntity
 	payload []any // Slice is used in order to support nil payload
 }
 
-// New creates a new signal from the given payloads
+// New creates a new signal from the given payloads.
 func New(payload any) *Signal {
 	return &Signal{
 		Chainable:     common.NewChainable(),
@@ -18,7 +18,7 @@ func New(payload any) *Signal {
 	}
 }
 
-// Payload getter
+// Payload getter.
 func (s *Signal) Payload() (any, error) {
 	if s.HasErr() {
 		return nil, s.Err()
@@ -26,12 +26,12 @@ func (s *Signal) Payload() (any, error) {
 	return s.payload[0], nil
 }
 
-// PayloadOrNil returns payload or nil in case of error
+// PayloadOrNil returns payload or nil in case of error.
 func (s *Signal) PayloadOrNil() any {
 	return s.PayloadOrDefault(nil)
 }
 
-// PayloadOrDefault returns payload or provided default value in case of error
+// PayloadOrDefault returns payload or provided default value in case of error.
 func (s *Signal) PayloadOrDefault(defaultPayload any) any {
 	payload, err := s.Payload()
 	if err != nil {
@@ -40,13 +40,13 @@ func (s *Signal) PayloadOrDefault(defaultPayload any) any {
 	return payload
 }
 
-// WithErr returns signal with error
+// WithErr returns signal with error.
 func (s *Signal) WithErr(err error) *Signal {
 	s.SetErr(err)
 	return s
 }
 
-// WithLabels sets labels and returns the signal
+// WithLabels sets labels and returns the signal.
 func (s *Signal) WithLabels(labels common.LabelsCollection) *Signal {
 	if s.HasErr() {
 		return s
@@ -56,7 +56,7 @@ func (s *Signal) WithLabels(labels common.LabelsCollection) *Signal {
 	return s
 }
 
-// Map applies a given mapper func and returns a new signal
+// Map applies a given mapper func and returns a new signal.
 func (s *Signal) Map(m Mapper) *Signal {
 	if s.HasErr() {
 		return s
@@ -64,7 +64,7 @@ func (s *Signal) Map(m Mapper) *Signal {
 	return m(s)
 }
 
-// MapPayload sets labels and returns the signal
+// MapPayload sets labels and returns the signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	if s.HasErr() {
 		return s

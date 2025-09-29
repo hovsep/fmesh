@@ -3,15 +3,16 @@ package fmesh
 import (
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"testing"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"log"
-	"testing"
 )
 
 func TestNew(t *testing.T) {
@@ -197,7 +198,6 @@ func TestFMesh_WithComponents(t *testing.T) {
 
 				assert.Equal(t, "c2: custom ", fm.ComponentByName("c2").Logger().Prefix())
 				assert.Equal(t, io.Discard, fm.ComponentByName("c2").Logger().Writer())
-
 			},
 		},
 	}

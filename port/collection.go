@@ -7,12 +7,12 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// Map is a map of ports
+// Map is a map of ports.
 type Map map[string]*Port
 
-// Collection is a port collection
-// indexed by name, hence it can not carry
-// 2 ports with same name. Optimized for lookups
+// Collection is a port collection.
+// indexed by name; hence it cannot carry
+// 2 ports with the same name. Optimized for lookups.
 type Collection struct {
 	*common.Chainable
 	ports Map
@@ -20,7 +20,7 @@ type Collection struct {
 	defaultLabels common.LabelsCollection
 }
 
-// NewCollection creates empty collection
+// NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
 		Chainable:     common.NewChainable(),
@@ -29,7 +29,7 @@ func NewCollection() *Collection {
 	}
 }
 
-// ByName returns a port by its name
+// ByName returns a port by its name.
 func (collection *Collection) ByName(name string) *Port {
 	if collection.HasErr() {
 		return New("").WithErr(collection.Err())
@@ -42,7 +42,7 @@ func (collection *Collection) ByName(name string) *Port {
 	return port
 }
 
-// ByNames returns multiple ports by their names
+// ByNames returns multiple ports by their names.
 func (collection *Collection) ByNames(names ...string) *Collection {
 	if collection.HasErr() {
 		return NewCollection().WithErr(collection.Err())
@@ -60,7 +60,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 	return selectedPorts
 }
 
-// AnyHasSignals returns true if at least one port in collection has signals
+// AnyHasSignals returns true if at least one port in collection has signals.
 func (collection *Collection) AnyHasSignals() bool {
 	if collection.HasErr() {
 		return false
@@ -75,7 +75,7 @@ func (collection *Collection) AnyHasSignals() bool {
 	return false
 }
 
-// AllHaveSignals returns true when all ports in collection have signals
+// AllHaveSignals returns true when all ports in collection have signals.
 func (collection *Collection) AllHaveSignals() bool {
 	if collection.HasErr() {
 		return false
@@ -90,7 +90,7 @@ func (collection *Collection) AllHaveSignals() bool {
 	return true
 }
 
-// PutSignals adds buffer to every port in collection
+// PutSignals adds buffer to every port in collection.
 func (collection *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	if collection.HasErr() {
 		return NewCollection().WithErr(collection.Err())
@@ -106,7 +106,7 @@ func (collection *Collection) PutSignals(signals ...*signal.Signal) *Collection 
 	return collection
 }
 
-// Clear clears all ports in collection
+// Clear clears all ports in collection.
 func (collection *Collection) Clear() *Collection {
 	for _, p := range collection.ports {
 		p.Clear()
@@ -118,7 +118,7 @@ func (collection *Collection) Clear() *Collection {
 	return collection
 }
 
-// Flush flushes all ports in collection
+// Flush flushes all ports in collection.
 func (collection *Collection) Flush() *Collection {
 	if collection.HasErr() {
 		return NewCollection().WithErr(collection.Err())
@@ -134,7 +134,7 @@ func (collection *Collection) Flush() *Collection {
 	return collection
 }
 
-// PipeTo creates pipes from each port in collection to given destination ports
+// PipeTo creates pipes from each port in collection to given destination ports.
 func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 	for _, p := range collection.ports {
 		p = p.PipeTo(destPorts...)
@@ -147,7 +147,7 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 	return collection
 }
 
-// With adds ports to collection and returns it
+// With adds ports to collection and returns it.
 func (collection *Collection) With(ports ...*Port) *Collection {
 	if collection.HasErr() {
 		return collection
@@ -164,7 +164,7 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 	return collection
 }
 
-// WithIndexed creates ports with names like "o1","o2","o3" and so on
+// WithIndexed creates ports with names like "o1","o2","o3" and so on.
 func (collection *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Collection {
 	if collection.HasErr() {
 		return collection
@@ -178,7 +178,7 @@ func (collection *Collection) WithIndexed(prefix string, startIndex, endIndex in
 	return collection.With(indexedPorts...)
 }
 
-// Signals returns all signals of all ports in the collection
+// Signals returns all signals of all ports in the collection.
 func (collection *Collection) Signals() *signal.Group {
 	if collection.HasErr() {
 		return signal.NewGroup().WithErr(collection.Err())
@@ -205,12 +205,12 @@ func (collection *Collection) Ports() (Map, error) {
 	return collection.ports, nil
 }
 
-// PortsOrNil returns ports or nil in case of any error
+// PortsOrNil returns ports or nil in case of any error.
 func (collection *Collection) PortsOrNil() Map {
 	return collection.PortsOrDefault(nil)
 }
 
-// PortsOrDefault returns ports or default in case of any error
+// PortsOrDefault returns ports or default in case of any error.
 func (collection *Collection) PortsOrDefault(defaultPorts Map) Map {
 	if collection.HasErr() {
 		return defaultPorts
@@ -223,18 +223,18 @@ func (collection *Collection) PortsOrDefault(defaultPorts Map) Map {
 	return ports
 }
 
-// WithErr returns group with error
+// WithErr returns group with error.
 func (collection *Collection) WithErr(err error) *Collection {
 	collection.SetErr(err)
 	return collection
 }
 
-// Len returns number of ports in collection
+// Len returns number of ports in collection.
 func (collection *Collection) Len() int {
 	return len(collection.ports)
 }
 
-// WithDefaultLabels adds default labels to all ports in collection
+// WithDefaultLabels adds default labels to all ports in collection.
 func (collection *Collection) WithDefaultLabels(labels common.LabelsCollection) *Collection {
 	collection.defaultLabels = labels
 	return collection

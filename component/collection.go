@@ -6,16 +6,16 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
-// Map is a map of components
+// Map is a map of components.
 type Map map[string]*Component
 
-// Collection is a collection of components with useful methods
+// Collection is a collection of components with useful methods.
 type Collection struct {
 	*common.Chainable
 	components Map
 }
 
-// NewCollection creates empty collection
+// NewCollection creates empty collection.
 func NewCollection() *Collection {
 	return &Collection{
 		Chainable:  common.NewChainable(),
@@ -23,7 +23,7 @@ func NewCollection() *Collection {
 	}
 }
 
-// ByName returns a component by its name
+// ByName returns a component by its name.
 func (c *Collection) ByName(name string) *Component {
 	if c.HasErr() {
 		return New("").WithErr(c.Err())
@@ -39,7 +39,7 @@ func (c *Collection) ByName(name string) *Component {
 	return component
 }
 
-// ByLabelValue returns all components which have a given label with given value
+// ByLabelValue returns all components which have a given label with given value.
 func (c *Collection) ByLabelValue(label, value string) *Collection {
 	if c.HasErr() {
 		return NewCollection().WithErr(c.Err())
@@ -56,7 +56,7 @@ func (c *Collection) ByLabelValue(label, value string) *Collection {
 	return selectedComponents
 }
 
-// With adds components and returns the collection
+// With adds components and returns the collection.
 func (c *Collection) With(components ...*Component) *Collection {
 	if c.HasErr() {
 		return c
@@ -73,18 +73,18 @@ func (c *Collection) With(components ...*Component) *Collection {
 	return c
 }
 
-// WithErr returns group with error
+// WithErr returns group with error.
 func (c *Collection) WithErr(err error) *Collection {
 	c.SetErr(err)
 	return c
 }
 
-// Len returns number of ports in collection
+// Len returns number of ports in collection.
 func (c *Collection) Len() int {
 	return len(c.components)
 }
 
-// Components returns underlying components map
+// Components returns underlying components map.
 func (c *Collection) Components() (Map, error) {
 	if c.HasErr() {
 		return nil, c.Err()

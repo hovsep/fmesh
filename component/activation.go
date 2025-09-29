@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// ActivationFunc is the function that will be called when the component is activated
+// ActivationFunc is the function that will be called when the component is activated.
 type ActivationFunc func(this *Component) error
 
-// WithActivationFunc sets activation function
+// WithActivationFunc sets the activation function.
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	if c.HasErr() {
 		return c
@@ -18,7 +18,7 @@ func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	return c
 }
 
-// hasActivationFunction checks when activation function is set
+// hasActivationFunction checks when activation function is set.
 func (c *Component) hasActivationFunction() bool {
 	if c.HasErr() {
 		return false
@@ -27,7 +27,7 @@ func (c *Component) hasActivationFunction() bool {
 	return c.f != nil
 }
 
-// MaybeActivate tries to run the activation function if all required conditions are met
+// MaybeActivate tries to run the activation function if all required conditions are met.
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	c.propagateChainErrors()
 

@@ -1,16 +1,16 @@
 package common
 
-// DescribedEntity is a base struct for described entities
+// DescribedEntity is a base struct for described entities.
 type DescribedEntity struct {
 	description string
 }
 
-// NewDescribedEntity constructor
+// NewDescribedEntity constructor.
 func NewDescribedEntity(description string) DescribedEntity {
 	return DescribedEntity{description: description}
 }
 
-// Description getter
+// Description getter.
 func (e DescribedEntity) Description() string {
 	return e.description
 }

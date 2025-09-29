@@ -18,10 +18,19 @@ linters:
     - unparam
     - unused
     - testifylint
+    - errcheck
+    - goconst
+    - errorlint
+    - nilerr
+    - whitespace
+    - godot
+    - nolintlint
+    - makezero
+    - perfsprint
   settings:
     goconst:
-      min-len: 2
-      min-occurrences: 2
+      min-len: 3
+      min-occurrences: 3
     gocritic:
       disabled-checks:
         - wrapperFunc
@@ -32,12 +41,9 @@ linters:
       enabled-tags:
         - performance
         - style
-        - experimental
     govet:
       enable:
         - shadow
-    lll:
-      line-length: 140
     misspell:
       locale: US
   exclusions:

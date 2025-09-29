@@ -3,14 +3,15 @@ package fmesh
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"sync"
-	"time"
 )
 
-// RuntimeInfo contains information about the runtime of the f-mesh
+// RuntimeInfo contains information about the runtime of the f-mesh.
 type RuntimeInfo struct {
 	Cycles    *cycle.Group
 	StartedAt time.Time
@@ -18,7 +19,7 @@ type RuntimeInfo struct {
 	Duration  time.Duration
 }
 
-// FMesh is the functional mesh
+// FMesh is the functional mesh.
 type FMesh struct {
 	common.NamedEntity
 	common.DescribedEntity
@@ -28,7 +29,7 @@ type FMesh struct {
 	config      *Config
 }
 
-// New creates a new f-mesh with default config
+// New creates a new f-mesh with default config.
 func New(name string) *FMesh {
 	return &FMesh{
 		NamedEntity:     common.NewNamedEntity(name),
@@ -43,12 +44,12 @@ func New(name string) *FMesh {
 	}
 }
 
-// NewWithConfig creates a new f-mesh with custom config
+// NewWithConfig creates a new f-mesh with custom config.
 func NewWithConfig(name string, config *Config) *FMesh {
 	return New(name).withConfig(config)
 }
 
-// Components getter
+// Components getter.
 func (fm *FMesh) Components() *component.Collection {
 	if fm.HasErr() {
 		return component.NewCollection().WithErr(fm.Err())
@@ -56,12 +57,12 @@ func (fm *FMesh) Components() *component.Collection {
 	return fm.components
 }
 
-// ComponentByName shortcut method
+// ComponentByName shortcut method.
 func (fm *FMesh) ComponentByName(name string) *component.Component {
 	return fm.Components().ByName(name)
 }
 
-// WithDescription sets a description
+// WithDescription sets a description.
 func (fm *FMesh) WithDescription(description string) *FMesh {
 	if fm.HasErr() {
 		return fm
@@ -71,7 +72,7 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 	return fm
 }
 
-// WithComponents adds components to f-mesh
+// WithComponents adds components to f-mesh.
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	if fm.HasErr() {
 		return fm
@@ -92,7 +93,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	return fm
 }
 
-// runCycle runs one activation cycle (tries to activate ready components)
+// runCycle runs one activation cycle (tries to activate ready components).
 func (fm *FMesh) runCycle() {
 	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
@@ -149,7 +150,7 @@ func (fm *FMesh) runCycle() {
 	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(newCycle)
 }
 
-// DrainComponents drains the data from activated components
+// DrainComponents drains the data from activated components.
 func (fm *FMesh) drainComponents() {
 	if fm.HasErr() {
 		fm.SetErr(errors.Join(ErrFailedToDrain, fm.Err()))
@@ -193,7 +194,7 @@ func (fm *FMesh) drainComponents() {
 	}
 }
 
-// clearInputs clears all the input ports of all components activated in latest cycle
+// clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs() {
 	if fm.HasErr() {
 		return
@@ -229,7 +230,7 @@ func (fm *FMesh) clearInputs() {
 	}
 }
 
-// Run starts the computation until there is no component which activates (mesh has no unprocessed inputs)
+// Run starts the computation until there is no component that activates (mesh has no unprocessed inputs).
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	fm.runtimeInfo.StartedAt = time.Now()
 	defer func() {
@@ -255,7 +256,7 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	}
 }
 
-// mustStop defines when f-mesh must stop (it always checks only last cycle)
+// mustStop defines when f-mesh must stop (it always checks only the last cycle).
 func (fm *FMesh) mustStop() (bool, error) {
 	if fm.HasErr() {
 		return false, nil
@@ -314,7 +315,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 	}
 }
 
-// WithErr returns f-mesh with error
+// WithErr returns f-mesh with an error.
 func (fm *FMesh) WithErr(err error) *FMesh {
 	fm.SetErr(err)
 	return fm

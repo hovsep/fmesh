@@ -1,13 +1,14 @@
 package ports
 
 import (
+	"testing"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_WaitingForInputs(t *testing.T) {
@@ -71,7 +72,6 @@ func Test_WaitingForInputs(t *testing.T) {
 					CyclesLimit:           5,
 				}).
 					WithComponents(d1, d2, d3, d4, d5, s)
-
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				// Put 1 signal to each chain so they start in the same cycle

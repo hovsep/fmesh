@@ -2,7 +2,7 @@ package component
 
 import "github.com/hovsep/fmesh/port"
 
-// withInputPorts sets input ports collection
+// withInputPorts sets input ports collection.
 func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if c.HasErr() {
 		return c
@@ -14,7 +14,7 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	return c
 }
 
-// withOutputPorts sets input ports collection
+// withOutputPorts sets input ports collection.
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if c.HasErr() {
 		return c
@@ -27,7 +27,7 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	return c
 }
 
-// WithInputs ads input ports
+// WithInputs ads input ports.
 func (c *Component) WithInputs(portNames ...string) *Component {
 	if c.HasErr() {
 		return c
@@ -42,7 +42,7 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
-// WithOutputs adds output ports
+// WithOutputs adds output ports.
 func (c *Component) WithOutputs(portNames ...string) *Component {
 	if c.HasErr() {
 		return c
@@ -56,8 +56,8 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
-// WithInputsIndexed creates multiple prefixed ports
-func (c *Component) WithInputsIndexed(prefix string, startIndex , endIndex int) *Component {
+// WithInputsIndexed creates multiple prefixed ports.
+func (c *Component) WithInputsIndexed(prefix string, startIndex, endIndex int) *Component {
 	if c.HasErr() {
 		return c
 	}
@@ -65,7 +65,7 @@ func (c *Component) WithInputsIndexed(prefix string, startIndex , endIndex int) 
 	return c.withInputPorts(c.Inputs().WithIndexed(prefix, startIndex, endIndex))
 }
 
-// WithOutputsIndexed creates multiple prefixed ports
+// WithOutputsIndexed creates multiple prefixed ports.
 func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) *Component {
 	if c.HasErr() {
 		return c
@@ -74,7 +74,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) 
 	return c.withOutputPorts(c.Outputs().WithIndexed(prefix, startIndex, endIndex))
 }
 
-// Inputs getter
+// Inputs getter.
 func (c *Component) Inputs() *port.Collection {
 	if c.HasErr() {
 		return port.NewCollection().WithErr(c.Err())
@@ -83,7 +83,7 @@ func (c *Component) Inputs() *port.Collection {
 	return c.inputs
 }
 
-// Outputs getter
+// Outputs getter.
 func (c *Component) Outputs() *port.Collection {
 	if c.HasErr() {
 		return port.NewCollection().WithErr(c.Err())
@@ -92,7 +92,7 @@ func (c *Component) Outputs() *port.Collection {
 	return c.outputs
 }
 
-// OutputByName is shortcut method
+// OutputByName is shortcut method.
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasErr() {
 		return port.New("").WithErr(c.Err())
@@ -105,7 +105,7 @@ func (c *Component) OutputByName(name string) *port.Port {
 	return outputPort
 }
 
-// InputByName is shortcut method
+// InputByName is shortcut method.
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasErr() {
 		return port.New("").WithErr(c.Err())
@@ -118,7 +118,7 @@ func (c *Component) InputByName(name string) *port.Port {
 	return inputPort
 }
 
-// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs
+// FlushOutputs pushed signals out of the component outputs to pipes and clears outputs.
 func (c *Component) FlushOutputs() *Component {
 	if c.HasErr() {
 		return c
@@ -138,7 +138,7 @@ func (c *Component) FlushOutputs() *Component {
 	return c
 }
 
-// ClearInputs clears all input ports
+// ClearInputs clears all input ports.
 func (c *Component) ClearInputs() *Component {
 	if c.HasErr() {
 		return c
@@ -147,7 +147,7 @@ func (c *Component) ClearInputs() *Component {
 	return c
 }
 
-// LoopbackPipe creates a pipe between ports of the component
+// LoopbackPipe creates a pipe between ports of the component.
 func (c *Component) LoopbackPipe(out, in string) {
 	c.OutputByName(out).PipeTo(c.InputByName(in))
 }

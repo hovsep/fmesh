@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	// DirectionLabel is the label for the port direction
+	// DirectionLabel is the label for the port direction.
 	DirectionLabel = "fmesh:port:direction"
-	// DirectionIn is the direction for input ports
+	// DirectionIn is the direction for input ports.
 	DirectionIn = "in"
-	// DirectionOut is the direction for output ports
+	// DirectionOut is the direction for output ports.
 	DirectionOut = "out"
 )
 
-// Port defines a connectivity point of a component
+// Port defines a connectivity point of a component.
 type Port struct {
 	common.NamedEntity
 	common.LabeledEntity
@@ -25,7 +25,7 @@ type Port struct {
 	pipes  *Group // Outbound pipes
 }
 
-// New creates a new port
+// New creates a new port.
 func New(name string) *Port {
 	return &Port{
 		NamedEntity:   common.NewNamedEntity(name),
@@ -34,11 +34,10 @@ func New(name string) *Port {
 		pipes:         NewGroup(),
 		buffer:        signal.NewGroup(),
 	}
-
 }
 
 // Buffer getter
-// @TODO: maybe we can hide this and return signals to user code
+// @TODO: maybe we can hide this and return signals to user code.
 func (p *Port) Buffer() *signal.Group {
 	if p.HasErr() {
 		return signal.NewGroup().WithErr(p.Err())
@@ -47,7 +46,7 @@ func (p *Port) Buffer() *signal.Group {
 }
 
 // Pipes getter
-// @TODO maybe better to return []*Port directly
+// @TODO maybe better to return []*Port directly.
 func (p *Port) Pipes() *Group {
 	if p.HasErr() {
 		return NewGroup().WithErr(p.Err())
@@ -55,7 +54,7 @@ func (p *Port) Pipes() *Group {
 	return p.pipes
 }
 
-// withBuffer sets buffer field
+// withBuffer sets buffer field.
 func (p *Port) withBuffer(buffer *signal.Group) *Port {
 	if p.HasErr() {
 		return p
@@ -69,7 +68,7 @@ func (p *Port) withBuffer(buffer *signal.Group) *Port {
 	return p
 }
 
-// PutSignals adds signals to buffer
+// PutSignals adds signals to buffer.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasErr() {
 		return p
@@ -77,7 +76,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	return p.withBuffer(p.Buffer().With(signals...))
 }
 
-// WithSignals appends signals into the buffer and returns the port
+// WithSignals appends signals into the buffer and returns the port.
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	if p.HasErr() {
 		return p
@@ -86,7 +85,7 @@ func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	return p.PutSignals(signals...)
 }
 
-// WithSignalGroups puts groups of buffer and returns the port
+// WithSignalGroups puts groups of buffer and returns the port.
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasErr() {
 		return p
@@ -106,7 +105,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	return p
 }
 
-// Clear removes all signals from the port buffer
+// Clear removes all signals from the port buffer.
 func (p *Port) Clear() *Port {
 	if p.HasErr() {
 		return p
@@ -115,7 +114,7 @@ func (p *Port) Clear() *Port {
 }
 
 // Flush pushes buffer to pipes and clears the port
-// @TODO: hide this method from user
+// @TODO: hide this method from user.
 func (p *Port) Flush() *Port {
 	if p.HasErr() {
 		return p
@@ -144,18 +143,18 @@ func (p *Port) Flush() *Port {
 	return p.Clear()
 }
 
-// HasSignals says whether port buffer is set or not
+// HasSignals says whether port buffer is set or not.
 func (p *Port) HasSignals() bool {
 	return len(p.AllSignalsOrNil()) > 0
 }
 
-// HasPipes says whether a port has outbound pipes
+// HasPipes says whether a port has outbound pipes.
 func (p *Port) HasPipes() bool {
 	return p.Pipes().Len() > 0
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
-// @TODO: hide this method from AF
+// @TODO: hide this method from AF.
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	if p.HasErr() {
 		return p
@@ -189,7 +188,7 @@ func validatePipe(srcPort, dstPort *Port) error {
 	return nil
 }
 
-// WithLabels sets labels and returns the port
+// WithLabels sets labels and returns the port.
 func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 	if p.HasErr() {
 		return p
@@ -199,7 +198,7 @@ func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
 	return p
 }
 
-// ForwardSignals copies all signals from source port to destination port, without clearing the source port
+// ForwardSignals copies all signals from source port to destination port, without clearing the source port.
 func ForwardSignals(source, dest *Port) error {
 	if source.HasErr() {
 		return source.Err()
@@ -220,7 +219,7 @@ func ForwardSignals(source, dest *Port) error {
 	return nil
 }
 
-// ForwardWithFilter copies signals that pass filter function from source to dest port
+// ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 	if source.HasErr() {
 		return source.Err()
@@ -239,7 +238,7 @@ func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 	return nil
 }
 
-// ForwardWithMap applies mapperFunc to each signal and copies it to the dest port
+// ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 	if source.HasErr() {
 		return source.Err()
@@ -258,43 +257,43 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 	return nil
 }
 
-// WithErr returns port with an error
+// WithErr returns port with an error.
 func (p *Port) WithErr(err error) *Port {
 	p.SetErr(err)
 	return p
 }
 
-// FirstSignalPayload is a shortcut method
+// FirstSignalPayload is a shortcut method.
 func (p *Port) FirstSignalPayload() (any, error) {
 	return p.Buffer().FirstPayload()
 }
 
-// FirstSignalPayloadOrNil is a shortcut method
+// FirstSignalPayloadOrNil is a shortcut method.
 func (p *Port) FirstSignalPayloadOrNil() any {
 	return p.Buffer().FirstSignal().PayloadOrNil()
 }
 
-// FirstSignalPayloadOrDefault is a shortcut method
+// FirstSignalPayloadOrDefault is a shortcut method.
 func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
 	return p.Buffer().FirstSignal().PayloadOrDefault(defaultPayload)
 }
 
-// AllSignals is shortcut method
+// AllSignals is shortcut method.
 func (p *Port) AllSignals() (signal.Signals, error) {
 	return p.Buffer().Signals()
 }
 
-// AllSignalsOrNil is a shortcut method
+// AllSignalsOrNil is a shortcut method.
 func (p *Port) AllSignalsOrNil() signal.Signals {
 	return p.Buffer().SignalsOrNil()
 }
 
-// AllSignalsOrDefault is a shortcut method
+// AllSignalsOrDefault is a shortcut method.
 func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
 	return p.Buffer().SignalsOrDefault(defaultSignals)
 }
 
-// AllSignalsPayloads is a shortcut method
+// AllSignalsPayloads is a shortcut method.
 func (p *Port) AllSignalsPayloads() ([]any, error) {
 	return p.Buffer().AllPayloads()
 }

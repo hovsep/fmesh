@@ -95,7 +95,6 @@ func Test_State(t *testing.T) {
 					WithComponents(producer, counter, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-
 				fm.Components().ByName("consumer").InputByName("start").PutSignals(signal.New("start demand"))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
