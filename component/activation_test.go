@@ -3,11 +3,12 @@ package component
 import (
 	"bytes"
 	"errors"
+	"log"
+	"testing"
+
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"testing"
 )
 
 func TestComponent_WithActivationFunc(t *testing.T) {
@@ -44,7 +45,6 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			// Compare signals without keys (because they are random)
 			assert.ElementsMatch(t, dummyComponent1.OutputByName("o1").AllSignalsOrNil(), dummyComponent2.OutputByName("o1").AllSignalsOrNil())
 			assert.ElementsMatch(t, dummyComponent1.OutputByName("o2").AllSignalsOrNil(), dummyComponent2.OutputByName("o2").AllSignalsOrNil())
-
 		})
 	}
 }
@@ -293,7 +293,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			if tt.loggerAssertions != nil {
 				tt.loggerAssertions(t, loggerOutput.Bytes())
 			}
-
 		})
 	}
 }

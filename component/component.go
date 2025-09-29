@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-// Component defines a main building block of FMesh
+// Component defines a main building block of FMesh.
 type Component struct {
 	common.NamedEntity
 	common.DescribedEntity
@@ -20,7 +20,7 @@ type Component struct {
 	state   State
 }
 
-// New creates initialized component
+// New creates initialized component.
 func New(name string) *Component {
 	return &Component{
 		NamedEntity:     common.NewNamedEntity(name),
@@ -37,7 +37,7 @@ func New(name string) *Component {
 	}
 }
 
-// WithDescription sets a description
+// WithDescription sets a description.
 func (c *Component) WithDescription(description string) *Component {
 	if c.HasErr() {
 		return c
@@ -47,7 +47,7 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
-// WithLabels sets labels and returns the component
+// WithLabels sets labels and returns the component.
 func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
 	if c.HasErr() {
 		return c
@@ -56,7 +56,7 @@ func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
 	return c
 }
 
-// propagateChainErrors propagates up all chain errors that might have not been propagated yet
+// propagateChainErrors propagates up all chain errors that might have not been propagated yet.
 func (c *Component) propagateChainErrors() {
 	if c.Inputs().HasErr() {
 		c.SetErr(c.Inputs().Err())
@@ -83,13 +83,13 @@ func (c *Component) propagateChainErrors() {
 	}
 }
 
-// WithErr returns component with error
+// WithErr returns component with error.
 func (c *Component) WithErr(err error) *Component {
 	c.SetErr(err)
 	return c
 }
 
-// WithLogger creates a new logger prefixed with component name
+// WithLogger creates a new logger prefixed with component name.
 func (c *Component) WithLogger(logger *log.Logger) *Component {
 	if c.HasErr() {
 		return c
@@ -104,7 +104,7 @@ func (c *Component) WithLogger(logger *log.Logger) *Component {
 	return c
 }
 
-// Logger returns component logger
+// Logger returns component logger.
 func (c *Component) Logger() *log.Logger {
 	return c.logger
 }

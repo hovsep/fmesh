@@ -5,18 +5,18 @@ import (
 	"github.com/hovsep/fmesh/common"
 )
 
-// Ports is a list of ports
+// Ports is a list of ports.
 type Ports []*Port
 
 // Group represents a list of ports
 // can carry multiple ports with same name
-// no lookup methods
+// no lookup methods.
 type Group struct {
 	*common.Chainable
 	ports Ports
 }
 
-// NewGroup creates multiple ports
+// NewGroup creates multiple ports.
 func NewGroup(names ...string) *Group {
 	newGroup := &Group{
 		Chainable: common.NewChainable(),
@@ -29,7 +29,7 @@ func NewGroup(names ...string) *Group {
 }
 
 // NewIndexedGroup is useful to create group of ports with same prefix
-// NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0"
+// NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0".
 func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	if startIndex > endIndex {
 		return NewGroup().WithErr(ErrInvalidRangeForIndexedGroup)
@@ -44,7 +44,7 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	return NewGroup().withPorts(ports)
 }
 
-// With adds ports to group
+// With adds ports to group.
 func (g *Group) With(ports ...*Port) *Group {
 	if g.HasErr() {
 		return g
@@ -59,13 +59,13 @@ func (g *Group) With(ports ...*Port) *Group {
 	return g.withPorts(newPorts)
 }
 
-// withPorts sets ports
+// withPorts sets ports.
 func (g *Group) withPorts(ports Ports) *Group {
 	g.ports = ports
 	return g
 }
 
-// Ports getter
+// Ports getter.
 func (g *Group) Ports() (Ports, error) {
 	if g.HasErr() {
 		return nil, g.Err()
@@ -73,12 +73,12 @@ func (g *Group) Ports() (Ports, error) {
 	return g.ports, nil
 }
 
-// PortsOrNil returns ports or nil in case of any error
+// PortsOrNil returns ports or nil in case of any error.
 func (g *Group) PortsOrNil() Ports {
 	return g.PortsOrDefault(nil)
 }
 
-// PortsOrDefault returns ports or default in case of any error
+// PortsOrDefault returns ports or default in case of any error.
 func (g *Group) PortsOrDefault(defaultPorts Ports) Ports {
 	ports, err := g.Ports()
 	if err != nil {
@@ -87,18 +87,18 @@ func (g *Group) PortsOrDefault(defaultPorts Ports) Ports {
 	return ports
 }
 
-// WithErr returns group with error
+// WithErr returns group with error.
 func (g *Group) WithErr(err error) *Group {
 	g.SetErr(err)
 	return g
 }
 
-// Len returns number of ports in group
+// Len returns number of ports in group.
 func (g *Group) Len() int {
 	return len(g.ports)
 }
 
-// WithPortLabels sets labels on each port within the group and returns it
+// WithPortLabels sets labels on each port within the group and returns it.
 func (g *Group) WithPortLabels(labels common.LabelsCollection) *Group {
 	for _, p := range g.PortsOrNil() {
 		p.WithLabels(labels)

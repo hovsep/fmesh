@@ -1,13 +1,14 @@
 package constraints
 
 import (
+	"testing"
+	"time"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func Test_TimeConstraint(t *testing.T) {
@@ -20,7 +21,6 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops by time constraint",
 			setupFM: func() *fmesh.FMesh {
-
 				ticker := component.New("ticker").
 					WithDescription("simple clock ticking for 10 seconds").
 					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
@@ -48,7 +48,6 @@ func Test_TimeConstraint(t *testing.T) {
 				}).
 					WithDescription("this mesh ticks every second for 10 seconds").
 					WithComponents(ticker)
-
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
@@ -62,7 +61,6 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops naturally",
 			setupFM: func() *fmesh.FMesh {
-
 				ticker := component.New("ticker").
 					WithDescription("simple clock ticking for 3 seconds").
 					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
@@ -90,7 +88,6 @@ func Test_TimeConstraint(t *testing.T) {
 				}).
 					WithDescription("this mesh ticks every second for 10 seconds").
 					WithComponents(ticker)
-
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))

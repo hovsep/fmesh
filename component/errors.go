@@ -11,7 +11,7 @@ var (
 	errWaitingForInputsKeep = fmt.Errorf("%w: do not clear input ports", errWaitingForInputs)
 )
 
-// NewErrWaitForInputs returns respective error
+// NewErrWaitForInputs returns respective error.
 func NewErrWaitForInputs(keepInputs bool) error {
 	if keepInputs {
 		return errWaitingForInputsKeep

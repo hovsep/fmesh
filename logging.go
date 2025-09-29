@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Logger getter
+// Logger getter.
 func (fm *FMesh) Logger() *log.Logger {
 	return fm.config.Logger
 }
@@ -17,12 +17,12 @@ func getDefaultLogger() *log.Logger {
 	return logger
 }
 
-// IsDebug returns true when debug mode is enabled
+// IsDebug returns true when debug mode is enabled.
 func (fm *FMesh) IsDebug() bool {
 	return fm.config.Debug
 }
 
-// LogDebug logs a debug message only when debug mode is enabled (no-op otherwise)
+// LogDebug logs a debug message only when debug mode is enabled (no-op otherwise).
 func (fm *FMesh) LogDebug(v ...any) {
 	if !fm.IsDebug() {
 		return

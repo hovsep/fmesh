@@ -79,7 +79,6 @@ func TestSignal_Payload(t *testing.T) {
 			} else {
 				assert.Equal(t, tt.want, got)
 			}
-
 		})
 	}
 }

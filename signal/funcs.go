@@ -1,6 +1,6 @@
 package signal
 
-// Predicate is a function that tests whether a Signal matches a condition
+// Predicate is a function that tests whether a Signal matches a condition.
 type Predicate func(signal *Signal) bool
 
 // Mapper transforms a Signal into a new Signal.
