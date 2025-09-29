@@ -2,10 +2,11 @@ package signal
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNew(t *testing.T) {
@@ -103,6 +104,74 @@ func TestSignal_PayloadOrNil(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.signal.PayloadOrNil())
+		})
+	}
+}
+
+func TestSignal_Map(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		mapperFunc Mapper
+		want       *Signal
+	}{
+		{
+			name:   "happy path",
+			signal: New(1),
+			mapperFunc: func(signal *Signal) *Signal {
+				return signal.WithLabels(common.LabelsCollection{
+					"l1": "v1",
+				})
+			},
+			want: New(1).WithLabels(common.LabelsCollection{
+				"l1": "v1",
+			}),
+		},
+		{
+			name:   "with chain error",
+			signal: New(1).WithErr(errors.New("some error in chain")),
+			mapperFunc: func(signal *Signal) *Signal {
+				return signal.WithLabels(common.LabelsCollection{
+					"l1": "v1",
+				})
+			},
+			want: New(1).WithErr(errors.New("some error in chain")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.mapperFunc(tt.signal))
+		})
+	}
+}
+
+func TestSignal_MapPayload(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		mapperFunc PayloadMapper
+		want       *Signal
+	}{
+		{
+			name:   "happy path",
+			signal: New(1),
+			mapperFunc: func(payload any) any {
+				return payload.(int) * 2
+			},
+			want: New(2),
+		},
+		{
+			name:   "with chain error",
+			signal: New(1).WithErr(errors.New("some error in chain")),
+			mapperFunc: func(payload any) any {
+				return payload.(int) * 2
+			},
+			want: New(1).WithErr(errors.New("some error in chain")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.signal.MapPayload(tt.mapperFunc))
 		})
 	}
 }

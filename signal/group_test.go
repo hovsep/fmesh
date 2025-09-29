@@ -475,3 +475,117 @@ func TestGroup_Filter(t *testing.T) {
 		})
 	}
 }
+
+func TestGroup_Map(t *testing.T) {
+	type args struct {
+		mapperFunc Mapper
+	}
+	tests := []struct {
+		name  string
+		group *Group
+		args  args
+		want  *Group
+	}{
+		{
+			name:  "empty group",
+			group: NewGroup(),
+			args: args{
+				mapperFunc: func(signal *Signal) *Signal {
+					return signal
+				},
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "happy path",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				mapperFunc: func(signal *Signal) *Signal {
+					return signal.MapPayload(func(payload any) any {
+						return payload.(int) * 7
+					})
+				},
+			},
+			want: NewGroup(7, 14, 21),
+		},
+		{
+			name:  "signal with error",
+			group: NewGroup(1, 2, 3).With(New(4).WithErr(errors.New("some error in chain"))),
+			args: args{
+				mapperFunc: func(signal *Signal) *Signal {
+					return signal.MapPayload(func(payload any) any {
+						return payload.(int) * 8
+					})
+				},
+			},
+			want: NewGroup().WithErr(errors.New("some error in chain")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.group.Map(tt.args.mapperFunc)
+			if tt.want.HasErr() {
+				assert.Error(t, got.Err())
+				assert.EqualError(t, got.Err(), tt.want.Err().Error())
+			} else {
+				assert.NoError(t, got.Err())
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGroup_MapPayloads(t *testing.T) {
+	type args struct {
+		mapperFunc PayloadMapper
+	}
+	tests := []struct {
+		name  string
+		group *Group
+		args  args
+		want  *Group
+	}{
+		{
+			name:  "empty group",
+			group: NewGroup(),
+			args: args{
+				mapperFunc: func(payload any) any {
+					return nil
+				},
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "happy path",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				mapperFunc: func(payload any) any {
+					return payload.(int) * 7
+				},
+			},
+			want: NewGroup(7, 14, 21),
+		},
+		{
+			name:  "signal with error",
+			group: NewGroup(1, 2, 3).With(New(4).WithErr(errors.New("some error in chain"))),
+			args: args{
+				mapperFunc: func(payload any) any {
+					return payload.(int) * 7
+				},
+			},
+			want: NewGroup().WithErr(errors.New("some error in chain")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.group.MapPayloads(tt.args.mapperFunc)
+			if tt.want.HasErr() {
+				assert.Error(t, got.Err())
+				assert.EqualError(t, got.Err(), tt.want.Err().Error())
+			} else {
+				assert.NoError(t, got.Err())
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

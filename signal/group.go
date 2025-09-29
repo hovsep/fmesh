@@ -175,3 +175,33 @@ func (g *Group) Filter(filter Filter) *Group {
 
 	return NewGroup().withSignals(filteredSignals)
 }
+
+// Map returns a new group with signals transformed by the mapper function
+func (g *Group) Map(mapper Mapper) *Group {
+	if g.HasErr() {
+		// Do nothing but propagate the error
+		return g
+	}
+
+	mappedSignals := make(Signals, 0)
+	for _, s := range g.SignalsOrNil() {
+		mappedSignals = append(mappedSignals, s.Map(mapper))
+	}
+
+	return NewGroup().withSignals(mappedSignals)
+}
+
+// MapPayloads returns a new group with payloads transformed by the mapper function
+func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
+	if g.HasErr() {
+		// Do nothing but propagate the error
+		return g
+	}
+
+	mappedSignals := make(Signals, 0)
+	for _, s := range g.SignalsOrNil() {
+		mappedSignals = append(mappedSignals, s.MapPayload(mapper))
+	}
+
+	return NewGroup().withSignals(mappedSignals)
+}
