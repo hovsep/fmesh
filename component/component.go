@@ -10,7 +10,7 @@ import (
 
 // Component defines a main building block of FMesh.
 type Component struct {
-	common.NamedEntity
+	name string
 	common.DescribedEntity
 	common.LabeledEntity
 	*common.Chainable
@@ -24,7 +24,7 @@ type Component struct {
 // New creates initialized component.
 func New(name string) *Component {
 	return &Component{
-		NamedEntity:     common.NewNamedEntity(name),
+		name:            name,
 		DescribedEntity: common.NewDescribedEntity(""),
 		LabeledEntity:   common.NewLabeledEntity(nil),
 		Chainable:       common.NewChainable(),
@@ -36,6 +36,10 @@ func New(name string) *Component {
 		}),
 		state: NewState(),
 	}
+}
+
+func (c *Component) Name() string {
+	return c.name
 }
 
 // WithDescription sets a description.

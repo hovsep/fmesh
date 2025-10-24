@@ -18,7 +18,7 @@ const (
 
 // Port defines a connectivity point of a component.
 type Port struct {
-	common.NamedEntity
+	name string
 	common.LabeledEntity
 	*common.Chainable
 	buffer *signal.Group
@@ -28,12 +28,16 @@ type Port struct {
 // New creates a new port.
 func New(name string) *Port {
 	return &Port{
-		NamedEntity:   common.NewNamedEntity(name),
+		name:          name,
 		LabeledEntity: common.NewLabeledEntity(nil),
 		Chainable:     common.NewChainable(),
 		pipes:         NewGroup(),
 		buffer:        signal.NewGroup(),
 	}
+}
+
+func (p *Port) Name() string {
+	return p.name
 }
 
 // Buffer getter

@@ -1,10 +1,11 @@
 package component
 
 import (
+	"testing"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNewComponent(t *testing.T) {
@@ -55,7 +56,7 @@ func TestComponent_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &Component{
-				NamedEntity:     common.NewNamedEntity("c1"),
+				name:            "c1",
 				DescribedEntity: common.NewDescribedEntity("descr"),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
