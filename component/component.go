@@ -2,9 +2,10 @@ package component
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
-	"log"
 )
 
 // Component defines a main building block of FMesh.
