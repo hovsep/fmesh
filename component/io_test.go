@@ -27,7 +27,7 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				NamedEntity:     common.NewNamedEntity("c1"),
+				name:            "c1",
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
@@ -48,7 +48,7 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				NamedEntity:     common.NewNamedEntity("c1"),
+				name:            "c1",
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
@@ -87,7 +87,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				NamedEntity:     common.NewNamedEntity("c1"),
+				name:            "c1",
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
@@ -108,7 +108,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				NamedEntity:     common.NewNamedEntity("c1"),
+				name:            "c1",
 				DescribedEntity: common.NewDescribedEntity(""),
 				LabeledEntity:   common.NewLabeledEntity(nil),
 				Chainable:       common.NewChainable(),
