@@ -10,7 +10,7 @@ type ActivationFunc func(this *Component) error
 
 // WithActivationFunc sets the activation function.
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return c
 	}
 
@@ -20,7 +20,7 @@ func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 
 // hasActivationFunction checks when activation function is set.
 func (c *Component) hasActivationFunction() bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 
@@ -31,8 +31,8 @@ func (c *Component) hasActivationFunction() bool {
 func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	c.propagateChainErrors()
 
-	if c.HasErr() {
-		return NewActivationResult(c.Name()).WithErr(c.Err())
+	if c.HasChainableErr() {
+		return NewActivationResult(c.Name()).WithChainableErr(c.ChainableErr())
 	}
 
 	defer func() {

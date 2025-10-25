@@ -3,7 +3,6 @@ package component
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
@@ -57,10 +56,10 @@ func TestComponent_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &Component{
-				name:        "c1",
-				description: "descr",
-				labels:      labels.NewCollection(nil),
-				Chainable:   common.NewChainable(),
+				name:         "c1",
+				description:  "descr",
+				labels:       labels.NewCollection(nil),
+				chainableErr: nil,
 				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}),

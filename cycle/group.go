@@ -1,20 +1,18 @@
 package cycle
 
-import "github.com/hovsep/fmesh/common"
-
-// Cycles contains the results of several activation cycles.
+// Cycles contain the results of several activation cycles.
 type Cycles []*Cycle
 
 // Group contains multiple activation cycles.
 type Group struct {
-	*common.Chainable
-	cycles Cycles
+	chainableErr error
+	cycles       Cycles
 }
 
 // NewGroup creates a group of cycles.
 func NewGroup() *Group {
 	newGroup := &Group{
-		Chainable: common.NewChainable(),
+		chainableErr: nil,
 	}
 	cycles := make(Cycles, 0)
 	return newGroup.withCycles(cycles)
@@ -38,8 +36,8 @@ func (g *Group) withCycles(cycles Cycles) *Group {
 
 // Cycles getter.
 func (g *Group) Cycles() (Cycles, error) {
-	if g.HasErr() {
-		return nil, g.Err()
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
 	return g.cycles, nil
 }
@@ -66,8 +64,24 @@ func (g *Group) Len() int {
 // Last returns the latest cycle added to the group.
 func (g *Group) Last() *Cycle {
 	if g.Len() == 0 {
-		return New().WithErr(errNoCyclesInGroup)
+		return New().WithChainableErr(errNoCyclesInGroup)
 	}
 
 	return g.cycles[g.Len()-1]
+}
+
+// WithChainableErr sets a chainable error and returns the group.
+func (g *Group) WithChainableErr(err error) *Group {
+	g.chainableErr = err
+	return g
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (g *Group) HasChainableErr() bool {
+	return g.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (g *Group) ChainableErr() error {
+	return g.chainableErr
 }

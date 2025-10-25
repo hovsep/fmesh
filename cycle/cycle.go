@@ -3,13 +3,12 @@ package cycle
 import (
 	"errors"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 )
 
 // Cycle contains the info about one activation cycle.
 type Cycle struct {
-	*common.Chainable
+	chainableErr      error
 	number            int
 	activationResults *component.ActivationResultCollection
 }
@@ -17,7 +16,7 @@ type Cycle struct {
 // New creates a new cycle.
 func New() *Cycle {
 	return &Cycle{
-		Chainable:         common.NewChainable(),
+		chainableErr:      nil,
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -27,9 +26,9 @@ func (cycle *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return cycle.activationResults
 }
 
-// HasErrors tells whether the cycle is ended with activation errors (at least one component returned an error).
-func (cycle *Cycle) HasErrors() bool {
-	return cycle.ActivationResults().HasErrors()
+// HasActivationErrors tells whether the cycle is ended with activation errors (at least one component returned an error).
+func (cycle *Cycle) HasActivationErrors() bool {
+	return cycle.ActivationResults().HasActivationErrors()
 }
 
 // AllErrorsCombined returns all errors occurred within the cycle as one error.
@@ -56,9 +55,9 @@ func (cycle *Cycle) AllPanicsCombined() error {
 	return allPanics
 }
 
-// HasPanics tells whether the cycle is ended with panic (at lease one component panicked).
-func (cycle *Cycle) HasPanics() bool {
-	return cycle.ActivationResults().HasPanics()
+// HasActivationPanics tells whether the cycle is ended with panic (at lease one component panicked).
+func (cycle *Cycle) HasActivationPanics() bool {
+	return cycle.ActivationResults().HasActivationPanics()
 }
 
 // HasActivatedComponents tells when at least one component in the cycle has activated.
@@ -89,8 +88,18 @@ func (cycle *Cycle) WithNumber(number int) *Cycle {
 	return cycle
 }
 
-// WithErr returns cycle with error.
-func (cycle *Cycle) WithErr(err error) *Cycle {
-	cycle.SetErr(err)
+// WithChainableErr sets a chainable error and returns the cycle.
+func (cycle *Cycle) WithChainableErr(err error) *Cycle {
+	cycle.chainableErr = err
 	return cycle
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (cycle *Cycle) HasChainableErr() bool {
+	return cycle.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (cycle *Cycle) ChainableErr() error {
+	return cycle.chainableErr
 }

@@ -3,7 +3,6 @@ package port
 import (
 	"fmt"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 )
@@ -15,8 +14,8 @@ type Map map[string]*Port
 // indexed by name; hence it cannot carry
 // 2 ports with the same name. Optimized for lookups.
 type Collection struct {
-	*common.Chainable
-	ports Map
+	chainableErr error
+	ports        Map
 	// Labels added by default to each port in collection
 	defaultLabels labels.Map
 }
@@ -24,7 +23,7 @@ type Collection struct {
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		Chainable:     common.NewChainable(),
+		chainableErr:  nil,
 		ports:         make(Map),
 		defaultLabels: labels.Map{},
 	}
@@ -32,21 +31,21 @@ func NewCollection() *Collection {
 
 // ByName returns a port by its name.
 func (collection *Collection) ByName(name string) *Port {
-	if collection.HasErr() {
-		return New("").WithErr(collection.Err())
+	if collection.HasChainableErr() {
+		return New("").WithChainableErr(collection.ChainableErr())
 	}
 	port, ok := collection.ports[name]
 	if !ok {
-		collection.SetErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
-		return New("").WithErr(collection.Err())
+		collection.WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
+		return New("").WithChainableErr(collection.ChainableErr())
 	}
 	return port
 }
 
 // ByNames returns multiple ports by their names.
 func (collection *Collection) ByNames(names ...string) *Collection {
-	if collection.HasErr() {
-		return NewCollection().WithErr(collection.Err())
+	if collection.HasChainableErr() {
+		return NewCollection().WithChainableErr(collection.ChainableErr())
 	}
 
 	// Preserve collection config
@@ -63,7 +62,7 @@ func (collection *Collection) ByNames(names ...string) *Collection {
 
 // AnyHasSignals returns true if at least one port in collection has signals.
 func (collection *Collection) AnyHasSignals() bool {
-	if collection.HasErr() {
+	if collection.HasChainableErr() {
 		return false
 	}
 
@@ -78,7 +77,7 @@ func (collection *Collection) AnyHasSignals() bool {
 
 // AllHaveSignals returns true when all ports in collection have signals.
 func (collection *Collection) AllHaveSignals() bool {
-	if collection.HasErr() {
+	if collection.HasChainableErr() {
 		return false
 	}
 
@@ -93,14 +92,14 @@ func (collection *Collection) AllHaveSignals() bool {
 
 // PutSignals adds buffer to every port in collection.
 func (collection *Collection) PutSignals(signals ...*signal.Signal) *Collection {
-	if collection.HasErr() {
-		return NewCollection().WithErr(collection.Err())
+	if collection.HasChainableErr() {
+		return NewCollection().WithChainableErr(collection.ChainableErr())
 	}
 
 	for _, p := range collection.ports {
 		p.PutSignals(signals...)
-		if p.HasErr() {
-			return collection.WithErr(p.Err())
+		if p.HasChainableErr() {
+			return collection.WithChainableErr(p.ChainableErr())
 		}
 	}
 
@@ -112,8 +111,8 @@ func (collection *Collection) Clear() *Collection {
 	for _, p := range collection.ports {
 		p.Clear()
 
-		if p.HasErr() {
-			return collection.WithErr(p.Err())
+		if p.HasChainableErr() {
+			return collection.WithChainableErr(p.ChainableErr())
 		}
 	}
 	return collection
@@ -121,15 +120,15 @@ func (collection *Collection) Clear() *Collection {
 
 // Flush flushes all ports in collection.
 func (collection *Collection) Flush() *Collection {
-	if collection.HasErr() {
-		return NewCollection().WithErr(collection.Err())
+	if collection.HasChainableErr() {
+		return NewCollection().WithChainableErr(collection.ChainableErr())
 	}
 
 	for _, p := range collection.ports {
 		p = p.Flush()
 
-		if p.HasErr() {
-			return collection.WithErr(p.Err())
+		if p.HasChainableErr() {
+			return collection.WithChainableErr(p.ChainableErr())
 		}
 	}
 	return collection
@@ -140,8 +139,8 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 	for _, p := range collection.ports {
 		p = p.PipeTo(destPorts...)
 
-		if p.HasErr() {
-			return collection.WithErr(p.Err())
+		if p.HasChainableErr() {
+			return collection.WithChainableErr(p.ChainableErr())
 		}
 	}
 
@@ -150,13 +149,13 @@ func (collection *Collection) PipeTo(destPorts ...*Port) *Collection {
 
 // With adds ports to collection and returns it.
 func (collection *Collection) With(ports ...*Port) *Collection {
-	if collection.HasErr() {
+	if collection.HasChainableErr() {
 		return collection
 	}
 
 	for _, port := range ports {
-		if port.HasErr() {
-			return collection.WithErr(port.Err())
+		if port.HasChainableErr() {
+			return collection.WithChainableErr(port.ChainableErr())
 		}
 		port.labels.WithMany(collection.defaultLabels)
 		collection.ports[port.Name()] = port
@@ -167,30 +166,30 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 
 // WithIndexed creates ports with names like "o1","o2","o3" and so on.
 func (collection *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Collection {
-	if collection.HasErr() {
+	if collection.HasChainableErr() {
 		return collection
 	}
 
 	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).Ports()
 	if err != nil {
-		collection.SetErr(err)
-		return NewCollection().WithErr(collection.Err())
+		collection.WithChainableErr(err)
+		return NewCollection().WithChainableErr(collection.ChainableErr())
 	}
 	return collection.With(indexedPorts...)
 }
 
 // Signals returns all signals of all ports in the collection.
 func (collection *Collection) Signals() *signal.Group {
-	if collection.HasErr() {
-		return signal.NewGroup().WithErr(collection.Err())
+	if collection.HasChainableErr() {
+		return signal.NewGroup().WithChainableErr(collection.ChainableErr())
 	}
 
 	group := signal.NewGroup()
 	for _, p := range collection.ports {
 		signals, err := p.Buffer().Signals()
 		if err != nil {
-			collection.SetErr(err)
-			return signal.NewGroup().WithErr(collection.Err())
+			collection.WithChainableErr(err)
+			return signal.NewGroup().WithChainableErr(collection.ChainableErr())
 		}
 		group = group.With(signals...)
 	}
@@ -200,8 +199,8 @@ func (collection *Collection) Signals() *signal.Group {
 // Ports getter
 // @TODO:maybe better to hide all errors within chainable and ask user to check error ?
 func (collection *Collection) Ports() (Map, error) {
-	if collection.HasErr() {
-		return nil, collection.Err()
+	if collection.HasChainableErr() {
+		return nil, collection.ChainableErr()
 	}
 	return collection.ports, nil
 }
@@ -213,7 +212,7 @@ func (collection *Collection) PortsOrNil() Map {
 
 // PortsOrDefault returns ports or default in case of any error.
 func (collection *Collection) PortsOrDefault(defaultPorts Map) Map {
-	if collection.HasErr() {
+	if collection.HasChainableErr() {
 		return defaultPorts
 	}
 
@@ -224,13 +223,23 @@ func (collection *Collection) PortsOrDefault(defaultPorts Map) Map {
 	return ports
 }
 
-// WithErr returns group with error.
-func (collection *Collection) WithErr(err error) *Collection {
-	collection.SetErr(err)
+// WithChainableErr sets a chainable error and returns the collection.
+func (collection *Collection) WithChainableErr(err error) *Collection {
+	collection.chainableErr = err
 	return collection
 }
 
-// Len returns number of ports in collection.
+// HasChainableErr returns true when a chainable error is set.
+func (collection *Collection) HasChainableErr() bool {
+	return collection.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (collection *Collection) ChainableErr() error {
+	return collection.chainableErr
+}
+
+// Len returns the number of ports in a collection.
 func (collection *Collection) Len() int {
 	return len(collection.ports)
 }

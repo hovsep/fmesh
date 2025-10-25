@@ -1,38 +1,37 @@
 package signal
 
 import (
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 )
 
 // Signal is a wrapper around the data flowing between components.
 type Signal struct {
-	*common.Chainable
-	labels  *labels.Collection
-	payload []any // Slice is used in order to support nil payload
+	chainableErr error
+	labels       *labels.Collection
+	payload      []any // Slice is used in order to support nil payload
 }
 
 // New creates a new signal from the given payloads.
 func New(payload any) *Signal {
 	return &Signal{
-		Chainable: common.NewChainable(),
-		labels:    labels.NewCollection(nil),
-		payload:   []any{payload},
+		chainableErr: nil,
+		labels:       labels.NewCollection(nil),
+		payload:      []any{payload},
 	}
 }
 
 // Labels getter.
 func (s *Signal) Labels() *labels.Collection {
-	if s.HasErr() {
-		return labels.NewCollection(nil).WithErr(s.Err())
+	if s.HasChainableErr() {
+		return labels.NewCollection(nil).WithChainableErr(s.ChainableErr())
 	}
 	return s.labels
 }
 
 // Payload getter.
 func (s *Signal) Payload() (any, error) {
-	if s.HasErr() {
-		return nil, s.Err()
+	if s.HasChainableErr() {
+		return nil, s.ChainableErr()
 	}
 	return s.payload[0], nil
 }
@@ -51,15 +50,25 @@ func (s *Signal) PayloadOrDefault(defaultPayload any) any {
 	return payload
 }
 
-// WithErr returns signal with error.
-func (s *Signal) WithErr(err error) *Signal {
-	s.SetErr(err)
+// WithChainableErr sets a chainable error and returns the signal.
+func (s *Signal) WithChainableErr(err error) *Signal {
+	s.chainableErr = err
 	return s
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (s *Signal) HasChainableErr() bool {
+	return s.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (s *Signal) ChainableErr() error {
+	return s.chainableErr
 }
 
 // WithLabels sets labels and returns the signal.
 func (s *Signal) WithLabels(labels labels.Map) *Signal {
-	if s.HasErr() {
+	if s.HasChainableErr() {
 		return s
 	}
 
@@ -69,7 +78,7 @@ func (s *Signal) WithLabels(labels labels.Map) *Signal {
 
 // Map applies a given mapper func and returns a new signal.
 func (s *Signal) Map(m Mapper) *Signal {
-	if s.HasErr() {
+	if s.HasChainableErr() {
 		return s
 	}
 	return m(s)
@@ -77,12 +86,12 @@ func (s *Signal) Map(m Mapper) *Signal {
 
 // MapPayload sets labels and returns the signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
-	if s.HasErr() {
+	if s.HasChainableErr() {
 		return s
 	}
 	payload, err := s.Payload()
 	if err != nil {
-		return New(nil).WithErr(err)
+		return New(nil).WithChainableErr(err)
 	}
 	return New(mapper(payload))
 }

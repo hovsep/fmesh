@@ -1,9 +1,9 @@
 package port
 
 import (
-	"github.com/hovsep/fmesh/common"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewGroup(t *testing.T) {
@@ -21,8 +21,8 @@ func TestNewGroup(t *testing.T) {
 				names: nil,
 			},
 			want: &Group{
-				Chainable: common.NewChainable(),
-				ports:     Ports{},
+				chainableErr: nil,
+				ports:        Ports{},
 			},
 		},
 		{
@@ -31,7 +31,7 @@ func TestNewGroup(t *testing.T) {
 				names: []string{"p1", "p2"},
 			},
 			want: &Group{
-				Chainable: common.NewChainable(),
+				chainableErr: nil,
 				ports: Ports{New("p1"),
 					New("p2")},
 			},
@@ -80,7 +80,7 @@ func TestNewIndexedGroup(t *testing.T) {
 				startIndex: 999,
 				endIndex:   5,
 			},
-			want: NewGroup().WithErr(ErrInvalidRangeForIndexedGroup),
+			want: NewGroup().WithChainableErr(ErrInvalidRangeForIndexedGroup),
 		},
 	}
 	for _, tt := range tests {

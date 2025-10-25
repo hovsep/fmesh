@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
@@ -29,10 +28,10 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				labels:      labels.NewCollection(nil),
-				Chainable:   common.NewChainable(),
+				name:         "c1",
+				description:  "",
+				labels:       labels.NewCollection(nil),
+				chainableErr: nil,
 				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}).With(port.New("p1"), port.New("p2")),
@@ -50,10 +49,10 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				labels:      labels.NewCollection(nil),
-				Chainable:   common.NewChainable(),
+				name:         "c1",
+				description:  "",
+				labels:       labels.NewCollection(nil),
+				chainableErr: nil,
 				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}),
@@ -89,10 +88,10 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				labels:      labels.NewCollection(nil),
-				Chainable:   common.NewChainable(),
+				name:         "c1",
+				description:  "",
+				labels:       labels.NewCollection(nil),
+				chainableErr: nil,
 				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}),
@@ -110,10 +109,10 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:        "c1",
-				description: "",
-				labels:      labels.NewCollection(nil),
-				Chainable:   common.NewChainable(),
+				name:         "c1",
+				description:  "",
+				labels:       labels.NewCollection(nil),
+				chainableErr: nil,
 				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}),
@@ -398,7 +397,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			name: "with chain error",
 			getComponent: func() *Component {
 				sink := port.New("sink")
-				c := New("c").WithOutputs("o1").WithErr(errors.New("some error"))
+				c := New("c").WithOutputs("o1").WithChainableErr(errors.New("some error"))
 				// Lines below are ignored as error immediately propagates up to component level
 				c.Outputs().ByName("o1").PipeTo(sink)
 				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))

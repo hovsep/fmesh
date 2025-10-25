@@ -1,7 +1,6 @@
 package signal
 
 import (
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 )
 
@@ -10,14 +9,14 @@ type Signals []*Signal
 
 // Group represents a list of signals.
 type Group struct {
-	*common.Chainable
-	signals Signals
+	chainableErr error
+	signals      Signals
 }
 
 // NewGroup creates an empty group.
 func NewGroup(payloads ...any) *Group {
 	newGroup := &Group{
-		Chainable: common.NewChainable(),
+		chainableErr: nil,
 	}
 
 	signals := make(Signals, len(payloads))
@@ -29,13 +28,13 @@ func NewGroup(payloads ...any) *Group {
 
 // FirstSignal returns the first signal in the group.
 func (g *Group) FirstSignal() *Signal {
-	if g.HasErr() {
-		return New(nil).WithErr(g.Err())
+	if g.HasChainableErr() {
+		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
 	if g.Len() == 0 {
-		g.SetErr(ErrNoSignalsInGroup)
-		return New(nil).WithErr(g.Err())
+		g.WithChainableErr(ErrNoSignalsInGroup)
+		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
 	return g.signals[0]
@@ -48,7 +47,7 @@ func (g *Group) IsEmpty() bool {
 
 // Any returns true if at least one signal matches the predicate.
 func (g *Group) Any(p Predicate) bool {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		return false
 	}
 
@@ -67,7 +66,7 @@ func (g *Group) Any(p Predicate) bool {
 
 // All returns true if all signals match the predicate.
 func (g *Group) All(p Predicate) bool {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		return false
 	}
 
@@ -86,13 +85,13 @@ func (g *Group) All(p Predicate) bool {
 
 // First returns the first signal that passes the predicate.
 func (g *Group) First(p Predicate) *Signal {
-	if g.HasErr() {
-		return New(nil).WithErr(g.Err())
+	if g.HasChainableErr() {
+		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
 	if g.IsEmpty() {
-		g.SetErr(ErrNoSignalsInGroup)
-		return New(nil).WithErr(g.Err())
+		g.WithChainableErr(ErrNoSignalsInGroup)
+		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
 	for _, sig := range g.signals {
@@ -101,14 +100,14 @@ func (g *Group) First(p Predicate) *Signal {
 		}
 	}
 
-	g.SetErr(ErrNotFound)
-	return New(nil).WithErr(g.Err())
+	g.WithChainableErr(ErrNotFound)
+	return New(nil).WithChainableErr(g.ChainableErr())
 }
 
 // FirstPayload returns the payload of the first signal.
 func (g *Group) FirstPayload() (any, error) {
-	if g.HasErr() {
-		return nil, g.Err()
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
 
 	return g.FirstSignal().Payload()
@@ -116,8 +115,8 @@ func (g *Group) FirstPayload() (any, error) {
 
 // AllPayloads returns a slice with all payloads of the all signals in the group.
 func (g *Group) AllPayloads() ([]any, error) {
-	if g.HasErr() {
-		return nil, g.Err()
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
 
 	all := make([]any, g.Len())
@@ -133,7 +132,7 @@ func (g *Group) AllPayloads() ([]any, error) {
 
 // With returns the group with added signals.
 func (g *Group) With(signals ...*Signal) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}
@@ -142,13 +141,13 @@ func (g *Group) With(signals ...*Signal) *Group {
 	copy(newSignals, g.signals)
 	for i, sig := range signals {
 		if sig == nil {
-			g.SetErr(ErrInvalidSignal)
-			return NewGroup().WithErr(g.Err())
+			g.WithChainableErr(ErrInvalidSignal)
+			return NewGroup().WithChainableErr(g.ChainableErr())
 		}
 
-		if sig.HasErr() {
-			g.SetErr(sig.Err())
-			return NewGroup().WithErr(g.Err())
+		if sig.HasChainableErr() {
+			g.WithChainableErr(sig.ChainableErr())
+			return NewGroup().WithChainableErr(g.ChainableErr())
 		}
 
 		newSignals[g.Len()+i] = sig
@@ -159,7 +158,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 
 // WithPayloads returns a group with added signals created from provided payloads.
 func (g *Group) WithPayloads(payloads ...any) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}
@@ -180,8 +179,8 @@ func (g *Group) withSignals(signals Signals) *Group {
 
 // Signals getter.
 func (g *Group) Signals() (Signals, error) {
-	if g.HasErr() {
-		return nil, g.Err()
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
 	return g.signals, nil
 }
@@ -200,10 +199,20 @@ func (g *Group) SignalsOrDefault(defaultSignals Signals) Signals {
 	return signals
 }
 
-// WithErr returns group with error.
-func (g *Group) WithErr(err error) *Group {
-	g.SetErr(err)
+// WithChainableErr sets a chainable error and returns the group.
+func (g *Group) WithChainableErr(err error) *Group {
+	g.chainableErr = err
 	return g
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (g *Group) HasChainableErr() bool {
+	return g.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (g *Group) ChainableErr() error {
+	return g.chainableErr
 }
 
 // Len returns a number of signals in a group.
@@ -213,7 +222,7 @@ func (g *Group) Len() int {
 
 // WithSignalLabels sets labels on each signal within the group and returns it.
 func (g *Group) WithSignalLabels(labels labels.Map) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}
@@ -226,7 +235,7 @@ func (g *Group) WithSignalLabels(labels labels.Map) *Group {
 
 // Filter returns a new group with signals that pass the filter.
 func (g *Group) Filter(p Predicate) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}
@@ -243,7 +252,7 @@ func (g *Group) Filter(p Predicate) *Group {
 
 // Map returns a new group with signals transformed by the mapper function.
 func (g *Group) Map(m Mapper) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}
@@ -258,7 +267,7 @@ func (g *Group) Map(m Mapper) *Group {
 
 // MapPayloads returns a new group with payloads transformed by the mapper function.
 func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
 	}

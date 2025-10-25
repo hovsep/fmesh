@@ -40,7 +40,7 @@ var defaultConfig = &Config{
 
 // withConfig sets the configuration and returns the f-mesh.
 func (fm *FMesh) withConfig(config *Config) *FMesh {
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return fm
 	}
 

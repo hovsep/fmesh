@@ -3,7 +3,6 @@ package port
 import (
 	"fmt"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 )
 
@@ -11,17 +10,17 @@ import (
 type Ports []*Port
 
 // Group represents a list of ports
-// can carry multiple ports with same name
+// can carry multiple ports with the same name
 // no lookup methods.
 type Group struct {
-	*common.Chainable
-	ports Ports
+	chainableErr error
+	ports        Ports
 }
 
 // NewGroup creates multiple ports.
 func NewGroup(names ...string) *Group {
 	newGroup := &Group{
-		Chainable: common.NewChainable(),
+		chainableErr: nil,
 	}
 	ports := make(Ports, len(names))
 	for i, name := range names {
@@ -34,7 +33,7 @@ func NewGroup(names ...string) *Group {
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0".
 func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	if startIndex > endIndex {
-		return NewGroup().WithErr(ErrInvalidRangeForIndexedGroup)
+		return NewGroup().WithChainableErr(ErrInvalidRangeForIndexedGroup)
 	}
 
 	ports := make(Ports, endIndex-startIndex+1)
@@ -48,7 +47,7 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 
 // With adds ports to group.
 func (g *Group) With(ports ...*Port) *Group {
-	if g.HasErr() {
+	if g.HasChainableErr() {
 		return g
 	}
 
@@ -69,8 +68,8 @@ func (g *Group) withPorts(ports Ports) *Group {
 
 // Ports getter.
 func (g *Group) Ports() (Ports, error) {
-	if g.HasErr() {
-		return nil, g.Err()
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
 	return g.ports, nil
 }
@@ -89,13 +88,23 @@ func (g *Group) PortsOrDefault(defaultPorts Ports) Ports {
 	return ports
 }
 
-// WithErr returns group with error.
-func (g *Group) WithErr(err error) *Group {
-	g.SetErr(err)
+// WithChainableErr sets a chainable error and returns the group.
+func (g *Group) WithChainableErr(err error) *Group {
+	g.chainableErr = err
 	return g
 }
 
-// Len returns number of ports in group.
+// HasChainableErr returns true when a chainable error is set.
+func (g *Group) HasChainableErr() bool {
+	return g.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (g *Group) ChainableErr() error {
+	return g.chainableErr
+}
+
+// Len returns the number of ports in a group.
 func (g *Group) Len() int {
 	return len(g.ports)
 }

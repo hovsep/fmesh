@@ -33,7 +33,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "c3",
 			},
-			want: New("").WithErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
+			want: New("").WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
 		},
 	}
 	for _, tt := range tests {
@@ -160,9 +160,9 @@ func TestCollection_One(t *testing.T) {
 			components: NewCollection(),
 			assertions: func(t *testing.T, component *Component) {
 				t.Helper()
-				assert.True(t, component.HasErr())
-				require.Error(t, component.Err())
-				require.ErrorIs(t, component.Err(), errNotFound)
+				assert.True(t, component.HasChainableErr())
+				require.Error(t, component.ChainableErr())
+				require.ErrorIs(t, component.ChainableErr(), errNotFound)
 			},
 		},
 		{
@@ -170,7 +170,7 @@ func TestCollection_One(t *testing.T) {
 			components: NewCollection().With(New("c1")),
 			assertions: func(t *testing.T, component *Component) {
 				t.Helper()
-				assert.False(t, component.HasErr())
+				assert.False(t, component.HasChainableErr())
 				assert.Equal(t, "c1", component.Name())
 			},
 		},
@@ -179,8 +179,8 @@ func TestCollection_One(t *testing.T) {
 			components: NewCollection().With(New("c1"), New("c2"), New("c3")),
 			assertions: func(t *testing.T, component *Component) {
 				t.Helper()
-				assert.False(t, component.HasErr())
-				require.NoError(t, component.Err())
+				assert.False(t, component.HasChainableErr())
+				require.NoError(t, component.ChainableErr())
 				// As map iteration is not determined - any component can be returned,so we do not check for name
 			},
 		},

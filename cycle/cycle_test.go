@@ -12,7 +12,7 @@ func TestNew(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		cycle := New()
 		assert.NotNil(t, cycle)
-		assert.False(t, cycle.HasErr())
+		assert.False(t, cycle.HasChainableErr())
 	})
 }
 
@@ -109,7 +109,7 @@ func TestCycle_HasErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.cycleResult.HasErrors())
+			assert.Equal(t, tt.want, tt.cycleResult.HasActivationErrors())
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestCycle_HasPanics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.cycleResult.HasPanics())
+			assert.Equal(t, tt.want, tt.cycleResult.HasActivationPanics())
 		})
 	}
 }

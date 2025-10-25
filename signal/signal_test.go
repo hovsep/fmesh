@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,9 +24,9 @@ func TestNew(t *testing.T) {
 				payload: nil,
 			},
 			want: &Signal{
-				payload:   []any{nil},
-				Chainable: &common.Chainable{},
-				labels:    labels.NewCollection(nil),
+				payload:      []any{nil},
+				chainableErr: nil,
+				labels:       labels.NewCollection(nil),
 			},
 		},
 		{
@@ -36,9 +35,9 @@ func TestNew(t *testing.T) {
 				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
 			want: &Signal{
-				payload:   []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				Chainable: &common.Chainable{},
-				labels:    labels.NewCollection(nil),
+				payload:      []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
+				chainableErr: nil,
+				labels:       labels.NewCollection(nil),
 			},
 		},
 	}
@@ -68,7 +67,7 @@ func TestSignal_Payload(t *testing.T) {
 		},
 		{
 			name:            "with error in chain",
-			signal:          New(123).WithErr(errors.New("some error in chain")),
+			signal:          New(123).WithChainableErr(errors.New("some error in chain")),
 			want:            nil,
 			wantErrorString: "some error in chain",
 		},
@@ -99,7 +98,7 @@ func TestSignal_PayloadOrNil(t *testing.T) {
 		},
 		{
 			name:   "nil returned",
-			signal: New(123).WithErr(errors.New("some error in chain")),
+			signal: New(123).WithChainableErr(errors.New("some error in chain")),
 			want:   nil,
 		},
 	}
@@ -131,13 +130,13 @@ func TestSignal_Map(t *testing.T) {
 		},
 		{
 			name:   "with chain error",
-			signal: New(1).WithErr(errors.New("some error in chain")),
+			signal: New(1).WithChainableErr(errors.New("some error in chain")),
 			mapperFunc: func(signal *Signal) *Signal {
 				return signal.WithLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
-			want: New(1).WithErr(errors.New("some error in chain")),
+			want: New(1).WithChainableErr(errors.New("some error in chain")),
 		},
 	}
 	for _, tt := range tests {
@@ -164,11 +163,11 @@ func TestSignal_MapPayload(t *testing.T) {
 		},
 		{
 			name:   "with chain error",
-			signal: New(1).WithErr(errors.New("some error in chain")),
+			signal: New(1).WithChainableErr(errors.New("some error in chain")),
 			mapperFunc: func(payload any) any {
 				return payload.(int) * 2
 			},
-			want: New(1).WithErr(errors.New("some error in chain")),
+			want: New(1).WithChainableErr(errors.New("some error in chain")),
 		},
 	}
 	for _, tt := range tests {

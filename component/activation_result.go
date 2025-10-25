@@ -3,19 +3,18 @@ package component
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/common"
 )
 
-// ActivationResult defines the result (possibly an error) of the activation of given component in given cycle.
+// ActivationResult defines the result (possibly an error) of the activation of a given component in a given cycle.
 type ActivationResult struct {
-	*common.Chainable
+	chainableErr    error
 	componentName   string
 	activated       bool
 	code            ActivationResultCode
-	activationError error // Error returned from component activation function
+	activationError error // Error returned from a component activation function
 }
 
-// ActivationResultCode denotes a specific info about how a component been activated or why not activated at all.
+// ActivationResultCode denotes specific info about how a component been activated or why not activated at all.
 type ActivationResultCode int
 
 func (a ActivationResultCode) String() string {
@@ -72,7 +71,7 @@ const (
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
-		Chainable:     common.NewChainable(),
+		chainableErr:  nil,
 	}
 }
 
@@ -188,8 +187,18 @@ func WantsToKeepInputs(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }
 
-// WithErr returns activation result with chain error.
-func (ar *ActivationResult) WithErr(err error) *ActivationResult {
-	ar.SetErr(err)
+// WithChainableErr sets a chainable error and returns the activation result.
+func (ar *ActivationResult) WithChainableErr(err error) *ActivationResult {
+	ar.chainableErr = err
 	return ar
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (ar *ActivationResult) HasChainableErr() bool {
+	return ar.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (ar *ActivationResult) ChainableErr() error {
+	return ar.chainableErr
 }

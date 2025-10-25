@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 )
@@ -21,21 +20,21 @@ type RuntimeInfo struct {
 
 // FMesh is the functional mesh.
 type FMesh struct {
-	name        string
-	description string
-	*common.Chainable
-	components  *component.Collection
-	runtimeInfo *RuntimeInfo
-	config      *Config
+	name         string
+	description  string
+	chainableErr error
+	components   *component.Collection
+	runtimeInfo  *RuntimeInfo
+	config       *Config
 }
 
 // New creates a new f-mesh with default config.
 func New(name string) *FMesh {
 	return &FMesh{
-		name:        name,
-		description: "",
-		Chainable:   common.NewChainable(),
-		components:  component.NewCollection(),
+		name:         name,
+		description:  "",
+		chainableErr: nil,
+		components:   component.NewCollection(),
 		runtimeInfo: &RuntimeInfo{
 			Cycles:   cycle.NewGroup(),
 			Duration: 0,
@@ -61,8 +60,8 @@ func NewWithConfig(name string, config *Config) *FMesh {
 
 // Components getter.
 func (fm *FMesh) Components() *component.Collection {
-	if fm.HasErr() {
-		return component.NewCollection().WithErr(fm.Err())
+	if fm.HasChainableErr() {
+		return component.NewCollection().WithChainableErr(fm.ChainableErr())
 	}
 	return fm.components
 }
@@ -74,7 +73,7 @@ func (fm *FMesh) ComponentByName(name string) *component.Component {
 
 // WithDescription sets a description.
 func (fm *FMesh) WithDescription(description string) *FMesh {
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return fm
 	}
 
@@ -84,18 +83,18 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 
 // WithComponents adds components to f-mesh.
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return fm
 	}
 
 	for _, c := range components {
 		if c.Logger() == nil {
-			// Inherit logger from fm if component does not have its own
+			// Inherit logger from fm if the component does not have its own
 			c = c.WithLogger(fm.Logger())
 		}
 		fm.components = fm.components.With(c)
-		if c.HasErr() {
-			return fm.WithErr(c.Err())
+		if c.HasChainableErr() {
+			return fm.WithChainableErr(c.ChainableErr())
 		}
 	}
 
@@ -109,24 +108,24 @@ func (fm *FMesh) runCycle() {
 
 	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
-	if fm.HasErr() {
-		newCycle.SetErr(fm.Err())
+	if fm.HasChainableErr() {
+		newCycle.WithChainableErr(fm.ChainableErr())
 	}
 
 	if fm.Components().Len() == 0 {
-		newCycle.SetErr(errors.Join(errFailedToRunCycle, errNoComponents))
+		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, errNoComponents))
 	}
 
 	var wg sync.WaitGroup
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		newCycle.SetErr(errors.Join(errFailedToRunCycle, err))
+		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, err))
 	}
 
 	for _, c := range components {
-		if c.HasErr() {
-			fm.SetErr(c.Err())
+		if c.HasChainableErr() {
+			fm.WithChainableErr(c.ChainableErr())
 		}
 		wg.Add(1)
 
@@ -141,14 +140,14 @@ func (fm *FMesh) runCycle() {
 
 	// Bubble up chain errors from activation results
 	for _, ar := range newCycle.ActivationResults().All() {
-		if ar.HasErr() {
-			newCycle.SetErr(ar.Err())
+		if ar.HasChainableErr() {
+			newCycle.WithChainableErr(ar.ChainableErr())
 			break
 		}
 	}
 
-	if newCycle.HasErr() {
-		fm.SetErr(newCycle.Err())
+	if newCycle.HasChainableErr() {
+		fm.WithChainableErr(newCycle.ChainableErr())
 	}
 
 	if fm.IsDebug() {
@@ -162,19 +161,19 @@ func (fm *FMesh) runCycle() {
 
 // DrainComponents drains the data from activated components.
 func (fm *FMesh) drainComponents() {
-	if fm.HasErr() {
-		fm.SetErr(errors.Join(ErrFailedToDrain, fm.Err()))
+	if fm.HasChainableErr() {
+		fm.WithChainableErr(errors.Join(ErrFailedToDrain, fm.ChainableErr()))
 		return
 	}
 
 	fm.clearInputs()
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return
 	}
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		fm.SetErr(errors.Join(ErrFailedToDrain, err))
+		fm.WithChainableErr(errors.Join(ErrFailedToDrain, err))
 		return
 	}
 
@@ -183,8 +182,8 @@ func (fm *FMesh) drainComponents() {
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
 
-		if activationResult.HasErr() {
-			fm.SetErr(errors.Join(ErrFailedToDrain, activationResult.Err()))
+		if activationResult.HasChainableErr() {
+			fm.WithChainableErr(errors.Join(ErrFailedToDrain, activationResult.ChainableErr()))
 			return
 		}
 
@@ -206,13 +205,13 @@ func (fm *FMesh) drainComponents() {
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs() {
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return
 	}
 
 	components, err := fm.Components().Components()
 	if err != nil {
-		fm.SetErr(errors.Join(errFailedToClearInputs, err))
+		fm.WithChainableErr(errors.Join(errFailedToClearInputs, err))
 		return
 	}
 
@@ -221,8 +220,8 @@ func (fm *FMesh) clearInputs() {
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
 
-		if activationResult.HasErr() {
-			fm.SetErr(errors.Join(errFailedToClearInputs, activationResult.Err()))
+		if activationResult.HasChainableErr() {
+			fm.WithChainableErr(errors.Join(errFailedToClearInputs, activationResult.ChainableErr()))
 		}
 
 		if !activationResult.Activated() {
@@ -248,8 +247,8 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		fm.runtimeInfo.Duration = time.Since(fm.runtimeInfo.StartedAt)
 	}()
 
-	if fm.HasErr() {
-		return fm.runtimeInfo, fm.Err()
+	if fm.HasChainableErr() {
+		return fm.runtimeInfo, fm.ChainableErr()
 	}
 
 	for {
@@ -260,15 +259,15 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		}
 
 		fm.drainComponents()
-		if fm.HasErr() {
-			return fm.runtimeInfo, fm.Err()
+		if fm.HasChainableErr() {
+			return fm.runtimeInfo, fm.ChainableErr()
 		}
 	}
 }
 
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
 func (fm *FMesh) mustStop() (bool, error) {
-	if fm.HasErr() {
+	if fm.HasChainableErr() {
 		return false, nil
 	}
 
@@ -281,7 +280,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 		return true, ErrReachedMaxAllowedCycles
 	}
 
-	// Check if time constraint is hit
+	// Check if the time constraint is hit
 	if fm.config.TimeLimit != UnlimitedTime {
 		if time.Since(fm.runtimeInfo.StartedAt) >= fm.config.TimeLimit {
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
@@ -298,10 +297,10 @@ func (fm *FMesh) mustStop() (bool, error) {
 		return true, nil
 	}
 
-	// Check if mesh must stop because of configured error handling strategy
+	// Check if mesh must stop because of the configured error handling strategy
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
-		if lastCycle.HasErrors() || lastCycle.HasPanics() {
+		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
 			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
 
@@ -309,7 +308,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 		}
 		return false, nil
 	case StopOnFirstPanic:
-		if lastCycle.HasPanics() {
+		if lastCycle.HasActivationPanics() {
 			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w", ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
 
@@ -325,8 +324,18 @@ func (fm *FMesh) mustStop() (bool, error) {
 	}
 }
 
-// WithErr returns f-mesh with an error.
-func (fm *FMesh) WithErr(err error) *FMesh {
-	fm.SetErr(err)
+// WithChainableErr returns f-mesh with an error.
+func (fm *FMesh) WithChainableErr(err error) *FMesh {
+	fm.chainableErr = err
 	return fm
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (fm *FMesh) HasChainableErr() bool {
+	return fm.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (fm *FMesh) ChainableErr() error {
+	return fm.chainableErr
 }

@@ -110,15 +110,15 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: New("").WithErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
+			want: New("").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithErr(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				name: "p1",
 			},
-			want: New("").WithErr(errors.New("some error")),
+			want: New("").WithChainableErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
@@ -173,11 +173,11 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithErr(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").PortsOrNil()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: NewCollection().WithErr(errors.New("some error")),
+			want: NewCollection().WithChainableErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
