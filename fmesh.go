@@ -54,7 +54,7 @@ func (fm *FMesh) Description() string {
 	return fm.description
 }
 
-// NewWithConfig creates a new f-mesh with custom config
+// NewWithConfig creates a new f-mesh with custom config.
 func NewWithConfig(name string, config *Config) *FMesh {
 	return New(name).withConfig(config)
 }
