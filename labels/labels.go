@@ -2,8 +2,6 @@ package labels
 
 import (
 	"fmt"
-
-	"github.com/hovsep/fmesh/common"
 )
 
 // Map is a map of labels.
@@ -11,8 +9,8 @@ type Map map[string]string
 
 // Collection provides safe access to labels with error handling.
 type Collection struct {
-	*common.Chainable
-	labels Map
+	chainableErr error
+	labels       Map
 }
 
 // LabelPredicate tests a label key-value pair.
@@ -24,14 +22,14 @@ func NewCollection(labels Map) *Collection {
 		labels = make(Map)
 	}
 	return &Collection{
-		Chainable: common.NewChainable(),
-		labels:    labels,
+		chainableErr: nil,
+		labels:       labels,
 	}
 }
 
 // All returns true if all labels in the collection satisfy the predicate.
 func (c *Collection) All(pred LabelPredicate) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 
@@ -45,7 +43,7 @@ func (c *Collection) All(pred LabelPredicate) bool {
 
 // Any returns true if any label in the collection satisfies the predicate.
 func (c *Collection) Any(pred LabelPredicate) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	for k, v := range c.labels {
@@ -58,8 +56,8 @@ func (c *Collection) Any(pred LabelPredicate) bool {
 
 // Value returns the value of a single label or error if not found.
 func (c *Collection) Value(label string) (string, error) {
-	if c.HasErr() {
-		return "", c.Err()
+	if c.HasChainableErr() {
+		return "", c.ChainableErr()
 	}
 
 	value, ok := c.labels[label]
@@ -81,7 +79,7 @@ func (c *Collection) ValueOrDefault(label, defaultValue string) string {
 
 // With adds or updates a single label.
 func (c *Collection) With(label, value string) *Collection {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return c
 	}
 
@@ -91,7 +89,7 @@ func (c *Collection) With(label, value string) *Collection {
 
 // WithMany adds or updates multiple labels.
 func (c *Collection) WithMany(labels Map) *Collection {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return c
 	}
 	for label, value := range labels {
@@ -102,7 +100,7 @@ func (c *Collection) WithMany(labels Map) *Collection {
 
 // Without removes given labels.
 func (c *Collection) Without(labels ...string) *Collection {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return c
 	}
 
@@ -114,7 +112,7 @@ func (c *Collection) Without(labels ...string) *Collection {
 
 // Has returns true when the collection has given label.
 func (c *Collection) Has(label string) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	_, ok := c.labels[label]
@@ -123,7 +121,7 @@ func (c *Collection) Has(label string) bool {
 
 // HasAll checks if a collection has all given labels with disregard of their values.
 func (c *Collection) HasAll(labels ...string) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	for _, label := range labels {
@@ -136,7 +134,7 @@ func (c *Collection) HasAll(labels ...string) bool {
 
 // MatchesAll returns true if the collection contains all key-value pairs from the given map.
 func (c *Collection) MatchesAll(labels Map) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	for k, v := range labels {
@@ -149,7 +147,7 @@ func (c *Collection) MatchesAll(labels Map) bool {
 
 // HasAny checks if a collection has any of the given labels.
 func (c *Collection) HasAny(labels ...string) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	for _, label := range labels {
@@ -162,7 +160,7 @@ func (c *Collection) HasAny(labels ...string) bool {
 
 // MatchesAny returns true if the collection contains any key-value pair from the given map.
 func (c *Collection) MatchesAny(labels Map) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 	for k, v := range labels {
@@ -175,7 +173,7 @@ func (c *Collection) MatchesAny(labels Map) bool {
 
 // ValueIs returns true when a collection has given label with a given value.
 func (c *Collection) ValueIs(label, value string) bool {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return false
 	}
 
@@ -193,14 +191,24 @@ func (c *Collection) ValueIs(label, value string) bool {
 
 // Len returns the number of labels.
 func (c *Collection) Len() int {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return 0
 	}
 	return len(c.labels)
 }
 
-// WithErr returns a collection with an error.
-func (c *Collection) WithErr(err error) *Collection {
-	c.SetErr(err)
+// WithChainableErr sets a chainable error and returns the collection.
+func (c *Collection) WithChainableErr(err error) *Collection {
+	c.chainableErr = err
 	return c
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (c *Collection) HasChainableErr() bool {
+	return c.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (c *Collection) ChainableErr() error {
+	return c.chainableErr
 }

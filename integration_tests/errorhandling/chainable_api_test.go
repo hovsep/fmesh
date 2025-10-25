@@ -21,14 +21,14 @@ func Test_Signal(t *testing.T) {
 			test: func(t *testing.T) {
 				sig := signal.New(123)
 				_, err := sig.Payload()
-				assert.False(t, sig.HasErr())
+				assert.False(t, sig.HasChainableErr())
 				require.NoError(t, err)
 
 				_ = sig.PayloadOrDefault(555)
-				assert.False(t, sig.HasErr())
+				assert.False(t, sig.HasChainableErr())
 
 				_ = sig.PayloadOrNil()
-				assert.False(t, sig.HasErr())
+				assert.False(t, sig.HasChainableErr())
 			},
 		},
 		{
@@ -37,8 +37,8 @@ func Test_Signal(t *testing.T) {
 				emptyGroup := signal.NewGroup()
 
 				sig := emptyGroup.FirstSignal()
-				assert.True(t, sig.HasErr())
-				require.Error(t, sig.Err())
+				assert.True(t, sig.HasChainableErr())
+				require.Error(t, sig.ChainableErr())
 
 				_, err := sig.Payload()
 				require.Error(t, err)
@@ -74,7 +74,7 @@ func Test_FMesh(t *testing.T) {
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.False(t, fm.HasErr())
+				assert.False(t, fm.HasChainableErr())
 				assert.NoError(t, err)
 			},
 		},
@@ -91,14 +91,14 @@ func Test_FMesh(t *testing.T) {
 							this.OutputByName("sum").PutSignals(signal.New(num1 + num2))
 							return nil
 						}).
-						WithErr(errors.New("some error in component")),
+						WithChainableErr(errors.New("some error in component")),
 				)
 
 				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasErr())
+				assert.True(t, fm.HasChainableErr())
 				require.Error(t, err)
 				require.EqualError(t, err, "some error in component")
 			},
@@ -123,7 +123,7 @@ func Test_FMesh(t *testing.T) {
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasErr())
+				assert.True(t, fm.HasChainableErr())
 				require.Error(t, err)
 				require.ErrorContains(t, err, "port not found, port name: num777")
 			},
@@ -141,11 +141,11 @@ func Test_FMesh(t *testing.T) {
 					}),
 				)
 
-				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10).WithErr(errors.New("some error in input signal")))
+				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10).WithChainableErr(errors.New("some error in input signal")))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
 				_, err := fm.Run()
-				assert.True(t, fm.HasErr())
+				assert.True(t, fm.HasChainableErr())
 				require.Error(t, err)
 				require.ErrorContains(t, err, "some error in input signal")
 			},

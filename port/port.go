@@ -3,7 +3,6 @@ package port
 import (
 	"fmt"
 
-	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 )
@@ -19,22 +18,22 @@ const (
 
 // Port defines a connectivity point of a component.
 type Port struct {
-	name        string
-	description string
-	labels      *labels.Collection
-	*common.Chainable
-	buffer *signal.Group
-	pipes  *Group // Outbound pipes
+	name         string
+	description  string
+	labels       *labels.Collection
+	chainableErr error
+	buffer       *signal.Group
+	pipes        *Group // Outbound pipes
 }
 
 // New creates a new port.
 func New(name string) *Port {
 	return &Port{
-		name:      name,
-		labels:    labels.NewCollection(nil),
-		Chainable: common.NewChainable(),
-		pipes:     NewGroup(),
-		buffer:    signal.NewGroup(),
+		name:         name,
+		labels:       labels.NewCollection(nil),
+		chainableErr: nil,
+		pipes:        NewGroup(),
+		buffer:       signal.NewGroup(),
 	}
 }
 
@@ -50,15 +49,15 @@ func (p *Port) Description() string {
 
 // Labels getter.
 func (p *Port) Labels() *labels.Collection {
-	if p.HasErr() {
-		return labels.NewCollection(nil).WithErr(p.Err())
+	if p.HasChainableErr() {
+		return labels.NewCollection(nil).WithChainableErr(p.ChainableErr())
 	}
 	return p.labels
 }
 
 // WithDescription sets a description.
 func (p *Port) WithDescription(description string) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
@@ -69,8 +68,8 @@ func (p *Port) WithDescription(description string) *Port {
 // Buffer getter
 // @TODO: maybe we can hide this and return signals to user code.
 func (p *Port) Buffer() *signal.Group {
-	if p.HasErr() {
-		return signal.NewGroup().WithErr(p.Err())
+	if p.HasChainableErr() {
+		return signal.NewGroup().WithChainableErr(p.ChainableErr())
 	}
 	return p.buffer
 }
@@ -78,21 +77,21 @@ func (p *Port) Buffer() *signal.Group {
 // Pipes getter
 // @TODO maybe better to return []*Port directly.
 func (p *Port) Pipes() *Group {
-	if p.HasErr() {
-		return NewGroup().WithErr(p.Err())
+	if p.HasChainableErr() {
+		return NewGroup().WithChainableErr(p.ChainableErr())
 	}
 	return p.pipes
 }
 
 // withBuffer sets buffer field.
 func (p *Port) withBuffer(buffer *signal.Group) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
-	if buffer.HasErr() {
-		p.SetErr(buffer.Err())
-		return New("").WithErr(p.Err())
+	if buffer.HasChainableErr() {
+		p.WithChainableErr(buffer.ChainableErr())
+		return New("").WithChainableErr(p.ChainableErr())
 	}
 	p.buffer = buffer
 	return p
@@ -100,7 +99,7 @@ func (p *Port) withBuffer(buffer *signal.Group) *Port {
 
 // PutSignals adds signals to buffer.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 	return p.withBuffer(p.Buffer().With(signals...))
@@ -108,7 +107,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 
 // WithSignals appends signals into the buffer and returns the port.
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
@@ -117,18 +116,18 @@ func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 
 // WithSignalGroups puts groups of buffer and returns the port.
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 	for _, group := range signalGroups {
 		signals, err := group.Signals()
 		if err != nil {
-			p.SetErr(err)
-			return New("").WithErr(p.Err())
+			p.WithChainableErr(err)
+			return New("").WithChainableErr(p.ChainableErr())
 		}
 		p.PutSignals(signals...)
-		if p.HasErr() {
-			return New("").WithErr(p.Err())
+		if p.HasChainableErr() {
+			return New("").WithChainableErr(p.ChainableErr())
 		}
 	}
 
@@ -137,7 +136,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 
 // Clear removes all signals from the port buffer.
 func (p *Port) Clear() *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 	return p.withBuffer(signal.NewGroup())
@@ -146,7 +145,7 @@ func (p *Port) Clear() *Port {
 // Flush pushes buffer to pipes and clears the port
 // @TODO: hide this method from user.
 func (p *Port) Flush() *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
@@ -158,16 +157,16 @@ func (p *Port) Flush() *Port {
 
 	pipes, err := p.pipes.Ports()
 	if err != nil {
-		p.SetErr(err)
-		return New("").WithErr(p.Err())
+		p.WithChainableErr(err)
+		return New("").WithChainableErr(p.ChainableErr())
 	}
 
 	for _, outboundPort := range pipes {
 		// Fan-Out
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
-			p.SetErr(err)
-			return New("").WithErr(p.Err())
+			p.WithChainableErr(err)
+			return New("").WithChainableErr(p.ChainableErr())
 		}
 	}
 	return p.Clear()
@@ -186,14 +185,14 @@ func (p *Port) HasPipes() bool {
 // PipeTo creates one or multiple pipes to other port(s)
 // @TODO: hide this method from AF.
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
-			p.SetErr(fmt.Errorf("pipe validation failed: %w", err))
-			return New("").WithErr(p.Err())
+			p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
+			return New("").WithChainableErr(p.ChainableErr())
 		}
 		p.pipes = p.pipes.With(destPort)
 	}
@@ -220,7 +219,7 @@ func validatePipe(srcPort, dstPort *Port) error {
 
 // WithLabels sets labels and returns the port.
 func (p *Port) WithLabels(labels labels.Map) *Port {
-	if p.HasErr() {
+	if p.HasChainableErr() {
 		return p
 	}
 
@@ -230,12 +229,12 @@ func (p *Port) WithLabels(labels labels.Map) *Port {
 
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port.
 func ForwardSignals(source, dest *Port) error {
-	if source.HasErr() {
-		return source.Err()
+	if source.HasChainableErr() {
+		return source.ChainableErr()
 	}
 
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 
 	signals, err := source.AllSignals()
@@ -243,54 +242,64 @@ func ForwardSignals(source, dest *Port) error {
 		return err
 	}
 	dest.PutSignals(signals...)
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 	return nil
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
-	if source.HasErr() {
-		return source.Err()
+	if source.HasChainableErr() {
+		return source.ChainableErr()
 	}
 
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 
 	filteredSignals := source.Buffer().Filter(p).SignalsOrNil()
 
 	dest.PutSignals(filteredSignals...)
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 	return nil
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
-	if source.HasErr() {
-		return source.Err()
+	if source.HasChainableErr() {
+		return source.ChainableErr()
 	}
 
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 
 	mappedSignals := source.Buffer().Map(mapperFunc).SignalsOrNil()
 
 	dest.PutSignals(mappedSignals...)
-	if dest.HasErr() {
-		return dest.Err()
+	if dest.HasChainableErr() {
+		return dest.ChainableErr()
 	}
 	return nil
 }
 
-// WithErr returns port with an error.
-func (p *Port) WithErr(err error) *Port {
-	p.SetErr(err)
+// WithChainableErr sets a chainable error and returns the port.
+func (p *Port) WithChainableErr(err error) *Port {
+	p.chainableErr = err
 	return p
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (p *Port) HasChainableErr() bool {
+	return p.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (p *Port) ChainableErr() error {
+	return p.chainableErr
 }
 
 // FirstSignalPayload is a shortcut method.

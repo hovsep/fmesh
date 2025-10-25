@@ -642,11 +642,11 @@ func TestFMesh_runCycle(t *testing.T) {
 			tt.fm.runCycle()
 			gotCycleResult := tt.fm.runtimeInfo.Cycles.Last()
 			if tt.wantError {
-				assert.True(t, gotCycleResult.HasErr())
-				assert.Error(t, gotCycleResult.Err())
+				assert.True(t, gotCycleResult.HasChainableErr())
+				assert.Error(t, gotCycleResult.ChainableErr())
 			} else {
-				assert.False(t, gotCycleResult.HasErr())
-				require.NoError(t, gotCycleResult.Err())
+				assert.False(t, gotCycleResult.HasChainableErr())
+				require.NoError(t, gotCycleResult.ChainableErr())
 				assert.Equal(t, tt.want, gotCycleResult)
 			}
 		})

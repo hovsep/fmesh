@@ -213,23 +213,23 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "with chain error from input port",
 			getComponent: func() *Component {
 				c := New("c").WithInputs("i1").WithOutputs("o1")
-				c.Inputs().With(port.New("p").WithErr(errors.New("some error")))
+				c.Inputs().With(port.New("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c").
 				WithActivationCode(ActivationCodeUndefined).
-				WithErr(errors.New("some error")),
+				WithChainableErr(errors.New("some error")),
 		},
 		{
 			name: "with chain error from output port",
 			getComponent: func() *Component {
 				c := New("c").WithInputs("i1").WithOutputs("o1")
-				c.Outputs().With(port.New("p").WithErr(errors.New("some error")))
+				c.Outputs().With(port.New("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c").
 				WithActivationCode(ActivationCodeUndefined).
-				WithErr(errors.New("some error")),
+				WithChainableErr(errors.New("some error")),
 		},
 		{
 			name: "component not activated, logger must be empty",

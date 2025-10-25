@@ -2,8 +2,6 @@ package component
 
 import (
 	"fmt"
-
-	"github.com/hovsep/fmesh/common"
 )
 
 // Map is a map of components.
@@ -11,29 +9,29 @@ type Map map[string]*Component
 
 // Collection is a collection of components with useful methods.
 type Collection struct {
-	*common.Chainable
-	components Map
+	chainableErr error
+	components   Map
 }
 
 // NewCollection creates empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		Chainable:  common.NewChainable(),
-		components: make(Map),
+		chainableErr: nil,
+		components:   make(Map),
 	}
 }
 
 // ByName returns a component by its name.
 func (c *Collection) ByName(name string) *Component {
-	if c.HasErr() {
-		return New("").WithErr(c.Err())
+	if c.HasChainableErr() {
+		return New("").WithChainableErr(c.ChainableErr())
 	}
 
 	component, ok := c.components[name]
 
 	if !ok {
-		c.SetErr(fmt.Errorf("%w, component name: %s", errNotFound, name))
-		return New("").WithErr(c.Err())
+		c.WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, name))
+		return New("").WithChainableErr(c.ChainableErr())
 	}
 
 	return component
@@ -41,8 +39,8 @@ func (c *Collection) ByName(name string) *Component {
 
 // ByLabelValue returns all components that have a given label with a given value.
 func (c *Collection) ByLabelValue(label, value string) *Collection {
-	if c.HasErr() {
-		return NewCollection().WithErr(c.Err())
+	if c.HasChainableErr() {
+		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
 
 	selectedComponents := NewCollection()
@@ -58,25 +56,35 @@ func (c *Collection) ByLabelValue(label, value string) *Collection {
 
 // With adds components and returns the collection.
 func (c *Collection) With(components ...*Component) *Collection {
-	if c.HasErr() {
+	if c.HasChainableErr() {
 		return c
 	}
 
 	for _, component := range components {
 		c.components[component.Name()] = component
 
-		if component.HasErr() {
-			return c.WithErr(component.Err())
+		if component.HasChainableErr() {
+			return c.WithChainableErr(component.ChainableErr())
 		}
 	}
 
 	return c
 }
 
-// WithErr returns group with error.
-func (c *Collection) WithErr(err error) *Collection {
-	c.SetErr(err)
+// WithChainableErr sets a chainable error and returns the collection.
+func (c *Collection) WithChainableErr(err error) *Collection {
+	c.chainableErr = err
 	return c
+}
+
+// HasChainableErr returns true when a chainable error is set.
+func (c *Collection) HasChainableErr() bool {
+	return c.chainableErr != nil
+}
+
+// ChainableErr returns chainable error.
+func (c *Collection) ChainableErr() error {
+	return c.chainableErr
 }
 
 // Len returns number of ports in collection.
@@ -86,8 +94,8 @@ func (c *Collection) Len() int {
 
 // Components returns underlying components map.
 func (c *Collection) Components() (Map, error) {
-	if c.HasErr() {
-		return nil, c.Err()
+	if c.HasChainableErr() {
+		return nil, c.ChainableErr()
 	}
 	return c.components, nil
 }
@@ -96,14 +104,14 @@ func (c *Collection) Components() (Map, error) {
 // This is useful when the collection is expected to contain exactly one component.
 // If the collection is empty, it sets an error and returns a placeholder component.
 func (c *Collection) One() *Component {
-	if c.HasErr() {
-		return New("").WithErr(c.Err())
+	if c.HasChainableErr() {
+		return New("").WithChainableErr(c.ChainableErr())
 	}
 
 	for _, component := range c.components {
 		return component
 	}
 
-	c.SetErr(errNotFound)
-	return New("").WithErr(c.Err())
+	c.WithChainableErr(errNotFound)
+	return New("").WithChainableErr(c.ChainableErr())
 }

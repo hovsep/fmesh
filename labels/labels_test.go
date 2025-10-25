@@ -21,7 +21,7 @@ func TestNewLabelsCollection(t *testing.T) {
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.NotNil(t, lc)
 				assert.Equal(t, 0, lc.Len())
-				assert.False(t, lc.HasErr())
+				assert.False(t, lc.HasChainableErr())
 			},
 		},
 		{
@@ -392,9 +392,9 @@ func TestLabelsCollection_Value(t *testing.T) {
 			got, err := tt.collection.Value(tt.label)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			assert.Equal(t, tt.want, got)
@@ -761,16 +761,16 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 	}{
 		{
 			name:       "mutating methods return self without changes when error present",
-			collection: NewCollection(nil).WithErr(errors.New("test error")),
+			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
 			assertions: func(t *testing.T, lc *Collection) {
 				result := lc.With("test", "value")
-				assert.True(t, result.HasErr())
+				assert.True(t, result.HasChainableErr())
 				assert.Equal(t, 0, result.Len())
 			},
 		},
 		{
 			name:       "query methods return safe defaults when error present",
-			collection: NewCollection(nil).WithErr(errors.New("test error")),
+			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.False(t, lc.Has("test"))
 				assert.Equal(t, 0, lc.Len())
@@ -778,8 +778,8 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 				assert.False(t, lc.Any(func(k, v string) bool { return true }))
 
 				val, err := lc.Value("test")
-				assert.Error(t, err)
-				assert.Equal(t, "", val)
+				require.Error(t, err)
+				assert.Empty(t, val)
 			},
 		},
 	}
