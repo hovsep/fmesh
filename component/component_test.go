@@ -56,10 +56,10 @@ func TestComponent_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &Component{
-				name:            "c1",
-				DescribedEntity: common.NewDescribedEntity("descr"),
-				LabeledEntity:   common.NewLabeledEntity(nil),
-				Chainable:       common.NewChainable(),
+				name:          "c1",
+				description:   "descr",
+				LabeledEntity: common.NewLabeledEntity(nil),
+				Chainable:     common.NewChainable(),
 				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 					port.DirectionLabel: port.DirectionIn,
 				}),

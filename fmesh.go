@@ -21,8 +21,8 @@ type RuntimeInfo struct {
 
 // FMesh is the functional mesh.
 type FMesh struct {
-	name string
-	common.DescribedEntity
+	name        string
+	description string
 	*common.Chainable
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
@@ -32,10 +32,10 @@ type FMesh struct {
 // New creates a new f-mesh with default config.
 func New(name string) *FMesh {
 	return &FMesh{
-		name:            name,
-		DescribedEntity: common.NewDescribedEntity(""),
-		Chainable:       common.NewChainable(),
-		components:      component.NewCollection(),
+		name:        name,
+		description: "",
+		Chainable:   common.NewChainable(),
+		components:  component.NewCollection(),
 		runtimeInfo: &RuntimeInfo{
 			Cycles:   cycle.NewGroup(),
 			Duration: 0,
@@ -44,11 +44,17 @@ func New(name string) *FMesh {
 	}
 }
 
+// Name getter.
 func (fm *FMesh) Name() string {
 	return fm.name
 }
 
-// NewWithConfig creates a new f-mesh with custom config.
+// Description getter.
+func (fm *FMesh) Description() string {
+	return fm.description
+}
+
+// NewWithConfig creates a new f-mesh with custom config
 func NewWithConfig(name string, config *Config) *FMesh {
 	return New(name).withConfig(config)
 }
@@ -72,7 +78,7 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 		return fm
 	}
 
-	fm.DescribedEntity = common.NewDescribedEntity(description)
+	fm.description = description
 	return fm
 }
 

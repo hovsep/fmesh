@@ -2,12 +2,13 @@ package component
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/hovsep/fmesh/common"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestComponent_WithInputs(t *testing.T) {
@@ -27,10 +28,10 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:            "c1",
-				DescribedEntity: common.NewDescribedEntity(""),
-				LabeledEntity:   common.NewLabeledEntity(nil),
-				Chainable:       common.NewChainable(),
+				name:          "c1",
+				description:   "",
+				LabeledEntity: common.NewLabeledEntity(nil),
+				Chainable:     common.NewChainable(),
 				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 					port.DirectionLabel: port.DirectionIn,
 				}).With(port.New("p1"), port.New("p2")),
@@ -48,10 +49,10 @@ func TestComponent_WithInputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:            "c1",
-				DescribedEntity: common.NewDescribedEntity(""),
-				LabeledEntity:   common.NewLabeledEntity(nil),
-				Chainable:       common.NewChainable(),
+				name:          "c1",
+				description:   "",
+				LabeledEntity: common.NewLabeledEntity(nil),
+				Chainable:     common.NewChainable(),
 				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 					port.DirectionLabel: port.DirectionIn,
 				}),
@@ -87,10 +88,10 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: []string{"p1", "p2"},
 			},
 			want: &Component{
-				name:            "c1",
-				DescribedEntity: common.NewDescribedEntity(""),
-				LabeledEntity:   common.NewLabeledEntity(nil),
-				Chainable:       common.NewChainable(),
+				name:          "c1",
+				description:   "",
+				LabeledEntity: common.NewLabeledEntity(nil),
+				Chainable:     common.NewChainable(),
 				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 					port.DirectionLabel: port.DirectionIn,
 				}),
@@ -108,10 +109,10 @@ func TestComponent_WithOutputs(t *testing.T) {
 				portNames: nil,
 			},
 			want: &Component{
-				name:            "c1",
-				DescribedEntity: common.NewDescribedEntity(""),
-				LabeledEntity:   common.NewLabeledEntity(nil),
-				Chainable:       common.NewChainable(),
+				name:          "c1",
+				description:   "",
+				LabeledEntity: common.NewLabeledEntity(nil),
+				Chainable:     common.NewChainable(),
 				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 					port.DirectionLabel: port.DirectionIn,
 				}),
