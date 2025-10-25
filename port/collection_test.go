@@ -3,11 +3,12 @@ package port
 import (
 	"errors"
 	"fmt"
-	"github.com/hovsep/fmesh/common"
+	"testing"
+
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestCollection_AllHaveSignal(t *testing.T) {
@@ -81,25 +82,25 @@ func TestCollection_ByName(t *testing.T) {
 	}{
 		{
 			name: "empty port found",
-			collection: NewCollection().WithDefaultLabels(common.LabelsCollection{
+			collection: NewCollection().WithDefaultLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).With(NewGroup("p1", "p2").PortsOrNil()...),
 			args: args{
 				name: "p1",
 			},
-			want: New("p1").WithLabels(common.LabelsCollection{
+			want: New("p1").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}),
 		},
 		{
 			name: "port with buffer found",
-			collection: NewCollection().WithDefaultLabels(common.LabelsCollection{
+			collection: NewCollection().WithDefaultLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).With(NewGroup("p1", "p2").PortsOrNil()...).PutSignals(signal.New(12)),
 			args: args{
 				name: "p2",
 			},
-			want: New("p2").WithLabels(common.LabelsCollection{
+			want: New("p2").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).WithSignals(signal.New(12)),
 		},
@@ -265,15 +266,15 @@ func TestCollection_Flush(t *testing.T) {
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
 				New("src").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						DirectionLabel: DirectionOut,
 					}).
 					WithSignalGroups(signal.NewGroup(1, 2, 3)).
 					PipeTo(New("dst1").
-						WithLabels(common.LabelsCollection{
+						WithLabels(labels.Map{
 							DirectionLabel: DirectionIn,
 						}), New("dst2").
-						WithLabels(common.LabelsCollection{
+						WithLabels(labels.Map{
 							DirectionLabel: DirectionIn,
 						})),
 			),
@@ -323,12 +324,12 @@ func TestCollection_PipeTo(t *testing.T) {
 		},
 		{
 			name: "add pipes to each port in collection",
-			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).WithPortLabels(common.LabelsCollection{
+			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).WithPortLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).PortsOrNil()...),
 			args: args{
 				destPorts: NewIndexedGroup("dest", 1, 5).
-					WithPortLabels(common.LabelsCollection{
+					WithPortLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).
 					PortsOrNil(),

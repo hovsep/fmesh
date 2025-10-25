@@ -2,6 +2,7 @@ package signal
 
 import (
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 )
 
 // Signals is a slice of signals.
@@ -211,7 +212,7 @@ func (g *Group) Len() int {
 }
 
 // WithSignalLabels sets labels on each signal within the group and returns it.
-func (g *Group) WithSignalLabels(labels common.LabelsCollection) *Group {
+func (g *Group) WithSignalLabels(labels labels.Map) *Group {
 	if g.HasErr() {
 		// Do nothing but propagate the error
 		return g

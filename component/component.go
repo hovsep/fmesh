@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 )
 
@@ -12,7 +13,7 @@ import (
 type Component struct {
 	name        string
 	description string
-	common.LabeledEntity
+	labels      *labels.Collection
 	*common.Chainable
 	inputs  *port.Collection
 	outputs *port.Collection
@@ -24,14 +25,14 @@ type Component struct {
 // New creates initialized component.
 func New(name string) *Component {
 	return &Component{
-		name:          name,
-		description:   "",
-		LabeledEntity: common.NewLabeledEntity(nil),
-		Chainable:     common.NewChainable(),
-		inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+		name:        name,
+		description: "",
+		labels:      labels.NewCollection(nil),
+		Chainable:   common.NewChainable(),
+		inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 			port.DirectionLabel: port.DirectionIn,
 		}),
-		outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+		outputs: port.NewCollection().WithDefaultLabels(labels.Map{
 			port.DirectionLabel: port.DirectionOut,
 		}),
 		state: NewState(),
@@ -58,12 +59,20 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
+// Labels getter.
+func (c *Component) Labels() *labels.Collection {
+	if c.HasErr() {
+		return labels.NewCollection(nil).WithErr(c.Err())
+	}
+	return c.labels
+}
+
 // WithLabels sets labels and returns the component.
-func (c *Component) WithLabels(labels common.LabelsCollection) *Component {
+func (c *Component) WithLabels(labels labels.Map) *Component {
 	if c.HasErr() {
 		return c
 	}
-	c.SetLabels(labels)
+	c.labels.WithMany(labels)
 	return c
 }
 

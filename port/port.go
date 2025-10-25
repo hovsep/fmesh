@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -20,7 +21,7 @@ const (
 type Port struct {
 	name        string
 	description string
-	common.LabeledEntity
+	labels      *labels.Collection
 	*common.Chainable
 	buffer *signal.Group
 	pipes  *Group // Outbound pipes
@@ -29,11 +30,11 @@ type Port struct {
 // New creates a new port.
 func New(name string) *Port {
 	return &Port{
-		name:          name,
-		LabeledEntity: common.NewLabeledEntity(nil),
-		Chainable:     common.NewChainable(),
-		pipes:         NewGroup(),
-		buffer:        signal.NewGroup(),
+		name:      name,
+		labels:    labels.NewCollection(nil),
+		Chainable: common.NewChainable(),
+		pipes:     NewGroup(),
+		buffer:    signal.NewGroup(),
 	}
 }
 
@@ -45,6 +46,14 @@ func (p *Port) Name() string {
 // Description getter.
 func (p *Port) Description() string {
 	return p.description
+}
+
+// Labels getter.
+func (p *Port) Labels() *labels.Collection {
+	if p.HasErr() {
+		return labels.NewCollection(nil).WithErr(p.Err())
+	}
+	return p.labels
 }
 
 // WithDescription sets a description.
@@ -196,7 +205,7 @@ func validatePipe(srcPort, dstPort *Port) error {
 		return ErrNilPort
 	}
 
-	srcDir, dstDir := srcPort.LabelOrDefault(DirectionLabel, ""), dstPort.LabelOrDefault(DirectionLabel, "")
+	srcDir, dstDir := srcPort.labels.ValueOrDefault(DirectionLabel, ""), dstPort.labels.ValueOrDefault(DirectionLabel, "")
 
 	if srcDir == "" || dstDir == "" {
 		return ErrMissingLabel
@@ -210,12 +219,12 @@ func validatePipe(srcPort, dstPort *Port) error {
 }
 
 // WithLabels sets labels and returns the port.
-func (p *Port) WithLabels(labels common.LabelsCollection) *Port {
+func (p *Port) WithLabels(labels labels.Map) *Port {
 	if p.HasErr() {
 		return p
 	}
 
-	p.SetLabels(labels)
+	p.labels.WithMany(labels)
 	return p
 }
 

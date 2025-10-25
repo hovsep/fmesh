@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 			want: &Signal{
 				payload:   []any{nil},
 				Chainable: &common.Chainable{},
+				labels:    labels.NewCollection(nil),
 			},
 		},
 		{
@@ -36,6 +38,7 @@ func TestNew(t *testing.T) {
 			want: &Signal{
 				payload:   []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
 				Chainable: &common.Chainable{},
+				labels:    labels.NewCollection(nil),
 			},
 		},
 	}
@@ -118,11 +121,11 @@ func TestSignal_Map(t *testing.T) {
 			name:   "happy path",
 			signal: New(1),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithLabels(common.LabelsCollection{
+				return signal.WithLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
-			want: New(1).WithLabels(common.LabelsCollection{
+			want: New(1).WithLabels(labels.Map{
 				"l1": "v1",
 			}),
 		},
@@ -130,7 +133,7 @@ func TestSignal_Map(t *testing.T) {
 			name:   "with chain error",
 			signal: New(1).WithErr(errors.New("some error in chain")),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithLabels(common.LabelsCollection{
+				return signal.WithLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
