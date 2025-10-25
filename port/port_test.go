@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,14 +91,14 @@ func TestPort_Clear(t *testing.T) {
 func TestPort_PipeTo(t *testing.T) {
 	outputPorts := NewCollection().
 		WithDefaultLabels(
-			common.LabelsCollection{
+			labels.Map{
 				DirectionLabel: DirectionOut,
 			}).With(
 		NewIndexedGroup("out", 1, 3).PortsOrNil()...,
 	)
 	inputPorts := NewCollection().
 		WithDefaultLabels(
-			common.LabelsCollection{
+			labels.Map{
 				DirectionLabel: DirectionIn,
 			}).With(
 		NewIndexedGroup("in", 1, 3).PortsOrNil()...,
@@ -323,9 +323,9 @@ func TestPort_HasPipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").WithLabels(common.LabelsCollection{
+			port: New("p1").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).PipeTo(New("p2").WithLabels(common.LabelsCollection{
+			}).PipeTo(New("p2").WithLabels(labels.Map{
 				DirectionLabel: DirectionIn,
 			})),
 			want: true,
@@ -357,16 +357,16 @@ func TestPort_Flush(t *testing.T) {
 			name: "empty port with pipes is not flushed",
 			srcPort: New("p").
 				WithLabels(
-					common.LabelsCollection{
+					labels.Map{
 						DirectionLabel: DirectionOut,
 					}).PipeTo(
 				New("p1").
 					WithLabels(
-						common.LabelsCollection{
+						labels.Map{
 							DirectionLabel: DirectionIn,
 						}), New("p2").
 					WithLabels(
-						common.LabelsCollection{
+						labels.Map{
 							DirectionLabel: DirectionIn,
 						})),
 			assertions: func(t *testing.T, srcPort *Port) {
@@ -376,14 +376,14 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to empty ports",
-			srcPort: New("p").WithLabels(common.LabelsCollection{
+			srcPort: New("p").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).WithSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").WithLabels(common.LabelsCollection{
+					New("p1").WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}),
-					New("p2").WithLabels(common.LabelsCollection{
+					New("p2").WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					})),
 			assertions: func(t *testing.T, srcPort *Port) {
@@ -402,15 +402,15 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to non empty ports",
-			srcPort: New("p").WithLabels(common.LabelsCollection{
+			srcPort: New("p").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).
 				WithSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").WithLabels(common.LabelsCollection{
+					New("p1").WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).WithSignalGroups(signal.NewGroup(4, 5, 6)),
-					New("p2").WithLabels(common.LabelsCollection{
+					New("p2").WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).WithSignalGroups(signal.NewGroup(7, 8, 9))),
 			assertions: func(t *testing.T, srcPort *Port) {
@@ -440,7 +440,7 @@ func TestPort_Flush(t *testing.T) {
 
 func TestPort_WithLabels(t *testing.T) {
 	type args struct {
-		labels common.LabelsCollection
+		labels labels.Map
 	}
 	tests := []struct {
 		name       string
@@ -452,14 +452,14 @@ func TestPort_WithLabels(t *testing.T) {
 			name: "happy path",
 			port: New("p1"),
 			args: args{
-				labels: common.LabelsCollection{
+				labels: labels.Map{
 					"l1": "v1",
 					"l2": "v2",
 				},
 			},
 			assertions: func(t *testing.T, port *Port) {
-				assert.Len(t, port.Labels(), 2)
-				assert.True(t, port.HasAllLabels("l1", "l2"))
+				assert.Equal(t, 2, port.Labels().Len())
+				assert.True(t, port.labels.HasAll("l1", "l2"))
 			},
 		},
 	}
@@ -487,17 +487,17 @@ func TestPort_Pipes(t *testing.T) {
 		{
 			name: "with pipes",
 			port: New("p1").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					DirectionLabel: DirectionOut,
 				}).PipeTo(
 				New("p2").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}), New("p3").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					})),
-			want: NewGroup("p2", "p3").WithPortLabels(common.LabelsCollection{
+			want: NewGroup("p2", "p3").WithPortLabels(labels.Map{
 				DirectionLabel: DirectionIn,
 			}),
 		},
@@ -720,7 +720,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				srcPort:  New("p1").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 				destPort: New("p2"),
 				mapperFunc: func(signal *signal.Signal) *signal.Signal {
-					return signal.WithLabels(common.LabelsCollection{
+					return signal.WithLabels(labels.Map{
 						"l1": "v1",
 					})
 				},
@@ -730,7 +730,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				assert.Equal(t, 3, destPortAfter.Buffer().Len())
 				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
 				assert.True(t, destPortAfter.Buffer().All(func(signal *signal.Signal) bool {
-					return signal.LabelIs("l1", "v1")
+					return signal.Labels().ValueIs("l1", "v1")
 				}))
 			},
 		},

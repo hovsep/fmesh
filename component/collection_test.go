@@ -2,10 +2,11 @@ package component
 
 import (
 	"fmt"
-	"github.com/hovsep/fmesh/common"
+	"testing"
+
+	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestCollection_ByName(t *testing.T) {
@@ -65,12 +66,12 @@ func TestCollection_ByLabelValue(t *testing.T) {
 		{
 			name: "no relevant labels, nothing found",
 			components: NewCollection().With(New("c1").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					"l1": "v1",
 					"l2": "v2",
 				}),
 				New("c2").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"l1": "v1",
 						"l2": "v2",
 					})),
@@ -83,19 +84,19 @@ func TestCollection_ByLabelValue(t *testing.T) {
 		{
 			name: "found one",
 			components: NewCollection().With(New("c1").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					"version": "v1",
 				}),
 				New("c2").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"version": "v2",
 					}),
 				New("c3").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"version": "v3",
 					}),
 				New("c4").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"version": "v4",
 					})),
 
@@ -104,26 +105,26 @@ func TestCollection_ByLabelValue(t *testing.T) {
 				labelValue: "v2",
 			},
 			want: NewCollection().With(New("c2").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					"version": "v2",
 				})),
 		},
 		{
 			name: "found several",
 			components: NewCollection().With(New("c1").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					"env": "stage",
 				}),
 				New("c2").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"env": "prod",
 					}),
 				New("c3").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"env": "stage",
 					}),
 				New("c4").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"env": "prod",
 					})),
 
@@ -132,11 +133,11 @@ func TestCollection_ByLabelValue(t *testing.T) {
 				labelValue: "prod",
 			},
 			want: NewCollection().With(New("c2").
-				WithLabels(common.LabelsCollection{
+				WithLabels(labels.Map{
 					"env": "prod",
 				}),
 				New("c4").
-					WithLabels(common.LabelsCollection{
+					WithLabels(labels.Map{
 						"env": "prod",
 					})),
 		},

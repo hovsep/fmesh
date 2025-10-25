@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,14 +57,14 @@ func TestComponent_WithDescription(t *testing.T) {
 				description: "descr",
 			},
 			want: &Component{
-				name:          "c1",
-				description:   "descr",
-				LabeledEntity: common.NewLabeledEntity(nil),
-				Chainable:     common.NewChainable(),
-				inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				name:        "c1",
+				description: "descr",
+				labels:      labels.NewCollection(nil),
+				Chainable:   common.NewChainable(),
+				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				}),
-				outputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
+				outputs: port.NewCollection().WithDefaultLabels(labels.Map{
 					port.DirectionLabel: port.DirectionOut,
 				}),
 				f:     nil,
@@ -80,7 +81,7 @@ func TestComponent_WithDescription(t *testing.T) {
 
 func TestComponent_WithLabels(t *testing.T) {
 	type args struct {
-		labels common.LabelsCollection
+		labels labels.Map
 	}
 	tests := []struct {
 		name       string
@@ -92,14 +93,14 @@ func TestComponent_WithLabels(t *testing.T) {
 			name:      "happy path",
 			component: New("c1"),
 			args: args{
-				labels: common.LabelsCollection{
+				labels: labels.Map{
 					"l1": "v1",
 					"l2": "v2",
 				},
 			},
 			assertions: func(t *testing.T, component *Component) {
-				assert.Len(t, component.Labels(), 2)
-				assert.True(t, component.HasAllLabels("l1", "l2"))
+				assert.Equal(t, 2, component.Labels().Len())
+				assert.True(t, component.labels.HasAll("l1", "l2"))
 			},
 		},
 	}

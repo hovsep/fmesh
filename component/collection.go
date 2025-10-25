@@ -48,7 +48,7 @@ func (c *Collection) ByLabelValue(label, value string) *Collection {
 	selectedComponents := NewCollection()
 
 	for _, component := range c.components {
-		if component.LabelIs(label, value) {
+		if component.labels.ValueIs(label, value) {
 			selectedComponents = selectedComponents.With(component)
 		}
 	}

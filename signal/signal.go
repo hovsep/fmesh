@@ -1,21 +1,32 @@
 package signal
 
-import "github.com/hovsep/fmesh/common"
+import (
+	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
+)
 
 // Signal is a wrapper around the data flowing between components.
 type Signal struct {
 	*common.Chainable
-	common.LabeledEntity
+	labels  *labels.Collection
 	payload []any // Slice is used in order to support nil payload
 }
 
 // New creates a new signal from the given payloads.
 func New(payload any) *Signal {
 	return &Signal{
-		Chainable:     common.NewChainable(),
-		LabeledEntity: common.NewLabeledEntity(nil),
-		payload:       []any{payload},
+		Chainable: common.NewChainable(),
+		labels:    labels.NewCollection(nil),
+		payload:   []any{payload},
 	}
+}
+
+// Labels getter.
+func (s *Signal) Labels() *labels.Collection {
+	if s.HasErr() {
+		return labels.NewCollection(nil).WithErr(s.Err())
+	}
+	return s.labels
 }
 
 // Payload getter.
@@ -47,12 +58,12 @@ func (s *Signal) WithErr(err error) *Signal {
 }
 
 // WithLabels sets labels and returns the signal.
-func (s *Signal) WithLabels(labels common.LabelsCollection) *Signal {
+func (s *Signal) WithLabels(labels labels.Map) *Signal {
 	if s.HasErr() {
 		return s
 	}
 
-	s.SetLabels(labels)
+	s.labels.WithMany(labels)
 	return s
 }
 

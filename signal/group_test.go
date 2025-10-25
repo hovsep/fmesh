@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -332,17 +332,17 @@ func TestGroup_Signals(t *testing.T) {
 		},
 		{
 			name: "with labeled signals",
-			group: NewGroup(1, nil, 3).WithSignalLabels(common.LabelsCollection{
+			group: NewGroup(1, nil, 3).WithSignalLabels(labels.Map{
 				"flavor": "banana",
 			}),
 			want: Signals{
-				New(1).WithLabels(common.LabelsCollection{
+				New(1).WithLabels(labels.Map{
 					"flavor": "banana",
 				}),
-				New(nil).WithLabels(common.LabelsCollection{
+				New(nil).WithLabels(labels.Map{
 					"flavor": "banana",
 				}),
-				New(3).WithLabels(common.LabelsCollection{
+				New(3).WithLabels(labels.Map{
 					"flavor": "banana",
 				})},
 			wantErrorString: "",

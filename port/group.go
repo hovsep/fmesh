@@ -2,7 +2,9 @@ package port
 
 import (
 	"fmt"
+
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 )
 
 // Ports is a list of ports.
@@ -99,7 +101,7 @@ func (g *Group) Len() int {
 }
 
 // WithPortLabels sets labels on each port within the group and returns it.
-func (g *Group) WithPortLabels(labels common.LabelsCollection) *Group {
+func (g *Group) WithPortLabels(labels labels.Map) *Group {
 	for _, p := range g.PortsOrNil() {
 		p.WithLabels(labels)
 	}

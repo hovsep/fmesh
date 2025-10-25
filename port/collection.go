@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hovsep/fmesh/common"
+	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -17,7 +18,7 @@ type Collection struct {
 	*common.Chainable
 	ports Map
 	// Labels added by default to each port in collection
-	defaultLabels common.LabelsCollection
+	defaultLabels labels.Map
 }
 
 // NewCollection creates an empty collection.
@@ -25,7 +26,7 @@ func NewCollection() *Collection {
 	return &Collection{
 		Chainable:     common.NewChainable(),
 		ports:         make(Map),
-		defaultLabels: common.LabelsCollection{},
+		defaultLabels: labels.Map{},
 	}
 }
 
@@ -157,7 +158,7 @@ func (collection *Collection) With(ports ...*Port) *Collection {
 		if port.HasErr() {
 			return collection.WithErr(port.Err())
 		}
-		port.AddLabels(collection.defaultLabels)
+		port.labels.WithMany(collection.defaultLabels)
 		collection.ports[port.Name()] = port
 	}
 
@@ -235,7 +236,7 @@ func (collection *Collection) Len() int {
 }
 
 // WithDefaultLabels adds default labels to all ports in collection.
-func (collection *Collection) WithDefaultLabels(labels common.LabelsCollection) *Collection {
+func (collection *Collection) WithDefaultLabels(labels labels.Map) *Collection {
 	collection.defaultLabels = labels
 	return collection
 }
