@@ -18,7 +18,8 @@ const (
 
 // Port defines a connectivity point of a component.
 type Port struct {
-	name string
+	name        string
+	description string
 	common.LabeledEntity
 	*common.Chainable
 	buffer *signal.Group
@@ -36,8 +37,24 @@ func New(name string) *Port {
 	}
 }
 
+// Name getter.
 func (p *Port) Name() string {
 	return p.name
+}
+
+// Description getter.
+func (p *Port) Description() string {
+	return p.description
+}
+
+// WithDescription sets a description.
+func (p *Port) WithDescription(description string) *Port {
+	if p.HasErr() {
+		return p
+	}
+
+	p.description = description
+	return p
 }
 
 // Buffer getter

@@ -10,8 +10,8 @@ import (
 
 // Component defines a main building block of FMesh.
 type Component struct {
-	name string
-	common.DescribedEntity
+	name        string
+	description string
 	common.LabeledEntity
 	*common.Chainable
 	inputs  *port.Collection
@@ -24,10 +24,10 @@ type Component struct {
 // New creates initialized component.
 func New(name string) *Component {
 	return &Component{
-		name:            name,
-		DescribedEntity: common.NewDescribedEntity(""),
-		LabeledEntity:   common.NewLabeledEntity(nil),
-		Chainable:       common.NewChainable(),
+		name:          name,
+		description:   "",
+		LabeledEntity: common.NewLabeledEntity(nil),
+		Chainable:     common.NewChainable(),
 		inputs: port.NewCollection().WithDefaultLabels(common.LabelsCollection{
 			port.DirectionLabel: port.DirectionIn,
 		}),
@@ -38,8 +38,14 @@ func New(name string) *Component {
 	}
 }
 
+// Name getter
 func (c *Component) Name() string {
 	return c.name
+}
+
+// Description getter.
+func (c *Component) Description() string {
+	return c.description
 }
 
 // WithDescription sets a description.
@@ -48,7 +54,7 @@ func (c *Component) WithDescription(description string) *Component {
 		return c
 	}
 
-	c.DescribedEntity = common.NewDescribedEntity(description)
+	c.description = description
 	return c
 }
 
