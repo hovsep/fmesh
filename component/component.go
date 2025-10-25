@@ -38,7 +38,7 @@ func New(name string) *Component {
 	}
 }
 
-// Name getter
+// Name getter.
 func (c *Component) Name() string {
 	return c.name
 }
