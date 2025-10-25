@@ -39,7 +39,7 @@ func (c *Collection) ByName(name string) *Component {
 	return component
 }
 
-// ByLabelValue returns all components which have a given label with given value.
+// ByLabelValue returns all components that have a given label with a given value.
 func (c *Collection) ByLabelValue(label, value string) *Collection {
 	if c.HasErr() {
 		return NewCollection().WithErr(c.Err())

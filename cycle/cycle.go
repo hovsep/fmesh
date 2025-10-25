@@ -27,7 +27,7 @@ func (cycle *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return cycle.activationResults
 }
 
-// HasErrors tells whether the cycle is ended with activation errors (at lease one component returned an error).
+// HasErrors tells whether the cycle is ended with activation errors (at least one component returned an error).
 func (cycle *Cycle) HasErrors() bool {
 	return cycle.ActivationResults().HasErrors()
 }
