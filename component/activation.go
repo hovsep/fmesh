@@ -18,7 +18,7 @@ func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	return c
 }
 
-// hasActivationFunction checks when activation function is set.
+// hasActivationFunction checks when the activation function is set.
 func (c *Component) hasActivationFunction() bool {
 	if c.HasChainableErr() {
 		return false

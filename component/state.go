@@ -7,7 +7,7 @@ package component
 // and no two instances of the same component exist concurrently.
 type State map[string]any
 
-// NewState creates clean state.
+// NewState creates a clean state.
 func NewState() State {
 	return make(State)
 }
