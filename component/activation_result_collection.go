@@ -16,19 +16,19 @@ func NewActivationResultCollection() *ActivationResultCollection {
 }
 
 // Add adds multiple activation results.
-func (collection *ActivationResultCollection) Add(activationResults ...*ActivationResult) *ActivationResultCollection {
-	collection.mu.Lock()
-	defer collection.mu.Unlock()
+func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult) *ActivationResultCollection {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	for _, activationResult := range activationResults {
-		collection.activationResults[activationResult.ComponentName()] = activationResult
+		c.activationResults[activationResult.ComponentName()] = activationResult
 	}
-	return collection
+	return c
 }
 
 // HasActivationErrors tells whether the collection contains at least one activation result with error and respective code.
-func (collection *ActivationResultCollection) HasActivationErrors() bool {
-	for _, ar := range collection.activationResults {
+func (c *ActivationResultCollection) HasActivationErrors() bool {
+	for _, ar := range c.activationResults {
 		if ar.IsError() {
 			return true
 		}
@@ -37,8 +37,8 @@ func (collection *ActivationResultCollection) HasActivationErrors() bool {
 }
 
 // HasActivationPanics tells whether the collection contains at least one activation result with panic and respective code.
-func (collection *ActivationResultCollection) HasActivationPanics() bool {
-	for _, ar := range collection.activationResults {
+func (c *ActivationResultCollection) HasActivationPanics() bool {
+	for _, ar := range c.activationResults {
 		if ar.IsPanic() {
 			return true
 		}
@@ -47,8 +47,8 @@ func (collection *ActivationResultCollection) HasActivationPanics() bool {
 }
 
 // HasActivatedComponents tells when at least one component in the cycle has activated.
-func (collection *ActivationResultCollection) HasActivatedComponents() bool {
-	for _, ar := range collection.activationResults {
+func (c *ActivationResultCollection) HasActivatedComponents() bool {
+	for _, ar := range c.activationResults {
 		if ar.Activated() {
 			return true
 		}
@@ -57,8 +57,8 @@ func (collection *ActivationResultCollection) HasActivatedComponents() bool {
 }
 
 // ByComponentName returns the activation result of given component.
-func (collection *ActivationResultCollection) ByComponentName(componentName string) *ActivationResult {
-	if result, ok := collection.activationResults[componentName]; ok {
+func (c *ActivationResultCollection) ByComponentName(componentName string) *ActivationResult {
+	if result, ok := c.activationResults[componentName]; ok {
 		return result
 	}
 
@@ -66,11 +66,11 @@ func (collection *ActivationResultCollection) ByComponentName(componentName stri
 }
 
 // All returns all activation results.
-func (collection *ActivationResultCollection) All() map[string]*ActivationResult {
-	return collection.activationResults
+func (c *ActivationResultCollection) All() map[string]*ActivationResult {
+	return c.activationResults
 }
 
 // Len returns the number of activation results in the collection.
-func (collection *ActivationResultCollection) Len() int {
-	return len(collection.activationResults)
+func (c *ActivationResultCollection) Len() int {
+	return len(c.activationResults)
 }
