@@ -16,11 +16,6 @@ const (
 	DirectionOut = "out"
 )
 
-// ParentComponent is an interface for components.
-type ParentComponent interface {
-	Name() string
-}
-
 // Port defines a connectivity point of a component.
 type Port struct {
 	name            string
@@ -126,7 +121,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 		return p
 	}
 	for _, group := range signalGroups {
-		signals, err := group.All()
+		signals, err := group.AllAsSlice()
 		if err != nil {
 			p.WithChainableErr(err)
 			return New("").WithChainableErr(p.ChainableErr())
@@ -161,7 +156,7 @@ func (p *Port) Flush() *Port {
 		return p
 	}
 
-	pipes, err := p.pipes.Ports()
+	pipes, err := p.pipes.AllAsSlice()
 	if err != nil {
 		p.WithChainableErr(err)
 		return New("").WithChainableErr(p.ChainableErr())
@@ -180,12 +175,12 @@ func (p *Port) Flush() *Port {
 
 // HasSignals says whether port buffer is set or not.
 func (p *Port) HasSignals() bool {
-	return len(p.AllSignalsOrNil()) > 0
+	return !p.Buffer().IsEmpty()
 }
 
 // HasPipes says whether a port has outbound pipes.
 func (p *Port) HasPipes() bool {
-	return p.Pipes().Len() > 0
+	return !p.Pipes().IsEmpty()
 }
 
 // PipeTo creates one or multiple pipes to other port(s)
@@ -264,7 +259,7 @@ func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 		return dest.ChainableErr()
 	}
 
-	filteredSignals := source.Buffer().Filter(p).AllOrNil()
+	filteredSignals := source.Buffer().Filter(p).AllAsSliceOrNil()
 
 	dest.PutSignals(filteredSignals...)
 	if dest.HasChainableErr() {
@@ -283,7 +278,7 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 		return dest.ChainableErr()
 	}
 
-	mappedSignals := source.Buffer().Map(mapperFunc).AllOrNil()
+	mappedSignals := source.Buffer().Map(mapperFunc).AllAsSliceOrNil()
 
 	dest.PutSignals(mappedSignals...)
 	if dest.HasChainableErr() {
@@ -325,17 +320,23 @@ func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
 
 // AllSignals is shortcut method.
 func (p *Port) AllSignals() (signal.Signals, error) {
-	return p.Buffer().All()
+	signals, err := p.Buffer().AllAsSlice()
+	if err != nil {
+		return nil, err
+	}
+	return signals, nil
 }
 
 // AllSignalsOrNil is a shortcut method.
 func (p *Port) AllSignalsOrNil() signal.Signals {
-	return p.Buffer().AllOrNil()
+	signals := p.Buffer().AllAsSliceOrNil()
+	return signals
 }
 
 // AllSignalsOrDefault is a shortcut method.
 func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
-	return p.Buffer().AllOrDefault(defaultSignals)
+	signals := p.Buffer().AllAsSliceOrDefault([]*signal.Signal(defaultSignals))
+	return signals
 }
 
 // AllSignalsPayloads is a shortcut method.

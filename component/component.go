@@ -8,11 +8,6 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-// ParentMesh is an interface for a parent mesh.
-type ParentMesh interface {
-	Name() string
-}
-
 // Component defines a main building block of FMesh.
 type Component struct {
 	name         string
@@ -93,14 +88,14 @@ func (c *Component) propagateChainErrors() {
 		return
 	}
 
-	for _, p := range c.Inputs().AllOrNil() {
+	for _, p := range c.Inputs().AllAsSliceOrNil() {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return
 		}
 	}
 
-	for _, p := range c.Outputs().AllOrNil() {
+	for _, p := range c.Outputs().AllAsSliceOrNil() {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return

@@ -114,7 +114,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to empty group",
 			group: NewGroup(),
 			args: args{
-				ports: NewGroup("p1", "p2", "p3").PortsOrNil(),
+				ports: NewGroup("p1", "p2", "p3").AllAsSliceOrNil(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 3, group.Len())
@@ -124,7 +124,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to non-empty group",
 			group: NewIndexedGroup("p", 1, 3),
 			args: args{
-				ports: NewGroup("p4", "p5", "p6").PortsOrNil(),
+				ports: NewGroup("p4", "p5", "p6").AllAsSliceOrNil(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 6, group.Len())

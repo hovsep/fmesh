@@ -4,9 +4,6 @@ import (
 	"github.com/hovsep/fmesh/labels"
 )
 
-// Signals is a slice of signals.
-type Signals []*Signal
-
 // Group represents a list of signals.
 type Group struct {
 	chainableErr error
@@ -32,7 +29,7 @@ func (g *Group) FirstSignal() *Signal {
 		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
-	if g.Len() == 0 {
+	if g.IsEmpty() {
 		g.WithChainableErr(ErrNoSignalsInGroup)
 		return New(nil).WithChainableErr(g.ChainableErr())
 	}
@@ -51,7 +48,7 @@ func (g *Group) AnyMatch(p Predicate) bool {
 		return false
 	}
 
-	if g.Len() == 0 {
+	if g.IsEmpty() {
 		return false
 	}
 
@@ -177,22 +174,22 @@ func (g *Group) withSignals(signals Signals) *Group {
 	return g
 }
 
-// All returns signals or error in case of any error.
-func (g *Group) All() (Signals, error) {
+// AllAsSlice returns signals as Signals wrapper type.
+func (g *Group) AllAsSlice() (Signals, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
 	}
 	return g.signals, nil
 }
 
-// AllOrNil returns signals or nil in case of any error.
-func (g *Group) AllOrNil() Signals {
-	return g.AllOrDefault(nil)
+// AllAsSliceOrNil returns signals as Signals wrapper or nil in case of any error.
+func (g *Group) AllAsSliceOrNil() Signals {
+	return g.AllAsSliceOrDefault(nil)
 }
 
-// AllOrDefault returns signals or default in case of any error.
-func (g *Group) AllOrDefault(defaultSignals Signals) Signals {
-	signals, err := g.All()
+// AllAsSliceOrDefault returns signals as Signals wrapper or default in case of any error.
+func (g *Group) AllAsSliceOrDefault(defaultSignals Signals) Signals {
+	signals, err := g.AllAsSlice()
 	if err != nil {
 		return defaultSignals
 	}
@@ -227,7 +224,7 @@ func (g *Group) WithSignalLabels(labelMap labels.Map) *Group {
 		return g
 	}
 
-	for _, s := range g.AllOrNil() {
+	for _, s := range g.AllAsSliceOrNil() {
 		s.WithLabels(labelMap)
 	}
 	return g
@@ -241,7 +238,7 @@ func (g *Group) Filter(p Predicate) *Group {
 	}
 
 	filteredSignals := make(Signals, 0)
-	for _, s := range g.AllOrNil() {
+	for _, s := range g.AllAsSliceOrNil() {
 		if p(s) {
 			filteredSignals = append(filteredSignals, s)
 		}
@@ -258,7 +255,7 @@ func (g *Group) Map(m Mapper) *Group {
 	}
 
 	mappedSignals := make(Signals, 0)
-	for _, s := range g.AllOrNil() {
+	for _, s := range g.AllAsSliceOrNil() {
 		mappedSignals = append(mappedSignals, s.Map(m))
 	}
 
@@ -273,9 +270,44 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	}
 
 	mappedSignals := make(Signals, 0)
-	for _, s := range g.AllOrNil() {
+	for _, s := range g.AllAsSliceOrNil() {
 		mappedSignals = append(mappedSignals, s.MapPayload(mapper))
 	}
 
 	return NewGroup().withSignals(mappedSignals)
+}
+
+// FirstOrDefault returns the first signal or the provided default.
+func (g *Group) FirstOrDefault(defaultSignal *Signal) *Signal {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return defaultSignal
+	}
+	return g.signals[0]
+}
+
+// FirstOrNil returns the first signal or nil.
+func (g *Group) FirstOrNil() *Signal {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return nil
+	}
+	return g.signals[0]
+}
+
+// NoneMatch returns true if no signals match the predicate.
+func (g *Group) NoneMatch(predicate Predicate) bool {
+	return !g.AnyMatch(predicate)
+}
+
+// CountMatch returns the number of signals that match the predicate.
+func (g *Group) CountMatch(predicate Predicate) int {
+	if g.HasChainableErr() {
+		return 0
+	}
+	count := 0
+	for _, sig := range g.signals {
+		if predicate(sig) {
+			count++
+		}
+	}
+	return count
 }

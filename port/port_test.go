@@ -94,14 +94,14 @@ func TestPort_PipeTo(t *testing.T) {
 			labels.Map{
 				DirectionLabel: DirectionOut,
 			}).With(
-		NewIndexedGroup("out", 1, 3).PortsOrNil()...,
+		NewIndexedGroup("out", 1, 3).AllAsSliceOrNil()...,
 	)
 	inputPorts := NewCollection().
 		WithDefaultLabels(
 			labels.Map{
 				DirectionLabel: DirectionIn,
 			}).With(
-		NewIndexedGroup("in", 1, 3).PortsOrNil()...,
+		NewIndexedGroup("in", 1, 3).AllAsSliceOrNil()...,
 	)
 
 	type args struct {
@@ -203,7 +203,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(11).AllOrNil(),
+				signals: signal.NewGroup(11).AllAsSliceOrNil(),
 			},
 		},
 		{
@@ -213,7 +213,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(11, 12).AllOrNil(),
+				signals: signal.NewGroup(11, 12).AllAsSliceOrNil(),
 			},
 		},
 		{
@@ -223,7 +223,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(12).AllOrNil(),
+				signals: signal.NewGroup(12).AllAsSliceOrNil(),
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(13).AllOrNil(),
+				signals: signal.NewGroup(13).AllAsSliceOrNil(),
 			},
 		},
 		{
@@ -243,7 +243,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(13, 14).AllOrNil(),
+				signals: signal.NewGroup(13, 14).AllAsSliceOrNil(),
 			},
 		},
 		{
@@ -389,7 +389,7 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				for _, destPort := range srcPort.Pipes().PortsOrNil() {
+				for _, destPort := range srcPort.Pipes().AllAsSliceOrNil() {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 3, destPort.Buffer().Len())
 					allPayloads, err := destPort.AllSignalsPayloads()
@@ -416,7 +416,7 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				for _, destPort := range srcPort.Pipes().PortsOrNil() {
+				for _, destPort := range srcPort.Pipes().AllAsSliceOrNil() {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 6, destPort.Buffer().Len())
 					allPayloads, err := destPort.AllSignalsPayloads()
@@ -539,7 +539,7 @@ func TestPort_ShortcutGetters(t *testing.T) {
 
 	t.Run("AllSignalsOrDefault", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Equal(t, signal.NewGroup(999).AllOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).AllOrNil()))
+		assert.Equal(t, signal.NewGroup(999).AllAsSliceOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).AllAsSliceOrNil()))
 	})
 }
 
