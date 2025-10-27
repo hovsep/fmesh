@@ -8,6 +8,11 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
+// ParentMesh is an interface for a parent mesh.
+type ParentMesh interface {
+	Name() string
+}
+
 // Component defines a main building block of FMesh.
 type Component struct {
 	name         string
@@ -19,6 +24,7 @@ type Component struct {
 	f            ActivationFunc
 	logger       *log.Logger
 	state        State
+	parentMesh   ParentMesh
 }
 
 // New creates initialized component.
@@ -67,11 +73,11 @@ func (c *Component) Labels() *labels.Collection {
 }
 
 // WithLabels sets labels and returns the component.
-func (c *Component) WithLabels(labels labels.Map) *Component {
+func (c *Component) WithLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.labels.WithMany(labels)
+	c.labels.WithMany(labelMap)
 	return c
 }
 
@@ -87,14 +93,14 @@ func (c *Component) propagateChainErrors() {
 		return
 	}
 
-	for _, p := range c.Inputs().PortsOrNil() {
+	for _, p := range c.Inputs().AllOrNil() {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return
 		}
 	}
 
-	for _, p := range c.Outputs().PortsOrNil() {
+	for _, p := range c.Outputs().AllOrNil() {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return
@@ -136,4 +142,15 @@ func (c *Component) WithLogger(logger *log.Logger) *Component {
 // Logger returns component logger.
 func (c *Component) Logger() *log.Logger {
 	return c.logger
+}
+
+// ParentMesh getter.
+func (c *Component) ParentMesh() ParentMesh {
+	return c.parentMesh
+}
+
+// WithParentMesh sets parent mesh.
+func (c *Component) WithParentMesh(parentMesh ParentMesh) *Component {
+	c.parentMesh = parentMesh
+	return c
 }

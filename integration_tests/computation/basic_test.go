@@ -60,7 +60,7 @@ func Test_Math(t *testing.T) {
 				resultSignals := fm.Components().ByName("c2").OutputByName("res").Buffer()
 				sig, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
-				assert.Len(t, resultSignals.SignalsOrNil(), 1)
+				assert.Len(t, resultSignals.AllOrNil(), 1)
 				assert.Equal(t, 102, sig.(int))
 			},
 		},

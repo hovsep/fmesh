@@ -67,12 +67,12 @@ func (s *Signal) ChainableErr() error {
 }
 
 // WithLabels sets labels and returns the signal.
-func (s *Signal) WithLabels(labels labels.Map) *Signal {
+func (s *Signal) WithLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
 
-	s.labels.WithMany(labels)
+	s.labels.WithMany(labelMap)
 	return s
 }
 

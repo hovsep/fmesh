@@ -110,9 +110,52 @@ func (g *Group) Len() int {
 }
 
 // WithPortLabels sets labels on each port within the group and returns it.
-func (g *Group) WithPortLabels(labels labels.Map) *Group {
+func (g *Group) WithPortLabels(labelMap labels.Map) *Group {
 	for _, p := range g.PortsOrNil() {
-		p.WithLabels(labels)
+		p.WithLabels(labelMap)
 	}
 	return g
+}
+
+// IsEmpty returns true when there are no ports in the group.
+func (g *Group) IsEmpty() bool {
+	return g.Len() == 0
+}
+
+// Any returns true if at least one signal matches the predicate.
+func (g *Group) Any(p Predicate) bool {
+	if g.HasChainableErr() {
+		return false
+	}
+
+	if g.Len() == 0 {
+		return false
+	}
+
+	for _, port := range g.PortsOrNil() {
+		if p(port) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// All returns true if all signals match the predicate.
+func (g *Group) All(p Predicate) bool {
+	if g.HasChainableErr() {
+		return false
+	}
+
+	if g.IsEmpty() {
+		return false
+	}
+
+	for _, port := range g.PortsOrNil() {
+		if !p(port) {
+			return false
+		}
+	}
+
+	return true
 }

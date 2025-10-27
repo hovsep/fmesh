@@ -605,7 +605,7 @@ func TestFMesh_runCycle(t *testing.T) {
 						// Sets output
 						this.OutputByName("o1").PutSignals(signal.New(1))
 
-						this.OutputByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5).SignalsOrNil()...)
+						this.OutputByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5).AllOrNil()...)
 						return nil
 					}),
 				component.New("c3").

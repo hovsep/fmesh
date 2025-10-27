@@ -10,7 +10,7 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
-	c.inputs = collection
+	c.inputs = collection.WithParentComponent(c)
 	return c
 }
 
@@ -23,7 +23,7 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
 
-	c.outputs = collection
+	c.outputs = collection.WithParentComponent(c)
 	return c
 }
 
@@ -124,7 +124,7 @@ func (c *Component) FlushOutputs() *Component {
 		return c
 	}
 
-	ports, err := c.Outputs().Ports()
+	ports, err := c.Outputs().All()
 	if err != nil {
 		c.WithChainableErr(err)
 		return New("").WithChainableErr(c.ChainableErr())

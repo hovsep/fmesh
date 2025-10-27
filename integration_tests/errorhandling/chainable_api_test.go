@@ -125,7 +125,7 @@ func Test_FMesh(t *testing.T) {
 				_, err := fm.Run()
 				assert.True(t, fm.HasChainableErr())
 				require.Error(t, err)
-				require.ErrorContains(t, err, "port not found, port name: num777")
+				require.ErrorContains(t, err, "failed to validate component c1: port not found, port name: num777")
 			},
 		},
 		{

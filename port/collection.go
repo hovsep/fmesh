@@ -16,7 +16,7 @@ type Map map[string]*Port
 type Collection struct {
 	chainableErr error
 	ports        Map
-	// Labels added by default to each port in collection
+	// Labels added by default to each port in a collection
 	defaultLabels labels.Map
 }
 
@@ -186,7 +186,7 @@ func (c *Collection) Signals() *signal.Group {
 
 	group := signal.NewGroup()
 	for _, p := range c.ports {
-		signals, err := p.Buffer().Signals()
+		signals, err := p.Buffer().All()
 		if err != nil {
 			c.WithChainableErr(err)
 			return signal.NewGroup().WithChainableErr(c.ChainableErr())
@@ -196,27 +196,26 @@ func (c *Collection) Signals() *signal.Group {
 	return group
 }
 
-// Ports getter
-// @TODO:maybe better to hide all errors within chainable and ask user to check error ?
-func (c *Collection) Ports() (Map, error) {
+// All returns all ports in the collection.
+func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
 	return c.ports, nil
 }
 
-// PortsOrNil returns ports or nil in case of any error.
-func (c *Collection) PortsOrNil() Map {
-	return c.PortsOrDefault(nil)
+// AllOrNil returns ports or nil in case of any error.
+func (c *Collection) AllOrNil() Map {
+	return c.AllOrDefault(nil)
 }
 
-// PortsOrDefault returns ports or default in case of any error.
-func (c *Collection) PortsOrDefault(defaultPorts Map) Map {
+// AllOrDefault returns ports or default in case of any error.
+func (c *Collection) AllOrDefault(defaultPorts Map) Map {
 	if c.HasChainableErr() {
 		return defaultPorts
 	}
 
-	ports, err := c.Ports()
+	ports, err := c.All()
 	if err != nil {
 		return defaultPorts
 	}
@@ -245,7 +244,58 @@ func (c *Collection) Len() int {
 }
 
 // WithDefaultLabels adds default labels to all ports in collection.
-func (c *Collection) WithDefaultLabels(labels labels.Map) *Collection {
-	c.defaultLabels = labels
+func (c *Collection) WithDefaultLabels(labelMap labels.Map) *Collection {
+	c.defaultLabels = labelMap
 	return c
+}
+
+// WithParentComponent adds a parent component to all ports in a collection.
+func (c *Collection) WithParentComponent(component ParentComponent) *Collection {
+	for _, port := range c.ports {
+		port.WithParentComponent(component)
+	}
+	return c
+}
+
+// IsEmpty returns true when there are no ports in the collection.
+func (c *Collection) IsEmpty() bool {
+	return c.Len() == 0
+}
+
+// AnyMatch returns true if at least one signal matches the predicate.
+func (c *Collection) AnyMatch(p Predicate) bool {
+	if c.HasChainableErr() {
+		return false
+	}
+
+	if c.IsEmpty() {
+		return false
+	}
+
+	for _, port := range c.AllOrNil() {
+		if p(port) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// AllMatch returns true if all signals match the predicate.
+func (c *Collection) AllMatch(p Predicate) bool {
+	if c.HasChainableErr() {
+		return false
+	}
+
+	if c.IsEmpty() {
+		return false
+	}
+
+	for _, port := range c.AllOrNil() {
+		if !p(port) {
+			return false
+		}
+	}
+
+	return true
 }

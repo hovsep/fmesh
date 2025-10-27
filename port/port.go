@@ -16,14 +16,20 @@ const (
 	DirectionOut = "out"
 )
 
+// ParentComponent is an interface for components.
+type ParentComponent interface {
+	Name() string
+}
+
 // Port defines a connectivity point of a component.
 type Port struct {
-	name         string
-	description  string
-	labels       *labels.Collection
-	chainableErr error
-	buffer       *signal.Group
-	pipes        *Group // Outbound pipes
+	name            string
+	description     string
+	labels          *labels.Collection
+	chainableErr    error
+	buffer          *signal.Group
+	pipes           *Group // Outbound pipes
+	parentComponent ParentComponent
 }
 
 // New creates a new port.
@@ -120,7 +126,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 		return p
 	}
 	for _, group := range signalGroups {
-		signals, err := group.Signals()
+		signals, err := group.All()
 		if err != nil {
 			p.WithChainableErr(err)
 			return New("").WithChainableErr(p.ChainableErr())
@@ -218,12 +224,12 @@ func validatePipe(srcPort, dstPort *Port) error {
 }
 
 // WithLabels sets labels and returns the port.
-func (p *Port) WithLabels(labels labels.Map) *Port {
+func (p *Port) WithLabels(labelMap labels.Map) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
 
-	p.labels.WithMany(labels)
+	p.labels.WithMany(labelMap)
 	return p
 }
 
@@ -258,7 +264,7 @@ func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 		return dest.ChainableErr()
 	}
 
-	filteredSignals := source.Buffer().Filter(p).SignalsOrNil()
+	filteredSignals := source.Buffer().Filter(p).AllOrNil()
 
 	dest.PutSignals(filteredSignals...)
 	if dest.HasChainableErr() {
@@ -277,7 +283,7 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 		return dest.ChainableErr()
 	}
 
-	mappedSignals := source.Buffer().Map(mapperFunc).SignalsOrNil()
+	mappedSignals := source.Buffer().Map(mapperFunc).AllOrNil()
 
 	dest.PutSignals(mappedSignals...)
 	if dest.HasChainableErr() {
@@ -319,20 +325,31 @@ func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
 
 // AllSignals is shortcut method.
 func (p *Port) AllSignals() (signal.Signals, error) {
-	return p.Buffer().Signals()
+	return p.Buffer().All()
 }
 
 // AllSignalsOrNil is a shortcut method.
 func (p *Port) AllSignalsOrNil() signal.Signals {
-	return p.Buffer().SignalsOrNil()
+	return p.Buffer().AllOrNil()
 }
 
 // AllSignalsOrDefault is a shortcut method.
 func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
-	return p.Buffer().SignalsOrDefault(defaultSignals)
+	return p.Buffer().AllOrDefault(defaultSignals)
 }
 
 // AllSignalsPayloads is a shortcut method.
 func (p *Port) AllSignalsPayloads() ([]any, error) {
 	return p.Buffer().AllPayloads()
+}
+
+// ParentComponent getter.
+func (p *Port) ParentComponent() ParentComponent {
+	return p.parentComponent
+}
+
+// WithParentComponent sets parent mesh.
+func (p *Port) WithParentComponent(parentComponent ParentComponent) *Port {
+	p.parentComponent = parentComponent
+	return p
 }

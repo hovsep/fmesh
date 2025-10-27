@@ -88,11 +88,11 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	}
 
 	for _, c := range components {
+		// Inherit logger from fm if the component does not have its own
 		if c.Logger() == nil {
-			// Inherit logger from fm if the component does not have its own
 			c = c.WithLogger(fm.Logger())
 		}
-		fm.components = fm.components.With(c)
+		fm.components = fm.components.With(c.WithParentMesh(fm))
 		if c.HasChainableErr() {
 			return fm.WithChainableErr(c.ChainableErr())
 		}
@@ -118,7 +118,7 @@ func (fm *FMesh) runCycle() {
 
 	var wg sync.WaitGroup
 
-	components, err := fm.Components().Components()
+	components, err := fm.Components().All()
 	if err != nil {
 		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, err))
 	}
@@ -171,7 +171,7 @@ func (fm *FMesh) drainComponents() {
 		return
 	}
 
-	components, err := fm.Components().Components()
+	components, err := fm.Components().All()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(ErrFailedToDrain, err))
 		return
@@ -192,7 +192,7 @@ func (fm *FMesh) drainComponents() {
 			continue
 		}
 
-		// Components waiting for inputs are never drained
+		// AllMatch waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
 			// @TODO: maybe we should additionally clear outputs
 			// because it is technically possible to set some output signals and then return errWaitingForInput in AF
@@ -209,7 +209,7 @@ func (fm *FMesh) clearInputs() {
 		return
 	}
 
-	components, err := fm.Components().Components()
+	components, err := fm.Components().All()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(errFailedToClearInputs, err))
 		return
@@ -249,6 +249,12 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 
 	if fm.HasChainableErr() {
 		return fm.runtimeInfo, fm.ChainableErr()
+	}
+
+	validationErr := fm.validate()
+
+	if validationErr != nil {
+		return fm.WithChainableErr(validationErr).runtimeInfo, validationErr
 	}
 
 	for {
@@ -338,4 +344,59 @@ func (fm *FMesh) HasChainableErr() bool {
 // ChainableErr returns chainable error.
 func (fm *FMesh) ChainableErr() error {
 	return fm.chainableErr
+}
+
+func (fm *FMesh) validate() error {
+	if fm.HasChainableErr() {
+		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
+	}
+
+	for _, c := range fm.Components().AllOrNil() {
+		if c.HasChainableErr() {
+			return fmt.Errorf("failed to validate component %s: %w", c.Name(), c.ChainableErr())
+		}
+
+		if c.ParentMesh() == nil {
+			return fmt.Errorf("component %s his not registered in the mesh", c.Name())
+		}
+
+		if c.ParentMesh() != fm {
+			return fmt.Errorf("component %s has invalid parent mesh", c.Name())
+		}
+
+		for _, p := range c.Outputs().AllOrNil() {
+			if p.HasChainableErr() {
+				return fmt.Errorf("failed to validate port %s in component %s: %w", p.Name(), c.Name(), p.ChainableErr())
+			}
+
+			if p.ParentComponent() == nil {
+				return fmt.Errorf("port %s in component %s has not parent component set", p.Name(), c.Name())
+			}
+
+			if p.ParentComponent() != c {
+				return fmt.Errorf("port %s in component %s has invalid parent component", p.Name(), c.Name())
+			}
+
+			for _, pipe := range p.Pipes().PortsOrNil() {
+				if pipe.ParentComponent() == nil {
+					return fmt.Errorf("pipe leads to unregistered port %s in component %s", pipe.Name(), c.Name())
+				}
+
+				destComponent := fm.components.ByName(pipe.ParentComponent().Name())
+				if destComponent.HasChainableErr() {
+					return fmt.Errorf("pipe leads to absent component %s: %w", pipe.ParentComponent().Name(), destComponent.ChainableErr())
+				}
+
+				if destComponent.ParentMesh() == nil {
+					return fmt.Errorf("pipe leads to unregistered component %s", pipe.ParentComponent().Name())
+				}
+
+				if destComponent.ParentMesh() != fm {
+					return fmt.Errorf("pipe leads to port %s in component %s that has invalid parent mesh", pipe.Name(), c.Name())
+				}
+			}
+		}
+	}
+
+	return nil
 }
