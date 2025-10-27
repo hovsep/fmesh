@@ -118,7 +118,7 @@ func (fm *FMesh) runCycle() {
 
 	var wg sync.WaitGroup
 
-	components, err := fm.Components().All()
+	components, err := fm.Components().AllAsSlice()
 	if err != nil {
 		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, err))
 	}
@@ -171,7 +171,7 @@ func (fm *FMesh) drainComponents() {
 		return
 	}
 
-	components, err := fm.Components().All()
+	components, err := fm.Components().AllAsSlice()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(ErrFailedToDrain, err))
 		return
@@ -209,7 +209,7 @@ func (fm *FMesh) clearInputs() {
 		return
 	}
 
-	components, err := fm.Components().All()
+	components, err := fm.Components().AllAsSlice()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(errFailedToClearInputs, err))
 		return
@@ -351,7 +351,7 @@ func (fm *FMesh) validate() error {
 		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
 	}
 
-	for _, c := range fm.Components().AllOrNil() {
+	for _, c := range fm.Components().AllAsSliceOrNil() {
 		if c.HasChainableErr() {
 			return fmt.Errorf("failed to validate component %s: %w", c.Name(), c.ChainableErr())
 		}
@@ -364,7 +364,7 @@ func (fm *FMesh) validate() error {
 			return fmt.Errorf("component %s has invalid parent mesh", c.Name())
 		}
 
-		for _, p := range c.Outputs().AllOrNil() {
+		for _, p := range c.Outputs().AllAsSliceOrNil() {
 			if p.HasChainableErr() {
 				return fmt.Errorf("failed to validate port %s in component %s: %w", p.Name(), c.Name(), p.ChainableErr())
 			}
@@ -377,7 +377,7 @@ func (fm *FMesh) validate() error {
 				return fmt.Errorf("port %s in component %s has invalid parent component", p.Name(), c.Name())
 			}
 
-			for _, pipe := range p.Pipes().PortsOrNil() {
+			for _, pipe := range p.Pipes().AllAsSliceOrNil() {
 				if pipe.ParentComponent() == nil {
 					return fmt.Errorf("pipe leads to unregistered port %s in component %s", pipe.Name(), c.Name())
 				}

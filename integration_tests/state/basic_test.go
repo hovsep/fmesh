@@ -115,7 +115,7 @@ func Test_State(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run()
-			tt.assertions(t, fm, runResult.Cycles.CyclesOrNil(), err)
+			tt.assertions(t, fm, runResult.Cycles.AllAsSliceOrNil(), err)
 		})
 	}
 }

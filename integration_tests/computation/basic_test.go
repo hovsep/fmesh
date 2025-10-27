@@ -60,7 +60,7 @@ func Test_Math(t *testing.T) {
 				resultSignals := fm.Components().ByName("c2").OutputByName("res").Buffer()
 				sig, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
-				assert.Len(t, resultSignals.AllOrNil(), 1)
+				assert.Len(t, resultSignals.AllAsSliceOrNil(), 1)
 				assert.Equal(t, 102, sig.(int))
 			},
 		},
@@ -70,7 +70,7 @@ func Test_Math(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run()
-			tt.assertions(t, fm, runResult.Cycles.CyclesOrNil(), err)
+			tt.assertions(t, fm, runResult.Cycles.AllAsSliceOrNil(), err)
 		})
 	}
 }

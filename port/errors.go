@@ -15,4 +15,12 @@ var (
 	ErrMissingLabel = errors.New("port is missing required label")
 	// ErrInvalidPipeDirection is returned when a pipe has an invalid direction.
 	ErrInvalidPipeDirection = errors.New("pipe must go from output to input")
+	// ErrNoPortsInGroup is returned when a group has no ports.
+	ErrNoPortsInGroup = errors.New("no ports in group")
+	// ErrNoPortsInCollection is returned when a collection has no ports.
+	ErrNoPortsInCollection = errors.New("no ports in collection")
+	// ErrNoPortMatchesPredicate is returned when no port matches the predicate.
+	ErrNoPortMatchesPredicate = errors.New("no port matches the predicate")
+	// errUnexpectedErrorGettingPort is an internal error for unexpected situations.
+	errUnexpectedErrorGettingPort = errors.New("unexpected error getting port")
 )

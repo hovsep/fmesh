@@ -552,8 +552,8 @@ func TestFMesh_Run(t *testing.T) {
 
 			// Compare cycle results one by one
 			for i := 0; i < got.Cycles.Len(); i++ {
-				wantCycle := tt.wantCycles.CyclesOrNil()[i]
-				gotCycle := got.Cycles.CyclesOrNil()[i]
+				wantCycle := tt.wantCycles.AllAsSliceOrNil()[i]
+				gotCycle := got.Cycles.AllAsSliceOrNil()[i]
 				assert.Len(t, wantCycle.ActivationResults().All(), len(gotCycle.ActivationResults().All()), "ActivationResultCollection len mismatch")
 
 				// Compare activation results
@@ -605,7 +605,7 @@ func TestFMesh_runCycle(t *testing.T) {
 						// Sets output
 						this.OutputByName("o1").PutSignals(signal.New(1))
 
-						this.OutputByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5).AllOrNil()...)
+						this.OutputByName("o2").PutSignals(signal.NewGroup(2, 3, 4, 5).AllAsSliceOrNil()...)
 						return nil
 					}),
 				component.New("c3").

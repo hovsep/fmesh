@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCollection_ByName(t *testing.T) {
@@ -43,211 +41,189 @@ func TestCollection_ByName(t *testing.T) {
 	}
 }
 
-func TestCollection_ByLabelValue(t *testing.T) {
-	type args struct {
-		labelName  string
-		labelValue string
-	}
-	tests := []struct {
-		name       string
-		components *Collection
-		args       args
-		want       *Collection
-	}{
-		{
-			name:       "no labels, nothing found",
-			components: NewCollection().With(New("c1"), New("c2")),
-			args: args{
-				labelName:  "version",
-				labelValue: "v100",
-			},
-			want: NewCollection(),
-		},
-		{
-			name: "no relevant labels, nothing found",
-			components: NewCollection().With(New("c1").
-				WithLabels(labels.Map{
-					"l1": "v1",
-					"l2": "v2",
-				}),
-				New("c2").
-					WithLabels(labels.Map{
-						"l1": "v1",
-						"l2": "v2",
-					})),
-			args: args{
-				labelName:  "version",
-				labelValue: "v100",
-			},
-			want: NewCollection(),
-		},
-		{
-			name: "found one",
-			components: NewCollection().With(New("c1").
-				WithLabels(labels.Map{
-					"version": "v1",
-				}),
-				New("c2").
-					WithLabels(labels.Map{
-						"version": "v2",
-					}),
-				New("c3").
-					WithLabels(labels.Map{
-						"version": "v3",
-					}),
-				New("c4").
-					WithLabels(labels.Map{
-						"version": "v4",
-					})),
-
-			args: args{
-				labelName:  "version",
-				labelValue: "v2",
-			},
-			want: NewCollection().With(New("c2").
-				WithLabels(labels.Map{
-					"version": "v2",
-				})),
-		},
-		{
-			name: "found several",
-			components: NewCollection().With(New("c1").
-				WithLabels(labels.Map{
-					"env": "stage",
-				}),
-				New("c2").
-					WithLabels(labels.Map{
-						"env": "prod",
-					}),
-				New("c3").
-					WithLabels(labels.Map{
-						"env": "stage",
-					}),
-				New("c4").
-					WithLabels(labels.Map{
-						"env": "prod",
-					})),
-
-			args: args{
-				labelName:  "env",
-				labelValue: "prod",
-			},
-			want: NewCollection().With(New("c2").
-				WithLabels(labels.Map{
-					"env": "prod",
-				}),
-				New("c4").
-					WithLabels(labels.Map{
-						"env": "prod",
-					})),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.components.ByLabelValue(tt.args.labelName, tt.args.labelValue))
-		})
-	}
-}
-
-func TestCollection_One(t *testing.T) {
-	tests := []struct {
-		name       string
-		components *Collection
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:       "empty collection",
-			components: NewCollection(),
-			assertions: func(t *testing.T, component *Component) {
-				t.Helper()
-				assert.True(t, component.HasChainableErr())
-				require.Error(t, component.ChainableErr())
-				require.ErrorIs(t, component.ChainableErr(), errNotFound)
-			},
-		},
-		{
-			name:       "one component",
-			components: NewCollection().With(New("c1")),
-			assertions: func(t *testing.T, component *Component) {
-				t.Helper()
-				assert.False(t, component.HasChainableErr())
-				assert.Equal(t, "c1", component.Name())
-			},
-		},
-		{
-			name:       "multiple components",
-			components: NewCollection().With(New("c1"), New("c2"), New("c3")),
-			assertions: func(t *testing.T, component *Component) {
-				t.Helper()
-				assert.False(t, component.HasChainableErr())
-				require.NoError(t, component.ChainableErr())
-				// As map iteration is not determined - any component can be returned,so we do not check for name
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.components.One()
-			if tt.assertions != nil {
-				tt.assertions(t, got)
-			}
-		})
-	}
-}
-
 func TestCollection_With(t *testing.T) {
-	type args struct {
-		components []*Component
-	}
 	tests := []struct {
 		name       string
 		collection *Collection
-		args       args
+		components []*Component
 		assertions func(t *testing.T, collection *Collection)
 	}{
 		{
-			name:       "adding nothing to empty collection",
-			collection: NewCollection(),
-			args: args{
-				components: nil,
-			},
-			assertions: func(t *testing.T, collection *Collection) {
-				assert.Zero(t, collection.Len())
-			},
-		},
-		{
 			name:       "adding to empty collection",
 			collection: NewCollection(),
-			args: args{
-				components: []*Component{New("c1"), New("c2")},
-			},
+			components: []*Component{New("c1"), New("c2")},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 2, collection.Len())
-				assert.NotNil(t, collection.ByName("c1"))
-				assert.NotNil(t, collection.ByName("c2"))
+				assert.Equal(t, "c1", collection.ByName("c1").Name())
+				assert.Equal(t, "c2", collection.ByName("c2").Name())
 			},
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(New("c1"), New("c2")),
-			args: args{
-				components: []*Component{New("c3"), New("c4")},
-			},
+			collection: NewCollection().With(New("existing")),
+			components: []*Component{New("c1"), New("c2")},
 			assertions: func(t *testing.T, collection *Collection) {
-				assert.Equal(t, 4, collection.Len())
-				assert.NotNil(t, collection.ByName("c1"))
-				assert.NotNil(t, collection.ByName("c2"))
-				assert.NotNil(t, collection.ByName("c3"))
-				assert.NotNil(t, collection.ByName("c4"))
+				assert.Equal(t, 3, collection.Len())
+				assert.Equal(t, "existing", collection.ByName("existing").Name())
+				assert.Equal(t, "c1", collection.ByName("c1").Name())
+				assert.Equal(t, "c2", collection.ByName("c2").Name())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collectionAfter := tt.collection.With(tt.args.components...)
+			result := tt.collection.With(tt.components...)
 			if tt.assertions != nil {
-				tt.assertions(t, collectionAfter)
+				tt.assertions(t, result)
 			}
+		})
+	}
+}
+
+func TestCollection_Len(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		want       int
+	}{
+		{
+			name:       "empty collection",
+			collection: NewCollection(),
+			want:       0,
+		},
+		{
+			name:       "non-empty collection",
+			collection: NewCollection().With(New("c1"), New("c2"), New("c3")),
+			want:       3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.collection.Len())
+		})
+	}
+}
+
+func TestCollection_IsEmpty(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		want       bool
+	}{
+		{
+			name:       "empty collection",
+			collection: NewCollection(),
+			want:       true,
+		},
+		{
+			name:       "non-empty collection",
+			collection: NewCollection().With(New("c1")),
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.collection.IsEmpty())
+		})
+	}
+}
+
+func TestCollection_AllMatch(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		predicate  Predicate
+		want       bool
+	}{
+		{
+			name:       "empty collection returns true",
+			collection: NewCollection(),
+			predicate:  func(c *Component) bool { return false },
+			want:       true,
+		},
+		{
+			name:       "all match",
+			collection: NewCollection().With(New("c1"), New("c2")),
+			predicate:  func(c *Component) bool { return c.Name() != "" },
+			want:       true,
+		},
+		{
+			name:       "not all match",
+			collection: NewCollection().With(New("c1"), New("")),
+			predicate:  func(c *Component) bool { return c.Name() != "" },
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.collection.AllMatch(tt.predicate))
+		})
+	}
+}
+
+func TestCollection_AnyMatch(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		predicate  Predicate
+		want       bool
+	}{
+		{
+			name:       "empty collection returns false",
+			collection: NewCollection(),
+			predicate:  func(c *Component) bool { return true },
+			want:       false,
+		},
+		{
+			name:       "at least one matches",
+			collection: NewCollection().With(New("c1"), New("")),
+			predicate:  func(c *Component) bool { return c.Name() != "" },
+			want:       true,
+		},
+		{
+			name:       "none match",
+			collection: NewCollection().With(New(""), New("")),
+			predicate:  func(c *Component) bool { return c.Name() != "" },
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.collection.AnyMatch(tt.predicate))
+		})
+	}
+}
+
+func TestCollection_Filter(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		predicate  Predicate
+		want       int // expected length after filtering
+	}{
+		{
+			name:       "empty collection",
+			collection: NewCollection(),
+			predicate:  func(c *Component) bool { return true },
+			want:       0,
+		},
+		{
+			name:       "filter some components",
+			collection: NewCollection().With(New("c1"), New("c2"), New("c3")),
+			predicate:  func(c *Component) bool { return c.Name() != "c2" },
+			want:       2,
+		},
+		{
+			name:       "filter all components",
+			collection: NewCollection().With(New("c1"), New("c2")),
+			predicate:  func(c *Component) bool { return false },
+			want:       0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.collection.Filter(tt.predicate)
+			assert.Equal(t, tt.want, result.Len())
 		})
 	}
 }

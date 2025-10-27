@@ -24,7 +24,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: nil,
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.All()
+				signals, err := group.AllAsSlice()
 				require.NoError(t, err)
 				assert.Empty(t, signals)
 				assert.Zero(t, group.Len())
@@ -36,7 +36,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: []any{1, nil, 3},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.All()
+				signals, err := group.AllAsSlice()
 				require.NoError(t, err)
 				assert.Equal(t, 3, group.Len())
 				assert.Contains(t, signals, New(1))
@@ -171,7 +171,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to empty group",
 			group: NewGroup(),
 			args: args{
-				signals: NewGroup(3, 4, 5).AllOrNil(),
+				signals: NewGroup(3, 4, 5).AllAsSliceOrNil(),
 			},
 			want: NewGroup(3, 4, 5),
 		},
@@ -179,7 +179,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to group",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				signals: NewGroup(4, 5, 6).AllOrNil(),
+				signals: NewGroup(4, 5, 6).AllAsSliceOrNil(),
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
 		},
@@ -190,7 +190,7 @@ func TestGroup_With(t *testing.T) {
 				With(nil).
 				WithPayloads(4, 5, 6),
 			args: args{
-				signals: NewGroup(7, nil, 9).AllOrNil(),
+				signals: NewGroup(7, nil, 9).AllAsSliceOrNil(),
 			},
 			want: NewGroup().WithChainableErr(errors.New("signal is invalid")),
 		},
@@ -350,7 +350,7 @@ func TestGroup_Signals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.group.All()
+			got, err := tt.group.AllAsSlice()
 			if tt.wantErrorString != "" {
 				require.Error(t, err)
 				require.EqualError(t, err, tt.wantErrorString)
@@ -406,7 +406,7 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.AllOrDefault(tt.args.defaultSignals))
+			assert.Equal(t, tt.want, tt.group.AllAsSliceOrDefault(tt.args.defaultSignals))
 		})
 	}
 }

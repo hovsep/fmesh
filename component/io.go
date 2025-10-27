@@ -33,7 +33,7 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 		return c
 	}
 
-	ports, err := port.NewGroup(portNames...).Ports()
+	ports, err := port.NewGroup(portNames...).AllAsSlice()
 	if err != nil {
 		c.WithChainableErr(err)
 		return New("").WithChainableErr(c.ChainableErr())
@@ -48,7 +48,7 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 		return c
 	}
 
-	ports, err := port.NewGroup(portNames...).Ports()
+	ports, err := port.NewGroup(portNames...).AllAsSlice()
 	if err != nil {
 		c.WithChainableErr(err)
 		return New("").WithChainableErr(c.ChainableErr())
@@ -124,7 +124,7 @@ func (c *Component) FlushOutputs() *Component {
 		return c
 	}
 
-	ports, err := c.Outputs().All()
+	ports, err := c.Outputs().AllAsSlice()
 	if err != nil {
 		c.WithChainableErr(err)
 		return New("").WithChainableErr(c.ChainableErr())

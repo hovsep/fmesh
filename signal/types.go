@@ -8,3 +8,6 @@ type Mapper func(signal *Signal) *Signal
 
 // PayloadMapper transforms a payload into a new payload.
 type PayloadMapper func(payload any) any
+
+// Signals is a slice of signals.
+type Signals []*Signal

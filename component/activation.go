@@ -5,9 +5,6 @@ import (
 	"fmt"
 )
 
-// ActivationFunc is the function that will be called when the component is activated.
-type ActivationFunc func(this *Component) error
-
 // WithActivationFunc sets the activation function.
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	if c.HasChainableErr() {
