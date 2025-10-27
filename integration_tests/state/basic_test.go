@@ -102,7 +102,7 @@ func Test_State(t *testing.T) {
 
 				consumedSignals := fm.Components().ByName("consumer").OutputByName("consumed_signals").Buffer()
 
-				// All signals transferred from producer to consumer
+				// AllMatch signals transferred from producer to consumer
 				assert.Equal(t, 3+70+22+1350, consumedSignals.Len())
 
 				// Counter state reflects correct count

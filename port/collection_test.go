@@ -336,7 +336,7 @@ func TestCollection_PipeTo(t *testing.T) {
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 3, collection.Len())
-				for _, p := range collection.PortsOrNil() {
+				for _, p := range collection.AllOrNil() {
 					assert.True(t, p.HasPipes())
 					assert.Equal(t, 5, p.Pipes().Len())
 				}

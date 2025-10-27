@@ -70,13 +70,13 @@ func Test_Fan(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
 				require.NoError(t, runErr)
-				// All consumers received a signal
+				// AllMatch consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
 				assert.True(t, c1.OutputByName("o1").HasSignals())
 				assert.True(t, c2.OutputByName("o1").HasSignals())
 				assert.True(t, c3.OutputByName("o1").HasSignals())
 
-				// All 3 signals are the same (literally the same address in memory)
+				// AllMatch 3 signals are the same (literally the same address in memory)
 				sig1, err := c1.OutputByName("o1").FirstSignalPayload()
 				require.NoError(t, err)
 				sig2, err := c2.OutputByName("o1").FirstSignalPayload()
@@ -139,14 +139,14 @@ func Test_Fan(t *testing.T) {
 
 				// The signal is combined and consist of 3 payloads
 				resultSignals := fm.Components().ByName("consumer").OutputByName("o1").Buffer()
-				assert.Len(t, resultSignals.SignalsOrNil(), 3)
+				assert.Len(t, resultSignals.AllOrNil(), 3)
 
 				// And they are all different
 				sig0, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
-				sig1, err := resultSignals.SignalsOrNil()[1].Payload()
+				sig1, err := resultSignals.AllOrNil()[1].Payload()
 				require.NoError(t, err)
-				sig2, err := resultSignals.SignalsOrNil()[2].Payload()
+				sig2, err := resultSignals.AllOrNil()[2].Payload()
 				require.NoError(t, err)
 
 				assert.NotEqual(t, sig0, sig1)

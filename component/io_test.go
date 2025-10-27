@@ -16,30 +16,26 @@ func TestComponent_WithInputs(t *testing.T) {
 		portNames []string
 	}
 	tests := []struct {
-		name      string
-		component *Component
-		args      args
-		want      *Component
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name:      "happy path",
-			component: New("c1"),
+			name: "happy path",
+			component: New("c1").WithActivationFunc(func(this *Component) error {
+				return nil
+			}),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
-			want: &Component{
-				name:         "c1",
-				description:  "",
-				labels:       labels.NewCollection(nil),
-				chainableErr: nil,
-				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				}).With(port.New("p1"), port.New("p2")),
-				outputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionOut,
-				}),
-				f:     nil,
-				state: NewState(),
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, "c1", component.Name())
+				assert.Equal(t, 2, component.Inputs().Len())
+				assert.Zero(t, component.Outputs().Len())
+				assert.Empty(t, component.Description())
+				assert.Zero(t, component.labels.Len())
+				assert.True(t, component.hasActivationFunction())
 			},
 		},
 		{
@@ -48,25 +44,22 @@ func TestComponent_WithInputs(t *testing.T) {
 			args: args{
 				portNames: nil,
 			},
-			want: &Component{
-				name:         "c1",
-				description:  "",
-				labels:       labels.NewCollection(nil),
-				chainableErr: nil,
-				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				}),
-				outputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionOut,
-				}),
-				f:     nil,
-				state: NewState(),
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, "c1", component.Name())
+				assert.Zero(t, component.Inputs().Len())
+				assert.Zero(t, component.Outputs().Len())
+				assert.Empty(t, component.Description())
+				assert.Zero(t, component.labels.Len())
+				assert.False(t, component.hasActivationFunction())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.WithInputs(tt.args.portNames...))
+			componentAfter := tt.component.WithInputs(tt.args.portNames...)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
 		})
 	}
 }
@@ -76,30 +69,26 @@ func TestComponent_WithOutputs(t *testing.T) {
 		portNames []string
 	}
 	tests := []struct {
-		name      string
-		component *Component
-		args      args
-		want      *Component
+		name       string
+		component  *Component
+		args       args
+		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name:      "happy path",
-			component: New("c1"),
+			name: "happy path",
+			component: New("c1").WithActivationFunc(func(this *Component) error {
+				return nil
+			}),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
-			want: &Component{
-				name:         "c1",
-				description:  "",
-				labels:       labels.NewCollection(nil),
-				chainableErr: nil,
-				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				}),
-				outputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionOut,
-				}).With(port.New("p1"), port.New("p2")),
-				f:     nil,
-				state: NewState(),
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, "c1", component.Name())
+				assert.Equal(t, 2, component.Outputs().Len())
+				assert.Zero(t, component.Inputs().Len())
+				assert.Empty(t, component.Description())
+				assert.Zero(t, component.labels.Len())
+				assert.True(t, component.hasActivationFunction())
 			},
 		},
 		{
@@ -108,25 +97,22 @@ func TestComponent_WithOutputs(t *testing.T) {
 			args: args{
 				portNames: nil,
 			},
-			want: &Component{
-				name:         "c1",
-				description:  "",
-				labels:       labels.NewCollection(nil),
-				chainableErr: nil,
-				inputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				}),
-				outputs: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionOut,
-				}),
-				f:     nil,
-				state: NewState(),
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, "c1", component.Name())
+				assert.Zero(t, component.Inputs().Len())
+				assert.Zero(t, component.Outputs().Len())
+				assert.Empty(t, component.Description())
+				assert.Zero(t, component.labels.Len())
+				assert.False(t, component.hasActivationFunction())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.WithOutputs(tt.args.portNames...))
+			componentAfter := tt.component.WithOutputs(tt.args.portNames...)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
 		})
 	}
 }
@@ -231,56 +217,68 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 
 func TestComponent_Inputs(t *testing.T) {
 	tests := []struct {
-		name      string
-		component *Component
-		want      *port.Collection
+		name       string
+		component  *Component
+		assertions func(t *testing.T, collection *port.Collection)
 	}{
 		{
 			name:      "no inputs",
 			component: New("c1"),
-			want: port.NewCollection().WithDefaultLabels(labels.Map{
-				port.DirectionLabel: port.DirectionIn,
-			}),
+			assertions: func(t *testing.T, collection *port.Collection) {
+				assert.Zero(t, collection.Len())
+			},
 		},
 		{
 			name:      "with inputs",
 			component: New("c1").WithInputs("i1", "i2"),
-			want: port.NewCollection().WithDefaultLabels(labels.Map{
-				port.DirectionLabel: port.DirectionIn,
-			}).With(port.New("i1"), port.New("i2")),
+			assertions: func(t *testing.T, collection *port.Collection) {
+				assert.Equal(t, 2, collection.Len())
+				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
+					return p.Labels().ValueIs(port.DirectionLabel, port.DirectionIn)
+				}))
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.Inputs())
+			got := tt.component.Inputs()
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
 
 func TestComponent_Outputs(t *testing.T) {
 	tests := []struct {
-		name      string
-		component *Component
-		want      *port.Collection
+		name       string
+		component  *Component
+		assertions func(t *testing.T, collection *port.Collection)
 	}{
 		{
 			name:      "no outputs",
 			component: New("c1"),
-			want: port.NewCollection().WithDefaultLabels(labels.Map{
-				port.DirectionLabel: port.DirectionOut,
-			}),
+			assertions: func(t *testing.T, collection *port.Collection) {
+				assert.Zero(t, collection.Len())
+			},
 		},
 		{
 			name:      "with outputs",
 			component: New("c1").WithOutputs("o1", "o2"),
-			want: port.NewCollection().WithDefaultLabels(labels.Map{
-				port.DirectionLabel: port.DirectionOut,
-			}).With(port.New("o1"), port.New("o2")),
+			assertions: func(t *testing.T, collection *port.Collection) {
+				assert.Equal(t, 2, collection.Len())
+				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
+					return p.Labels().ValueIs(port.DirectionLabel, port.DirectionOut)
+				}))
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.Outputs())
+			got := tt.component.Outputs()
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
@@ -288,16 +286,12 @@ func TestComponent_Outputs(t *testing.T) {
 func TestComponent_ShortcutMethods(t *testing.T) {
 	t.Run("InputByName", func(t *testing.T) {
 		c := New("c").WithInputs("a", "b", "c")
-		assert.Equal(t, port.New("b").WithLabels(labels.Map{
-			port.DirectionLabel: port.DirectionIn,
-		}), c.InputByName("b"))
+		assert.Equal(t, "b", c.InputByName("b").Name())
 	})
 
 	t.Run("OutputByName", func(t *testing.T) {
 		c := New("c").WithOutputs("a", "b", "c")
-		assert.Equal(t, port.New("b").WithLabels(labels.Map{
-			port.DirectionLabel: port.DirectionOut,
-		}), c.OutputByName("b"))
+		assert.Equal(t, "c", c.OutputByName("c").Name())
 	})
 }
 

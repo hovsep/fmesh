@@ -203,7 +203,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(11).SignalsOrNil(),
+				signals: signal.NewGroup(11).AllOrNil(),
 			},
 		},
 		{
@@ -213,7 +213,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(11, 12).SignalsOrNil(),
+				signals: signal.NewGroup(11, 12).AllOrNil(),
 			},
 		},
 		{
@@ -223,7 +223,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(12).SignalsOrNil(),
+				signals: signal.NewGroup(12).AllOrNil(),
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(13).SignalsOrNil(),
+				signals: signal.NewGroup(13).AllOrNil(),
 			},
 		},
 		{
@@ -243,7 +243,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Buffer())
 			},
 			args: args{
-				signals: signal.NewGroup(13, 14).SignalsOrNil(),
+				signals: signal.NewGroup(13, 14).AllOrNil(),
 			},
 		},
 		{
@@ -539,7 +539,7 @@ func TestPort_ShortcutGetters(t *testing.T) {
 
 	t.Run("AllSignalsOrDefault", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Equal(t, signal.NewGroup(999).SignalsOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).SignalsOrNil()))
+		assert.Equal(t, signal.NewGroup(999).AllOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).AllOrNil()))
 	})
 }
 
@@ -729,7 +729,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 3, destPortAfter.Buffer().Len())
 				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
-				assert.True(t, destPortAfter.Buffer().All(func(signal *signal.Signal) bool {
+				assert.True(t, destPortAfter.Buffer().AllMatch(func(signal *signal.Signal) bool {
 					return signal.Labels().ValueIs("l1", "v1")
 				}))
 			},

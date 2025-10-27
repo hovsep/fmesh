@@ -87,17 +87,30 @@ func (c *Collection) ChainableErr() error {
 	return c.chainableErr
 }
 
-// Len returns number of ports in collection.
+// Len returns the number of ports in a collection.
 func (c *Collection) Len() int {
 	return len(c.components)
 }
 
-// Components returns underlying components map.
-func (c *Collection) Components() (Map, error) {
+// All returns underlying components map.
+func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
 	return c.components, nil
+}
+
+// AllOrDefault returns all components or a default value in case of any error.
+func (c *Collection) AllOrDefault(defaultValue Map) Map {
+	if c.HasChainableErr() {
+		return defaultValue
+	}
+	return c.components
+}
+
+// AllOrNil returns all components or nil in case of any error.
+func (c *Collection) AllOrNil() Map {
+	return c.AllOrDefault(nil)
 }
 
 // One returns an arbitrary component from the collection without guaranteeing order.
