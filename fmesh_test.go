@@ -558,12 +558,12 @@ func TestFMesh_Run(t *testing.T) {
 
 				// Compare activation results
 				for componentName, gotActivationResult := range gotCycle.ActivationResults().AllAsMapOrNil() {
-					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).Activated(), gotActivationResult.Activated())
-					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).ComponentName(), gotActivationResult.ComponentName())
-					assert.Equal(t, wantCycle.ActivationResults().ByComponentName(componentName).Code(), gotActivationResult.Code())
+					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).Activated(), gotActivationResult.Activated())
+					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).ComponentName(), gotActivationResult.ComponentName())
+					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).Code(), gotActivationResult.Code())
 
-					if wantCycle.ActivationResults().ByComponentName(componentName).IsError() {
-						assert.EqualError(t, wantCycle.ActivationResults().ByComponentName(componentName).ActivationError(), gotActivationResult.ActivationError().Error())
+					if wantCycle.ActivationResults().ByName(componentName).IsError() {
+						assert.EqualError(t, wantCycle.ActivationResults().ByName(componentName).ActivationError(), gotActivationResult.ActivationError().Error())
 					} else {
 						assert.False(t, gotActivationResult.IsError())
 					}
