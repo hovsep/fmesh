@@ -90,15 +90,23 @@ func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	return c
 }
 
-// Clear clears all ports in collection.
-func (c *Collection) Clear() *Collection {
-	for _, p := range c.ports {
-		p.Clear()
-
-		if p.HasChainableErr() {
-			return c.WithChainableErr(p.ChainableErr())
-		}
+// ForEach applies the action to each port and returns the collection for chaining.
+func (c *Collection) ForEach(action func(*Port)) *Collection {
+	if c.HasChainableErr() {
+		return c
 	}
+	for _, p := range c.ports {
+		action(p)
+	}
+	return c
+}
+
+// Clear removes all ports from the collection.
+func (c *Collection) Clear() *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.ports = make(Map)
 	return c
 }
 

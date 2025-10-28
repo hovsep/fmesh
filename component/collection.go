@@ -277,3 +277,23 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 	}
 	return mapped
 }
+
+// ForEach applies the action to each component and returns the collection for chaining.
+func (c *Collection) ForEach(action func(*Component)) *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+	for _, comp := range c.components {
+		action(comp)
+	}
+	return c
+}
+
+// Clear removes all components from the collection.
+func (c *Collection) Clear() *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.components = make(Map)
+	return c
+}

@@ -36,6 +36,17 @@ func (g *Group) Without(predicate Predicate) *Group {
 	})
 }
 
+// ForEach applies the action to each cycle and returns the group for chaining.
+func (g *Group) ForEach(action func(*Cycle)) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	for _, c := range g.cycles {
+		action(c)
+	}
+	return g
+}
+
 // withCycles sets cycles.
 func (g *Group) withCycles(cycles Cycles) *Group {
 	g.cycles = cycles

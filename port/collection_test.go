@@ -191,7 +191,9 @@ func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		ports := NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
-		ports.Clear()
+		ports.ForEach(func(p *Port) {
+			p.Clear()
+		})
 		assert.False(t, ports.AnyHasSignals())
 	})
 }

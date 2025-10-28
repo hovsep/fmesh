@@ -1,9 +1,5 @@
 package signal
 
-import (
-	"github.com/hovsep/fmesh/labels"
-)
-
 // Group represents a list of signals.
 type Group struct {
 	chainableErr error
@@ -243,15 +239,14 @@ func (g *Group) Len() int {
 	return len(g.signals)
 }
 
-// WithSignalLabels sets labels on each signal within the group and returns it.
-func (g *Group) WithSignalLabels(labelMap labels.Map) *Group {
+// ForEach applies the action to each signal and returns the group for chaining.
+// This is primarily intended for label manipulation as signals are immutable data.
+func (g *Group) ForEach(action func(*Signal)) *Group {
 	if g.HasChainableErr() {
-		// Do nothing but propagate the error
 		return g
 	}
-
-	for _, s := range g.AllAsSliceOrNil() {
-		s.WithLabels(labelMap)
+	for _, s := range g.signals {
+		action(s)
 	}
 	return g
 }
