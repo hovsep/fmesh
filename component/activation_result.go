@@ -75,17 +75,17 @@ func NewActivationResult(componentName string) *ActivationResult {
 	}
 }
 
-// ComponentName getter.
+// ComponentName returns the name of the component this activation result belongs to.
 func (ar *ActivationResult) ComponentName() string {
 	return ar.componentName
 }
 
-// Activated getter.
+// Activated returns true if the component was activated.
 func (ar *ActivationResult) Activated() bool {
 	return ar.activated
 }
 
-// ActivationError getter.
+// ActivationError returns the activation error if any occurred.
 func (ar *ActivationResult) ActivationError() error {
 	return ar.activationError
 }
@@ -95,7 +95,7 @@ func (ar *ActivationResult) ActivationErrorWithComponentName() error {
 	return fmt.Errorf("component %s has activation error: %w", ar.componentName, ar.ActivationError())
 }
 
-// Code getter.
+// Code returns the activation result code.
 func (ar *ActivationResult) Code() ActivationResultCode {
 	return ar.code
 }
@@ -110,13 +110,13 @@ func (ar *ActivationResult) IsPanic() bool {
 	return ar.code == ActivationCodePanicked && ar.ActivationError() != nil
 }
 
-// SetActivated setter.
+// SetActivated sets the activated flag and returns the activation result.
 func (ar *ActivationResult) SetActivated(activated bool) *ActivationResult {
 	ar.activated = activated
 	return ar
 }
 
-// WithActivationCode setter.
+// WithActivationCode sets the activation code and returns the activation result.
 func (ar *ActivationResult) WithActivationCode(code ActivationResultCode) *ActivationResult {
 	ar.code = code
 	return ar

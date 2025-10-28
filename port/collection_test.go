@@ -20,7 +20,7 @@ func (c *Collection) mustAll() Map {
 	return ports
 }
 
-func TestCollection_AllHaveSignal(t *testing.T) {
+func TestCollection_AllHaveSignals(t *testing.T) {
 	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
@@ -52,7 +52,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 	}
 }
 
-func TestCollection_AnyHasSignal(t *testing.T) {
+func TestCollection_AnyHasSignals(t *testing.T) {
 	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
@@ -196,8 +196,8 @@ func TestCollection_ByNames(t *testing.T) {
 	}
 }
 
-func TestCollection_ClearSignal(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
+func TestCollection_ForEachClear(t *testing.T) {
+	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
 		ports := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
 		ports.ForEach(func(p *Port) {

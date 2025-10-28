@@ -43,12 +43,12 @@ func New(name string) *FMesh {
 	}
 }
 
-// Name getter.
+// Name returns the name of the F-Mesh.
 func (fm *FMesh) Name() string {
 	return fm.name
 }
 
-// Description getter.
+// Description returns the description of the F-Mesh.
 func (fm *FMesh) Description() string {
 	return fm.description
 }
@@ -58,7 +58,7 @@ func NewWithConfig(name string, config *Config) *FMesh {
 	return New(name).withConfig(config)
 }
 
-// Components getter.
+// Components returns all components in the F-Mesh.
 func (fm *FMesh) Components() *component.Collection {
 	if fm.HasChainableErr() {
 		return component.NewCollection().WithChainableErr(fm.ChainableErr())
@@ -200,7 +200,7 @@ func (fm *FMesh) drainComponents() {
 			continue
 		}
 
-		// AllMatch waiting for inputs are never drained
+		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
 			// @TODO: maybe we should additionally clear outputs
 			// because it is technically possible to set some output signals and then return errWaitingForInput in AF

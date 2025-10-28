@@ -74,7 +74,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) 
 	return c.withOutputPorts(c.Outputs().WithIndexed(prefix, startIndex, endIndex))
 }
 
-// Inputs getter.
+// Inputs returns the component's input ports collection.
 func (c *Component) Inputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
@@ -83,7 +83,7 @@ func (c *Component) Inputs() *port.Collection {
 	return c.inputs
 }
 
-// Outputs getter.
+// Outputs returns the component's output ports collection.
 func (c *Component) Outputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
