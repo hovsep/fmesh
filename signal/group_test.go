@@ -293,13 +293,13 @@ func TestGroup_First(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.FirstSignal()
+			got := tt.group.First()
 			if tt.want.HasChainableErr() {
 				assert.True(t, got.HasChainableErr())
 				assert.Error(t, got.ChainableErr())
 				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
 			} else {
-				assert.Equal(t, tt.want, tt.group.FirstSignal())
+				assert.Equal(t, tt.want, tt.group.First())
 			}
 		})
 	}

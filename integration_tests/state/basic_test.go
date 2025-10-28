@@ -1,6 +1,9 @@
 package state
 
 import (
+	"math/rand"
+	"testing"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -8,8 +11,6 @@ import (
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
 )
 
 func Test_State(t *testing.T) {
@@ -27,7 +28,7 @@ func Test_State(t *testing.T) {
 					WithInputs("demand_rate").
 					WithOutputs("signal_out").
 					WithActivationFunc(func(this *component.Component) error {
-						demandRate := this.InputByName("demand_rate").FirstSignalPayloadOrDefault(1).(int)
+						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
 
 						for i := 0; i < demandRate; i++ {
@@ -50,7 +51,7 @@ func Test_State(t *testing.T) {
 							this.State().Set("observed_signals_count", count)
 						}()
 
-						count += this.InputByName("bypass_in").Buffer().Len()
+						count += this.InputByName("bypass_in").Signals().Len()
 						this.Logger().Println("so far signals observed ", count)
 
 						_ = port.ForwardSignals(this.InputByName("bypass_in"), this.OutputByName("bypass_out"))
@@ -100,7 +101,7 @@ func Test_State(t *testing.T) {
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)
 
-				consumedSignals := fm.Components().ByName("consumer").OutputByName("consumed_signals").Buffer()
+				consumedSignals := fm.Components().ByName("consumer").OutputByName("consumed_signals").Signals()
 
 				// AllMatch signals transferred from producer to consumer
 				assert.Equal(t, 3+70+22+1350, consumedSignals.Len())

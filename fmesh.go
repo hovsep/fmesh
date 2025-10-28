@@ -132,14 +132,14 @@ func (fm *FMesh) runCycle() {
 		go func(component *component.Component, cycle *cycle.Cycle) {
 			defer wg.Done()
 
-			cycle.ActivationResults().Add(component.MaybeActivate())
+			cycle.ActivationResults().With(component.MaybeActivate())
 		}(c, newCycle)
 	}
 
 	wg.Wait()
 
 	// Bubble up chain errors from activation results
-	for _, ar := range newCycle.ActivationResults().All() {
+	for _, ar := range newCycle.ActivationResults().AllAsMapOrNil() {
 		if ar.HasChainableErr() {
 			newCycle.WithChainableErr(ar.ChainableErr())
 			break
@@ -151,7 +151,7 @@ func (fm *FMesh) runCycle() {
 	}
 
 	if fm.IsDebug() {
-		for _, ar := range newCycle.ActivationResults().All() {
+		for _, ar := range newCycle.ActivationResults().AllAsMapOrNil() {
 			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
 		}
 	}

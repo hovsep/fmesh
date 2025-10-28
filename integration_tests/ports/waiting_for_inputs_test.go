@@ -27,7 +27,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						WithInputs("i1").
 						WithOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
-							inputNum := this.InputByName("i1").FirstSignalPayloadOrDefault(0)
+							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 
 							this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 							return nil
@@ -49,8 +49,8 @@ func Test_WaitingForInputs(t *testing.T) {
 							return component.NewErrWaitForInputs(true)
 						}
 
-						inputNum1 := this.InputByName("i1").FirstSignalPayloadOrDefault(0)
-						inputNum2 := this.InputByName("i2").FirstSignalPayloadOrDefault(0)
+						inputNum1 := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
+						inputNum2 := this.InputByName("i2").Signals().FirstPayloadOrDefault(0)
 
 						this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 						return nil
@@ -80,7 +80,7 @@ func Test_WaitingForInputs(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)
-				result, err := fm.Components().ByName("sum").OutputByName("o1").FirstSignalPayload()
+				result, err := fm.Components().ByName("sum").OutputByName("o1").Signals().FirstPayload()
 				require.NoError(t, err)
 				assert.Equal(t, 16, result.(int))
 			},

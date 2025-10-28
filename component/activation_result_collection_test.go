@@ -48,7 +48,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 		},
 		{
 			name: "adding to non-empty collection",
-			collection: NewActivationResultCollection().Add(
+			collection: NewActivationResultCollection().With(
 				New("c1").newActivationResultOK(),
 				New("c2").newActivationResultOK(),
 			),
@@ -68,7 +68,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.Add(tt.args.activationResults...)
+			tt.collection.With(tt.args.activationResults...)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}

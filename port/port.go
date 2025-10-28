@@ -22,7 +22,7 @@ type Port struct {
 	description     string
 	labels          *labels.Collection
 	chainableErr    error
-	buffer          *signal.Group
+	signals         *signal.Group
 	pipes           *Group // Outbound pipes
 	parentComponent ParentComponent
 }
@@ -34,7 +34,7 @@ func New(name string) *Port {
 		labels:       labels.NewCollection(nil),
 		chainableErr: nil,
 		pipes:        NewGroup(),
-		buffer:       signal.NewGroup(),
+		signals:      signal.NewGroup(),
 	}
 }
 
@@ -66,15 +66,6 @@ func (p *Port) WithDescription(description string) *Port {
 	return p
 }
 
-// Buffer getter
-// @TODO: maybe we can hide this and return signals to user code.
-func (p *Port) Buffer() *signal.Group {
-	if p.HasChainableErr() {
-		return signal.NewGroup().WithChainableErr(p.ChainableErr())
-	}
-	return p.buffer
-}
-
 // Pipes getter
 // @TODO maybe better to return []*Port directly.
 func (p *Port) Pipes() *Group {
@@ -94,8 +85,16 @@ func (p *Port) withBuffer(buffer *signal.Group) *Port {
 		p.WithChainableErr(buffer.ChainableErr())
 		return New("").WithChainableErr(p.ChainableErr())
 	}
-	p.buffer = buffer
+	p.signals = buffer
 	return p
+}
+
+// Signals returns the signal group containing all signals in the port.
+func (p *Port) Signals() *signal.Group {
+	if p.HasChainableErr() {
+		return signal.NewGroup().WithChainableErr(p.ChainableErr())
+	}
+	return p.signals
 }
 
 // PutSignals adds signals to buffer.
@@ -103,7 +102,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withBuffer(p.Buffer().With(signals...))
+	return p.withBuffer(p.Signals().With(signals...))
 }
 
 // WithSignals appends signals into the buffer and returns the port.
@@ -175,7 +174,7 @@ func (p *Port) Flush() *Port {
 
 // HasSignals says whether port buffer is set or not.
 func (p *Port) HasSignals() bool {
-	return !p.Buffer().IsEmpty()
+	return !p.Signals().IsEmpty()
 }
 
 // HasPipes says whether a port has outbound pipes.
@@ -238,7 +237,7 @@ func ForwardSignals(source, dest *Port) error {
 		return dest.ChainableErr()
 	}
 
-	signals, err := source.AllSignals()
+	signals, err := source.Signals().AllAsSlice()
 	if err != nil {
 		return err
 	}
@@ -259,7 +258,7 @@ func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 		return dest.ChainableErr()
 	}
 
-	filteredSignals := source.Buffer().Filter(p).AllAsSliceOrNil()
+	filteredSignals := source.Signals().Filter(p).AllAsSliceOrNil()
 
 	dest.PutSignals(filteredSignals...)
 	if dest.HasChainableErr() {
@@ -278,7 +277,7 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 		return dest.ChainableErr()
 	}
 
-	mappedSignals := source.Buffer().Map(mapperFunc).AllAsSliceOrNil()
+	mappedSignals := source.Signals().Map(mapperFunc).AllAsSliceOrNil()
 
 	dest.PutSignals(mappedSignals...)
 	if dest.HasChainableErr() {
@@ -301,47 +300,6 @@ func (p *Port) HasChainableErr() bool {
 // ChainableErr returns chainable error.
 func (p *Port) ChainableErr() error {
 	return p.chainableErr
-}
-
-// FirstSignalPayload is a shortcut method.
-func (p *Port) FirstSignalPayload() (any, error) {
-	return p.Buffer().FirstPayload()
-}
-
-// FirstSignalPayloadOrNil is a shortcut method.
-func (p *Port) FirstSignalPayloadOrNil() any {
-	return p.Buffer().FirstSignal().PayloadOrNil()
-}
-
-// FirstSignalPayloadOrDefault is a shortcut method.
-func (p *Port) FirstSignalPayloadOrDefault(defaultPayload any) any {
-	return p.Buffer().FirstSignal().PayloadOrDefault(defaultPayload)
-}
-
-// AllSignals is shortcut method.
-func (p *Port) AllSignals() (signal.Signals, error) {
-	signals, err := p.Buffer().AllAsSlice()
-	if err != nil {
-		return nil, err
-	}
-	return signals, nil
-}
-
-// AllSignalsOrNil is a shortcut method.
-func (p *Port) AllSignalsOrNil() signal.Signals {
-	signals := p.Buffer().AllAsSliceOrNil()
-	return signals
-}
-
-// AllSignalsOrDefault is a shortcut method.
-func (p *Port) AllSignalsOrDefault(defaultSignals signal.Signals) signal.Signals {
-	signals := p.Buffer().AllAsSliceOrDefault([]*signal.Signal(defaultSignals))
-	return signals
-}
-
-// AllSignalsPayloads is a shortcut method.
-func (p *Port) AllSignalsPayloads() ([]any, error) {
-	return p.Buffer().AllPayloads()
 }
 
 // ParentComponent getter.

@@ -36,7 +36,7 @@ func Test_Signal(t *testing.T) {
 			test: func(t *testing.T) {
 				emptyGroup := signal.NewGroup()
 
-				sig := emptyGroup.FirstSignal()
+				sig := emptyGroup.First()
 				assert.True(t, sig.HasChainableErr())
 				require.Error(t, sig.ChainableErr())
 
@@ -63,8 +63,8 @@ func Test_FMesh(t *testing.T) {
 					component.New("c1").WithInputs("num1", "num2").
 						WithOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
-							num1 := this.InputByName("num1").FirstSignalPayloadOrDefault(0).(int)
-							num2 := this.InputByName("num2").FirstSignalPayloadOrDefault(0).(int)
+							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
+							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
 							this.OutputByName("sum").PutSignals(signal.New(num1 + num2))
 							return nil
 						}),
@@ -86,8 +86,8 @@ func Test_FMesh(t *testing.T) {
 						WithInputs("num1", "num2").
 						WithOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
-							num1 := this.InputByName("num1").FirstSignalPayloadOrDefault(0).(int)
-							num2 := this.InputByName("num2").FirstSignalPayloadOrDefault(0).(int)
+							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
+							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
 							this.OutputByName("sum").PutSignals(signal.New(num1 + num2))
 							return nil
 						}).
@@ -111,8 +111,8 @@ func Test_FMesh(t *testing.T) {
 						WithInputs("num1", "num2").
 						WithOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
-							num1 := this.InputByName("num1").FirstSignalPayloadOrDefault(0).(int)
-							num2 := this.InputByName("num2").FirstSignalPayloadOrDefault(0).(int)
+							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
+							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
 							this.OutputByName("sum").PutSignals(signal.New(num1 + num2))
 							return nil
 						}),
@@ -134,8 +134,8 @@ func Test_FMesh(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").WithInputs("num1", "num2").
 						WithOutputs("sum").WithActivationFunc(func(this *component.Component) error {
-						num1 := this.InputByName("num1").FirstSignalPayloadOrDefault(0).(int)
-						num2 := this.InputByName("num2").FirstSignalPayloadOrDefault(0).(int)
+						num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
+						num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
 						this.OutputByName("sum").PutSignals(signal.New(num1 + num2))
 						return nil
 					}),

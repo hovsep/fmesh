@@ -15,7 +15,7 @@ func NewGroup() *Group {
 	return newGroup.withCycles(cycles)
 }
 
-// With adds cycle results to existing collection.
+// With adds cycles to the group and returns it.
 func (g *Group) With(cycles ...*Cycle) *Group {
 	newCycles := make(Cycles, len(g.cycles)+len(cycles))
 	copy(newCycles, g.cycles)
@@ -23,6 +23,17 @@ func (g *Group) With(cycles ...*Cycle) *Group {
 		newCycles[len(g.cycles)+i] = c
 	}
 	return g.withCycles(newCycles)
+}
+
+// Without removes cycles matching the predicate and returns a new group.
+func (g *Group) Without(predicate Predicate) *Group {
+	if g.HasChainableErr() {
+		return NewGroup().WithChainableErr(g.ChainableErr())
+	}
+	// Keep cycles that DON'T match the predicate
+	return g.Filter(func(c *Cycle) bool {
+		return !predicate(c)
+	})
 }
 
 // withCycles sets cycles.
@@ -36,7 +47,7 @@ func (g *Group) Len() int {
 	return len(g.cycles)
 }
 
-// Last returns the latest cycle added to the group.
+// Last returns the most recent cycle added to the group.
 func (g *Group) Last() *Cycle {
 	if g.IsEmpty() {
 		return New().WithChainableErr(errNoCyclesInGroup)
