@@ -21,7 +21,7 @@ func (c *Component) WithInitialState(init func(state State)) *Component {
 	return c
 }
 
-// State returns current state.
+// State returns the current state.
 func (c *Component) State() State {
 	return c.state
 }
@@ -51,7 +51,7 @@ func (s State) GetOrDefault(key string, defaultValue any) any {
 	return defaultValue
 }
 
-// Set upserts the given key value.
+// Set sets the value for the given key.
 func (s State) Set(key string, value any) {
 	s[key] = value
 }

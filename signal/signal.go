@@ -20,7 +20,7 @@ func New(payload any) *Signal {
 	}
 }
 
-// Labels getter.
+// Labels returns the signal's labels collection.
 func (s *Signal) Labels() *labels.Collection {
 	if s.HasChainableErr() {
 		return labels.NewCollection(nil).WithChainableErr(s.ChainableErr())
@@ -28,7 +28,7 @@ func (s *Signal) Labels() *labels.Collection {
 	return s.labels
 }
 
-// Payload getter.
+// Payload returns the signal's payload.
 func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {
 		return nil, s.ChainableErr()
@@ -61,7 +61,7 @@ func (s *Signal) HasChainableErr() bool {
 	return s.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (s *Signal) ChainableErr() error {
 	return s.chainableErr
 }
@@ -84,14 +84,12 @@ func (s *Signal) Map(m Mapper) *Signal {
 	return m(s)
 }
 
-// MapPayload sets labels and returns the signal.
-// @TODO: fix comment
+// MapPayload applies a mapper function to the payload and returns a new signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
 	payload, err := s.Payload()
-	//@TODO: can we check if payload is a pointer type and we are modifying it ? Maybe deepcopy?
 	if err != nil {
 		return New(nil).WithChainableErr(err)
 	}

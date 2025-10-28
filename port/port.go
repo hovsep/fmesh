@@ -38,17 +38,17 @@ func New(name string) *Port {
 	}
 }
 
-// Name getter.
+// Name returns the port's name.
 func (p *Port) Name() string {
 	return p.name
 }
 
-// Description getter.
+// Description returns the port's description.
 func (p *Port) Description() string {
 	return p.description
 }
 
-// Labels getter.
+// Labels returns the port's labels collection.
 func (p *Port) Labels() *labels.Collection {
 	if p.HasChainableErr() {
 		return labels.NewCollection(nil).WithChainableErr(p.ChainableErr())
@@ -66,8 +66,7 @@ func (p *Port) WithDescription(description string) *Port {
 	return p
 }
 
-// Pipes getter
-// @TODO maybe better to return []*Port directly.
+// Pipes returns the group of outbound pipes.
 func (p *Port) Pipes() *Group {
 	if p.HasChainableErr() {
 		return NewGroup().WithChainableErr(p.ChainableErr())
@@ -114,7 +113,7 @@ func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	return p.PutSignals(signals...)
 }
 
-// WithSignalGroups puts groups of buffer and returns the port.
+// WithSignalGroups adds signals from multiple groups and returns the port.
 func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -142,8 +141,7 @@ func (p *Port) Clear() *Port {
 	return p.withBuffer(signal.NewGroup())
 }
 
-// Flush pushes buffer to pipes and clears the port
-// @TODO: hide this method from user.
+// Flush pushes signals to all pipes and clears the port.
 func (p *Port) Flush() *Port {
 	if p.HasChainableErr() {
 		return p
@@ -182,8 +180,7 @@ func (p *Port) HasPipes() bool {
 	return !p.Pipes().IsEmpty()
 }
 
-// PipeTo creates one or multiple pipes to other port(s)
-// @TODO: hide this method from AF.
+// PipeTo creates one or multiple pipes to other port(s).
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -303,17 +300,17 @@ func (p *Port) HasChainableErr() bool {
 	return p.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (p *Port) ChainableErr() error {
 	return p.chainableErr
 }
 
-// ParentComponent getter.
+// ParentComponent returns the port's parent component.
 func (p *Port) ParentComponent() ParentComponent {
 	return p.parentComponent
 }
 
-// WithParentComponent sets parent mesh.
+// WithParentComponent sets the parent component.
 func (p *Port) WithParentComponent(parentComponent ParentComponent) *Port {
 	p.parentComponent = parentComponent
 	return p

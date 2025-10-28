@@ -66,8 +66,8 @@ const (
 	ActivationCodeWaitingForInputsKeep
 )
 
-// NewActivationResult creates a new activation result for given component
-// @TODO Hide this from user.
+// NewActivationResult creates a new activation result for the given component.
+// This is primarily used internally and in tests.
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
@@ -198,7 +198,7 @@ func (ar *ActivationResult) HasChainableErr() bool {
 	return ar.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (ar *ActivationResult) ChainableErr() error {
 	return ar.chainableErr
 }

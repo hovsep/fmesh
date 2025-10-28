@@ -120,7 +120,7 @@ func (g *Group) FirstPayloadOrNil() any {
 	return g.FirstPayloadOrDefault(nil)
 }
 
-// AllPayloads returns a slice with all payloads of the all signals in the group.
+// AllPayloads returns a slice with all payloads of all signals in the group.
 func (g *Group) AllPayloads() ([]any, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
@@ -215,7 +215,7 @@ func (g *Group) HasChainableErr() bool {
 	return g.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (g *Group) ChainableErr() error {
 	return g.chainableErr
 }

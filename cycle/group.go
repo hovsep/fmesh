@@ -78,7 +78,7 @@ func (g *Group) HasChainableErr() bool {
 	return g.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (g *Group) ChainableErr() error {
 	return g.chainableErr
 }
