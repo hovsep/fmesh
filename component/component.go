@@ -124,7 +124,7 @@ func (c *Component) HasChainableErr() bool {
 	return c.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (c *Component) ChainableErr() error {
 	return c.chainableErr
 }

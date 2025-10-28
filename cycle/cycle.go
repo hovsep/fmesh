@@ -107,7 +107,7 @@ func (c *Cycle) HasChainableErr() bool {
 	return c.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (c *Cycle) ChainableErr() error {
 	return c.chainableErr
 }

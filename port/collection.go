@@ -354,7 +354,7 @@ func (c *Collection) HasChainableErr() bool {
 	return c.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (c *Collection) ChainableErr() error {
 	return c.chainableErr
 }

@@ -6,9 +6,8 @@ import (
 	"github.com/hovsep/fmesh/labels"
 )
 
-// Group represents a list of ports
-// can carry multiple ports with the same name
-// no lookup methods.
+// Group represents a list of ports.
+// It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
 	chainableErr error
 	ports        Ports
@@ -26,7 +25,7 @@ func NewGroup(names ...string) *Group {
 	return newGroup.withPorts(ports)
 }
 
-// NewIndexedGroup is useful to create group of ports with same prefix
+// NewIndexedGroup creates a group of ports with the same prefix.
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0".
 func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	if startIndex > endIndex {
@@ -104,7 +103,7 @@ func (g *Group) HasChainableErr() bool {
 	return g.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (g *Group) ChainableErr() error {
 	return g.chainableErr
 }

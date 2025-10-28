@@ -349,7 +349,7 @@ func (fm *FMesh) HasChainableErr() bool {
 	return fm.chainableErr != nil
 }
 
-// ChainableErr returns chainable error.
+// ChainableErr returns the chainable error.
 func (fm *FMesh) ChainableErr() error {
 	return fm.chainableErr
 }
