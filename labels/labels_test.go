@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewLabelsCollection(t *testing.T) {
+func TestLabelsCollection_New(t *testing.T) {
 	tests := []struct {
 		name       string
 		labels     Map
@@ -597,7 +597,7 @@ func TestLabelsCollection_MatchesAny(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_All(t *testing.T) {
+func TestLabelsCollection_AllMatch(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection

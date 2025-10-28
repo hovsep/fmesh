@@ -39,12 +39,12 @@ func New(name string) *Component {
 	}
 }
 
-// Name getter.
+// Name returns the component's name.
 func (c *Component) Name() string {
 	return c.name
 }
 
-// Description getter.
+// Description returns the component's description.
 func (c *Component) Description() string {
 	return c.description
 }
@@ -59,7 +59,7 @@ func (c *Component) WithDescription(description string) *Component {
 	return c
 }
 
-// Labels getter.
+// Labels returns the component's labels collection.
 func (c *Component) Labels() *labels.Collection {
 	if c.HasChainableErr() {
 		return labels.NewCollection(nil).WithChainableErr(c.ChainableErr())
@@ -149,7 +149,7 @@ func (c *Component) Logger() *log.Logger {
 	return c.logger
 }
 
-// ParentMesh getter.
+// ParentMesh returns the component's parent mesh.
 func (c *Component) ParentMesh() ParentMesh {
 	return c.parentMesh
 }

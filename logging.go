@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Logger getter.
+// Logger returns the F-Mesh logger.
 func (fm *FMesh) Logger() *log.Logger {
 	return fm.config.Logger
 }

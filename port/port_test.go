@@ -34,14 +34,14 @@ func TestPort_HasSignals(t *testing.T) {
 	}
 }
 
-func TestPort_Buffer(t *testing.T) {
+func TestPort_Signals(t *testing.T) {
 	tests := []struct {
 		name string
 		port *Port
 		want *signal.Group
 	}{
 		{
-			name: "empty buffer",
+			name: "empty signals",
 			port: New("noSignal"),
 			want: signal.NewGroup(),
 		},
@@ -524,7 +524,7 @@ func TestPort_Pipes(t *testing.T) {
 	}
 }
 
-func TestPort_ShortcutGetters(t *testing.T) {
+func TestPort_SignalsAccess(t *testing.T) {
 	t.Run("FirstSignalPayload", func(t *testing.T) {
 		port := New("p").WithSignalGroups(signal.NewGroup(4, 7, 6, 5))
 		payload, err := port.Signals().FirstPayload()

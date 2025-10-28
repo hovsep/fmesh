@@ -21,7 +21,7 @@ func New() *Cycle {
 	}
 }
 
-// ActivationResults getter.
+// ActivationResults returns the cycle's activation results collection.
 func (c *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return c.activationResults
 }
