@@ -102,7 +102,7 @@ func TestCollection_ByName(t *testing.T) {
 			}),
 		},
 		{
-			name: "port with buffer found",
+			name: "port with signals found",
 			collection: NewCollection().WithDefaultLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).With(NewGroup("p1", "p2").mustAll()...).PutSignals(signal.New(12)),

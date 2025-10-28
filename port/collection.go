@@ -74,7 +74,7 @@ func (c *Collection) AllHaveSignals() bool {
 	})
 }
 
-// PutSignals adds buffer to every port in collection.
+// PutSignals adds signals to every port in the collection.
 func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())
