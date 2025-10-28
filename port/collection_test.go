@@ -111,7 +111,7 @@ func TestCollection_ByName(t *testing.T) {
 			},
 			want: New("p2").WithLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).WithSignals(signal.New(12)),
+			}).PutSignals(signal.New(12)),
 		},
 		{
 			name:       "port not found",
@@ -280,7 +280,7 @@ func TestCollection_Flush(t *testing.T) {
 					WithLabels(labels.Map{
 						DirectionLabel: DirectionOut,
 					}).
-					WithSignalGroups(signal.NewGroup(1, 2, 3)).
+					PutSignalGroups(signal.NewGroup(1, 2, 3)).
 					PipeTo(New("dst1").
 						WithLabels(labels.Map{
 							DirectionLabel: DirectionIn,

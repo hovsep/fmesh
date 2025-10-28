@@ -96,7 +96,7 @@ func (p *Port) Signals() *signal.Group {
 	return p.signals
 }
 
-// PutSignals adds signals to the port.
+// PutSignals adds signals to the port and returns the port for chaining.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -104,17 +104,8 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	return p.withSignals(p.Signals().With(signals...))
 }
 
-// WithSignals appends signals to the port and returns the port.
-func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
-	return p.PutSignals(signals...)
-}
-
-// WithSignalGroups adds signals from multiple groups and returns the port.
-func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
+// PutSignalGroups adds signals from multiple groups and returns the port for chaining.
+func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
