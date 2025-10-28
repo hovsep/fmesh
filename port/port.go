@@ -74,17 +74,17 @@ func (p *Port) Pipes() *Group {
 	return p.pipes
 }
 
-// withBuffer sets buffer field.
-func (p *Port) withBuffer(buffer *signal.Group) *Port {
+// withSignals sets the signals field.
+func (p *Port) withSignals(signalsGroup *signal.Group) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
 
-	if buffer.HasChainableErr() {
-		p.WithChainableErr(buffer.ChainableErr())
+	if signalsGroup.HasChainableErr() {
+		p.WithChainableErr(signalsGroup.ChainableErr())
 		return New("").WithChainableErr(p.ChainableErr())
 	}
-	p.signals = buffer
+	p.signals = signalsGroup
 	return p
 }
 
@@ -96,15 +96,15 @@ func (p *Port) Signals() *signal.Group {
 	return p.signals
 }
 
-// PutSignals adds signals to buffer.
+// PutSignals adds signals to the port.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withBuffer(p.Signals().With(signals...))
+	return p.withSignals(p.Signals().With(signals...))
 }
 
-// WithSignals appends signals into the buffer and returns the port.
+// WithSignals appends signals to the port and returns the port.
 func (p *Port) WithSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -133,12 +133,12 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 	return p
 }
 
-// Clear removes all signals from the port buffer.
+// Clear removes all signals from the port.
 func (p *Port) Clear() *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withBuffer(signal.NewGroup())
+	return p.withSignals(signal.NewGroup())
 }
 
 // Flush pushes signals to all pipes and clears the port.
@@ -170,7 +170,7 @@ func (p *Port) Flush() *Port {
 	return p.Clear()
 }
 
-// HasSignals says whether port buffer is set or not.
+// HasSignals returns true if the port has any signals.
 func (p *Port) HasSignals() bool {
 	return !p.Signals().IsEmpty()
 }

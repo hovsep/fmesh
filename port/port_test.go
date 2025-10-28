@@ -22,7 +22,7 @@ func TestPort_HasSignals(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "port has normal buffer",
+			name: "port has signals",
 			port: New("p").WithSignals(signal.New(123)),
 			want: true,
 		},
@@ -209,7 +209,7 @@ func TestPort_PutSignals(t *testing.T) {
 			}(),
 		},
 		{
-			name: "multiple buffer to empty port",
+			name: "multiple signals to empty port",
 			port: New("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
@@ -231,7 +231,7 @@ func TestPort_PutSignals(t *testing.T) {
 			}(),
 		},
 		{
-			name: "single buffer to port with multiple buffer",
+			name: "single signal to port with multiple signals",
 			port: New("p").WithSignalGroups(signal.NewGroup(11, 12)),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
@@ -242,7 +242,7 @@ func TestPort_PutSignals(t *testing.T) {
 			}(),
 		},
 		{
-			name: "multiple buffer to port with multiple buffer",
+			name: "multiple signals to port with multiple signals",
 			port: New("p").WithSignalGroups(signal.NewGroup(55, 66)),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
@@ -253,7 +253,7 @@ func TestPort_PutSignals(t *testing.T) {
 			}(),
 		},
 		{
-			name: "chain error propagated from buffer",
+			name: "chain error propagated from signals",
 			port: New("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Zero(t, portAfter.Signals().Len())
@@ -351,7 +351,7 @@ func TestPort_Flush(t *testing.T) {
 		assertions func(t *testing.T, srcPort *Port)
 	}{
 		{
-			name:    "port with buffer and no pipes is not flushed",
+			name:    "port with signals and no pipes is not flushed",
 			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.True(t, srcPort.HasSignals())
