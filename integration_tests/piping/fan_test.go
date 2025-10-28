@@ -140,14 +140,16 @@ func Test_Fan(t *testing.T) {
 
 				// The signal is combined and consist of 3 payloads
 				resultSignals := fm.Components().ByName("consumer").OutputByName("o1").Signals()
-				assert.Len(t, resultSignals.AllAsSliceOrNil(), 3)
+				assert.Equal(t, 3, resultSignals.Len())
 
 				// And they are all different
+				signals, err := resultSignals.All()
+				require.NoError(t, err)
 				sig0, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
-				sig1, err := resultSignals.AllAsSliceOrNil()[1].Payload()
+				sig1, err := signals[1].Payload()
 				require.NoError(t, err)
-				sig2, err := resultSignals.AllAsSliceOrNil()[2].Payload()
+				sig2, err := signals[2].Payload()
 				require.NoError(t, err)
 
 				assert.NotEqual(t, sig0, sig1)
@@ -160,7 +162,9 @@ func Test_Fan(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run()
-			tt.assertions(t, fm, runResult.Cycles.AllAsSliceOrNil(), err)
+			cycles, cycleErr := runResult.Cycles.All()
+			require.NoError(t, cycleErr)
+			tt.assertions(t, fm, cycles, err)
 		})
 	}
 }

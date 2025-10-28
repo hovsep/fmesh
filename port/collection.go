@@ -175,7 +175,7 @@ func (c *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Colle
 		return c
 	}
 
-	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).AllAsSlice()
+	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).All()
 	if err != nil {
 		c.WithChainableErr(err)
 		return NewCollection().WithChainableErr(c.ChainableErr())
@@ -191,7 +191,7 @@ func (c *Collection) Signals() *signal.Group {
 
 	group := signal.NewGroup()
 	for _, p := range c.ports {
-		signals, err := p.Signals().AllAsSlice()
+		signals, err := p.Signals().All()
 		if err != nil {
 			c.WithChainableErr(err)
 			return signal.NewGroup().WithChainableErr(c.ChainableErr())
@@ -201,82 +201,12 @@ func (c *Collection) Signals() *signal.Group {
 	return group
 }
 
-// AllAsMap returns all ports as a map.
-func (c *Collection) AllAsMap() (Map, error) {
+// All returns all ports as a map.
+func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
 	return c.ports, nil
-}
-
-// AllAsMapOrDefault returns all ports as map or the provided default.
-func (c *Collection) AllAsMapOrDefault(defaultPorts Map) Map {
-	ports, err := c.AllAsMap()
-	if err != nil {
-		return defaultPorts
-	}
-	return ports
-}
-
-// AllAsMapOrNil returns all ports as map or nil in case of error.
-func (c *Collection) AllAsMapOrNil() Map {
-	return c.AllAsMapOrDefault(nil)
-}
-
-// AllAsSlice returns all ports as Ports wrapper type.
-func (c *Collection) AllAsSlice() (Ports, error) {
-	if c.HasChainableErr() {
-		return nil, c.ChainableErr()
-	}
-	ports := make([]*Port, 0, len(c.ports))
-	for _, port := range c.ports {
-		ports = append(ports, port)
-	}
-	return Ports(ports), nil
-}
-
-// AllAsSliceOrDefault returns all ports as Ports wrapper or the provided default.
-func (c *Collection) AllAsSliceOrDefault(defaultPorts Ports) Ports {
-	ports, err := c.AllAsSlice()
-	if err != nil {
-		return defaultPorts
-	}
-	return ports
-}
-
-// AllAsSliceOrNil returns all ports as Ports wrapper or nil in case of error.
-func (c *Collection) AllAsSliceOrNil() Ports {
-	return c.AllAsSliceOrDefault(nil)
-}
-
-// AllAsGroup returns all ports as a Group.
-func (c *Collection) AllAsGroup() (*Group, error) {
-	if c.HasChainableErr() {
-		return NewGroup().WithChainableErr(c.ChainableErr()), c.ChainableErr()
-	}
-	ports := make([]*Port, 0, len(c.ports))
-	for _, port := range c.ports {
-		ports = append(ports, port)
-	}
-	return NewGroup().withPorts(ports), nil
-}
-
-// AllAsGroupOrDefault returns all ports as Group or the provided default.
-func (c *Collection) AllAsGroupOrDefault(defaultGroup *Group) *Group {
-	group, err := c.AllAsGroup()
-	if err != nil {
-		return defaultGroup
-	}
-	return group
-}
-
-// AllAsGroupOrNil returns all ports as Group or nil in case of error.
-func (c *Collection) AllAsGroupOrNil() *Group {
-	group, err := c.AllAsGroup()
-	if err != nil {
-		return nil
-	}
-	return group
 }
 
 // Any returns any arbitrary port from the collection.

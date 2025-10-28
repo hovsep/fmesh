@@ -34,7 +34,11 @@ func (c *Cycle) HasActivationErrors() bool {
 // AllErrorsCombined returns all errors occurred within the cycle as one error.
 func (c *Cycle) AllErrorsCombined() error {
 	var allErrors error
-	for _, ar := range c.ActivationResults().AllAsMapOrNil() {
+	activationResults, err := c.ActivationResults().All()
+	if err != nil {
+		return errors.Join(allErrors, err)
+	}
+	for _, ar := range activationResults {
 		if ar.IsError() {
 			allErrors = errors.Join(allErrors, ar.ActivationErrorWithComponentName())
 		}
@@ -46,7 +50,11 @@ func (c *Cycle) AllErrorsCombined() error {
 // AllPanicsCombined returns all panics occurred within the cycle as one error.
 func (c *Cycle) AllPanicsCombined() error {
 	var allPanics error
-	for _, ar := range c.ActivationResults().AllAsMapOrNil() {
+	activationResults, err := c.ActivationResults().All()
+	if err != nil {
+		return errors.Join(allPanics, err)
+	}
+	for _, ar := range activationResults {
 		if ar.IsPanic() {
 			allPanics = errors.Join(allPanics, ar.ActivationErrorWithComponentName())
 		}

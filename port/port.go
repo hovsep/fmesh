@@ -120,7 +120,7 @@ func (p *Port) WithSignalGroups(signalGroups ...*signal.Group) *Port {
 		return p
 	}
 	for _, group := range signalGroups {
-		signals, err := group.AllAsSlice()
+		signals, err := group.All()
 		if err != nil {
 			p.WithChainableErr(err)
 			return New("").WithChainableErr(p.ChainableErr())
@@ -155,7 +155,7 @@ func (p *Port) Flush() *Port {
 		return p
 	}
 
-	pipes, err := p.pipes.AllAsSlice()
+	pipes, err := p.pipes.All()
 	if err != nil {
 		p.WithChainableErr(err)
 		return New("").WithChainableErr(p.ChainableErr())
@@ -237,7 +237,7 @@ func ForwardSignals(source, dest *Port) error {
 		return dest.ChainableErr()
 	}
 
-	signals, err := source.Signals().AllAsSlice()
+	signals, err := source.Signals().All()
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,10 @@ func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
 		return dest.ChainableErr()
 	}
 
-	filteredSignals := source.Signals().Filter(p).AllAsSliceOrNil()
+	filteredSignals, err := source.Signals().Filter(p).All()
+	if err != nil {
+		return err
+	}
 
 	dest.PutSignals(filteredSignals...)
 	if dest.HasChainableErr() {
@@ -277,7 +280,10 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 		return dest.ChainableErr()
 	}
 
-	mappedSignals := source.Signals().Map(mapperFunc).AllAsSliceOrNil()
+	mappedSignals, err := source.Signals().Map(mapperFunc).All()
+	if err != nil {
+		return err
+	}
 
 	dest.PutSignals(mappedSignals...)
 	if dest.HasChainableErr() {

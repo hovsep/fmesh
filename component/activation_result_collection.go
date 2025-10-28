@@ -106,28 +106,14 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	return nil
 }
 
-// AllAsMap returns all activation results as a map.
-func (c *ActivationResultCollection) AllAsMap() (map[string]*ActivationResult, error) {
+// All returns all activation results as a map.
+func (c *ActivationResultCollection) All() (map[string]*ActivationResult, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.activationResults, nil
-}
-
-// AllAsMapOrDefault returns all activation results as a map or the provided default.
-func (c *ActivationResultCollection) AllAsMapOrDefault(defaultResults map[string]*ActivationResult) map[string]*ActivationResult {
-	results, err := c.AllAsMap()
-	if err != nil {
-		return defaultResults
-	}
-	return results
-}
-
-// AllAsMapOrNil returns all activation results as a map or nil in case of error.
-func (c *ActivationResultCollection) AllAsMapOrNil() map[string]*ActivationResult {
-	return c.AllAsMapOrDefault(nil)
 }
 
 // Len returns the number of activation results in the collection.
@@ -159,34 +145,6 @@ func (c *ActivationResultCollection) HasChainableErr() bool {
 // ChainableErr returns chainable error.
 func (c *ActivationResultCollection) ChainableErr() error {
 	return c.chainableErr
-}
-
-// AllAsSlice returns all activation results as an ActivationResults wrapper type.
-func (c *ActivationResultCollection) AllAsSlice() (ActivationResults, error) {
-	if c.HasChainableErr() {
-		return nil, c.ChainableErr()
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	results := make([]*ActivationResult, 0, len(c.activationResults))
-	for _, result := range c.activationResults {
-		results = append(results, result)
-	}
-	return ActivationResults(results), nil
-}
-
-// AllAsSliceOrDefault returns all activation results as ActivationResults wrapper or the provided default.
-func (c *ActivationResultCollection) AllAsSliceOrDefault(defaultResults ActivationResults) ActivationResults {
-	results, err := c.AllAsSlice()
-	if err != nil {
-		return defaultResults
-	}
-	return results
-}
-
-// AllAsSliceOrNil returns all activation results as ActivationResults wrapper or nil in case of error.
-func (c *ActivationResultCollection) AllAsSliceOrNil() ActivationResults {
-	return c.AllAsSliceOrDefault(nil)
 }
 
 // Any returns any arbitrary activation result from the collection.

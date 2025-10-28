@@ -85,11 +85,13 @@ func (s *Signal) Map(m Mapper) *Signal {
 }
 
 // MapPayload sets labels and returns the signal.
+// @TODO: fix comment
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
 	payload, err := s.Payload()
+	//@TODO: can we check if payload is a pointer type and we are modifying it ? Maybe deepcopy?
 	if err != nil {
 		return New(nil).WithChainableErr(err)
 	}

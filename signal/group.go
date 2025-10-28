@@ -196,26 +196,12 @@ func (g *Group) withSignals(signals Signals) *Group {
 	return g
 }
 
-// AllAsSlice returns signals as Signals wrapper type.
-func (g *Group) AllAsSlice() (Signals, error) {
+// All returns all signals as a slice.
+func (g *Group) All() (Signals, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
 	}
 	return g.signals, nil
-}
-
-// AllAsSliceOrNil returns signals as Signals wrapper or nil in case of any error.
-func (g *Group) AllAsSliceOrNil() Signals {
-	return g.AllAsSliceOrDefault(nil)
-}
-
-// AllAsSliceOrDefault returns signals as Signals wrapper or default in case of any error.
-func (g *Group) AllAsSliceOrDefault(defaultSignals Signals) Signals {
-	signals, err := g.AllAsSlice()
-	if err != nil {
-		return defaultSignals
-	}
-	return signals
 }
 
 // WithChainableErr sets a chainable error and returns the group.
@@ -259,7 +245,7 @@ func (g *Group) Filter(p Predicate) *Group {
 	}
 
 	filteredSignals := make(Signals, 0)
-	for _, s := range g.AllAsSliceOrNil() {
+	for _, s := range g.signals {
 		if p(s) {
 			filteredSignals = append(filteredSignals, s)
 		}
@@ -276,7 +262,7 @@ func (g *Group) Map(m Mapper) *Group {
 	}
 
 	mappedSignals := make(Signals, 0)
-	for _, s := range g.AllAsSliceOrNil() {
+	for _, s := range g.signals {
 		mappedSignals = append(mappedSignals, s.Map(m))
 	}
 
@@ -291,7 +277,7 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	}
 
 	mappedSignals := make(Signals, 0)
-	for _, s := range g.AllAsSliceOrNil() {
+	for _, s := range g.signals {
 		mappedSignals = append(mappedSignals, s.MapPayload(mapper))
 	}
 

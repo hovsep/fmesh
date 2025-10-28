@@ -91,7 +91,9 @@ func Test_WaitingForInputs(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run()
-			tt.assertions(t, fm, runResult.Cycles.AllAsSliceOrNil(), err)
+			cycles, cycleErr := runResult.Cycles.All()
+			require.NoError(t, cycleErr)
+			tt.assertions(t, fm, cycles, err)
 		})
 	}
 }

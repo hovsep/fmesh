@@ -135,52 +135,12 @@ func (c *Collection) AnyOrNil() *Component {
 	return nil
 }
 
-// AllAsSlice returns all components as Components wrapper type.
-func (c *Collection) AllAsSlice() (Components, error) {
-	if c.HasChainableErr() {
-		return nil, c.ChainableErr()
-	}
-	components := make([]*Component, 0, len(c.components))
-	for _, comp := range c.components {
-		components = append(components, comp)
-	}
-	return Components(components), nil
-}
-
-// AllAsSliceOrDefault returns all components as Components wrapper or the provided default.
-func (c *Collection) AllAsSliceOrDefault(defaultComponents Components) Components {
-	components, err := c.AllAsSlice()
-	if err != nil {
-		return defaultComponents
-	}
-	return components
-}
-
-// AllAsSliceOrNil returns all components as Components wrapper or nil in case of error.
-func (c *Collection) AllAsSliceOrNil() Components {
-	return c.AllAsSliceOrDefault(nil)
-}
-
-// AllAsMap returns all components as a map.
-func (c *Collection) AllAsMap() (Map, error) {
+// All returns all components as a map.
+func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
 	return c.components, nil
-}
-
-// AllAsMapOrDefault returns all components as map or the provided default.
-func (c *Collection) AllAsMapOrDefault(defaultComponents Map) Map {
-	components, err := c.AllAsMap()
-	if err != nil {
-		return defaultComponents
-	}
-	return components
-}
-
-// AllAsMapOrNil returns all components as map or nil in case of error.
-func (c *Collection) AllAsMapOrNil() Map {
-	return c.AllAsMapOrDefault(nil)
 }
 
 // AllMatch returns true if all components match the predicate.

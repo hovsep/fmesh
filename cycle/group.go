@@ -116,26 +116,12 @@ func (g *Group) FirstOrNil() *Cycle {
 	return g.cycles[0]
 }
 
-// AllAsSlice returns all cycles as Cycles wrapper type.
-func (g *Group) AllAsSlice() (Cycles, error) {
+// All returns all cycles as a slice.
+func (g *Group) All() (Cycles, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
 	}
 	return g.cycles, nil
-}
-
-// AllAsSliceOrDefault returns all cycles as Cycles wrapper or the provided default.
-func (g *Group) AllAsSliceOrDefault(defaultCycles Cycles) Cycles {
-	cycles, err := g.AllAsSlice()
-	if err != nil {
-		return defaultCycles
-	}
-	return cycles
-}
-
-// AllAsSliceOrNil returns all cycles as Cycles wrapper or nil in case of error.
-func (g *Group) AllAsSliceOrNil() Cycles {
-	return g.AllAsSliceOrDefault(nil)
 }
 
 // AllMatch returns true if all cycles match the predicate.

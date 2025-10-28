@@ -11,8 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mustAll is a test helper that panics if All returns an error.
+func (c *Collection) mustAll() Map {
+	ports, err := c.All()
+	if err != nil {
+		panic(err)
+	}
+	return ports
+}
+
 func TestCollection_AllHaveSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...).PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
@@ -22,7 +31,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 	}{
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			ports: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			want:  false,
 		},
 		{
@@ -32,7 +41,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 		},
 		{
 			name:  "all set",
-			ports: NewCollection().With(NewGroup("out1", "out2", "out3").AllAsSliceOrNil()...).PutSignals(signal.New(77)),
+			ports: NewCollection().With(NewGroup("out1", "out2", "out3").mustAll()...).PutSignals(signal.New(77)),
 			want:  true,
 		},
 	}
@@ -44,7 +53,7 @@ func TestCollection_AllHaveSignal(t *testing.T) {
 }
 
 func TestCollection_AnyHasSignal(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...).PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
@@ -59,7 +68,7 @@ func TestCollection_AnyHasSignal(t *testing.T) {
 		},
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...),
+			ports: NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...),
 			want:  false,
 		},
 	}
@@ -84,7 +93,7 @@ func TestCollection_ByName(t *testing.T) {
 			name: "empty port found",
 			collection: NewCollection().WithDefaultLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			}).With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				name: "p1",
 			},
@@ -96,7 +105,7 @@ func TestCollection_ByName(t *testing.T) {
 			name: "port with buffer found",
 			collection: NewCollection().WithDefaultLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).With(NewGroup("p1", "p2").AllAsSliceOrNil()...).PutSignals(signal.New(12)),
+			}).With(NewGroup("p1", "p2").mustAll()...).PutSignals(signal.New(12)),
 			args: args{
 				name: "p2",
 			},
@@ -106,7 +115,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "port not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				name: "p3",
 			},
@@ -114,7 +123,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...).WithChainableErr(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				name: "p1",
 			},
@@ -141,7 +150,7 @@ func TestCollection_ByNames(t *testing.T) {
 	}{
 		{
 			name:       "single port found",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p1"},
 			},
@@ -149,15 +158,15 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:       "multiple ports found",
-			collection: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").mustAll()...),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			want: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 		},
 		{
 			name:       "single port not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p7"},
 			},
@@ -165,15 +174,15 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:       "some ports not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p1", "p2", "p3"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			want: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...).WithChainableErr(errors.New("some error")),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
@@ -189,7 +198,7 @@ func TestCollection_ByNames(t *testing.T) {
 
 func TestCollection_ClearSignal(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		ports := NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
+		ports := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
 		ports.ForEach(func(p *Port) {
 			p.Clear()
@@ -222,7 +231,7 @@ func TestCollection_With(t *testing.T) {
 			name:       "adding to empty collection",
 			collection: NewCollection(),
 			args: args{
-				ports: NewGroup("p1", "p2").AllAsSliceOrNil(),
+				ports: NewGroup("p1", "p2").mustAll(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 2, collection.Len())
@@ -231,9 +240,9 @@ func TestCollection_With(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
 			args: args{
-				ports: NewGroup("p3", "p4").AllAsSliceOrNil(),
+				ports: NewGroup("p3", "p4").mustAll(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 4, collection.Len())
@@ -283,7 +292,7 @@ func TestCollection_Flush(t *testing.T) {
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 1, collection.Len())
 				assert.False(t, collection.ByName("src").HasSignals())
-				for _, destPort := range collection.ByName("src").Pipes().AllAsSliceOrNil() {
+				for _, destPort := range collection.ByName("src").Pipes().mustAll() {
 					assert.Equal(t, 3, destPort.Signals().Len())
 					allPayloads, err := destPort.Signals().AllPayloads()
 					require.NoError(t, err)
@@ -318,7 +327,7 @@ func TestCollection_PipeTo(t *testing.T) {
 			name:       "empty collection",
 			collection: NewCollection(),
 			args: args{
-				destPorts: NewIndexedGroup("dest_", 1, 3).AllAsSliceOrNil(),
+				destPorts: NewIndexedGroup("dest_", 1, 3).mustAll(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Zero(t, collection.Len())
@@ -328,17 +337,17 @@ func TestCollection_PipeTo(t *testing.T) {
 			name: "add pipes to each port in collection",
 			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).WithPortLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).AllAsSliceOrNil()...),
+			}).mustAll()...),
 			args: args{
 				destPorts: NewIndexedGroup("dest", 1, 5).
 					WithPortLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).
-					AllAsSliceOrNil(),
+					mustAll(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 3, collection.Len())
-				for _, p := range collection.AllAsSliceOrNil() {
+				for _, p := range collection.mustAll() {
 					assert.True(t, p.HasPipes())
 					assert.Equal(t, 5, p.Pipes().Len())
 				}
@@ -381,7 +390,7 @@ func TestCollection_WithIndexed(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2", "p3").AllAsSliceOrNil()...),
+			collection: NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...),
 			args: args{
 				prefix:     "p",
 				startIndex: 4,
