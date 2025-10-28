@@ -6,6 +6,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mustAll is a test helper that panics if All returns an error.
+func (g *Group) mustAll() Ports {
+	ports, err := g.All()
+	if err != nil {
+		panic(err)
+	}
+	return ports
+}
+
 func TestNewGroup(t *testing.T) {
 	type args struct {
 		names []string
@@ -114,7 +123,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to empty group",
 			group: NewGroup(),
 			args: args{
-				ports: NewGroup("p1", "p2", "p3").AllAsSliceOrNil(),
+				ports: NewGroup("p1", "p2", "p3").mustAll(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 3, group.Len())
@@ -124,7 +133,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to non-empty group",
 			group: NewIndexedGroup("p", 1, 3),
 			args: args{
-				ports: NewGroup("p4", "p5", "p6").AllAsSliceOrNil(),
+				ports: NewGroup("p4", "p5", "p6").mustAll(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 6, group.Len())

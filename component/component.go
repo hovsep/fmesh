@@ -88,14 +88,24 @@ func (c *Component) propagateChainErrors() {
 		return
 	}
 
-	for _, p := range c.Inputs().AllAsSliceOrNil() {
+	inputPorts, err := c.Inputs().All()
+	if err != nil {
+		c.WithChainableErr(err)
+		return
+	}
+	for _, p := range inputPorts {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return
 		}
 	}
 
-	for _, p := range c.Outputs().AllAsSliceOrNil() {
+	outputPorts, err := c.Outputs().All()
+	if err != nil {
+		c.WithChainableErr(err)
+		return
+	}
+	for _, p := range outputPorts {
 		if p.HasChainableErr() {
 			c.WithChainableErr(p.ChainableErr())
 			return

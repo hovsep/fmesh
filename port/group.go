@@ -85,59 +85,12 @@ func (g *Group) withPorts(ports Ports) *Group {
 	return g
 }
 
-// AllAsSlice returns all ports as Ports wrapper type.
-func (g *Group) AllAsSlice() (Ports, error) {
+// All returns all ports as a slice.
+func (g *Group) All() (Ports, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
 	}
 	return g.ports, nil
-}
-
-// AllAsSliceOrNil returns ports as Ports wrapper or nil in case of any error.
-func (g *Group) AllAsSliceOrNil() Ports {
-	return g.AllAsSliceOrDefault(nil)
-}
-
-// AllAsSliceOrDefault returns ports as Ports wrapper or default in case of any error.
-func (g *Group) AllAsSliceOrDefault(defaultPorts Ports) Ports {
-	ports, err := g.AllAsSlice()
-	if err != nil {
-		return defaultPorts
-	}
-	return ports
-}
-
-// AllAsCollection returns all ports as a Collection.
-func (g *Group) AllAsCollection() (*Collection, error) {
-	if g.HasChainableErr() {
-		return NewCollection().WithChainableErr(g.ChainableErr()), g.ChainableErr()
-	}
-	collection := NewCollection()
-	for _, port := range g.ports {
-		collection = collection.With(port)
-		if collection.HasChainableErr() {
-			return collection, collection.ChainableErr()
-		}
-	}
-	return collection, nil
-}
-
-// AllAsCollectionOrDefault returns all ports as Collection or the provided default.
-func (g *Group) AllAsCollectionOrDefault(defaultCollection *Collection) *Collection {
-	collection, err := g.AllAsCollection()
-	if err != nil {
-		return defaultCollection
-	}
-	return collection
-}
-
-// AllAsCollectionOrNil returns all ports as Collection or nil in case of error.
-func (g *Group) AllAsCollectionOrNil() *Collection {
-	collection, err := g.AllAsCollection()
-	if err != nil {
-		return nil
-	}
-	return collection
 }
 
 // WithChainableErr sets a chainable error and returns the group.
@@ -163,7 +116,7 @@ func (g *Group) Len() int {
 
 // WithPortLabels sets labels on each port within the group and returns it.
 func (g *Group) WithPortLabels(labelMap labels.Map) *Group {
-	for _, p := range g.AllAsSliceOrNil() {
+	for _, p := range g.ports {
 		p.WithLabels(labelMap)
 	}
 	return g

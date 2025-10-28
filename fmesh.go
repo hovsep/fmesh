@@ -118,7 +118,7 @@ func (fm *FMesh) runCycle() {
 
 	var wg sync.WaitGroup
 
-	components, err := fm.Components().AllAsSlice()
+	components, err := fm.Components().All()
 	if err != nil {
 		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, err))
 	}
@@ -139,10 +139,15 @@ func (fm *FMesh) runCycle() {
 	wg.Wait()
 
 	// Bubble up chain errors from activation results
-	for _, ar := range newCycle.ActivationResults().AllAsMapOrNil() {
-		if ar.HasChainableErr() {
-			newCycle.WithChainableErr(ar.ChainableErr())
-			break
+	activationResults, err := newCycle.ActivationResults().All()
+	if err != nil {
+		newCycle.WithChainableErr(err)
+	} else {
+		for _, ar := range activationResults {
+			if ar.HasChainableErr() {
+				newCycle.WithChainableErr(ar.ChainableErr())
+				break
+			}
 		}
 	}
 
@@ -151,8 +156,11 @@ func (fm *FMesh) runCycle() {
 	}
 
 	if fm.IsDebug() {
-		for _, ar := range newCycle.ActivationResults().AllAsMapOrNil() {
-			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+		activationResults, err := newCycle.ActivationResults().All()
+		if err == nil {
+			for _, ar := range activationResults {
+				fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+			}
 		}
 	}
 
@@ -171,7 +179,7 @@ func (fm *FMesh) drainComponents() {
 		return
 	}
 
-	components, err := fm.Components().AllAsSlice()
+	components, err := fm.Components().All()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(ErrFailedToDrain, err))
 		return
@@ -209,7 +217,7 @@ func (fm *FMesh) clearInputs() {
 		return
 	}
 
-	components, err := fm.Components().AllAsSlice()
+	components, err := fm.Components().All()
 	if err != nil {
 		fm.WithChainableErr(errors.Join(errFailedToClearInputs, err))
 		return
@@ -351,7 +359,12 @@ func (fm *FMesh) validate() error {
 		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
 	}
 
-	for _, c := range fm.Components().AllAsSliceOrNil() {
+	components, err := fm.Components().All()
+	if err != nil {
+		return fmt.Errorf("failed to get components: %w", err)
+	}
+
+	for _, c := range components {
 		if c.HasChainableErr() {
 			return fmt.Errorf("failed to validate component %s: %w", c.Name(), c.ChainableErr())
 		}
@@ -364,7 +377,12 @@ func (fm *FMesh) validate() error {
 			return fmt.Errorf("component %s has invalid parent mesh", c.Name())
 		}
 
-		for _, p := range c.Outputs().AllAsSliceOrNil() {
+		outputs, err := c.Outputs().All()
+		if err != nil {
+			return fmt.Errorf("failed to get outputs for component %s: %w", c.Name(), err)
+		}
+
+		for _, p := range outputs {
 			if p.HasChainableErr() {
 				return fmt.Errorf("failed to validate port %s in component %s: %w", p.Name(), c.Name(), p.ChainableErr())
 			}
@@ -377,7 +395,12 @@ func (fm *FMesh) validate() error {
 				return fmt.Errorf("port %s in component %s has invalid parent component", p.Name(), c.Name())
 			}
 
-			for _, pipe := range p.Pipes().AllAsSliceOrNil() {
+			pipes, err := p.Pipes().All()
+			if err != nil {
+				return fmt.Errorf("failed to get pipes for port %s in component %s: %w", p.Name(), c.Name(), err)
+			}
+
+			for _, pipe := range pipes {
 				if pipe.ParentComponent() == nil {
 					return fmt.Errorf("pipe leads to unregistered port %s in component %s", pipe.Name(), c.Name())
 				}

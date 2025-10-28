@@ -9,6 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mustAll is a test helper that panics if All returns an error.
+func (g *Group) mustAll() Signals {
+	signals, err := g.All()
+	if err != nil {
+		panic(err)
+	}
+	return signals
+}
+
 func TestNewGroup(t *testing.T) {
 	type args struct {
 		payloads []any
@@ -24,7 +33,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: nil,
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.AllAsSlice()
+				signals, err := group.All()
 				require.NoError(t, err)
 				assert.Empty(t, signals)
 				assert.Zero(t, group.Len())
@@ -36,7 +45,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: []any{1, nil, 3},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.AllAsSlice()
+				signals, err := group.All()
 				require.NoError(t, err)
 				assert.Equal(t, 3, group.Len())
 				assert.Contains(t, signals, New(1))
@@ -171,7 +180,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to empty group",
 			group: NewGroup(),
 			args: args{
-				signals: NewGroup(3, 4, 5).AllAsSliceOrNil(),
+				signals: NewGroup(3, 4, 5).mustAll(),
 			},
 			want: NewGroup(3, 4, 5),
 		},
@@ -179,7 +188,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to group",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				signals: NewGroup(4, 5, 6).AllAsSliceOrNil(),
+				signals: NewGroup(4, 5, 6).mustAll(),
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
 		},
@@ -190,7 +199,7 @@ func TestGroup_With(t *testing.T) {
 				With(nil).
 				WithPayloads(4, 5, 6),
 			args: args{
-				signals: NewGroup(7, nil, 9).AllAsSliceOrNil(),
+				signals: NewGroup(7, nil, 9).mustAll(),
 			},
 			want: NewGroup().WithChainableErr(errors.New("signal is invalid")),
 		},
@@ -350,7 +359,7 @@ func TestGroup_Signals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.group.AllAsSlice()
+			got, err := tt.group.All()
 			if tt.wantErrorString != "" {
 				require.Error(t, err)
 				require.EqualError(t, err, tt.wantErrorString)
@@ -406,7 +415,12 @@ func TestGroup_SignalsOrDefault(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.AllAsSliceOrDefault(tt.args.defaultSignals))
+			result, err := tt.group.All()
+			if err != nil {
+				assert.Equal(t, tt.want, tt.args.defaultSignals)
+			} else {
+				assert.Equal(t, tt.want, result)
+			}
 		})
 	}
 }
