@@ -282,8 +282,8 @@ func TestCollection_Flush(t *testing.T) {
 				assert.Equal(t, 1, collection.Len())
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").Pipes().AllAsSliceOrNil() {
-					assert.Equal(t, 3, destPort.Buffer().Len())
-					allPayloads, err := destPort.AllSignalsPayloads()
+					assert.Equal(t, 3, destPort.Signals().Len())
+					allPayloads, err := destPort.Signals().AllPayloads()
 					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)

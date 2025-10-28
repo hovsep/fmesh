@@ -39,8 +39,8 @@ fm := fmesh.New("hello world").
 			WithInputs("i1", "i2").
 			WithOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
-				word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
-				word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
+				word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+				word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
 				this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 				return nil
 			}),
@@ -48,7 +48,7 @@ fm := fmesh.New("hello world").
 			WithInputs("i1").
 			WithOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
-				inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+				inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 				this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 				return nil
 			}))
@@ -69,7 +69,7 @@ if err != nil {
 }
 
 //Extract results
-results := fm.ComponentByName("case").OutputByName("res").FirstSignalPayloadOrNil()
+results := fm.ComponentByName("case").OutputByName("res").Signals().FirstPayloadOrNil()
 fmt.Printf("Result is : %v", results) // Result is : HELLO WORLD !
 ```
 

@@ -26,7 +26,7 @@ func Test_TimeConstraint(t *testing.T) {
 					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
 					WithOutputs("tick_out").        // Next moment in discrete time (future)
 					WithActivationFunc(func(this *component.Component) error {
-						ticksCount := this.InputByName("tick_in").FirstSignalPayloadOrDefault(0).(int)
+						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 10 {
 							this.Logger().Println("Time is up")
@@ -66,7 +66,7 @@ func Test_TimeConstraint(t *testing.T) {
 					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
 					WithOutputs("tick_out").        // Next moment in discrete time (future)
 					WithActivationFunc(func(this *component.Component) error {
-						ticksCount := this.InputByName("tick_in").FirstSignalPayloadOrDefault(0).(int)
+						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 3 {
 							this.Logger().Println("Time is up")

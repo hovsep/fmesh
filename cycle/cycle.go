@@ -34,7 +34,7 @@ func (c *Cycle) HasActivationErrors() bool {
 // AllErrorsCombined returns all errors occurred within the cycle as one error.
 func (c *Cycle) AllErrorsCombined() error {
 	var allErrors error
-	for _, ar := range c.ActivationResults().All() {
+	for _, ar := range c.ActivationResults().AllAsMapOrNil() {
 		if ar.IsError() {
 			allErrors = errors.Join(allErrors, ar.ActivationErrorWithComponentName())
 		}
@@ -46,7 +46,7 @@ func (c *Cycle) AllErrorsCombined() error {
 // AllPanicsCombined returns all panics occurred within the cycle as one error.
 func (c *Cycle) AllPanicsCombined() error {
 	var allPanics error
-	for _, ar := range c.ActivationResults().All() {
+	for _, ar := range c.ActivationResults().AllAsMapOrNil() {
 		if ar.IsPanic() {
 			allPanics = errors.Join(allPanics, ar.ActivationErrorWithComponentName())
 		}
@@ -67,13 +67,13 @@ func (c *Cycle) HasActivatedComponents() bool {
 
 // WithActivationResults adds multiple activation results.
 func (c *Cycle) WithActivationResults(activationResults ...*component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().Add(activationResults...)
+	c.activationResults = c.ActivationResults().With(activationResults...)
 	return c
 }
 
 // AddActivationResult adds a single activation result in a thread-safe way.
 func (c *Cycle) AddActivationResult(result *component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().Add(result)
+	c.activationResults = c.ActivationResults().With(result)
 	return c
 }
 

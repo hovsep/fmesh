@@ -30,7 +30,7 @@ func TestCycle_ActivationResults(t *testing.T) {
 		{
 			name:        "happy path",
 			cycleResult: New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
-			want:        component.NewActivationResultCollection().Add(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
+			want:        component.NewActivationResultCollection().With(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
 		},
 	}
 	for _, tt := range tests {
@@ -180,7 +180,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				},
 			},
-			wantActivationResults: component.NewActivationResultCollection().Add(
+			wantActivationResults: component.NewActivationResultCollection().With(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 			),
@@ -201,7 +201,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 				},
 			},
-			wantActivationResults: component.NewActivationResultCollection().Add(
+			wantActivationResults: component.NewActivationResultCollection().With(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),

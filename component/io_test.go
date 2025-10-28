@@ -378,7 +378,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				destPort := componentAfterFlush.OutputByName("o1").Pipes().FirstOrNil()
-				allPayloads, err := destPort.AllSignalsPayloads()
+				allPayloads, err := destPort.Signals().AllPayloads()
 				require.NoError(t, err)
 				assert.Contains(t, allPayloads, 777)
 				assert.Contains(t, allPayloads, 888)

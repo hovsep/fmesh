@@ -29,7 +29,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
-						num := this.InputByName("num").FirstSignalPayloadOrNil()
+						num := this.InputByName("num").Signals().FirstPayloadOrNil()
 						this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 						return nil
 					})
@@ -39,7 +39,7 @@ func Test_Math(t *testing.T) {
 					WithInputs("num").
 					WithOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
-						num := this.InputByName("num").FirstSignalPayloadOrDefault(0)
+						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 						this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 						return nil
 					})
@@ -57,7 +57,7 @@ func Test_Math(t *testing.T) {
 				require.NoError(t, err)
 				assert.Len(t, cycles, 3)
 
-				resultSignals := fm.Components().ByName("c2").OutputByName("res").Buffer()
+				resultSignals := fm.Components().ByName("c2").OutputByName("res").Signals()
 				sig, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
 				assert.Len(t, resultSignals.AllAsSliceOrNil(), 1)
@@ -86,8 +86,8 @@ func Test_Readme(t *testing.T) {
 					WithInputs("i1", "i2").
 					WithOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
-						word1 := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
-						word2 := this.InputByName("i2").FirstSignalPayloadOrDefault("").(string)
+						word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+						word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
 						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 						return nil
 					}),
@@ -95,7 +95,7 @@ func Test_Readme(t *testing.T) {
 					WithInputs("i1").
 					WithOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
-						inputString := this.InputByName("i1").FirstSignalPayloadOrDefault("").(string)
+						inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 						return nil
 					}))
@@ -118,7 +118,7 @@ func Test_Readme(t *testing.T) {
 		}
 
 		// Extract results
-		results := fm.ComponentByName("case").OutputByName("res").FirstSignalPayloadOrNil()
+		results := fm.ComponentByName("case").OutputByName("res").Signals().FirstPayloadOrNil()
 		fmt.Printf("Result is :%v", results)
 		assert.Equal(t, "HELLO WORLD !", results)
 	})

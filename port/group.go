@@ -57,6 +57,17 @@ func (g *Group) With(ports ...*Port) *Group {
 	return g.withPorts(newPorts)
 }
 
+// Without removes ports matching the predicate and returns a new group.
+func (g *Group) Without(predicate Predicate) *Group {
+	if g.HasChainableErr() {
+		return NewGroup().WithChainableErr(g.ChainableErr())
+	}
+	// Keep ports that DON'T match the predicate
+	return g.Filter(func(p *Port) bool {
+		return !predicate(p)
+	})
+}
+
 // withPorts sets ports.
 func (g *Group) withPorts(ports Ports) *Group {
 	g.ports = ports

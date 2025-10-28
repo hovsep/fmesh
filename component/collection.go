@@ -13,7 +13,7 @@ type Collection struct {
 	components   Map
 }
 
-// NewCollection creates empty collection.
+// NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
 		chainableErr: nil,
@@ -49,6 +49,19 @@ func (c *Collection) With(components ...*Component) *Collection {
 		if component.HasChainableErr() {
 			return c.WithChainableErr(component.ChainableErr())
 		}
+	}
+
+	return c
+}
+
+// Without removes components by name and returns the collection.
+func (c *Collection) Without(names ...string) *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+
+	for _, name := range names {
+		delete(c.components, name)
 	}
 
 	return c
@@ -215,9 +228,9 @@ func (c *Collection) CountMatch(predicate Predicate) int {
 	return count
 }
 
-// AnyThatMatches returns any arbitrary component that matches the predicate.
+// FindAny returns any arbitrary component that matches the predicate.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
-func (c *Collection) AnyThatMatches(predicate Predicate) *Component {
+func (c *Collection) FindAny(predicate Predicate) *Component {
 	if c.HasChainableErr() {
 		return New("").WithChainableErr(c.ChainableErr())
 	}

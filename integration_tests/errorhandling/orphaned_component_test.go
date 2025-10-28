@@ -16,7 +16,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			WithInputs("num").
 			WithOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
-				num := this.InputByName("num").FirstSignalPayloadOrNil()
+				num := this.InputByName("num").Signals().FirstPayloadOrNil()
 				this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 				return nil
 			})
@@ -26,7 +26,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			WithInputs("num").
 			WithOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
-				num := this.InputByName("num").FirstSignalPayloadOrDefault(0)
+				num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 				this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 				return nil
 			})

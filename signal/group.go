@@ -23,8 +23,8 @@ func NewGroup(payloads ...any) *Group {
 	return newGroup.withSignals(signals)
 }
 
-// FirstSignal returns the first signal in the group.
-func (g *Group) FirstSignal() *Signal {
+// First returns the first signal in the group.
+func (g *Group) First() *Signal {
 	if g.HasChainableErr() {
 		return New(nil).WithChainableErr(g.ChainableErr())
 	}
@@ -107,7 +107,21 @@ func (g *Group) FirstPayload() (any, error) {
 		return nil, g.ChainableErr()
 	}
 
-	return g.FirstSignal().Payload()
+	return g.First().Payload()
+}
+
+// FirstPayloadOrDefault returns the payload of the first signal or the provided default.
+func (g *Group) FirstPayloadOrDefault(defaultPayload any) any {
+	payload, err := g.FirstPayload()
+	if err != nil {
+		return defaultPayload
+	}
+	return payload
+}
+
+// FirstPayloadOrNil returns the payload of the first signal or nil in case of error.
+func (g *Group) FirstPayloadOrNil() any {
+	return g.FirstPayloadOrDefault(nil)
 }
 
 // AllPayloads returns a slice with all payloads of the all signals in the group.
@@ -151,6 +165,18 @@ func (g *Group) With(signals ...*Signal) *Group {
 	}
 
 	return g.withSignals(newSignals)
+}
+
+// Without removes signals matching the predicate and returns a new group.
+func (g *Group) Without(predicate Predicate) *Group {
+	if g.HasChainableErr() {
+		// Do nothing but propagate the error
+		return g
+	}
+	// Keep signals that DON'T match the predicate
+	return g.Filter(func(s *Signal) bool {
+		return !predicate(s)
+	})
 }
 
 // WithPayloads returns a group with added signals created from provided payloads.

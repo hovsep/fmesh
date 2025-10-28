@@ -148,6 +148,19 @@ func (c *Collection) With(ports ...*Port) *Collection {
 	return c
 }
 
+// Without removes ports by name and returns the collection.
+func (c *Collection) Without(names ...string) *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+
+	for _, name := range names {
+		delete(c.ports, name)
+	}
+
+	return c
+}
+
 // WithIndexed creates ports with names like "o1","o2","o3" and so on.
 func (c *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Collection {
 	if c.HasChainableErr() {
@@ -170,7 +183,7 @@ func (c *Collection) Signals() *signal.Group {
 
 	group := signal.NewGroup()
 	for _, p := range c.ports {
-		signals, err := p.Buffer().AllAsSlice()
+		signals, err := p.Signals().AllAsSlice()
 		if err != nil {
 			c.WithChainableErr(err)
 			return signal.NewGroup().WithChainableErr(c.ChainableErr())
@@ -342,9 +355,9 @@ func (c *Collection) CountMatch(predicate Predicate) int {
 	return count
 }
 
-// AnyThatMatches returns any arbitrary port that matches the predicate.
+// FindAny returns any arbitrary port that matches the predicate.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
-func (c *Collection) AnyThatMatches(predicate Predicate) *Port {
+func (c *Collection) FindAny(predicate Predicate) *Port {
 	if c.HasChainableErr() {
 		return New("").WithChainableErr(c.ChainableErr())
 	}

@@ -58,7 +58,7 @@ func TestPort_Buffer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Buffer())
+			assert.Equal(t, tt.want, tt.port.Signals())
 		})
 	}
 }
@@ -200,7 +200,7 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "single signal to empty port",
 			port: New("emptyPort"),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, signal.NewGroup(11), portAfter.Buffer())
+				assert.Equal(t, signal.NewGroup(11), portAfter.Signals())
 			},
 			args: args{
 				signals: signal.NewGroup(11).AllAsSliceOrNil(),
@@ -210,7 +210,7 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "multiple buffer to empty port",
 			port: New("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: args{
 				signals: signal.NewGroup(11, 12).AllAsSliceOrNil(),
@@ -220,7 +220,7 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "single signal to port with single signal",
 			port: New("p").WithSignals(signal.New(11)),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Buffer())
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: args{
 				signals: signal.NewGroup(12).AllAsSliceOrNil(),
@@ -230,7 +230,7 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "single buffer to port with multiple buffer",
 			port: New("p").WithSignalGroups(signal.NewGroup(11, 12)),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Buffer())
+				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
 			},
 			args: args{
 				signals: signal.NewGroup(13).AllAsSliceOrNil(),
@@ -240,7 +240,7 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "multiple buffer to port with multiple buffer",
 			port: New("p").WithSignalGroups(signal.NewGroup(55, 66)),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Buffer())
+				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
 			},
 			args: args{
 				signals: signal.NewGroup(13, 14).AllAsSliceOrNil(),
@@ -250,8 +250,8 @@ func TestPort_PutSignals(t *testing.T) {
 			name: "chain error propagated from buffer",
 			port: New("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Zero(t, portAfter.Buffer().Len())
-				assert.True(t, portAfter.Buffer().HasChainableErr())
+				assert.Zero(t, portAfter.Signals().Len())
+				assert.True(t, portAfter.Signals().HasChainableErr())
 			},
 			args: args{
 				signals: signal.Signals{signal.New(111).WithChainableErr(errors.New("some error in signal"))},
@@ -265,7 +265,7 @@ func TestPort_PutSignals(t *testing.T) {
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.True(t, portAfter.HasChainableErr())
-				assert.Zero(t, portAfter.Buffer().Len())
+				assert.Zero(t, portAfter.Signals().Len())
 			},
 		},
 	}
@@ -349,7 +349,7 @@ func TestPort_Flush(t *testing.T) {
 			srcPort: New("p").WithSignalGroups(signal.NewGroup(1, 2, 3)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.True(t, srcPort.HasSignals())
-				assert.Equal(t, 3, srcPort.Buffer().Len())
+				assert.Equal(t, 3, srcPort.Signals().Len())
 				assert.False(t, srcPort.HasPipes())
 			},
 		},
@@ -391,8 +391,8 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.Pipes().AllAsSliceOrNil() {
 					assert.True(t, destPort.HasSignals())
-					assert.Equal(t, 3, destPort.Buffer().Len())
-					allPayloads, err := destPort.AllSignalsPayloads()
+					assert.Equal(t, 3, destPort.Signals().Len())
+					allPayloads, err := destPort.Signals().AllPayloads()
 					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
@@ -418,8 +418,8 @@ func TestPort_Flush(t *testing.T) {
 				assert.True(t, srcPort.HasPipes())
 				for _, destPort := range srcPort.Pipes().AllAsSliceOrNil() {
 					assert.True(t, destPort.HasSignals())
-					assert.Equal(t, 6, destPort.Buffer().Len())
-					allPayloads, err := destPort.AllSignalsPayloads()
+					assert.Equal(t, 6, destPort.Signals().Len())
+					allPayloads, err := destPort.Signals().AllPayloads()
 					require.NoError(t, err)
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
@@ -517,29 +517,29 @@ func TestPort_Pipes(t *testing.T) {
 func TestPort_ShortcutGetters(t *testing.T) {
 	t.Run("FirstSignalPayload", func(t *testing.T) {
 		port := New("p").WithSignalGroups(signal.NewGroup(4, 7, 6, 5))
-		payload, err := port.FirstSignalPayload()
+		payload, err := port.Signals().FirstPayload()
 		require.NoError(t, err)
 		assert.Equal(t, 4, payload)
 	})
 
 	t.Run("FirstSignalPayloadOrNil", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Nil(t, port.FirstSignalPayloadOrNil())
+		assert.Nil(t, port.Signals().FirstPayloadOrNil())
 	})
 
 	t.Run("FirstSignalPayloadOrDefault", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Equal(t, 888, port.FirstSignalPayloadOrDefault(888))
+		assert.Equal(t, 888, port.Signals().FirstPayloadOrDefault(888))
 	})
 
 	t.Run("AllSignalsOrNil", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Nil(t, port.AllSignalsOrNil())
+		assert.Nil(t, port.Signals().AllAsSliceOrNil())
 	})
 
 	t.Run("AllSignalsOrDefault", func(t *testing.T) {
 		port := New("p").WithSignals(signal.New(123).WithChainableErr(errors.New("some error")))
-		assert.Equal(t, signal.NewGroup(999).AllAsSliceOrNil(), port.AllSignalsOrDefault(signal.NewGroup(999).AllAsSliceOrNil()))
+		assert.Equal(t, signal.NewGroup(999).AllAsSliceOrNil(), port.Signals().AllAsSliceOrDefault(signal.NewGroup(999).AllAsSliceOrNil()))
 	})
 }
 
@@ -561,8 +561,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 3, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 3, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -573,8 +573,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 9, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 9, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -585,8 +585,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 0, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -597,8 +597,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 	}
@@ -634,8 +634,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 3, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 3, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -649,8 +649,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 9, destPortAfter.Buffer().Len())
-				assert.Equal(t, 7, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 9, destPortAfter.Signals().Len())
+				assert.Equal(t, 7, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -664,8 +664,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 6, destPortAfter.Buffer().Len())
-				assert.Equal(t, 7, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 6, destPortAfter.Signals().Len())
+				assert.Equal(t, 7, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -676,8 +676,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 0, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -688,8 +688,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 	}
@@ -727,9 +727,9 @@ func TestPort_ForwardWithMap(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
-				assert.Equal(t, 3, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
-				assert.True(t, destPortAfter.Buffer().AllMatch(func(signal *signal.Signal) bool {
+				assert.Equal(t, 3, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
+				assert.True(t, destPortAfter.Signals().AllMatch(func(signal *signal.Signal) bool {
 					return signal.Labels().ValueIs("l1", "v1")
 				}))
 			},
@@ -742,8 +742,8 @@ func TestPort_ForwardWithMap(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 0, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 0, srcPortAfter.Signals().Len())
 			},
 		},
 		{
@@ -754,8 +754,8 @@ func TestPort_ForwardWithMap(t *testing.T) {
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
-				assert.Equal(t, 0, destPortAfter.Buffer().Len())
-				assert.Equal(t, 3, srcPortAfter.Buffer().Len())
+				assert.Equal(t, 0, destPortAfter.Signals().Len())
+				assert.Equal(t, 3, srcPortAfter.Signals().Len())
 			},
 		},
 	}
