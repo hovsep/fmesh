@@ -651,12 +651,12 @@ func TestLabelsCollection_All(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.All(tt.predicate))
+			assert.Equal(t, tt.want, tt.collection.AllMatch(tt.predicate))
 		})
 	}
 }
 
-func TestLabelsCollection_Any(t *testing.T) {
+func TestLabelsCollection_AnyMatch(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -701,7 +701,7 @@ func TestLabelsCollection_Any(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.Any(tt.predicate))
+			assert.Equal(t, tt.want, tt.collection.AnyMatch(tt.predicate))
 		})
 	}
 }
@@ -774,8 +774,8 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.False(t, lc.Has("test"))
 				assert.Equal(t, 0, lc.Len())
-				assert.False(t, lc.All(func(k, v string) bool { return true }))
-				assert.False(t, lc.Any(func(k, v string) bool { return true }))
+				assert.False(t, lc.AllMatch(func(k, v string) bool { return true }))
+				assert.False(t, lc.AnyMatch(func(k, v string) bool { return true }))
 
 				val, err := lc.Value("test")
 				require.Error(t, err)

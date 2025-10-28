@@ -396,7 +396,7 @@ func TestPort_Flush(t *testing.T) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
 				destPorts, err := srcPort.Pipes().All()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 3, destPort.Signals().Len())
@@ -425,7 +425,7 @@ func TestPort_Flush(t *testing.T) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
 				destPorts, err := srcPort.Pipes().All()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 6, destPort.Signals().Len())

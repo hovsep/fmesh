@@ -552,9 +552,9 @@ func TestFMesh_Run(t *testing.T) {
 
 			// Compare cycle results one by one
 			wantCycles, err := tt.wantCycles.All()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			gotCycles, err := got.Cycles.All()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			for i := 0; i < got.Cycles.Len(); i++ {
 				wantCycle := wantCycles[i]
@@ -563,7 +563,7 @@ func TestFMesh_Run(t *testing.T) {
 
 				// Compare activation results
 				gotActivationResults, err := gotCycle.ActivationResults().All()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				for componentName, gotActivationResult := range gotActivationResults {
 					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).Activated(), gotActivationResult.Activated())
 					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).ComponentName(), gotActivationResult.ComponentName())
