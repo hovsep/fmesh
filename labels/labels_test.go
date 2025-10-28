@@ -734,6 +734,165 @@ func TestLabelsCollection_Len(t *testing.T) {
 	}
 }
 
+func TestLabelsCollection_Map(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		mapper     LabelMapper
+		assertions func(t *testing.T, result *Collection)
+	}{
+		{
+			name:       "empty collection returns empty",
+			collection: NewCollection(nil),
+			mapper:     func(k, v string) (string, string) { return strings.ToUpper(k), strings.ToUpper(v) },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 0, result.Len())
+			},
+		},
+		{
+			name: "transform keys to uppercase",
+			collection: NewCollection(Map{
+				"env":  "production",
+				"tier": "backend",
+			}),
+			mapper: func(k, v string) (string, string) { return strings.ToUpper(k), v },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.Has("ENV"))
+				assert.True(t, result.Has("TIER"))
+				assert.True(t, result.ValueIs("ENV", "production"))
+				assert.True(t, result.ValueIs("TIER", "backend"))
+			},
+		},
+		{
+			name: "transform values to uppercase",
+			collection: NewCollection(Map{
+				"env":  "production",
+				"tier": "backend",
+			}),
+			mapper: func(k, v string) (string, string) { return k, strings.ToUpper(v) },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.ValueIs("env", "PRODUCTION"))
+				assert.True(t, result.ValueIs("tier", "BACKEND"))
+			},
+		},
+		{
+			name: "add prefix to keys",
+			collection: NewCollection(Map{
+				"region": "us-east",
+				"zone":   "1a",
+			}),
+			mapper: func(k, v string) (string, string) { return "app." + k, v },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.Has("app.region"))
+				assert.True(t, result.Has("app.zone"))
+				assert.True(t, result.ValueIs("app.region", "us-east"))
+			},
+		},
+		{
+			name: "transform both keys and values",
+			collection: NewCollection(Map{
+				"env":  "dev",
+				"tier": "frontend",
+			}),
+			mapper: func(k, v string) (string, string) {
+				return "system." + k, "[" + v + "]"
+			},
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.ValueIs("system.env", "[dev]"))
+				assert.True(t, result.ValueIs("system.tier", "[frontend]"))
+			},
+		},
+		{
+			name:       "with chainable error returns error collection",
+			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
+			mapper:     func(k, v string) (string, string) { return k, v },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.True(t, result.HasChainableErr())
+				require.Error(t, result.ChainableErr())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.collection.Map(tt.mapper)
+			if tt.assertions != nil {
+				tt.assertions(t, result)
+			}
+		})
+	}
+}
+
+func TestLabelsCollection_Filter(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		predicate  LabelPredicate
+		assertions func(t *testing.T, result *Collection)
+	}{
+		{
+			name:       "empty collection returns empty",
+			collection: NewCollection(nil),
+			predicate:  func(k, v string) bool { return true },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 0, result.Len())
+			},
+		},
+		{
+			name: "filter by key prefix",
+			collection: NewCollection(Map{
+				"app.env":    "production",
+				"app.tier":   "backend",
+				"system.cpu": "high",
+			}),
+			predicate: func(k, v string) bool { return strings.HasPrefix(k, "app.") },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.Has("app.env"))
+				assert.True(t, result.Has("app.tier"))
+				assert.False(t, result.Has("system.cpu"))
+			},
+		},
+		{
+			name: "filter by value",
+			collection: NewCollection(Map{
+				"env1": "production",
+				"env2": "dev",
+				"env3": "production",
+			}),
+			predicate: func(k, v string) bool { return v == "production" },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 2, result.Len())
+				assert.True(t, result.Has("env1"))
+				assert.True(t, result.Has("env3"))
+				assert.False(t, result.Has("env2"))
+			},
+		},
+		{
+			name: "no matches returns empty collection",
+			collection: NewCollection(Map{
+				"l1": "v1",
+				"l2": "v2",
+			}),
+			predicate: func(k, v string) bool { return false },
+			assertions: func(t *testing.T, result *Collection) {
+				assert.Equal(t, 0, result.Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.collection.Filter(tt.predicate)
+			if tt.assertions != nil {
+				tt.assertions(t, result)
+			}
+		})
+	}
+}
+
 func TestLabelsCollection_Chainable(t *testing.T) {
 	t.Run("chaining multiple operations", func(t *testing.T) {
 		lc := NewCollection(nil).

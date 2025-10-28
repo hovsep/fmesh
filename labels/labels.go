@@ -4,17 +4,11 @@ import (
 	"fmt"
 )
 
-// Map is a map of labels.
-type Map map[string]string
-
 // Collection provides safe access to labels with error handling.
 type Collection struct {
 	chainableErr error
 	labels       Map
 }
-
-// LabelPredicate tests a label key-value pair.
-type LabelPredicate func(label, value string) bool
 
 // NewCollection creates an initialized collection.
 func NewCollection(labels Map) *Collection {
@@ -261,6 +255,19 @@ func (c *Collection) Filter(pred LabelPredicate) *Collection {
 		}
 	}
 	return NewCollection(filtered)
+}
+
+// Map transforms labels and returns a new collection.
+func (c *Collection) Map(mapper LabelMapper) *Collection {
+	if c.HasChainableErr() {
+		return NewCollection(nil).WithChainableErr(c.ChainableErr())
+	}
+	transformed := make(Map)
+	for k, v := range c.labels {
+		newK, newV := mapper(k, v)
+		transformed[newK] = newV
+	}
+	return NewCollection(transformed)
 }
 
 // WithChainableErr sets a chainable error and returns the collection.
