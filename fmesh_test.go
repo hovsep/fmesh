@@ -554,7 +554,7 @@ func TestFMesh_Run(t *testing.T) {
 			for i := 0; i < got.Cycles.Len(); i++ {
 				wantCycle := tt.wantCycles.AllAsSliceOrNil()[i]
 				gotCycle := got.Cycles.AllAsSliceOrNil()[i]
-				assert.Len(t, wantCycle.ActivationResults().AllAsMapOrNil(), len(gotCycle.ActivationResults().AllAsMapOrNil()), "ActivationResultCollection len mismatch")
+				assert.Equal(t, wantCycle.ActivationResults().Len(), gotCycle.ActivationResults().Len(), "ActivationResultCollection len mismatch")
 
 				// Compare activation results
 				for componentName, gotActivationResult := range gotCycle.ActivationResults().AllAsMapOrNil() {
