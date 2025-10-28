@@ -106,12 +106,6 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	return nil
 }
 
-// ByComponentName returns the activation result of given component.
-// Deprecated: Use ByName instead for consistency with other collections.
-func (c *ActivationResultCollection) ByComponentName(componentName string) *ActivationResult {
-	return c.ByName(componentName)
-}
-
 // AllAsMap returns all activation results as a map.
 func (c *ActivationResultCollection) AllAsMap() (map[string]*ActivationResult, error) {
 	if c.HasChainableErr() {

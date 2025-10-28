@@ -180,7 +180,7 @@ func (fm *FMesh) drainComponents() {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
-		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
+		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 
 		if activationResult.HasChainableErr() {
 			fm.WithChainableErr(errors.Join(ErrFailedToDrain, activationResult.ChainableErr()))
@@ -218,7 +218,7 @@ func (fm *FMesh) clearInputs() {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
-		activationResult := lastCycle.ActivationResults().ByComponentName(c.Name())
+		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 
 		if activationResult.HasChainableErr() {
 			fm.WithChainableErr(errors.Join(errFailedToClearInputs, activationResult.ChainableErr()))
