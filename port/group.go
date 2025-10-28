@@ -68,6 +68,17 @@ func (g *Group) Without(predicate Predicate) *Group {
 	})
 }
 
+// ForEach applies the action to each port and returns the group for chaining.
+func (g *Group) ForEach(action func(*Port)) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	for _, p := range g.ports {
+		action(p)
+	}
+	return g
+}
+
 // withPorts sets ports.
 func (g *Group) withPorts(ports Ports) *Group {
 	g.ports = ports

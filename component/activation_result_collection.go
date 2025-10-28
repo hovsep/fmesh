@@ -3,8 +3,9 @@ package component
 import "sync"
 
 // ActivationResultCollection is a collection of activation results.
+// Thread-safe for concurrent access during activation.
 type ActivationResultCollection struct {
-	mu                sync.Mutex
+	mu                sync.RWMutex
 	chainableErr      error
 	activationResults map[string]*ActivationResult
 }
@@ -52,6 +53,8 @@ func (c *ActivationResultCollection) HasActivationErrors() bool {
 	if c.HasChainableErr() {
 		return false
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, ar := range c.activationResults {
 		if ar.IsError() {
 			return true
@@ -65,6 +68,8 @@ func (c *ActivationResultCollection) HasActivationPanics() bool {
 	if c.HasChainableErr() {
 		return false
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, ar := range c.activationResults {
 		if ar.IsPanic() {
 			return true
@@ -78,6 +83,8 @@ func (c *ActivationResultCollection) HasActivatedComponents() bool {
 	if c.HasChainableErr() {
 		return false
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, ar := range c.activationResults {
 		if ar.Activated() {
 			return true
@@ -91,10 +98,11 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	if c.HasChainableErr() {
 		return nil
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if result, ok := c.activationResults[name]; ok {
 		return result
 	}
-
 	return nil
 }
 
@@ -109,6 +117,8 @@ func (c *ActivationResultCollection) AllAsMap() (map[string]*ActivationResult, e
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.activationResults, nil
 }
 
@@ -131,6 +141,8 @@ func (c *ActivationResultCollection) Len() int {
 	if c.HasChainableErr() {
 		return 0
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return len(c.activationResults)
 }
 
@@ -160,6 +172,8 @@ func (c *ActivationResultCollection) AllAsSlice() (ActivationResults, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	results := make([]*ActivationResult, 0, len(c.activationResults))
 	for _, result := range c.activationResults {
 		results = append(results, result)
@@ -187,6 +201,8 @@ func (c *ActivationResultCollection) Any() *ActivationResult {
 	if c.HasChainableErr() {
 		return nil
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.IsEmpty() {
 		c.WithChainableErr(ErrNoComponentsInCollection)
 		return nil
@@ -200,7 +216,12 @@ func (c *ActivationResultCollection) Any() *ActivationResult {
 
 // AnyOrDefault returns any arbitrary activation result or the provided default.
 func (c *ActivationResultCollection) AnyOrDefault(defaultResult *ActivationResult) *ActivationResult {
-	if c.HasChainableErr() || c.IsEmpty() {
+	if c.HasChainableErr() {
+		return defaultResult
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.IsEmpty() {
 		return defaultResult
 	}
 	for _, result := range c.activationResults {
@@ -211,7 +232,12 @@ func (c *ActivationResultCollection) AnyOrDefault(defaultResult *ActivationResul
 
 // AnyOrNil returns any arbitrary activation result or nil.
 func (c *ActivationResultCollection) AnyOrNil() *ActivationResult {
-	if c.HasChainableErr() || c.IsEmpty() {
+	if c.HasChainableErr() {
+		return nil
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.IsEmpty() {
 		return nil
 	}
 	for _, result := range c.activationResults {
@@ -225,6 +251,8 @@ func (c *ActivationResultCollection) AllMatch(predicate ActivationResultPredicat
 	if c.HasChainableErr() {
 		return false
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, result := range c.activationResults {
 		if !predicate(result) {
 			return false
@@ -238,6 +266,8 @@ func (c *ActivationResultCollection) AnyMatch(predicate ActivationResultPredicat
 	if c.HasChainableErr() {
 		return false
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, result := range c.activationResults {
 		if predicate(result) {
 			return true
@@ -256,6 +286,8 @@ func (c *ActivationResultCollection) CountMatch(predicate ActivationResultPredic
 	if c.HasChainableErr() {
 		return 0
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	count := 0
 	for _, result := range c.activationResults {
 		if predicate(result) {
@@ -271,6 +303,8 @@ func (c *ActivationResultCollection) FindAny(predicate ActivationResultPredicate
 	if c.HasChainableErr() {
 		return nil
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, result := range c.activationResults {
 		if predicate(result) {
 			return result
@@ -285,6 +319,8 @@ func (c *ActivationResultCollection) Filter(predicate ActivationResultPredicate)
 	if c.HasChainableErr() {
 		return NewActivationResultCollection().WithChainableErr(c.ChainableErr())
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	filtered := NewActivationResultCollection()
 	for _, result := range c.activationResults {
 		if predicate(result) {
@@ -302,6 +338,8 @@ func (c *ActivationResultCollection) Map(mapper ActivationResultMapper) *Activat
 	if c.HasChainableErr() {
 		return NewActivationResultCollection().WithChainableErr(c.ChainableErr())
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	mapped := NewActivationResultCollection()
 	for _, result := range c.activationResults {
 		transformedResult := mapper(result)
@@ -341,4 +379,28 @@ func (c *ActivationResultCollection) AllThatSucceeded() *ActivationResultCollect
 	return c.Filter(func(result *ActivationResult) bool {
 		return result.Code() == ActivationCodeOK
 	})
+}
+
+// ForEach applies the action to each activation result and returns the collection for chaining.
+func (c *ActivationResultCollection) ForEach(action func(*ActivationResult)) *ActivationResultCollection {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, result := range c.activationResults {
+		action(result)
+	}
+	return c
+}
+
+// Clear removes all activation results from the collection.
+func (c *ActivationResultCollection) Clear() *ActivationResultCollection {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.activationResults = make(map[string]*ActivationResult)
+	return c
 }
