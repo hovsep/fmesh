@@ -27,8 +27,16 @@ func NewCollection(labels Map) *Collection {
 	}
 }
 
-// All returns true if all labels in the collection satisfy the predicate.
-func (c *Collection) All(pred LabelPredicate) bool {
+// All returns all labels as a map.
+func (c *Collection) All() (Map, error) {
+	if c.HasChainableErr() {
+		return nil, c.ChainableErr()
+	}
+	return c.labels, nil
+}
+
+// AllMatch returns true if all labels in the collection satisfy the predicate.
+func (c *Collection) AllMatch(pred LabelPredicate) bool {
 	if c.HasChainableErr() {
 		return false
 	}
@@ -41,8 +49,8 @@ func (c *Collection) All(pred LabelPredicate) bool {
 	return true
 }
 
-// Any returns true if any label in the collection satisfies the predicate.
-func (c *Collection) Any(pred LabelPredicate) bool {
+// AnyMatch returns true if any label in the collection satisfies the predicate.
+func (c *Collection) AnyMatch(pred LabelPredicate) bool {
 	if c.HasChainableErr() {
 		return false
 	}
@@ -52,6 +60,25 @@ func (c *Collection) Any(pred LabelPredicate) bool {
 		}
 	}
 	return false
+}
+
+// NoneMatch returns true if no labels match the predicate.
+func (c *Collection) NoneMatch(pred LabelPredicate) bool {
+	return !c.AnyMatch(pred)
+}
+
+// CountMatch returns the number of labels that match the predicate.
+func (c *Collection) CountMatch(pred LabelPredicate) int {
+	if c.HasChainableErr() {
+		return 0
+	}
+	count := 0
+	for k, v := range c.labels {
+		if pred(k, v) {
+			count++
+		}
+	}
+	return count
 }
 
 // Value returns the value of a single label or error if not found.
@@ -195,6 +222,45 @@ func (c *Collection) Len() int {
 		return 0
 	}
 	return len(c.labels)
+}
+
+// IsEmpty returns true when there are no labels in the collection.
+func (c *Collection) IsEmpty() bool {
+	return c.Len() == 0
+}
+
+// Clear removes all labels from the collection.
+func (c *Collection) Clear() *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.labels = make(Map)
+	return c
+}
+
+// ForEach applies the action to each label and returns the collection for chaining.
+func (c *Collection) ForEach(action func(label, value string)) *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+	for k, v := range c.labels {
+		action(k, v)
+	}
+	return c
+}
+
+// Filter returns a new collection with labels that pass the predicate.
+func (c *Collection) Filter(pred LabelPredicate) *Collection {
+	if c.HasChainableErr() {
+		return NewCollection(nil).WithChainableErr(c.ChainableErr())
+	}
+	filtered := make(Map)
+	for k, v := range c.labels {
+		if pred(k, v) {
+			filtered[k] = v
+		}
+	}
+	return NewCollection(filtered)
 }
 
 // WithChainableErr sets a chainable error and returns the collection.
