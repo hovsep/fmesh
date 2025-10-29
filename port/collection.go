@@ -286,11 +286,6 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// NoneMatch returns true if no ports match the predicate.
-func (c *Collection) NoneMatch(predicate Predicate) bool {
-	return !c.AnyMatch(predicate)
-}
-
 // CountMatch returns the number of ports that match the given predicate.
 // Use this to count ports with specific characteristics.
 //

@@ -76,27 +76,6 @@ func (g *Group) AllMatch(p Predicate) bool {
 	return true
 }
 
-// FirstMatch returns the first signal that passes the predicate.
-func (g *Group) FirstMatch(p Predicate) *Signal {
-	if g.HasChainableErr() {
-		return New(nil).WithChainableErr(g.ChainableErr())
-	}
-
-	if g.IsEmpty() {
-		g.WithChainableErr(ErrNoSignalsInGroup)
-		return New(nil).WithChainableErr(g.ChainableErr())
-	}
-
-	for _, sig := range g.signals {
-		if p(sig) {
-			return sig
-		}
-	}
-
-	g.WithChainableErr(ErrNotFound)
-	return New(nil).WithChainableErr(g.ChainableErr())
-}
-
 // FirstPayload returns the payload of the first signal with error handling.
 // Use this when you need explicit error handling.
 //
@@ -334,11 +313,6 @@ func (g *Group) FirstOrNil() *Signal {
 		return nil
 	}
 	return g.signals[0]
-}
-
-// NoneMatch returns true if no signals match the predicate.
-func (g *Group) NoneMatch(predicate Predicate) bool {
-	return !g.AnyMatch(predicate)
 }
 
 // CountMatch returns the number of signals that match the predicate.

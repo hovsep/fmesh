@@ -147,11 +147,6 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// NoneMatch returns true if no components match the predicate.
-func (c *Collection) NoneMatch(predicate Predicate) bool {
-	return !c.AnyMatch(predicate)
-}
-
 // CountMatch returns the number of components that match the predicate.
 func (c *Collection) CountMatch(predicate Predicate) int {
 	if c.HasChainableErr() {

@@ -205,27 +205,6 @@ func TestActivationResultCollection_AnyMatch(t *testing.T) {
 	})
 }
 
-func TestActivationResultCollection_NoneMatch(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(false)
-	r2 := NewActivationResult("c2").SetActivated(true)
-
-	t.Run("none match", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
-		result := collection.NoneMatch(func(r *ActivationResult) bool {
-			return r.Activated()
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("at least one matches", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
-		result := collection.NoneMatch(func(r *ActivationResult) bool {
-			return r.Activated()
-		})
-		assert.False(t, result)
-	})
-}
-
 func TestActivationResultCollection_CountMatch(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(false)
