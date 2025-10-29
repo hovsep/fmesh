@@ -78,34 +78,95 @@ func TestComponent_WithDescription(t *testing.T) {
 	}
 }
 
-func TestComponent_WithLabels(t *testing.T) {
-	type args struct {
-		labels labels.Map
-	}
+func TestComponent_SetLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		component  *Component
-		args       args
+		labels     labels.Map
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name:      "happy path",
+			name:      "set labels on new component",
 			component: New("c1"),
-			args: args{
-				labels: labels.Map{
-					"l1": "v1",
-					"l2": "v2",
-				},
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
 			},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 2, component.Labels().Len())
 				assert.True(t, component.labels.HasAll("l1", "l2"))
 			},
 		},
+		{
+			name:      "set labels replaces existing labels",
+			component: New("c1").AddLabels(labels.Map{"old": "value"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Labels().Len())
+				assert.True(t, component.labels.HasAll("l1", "l2"))
+				assert.False(t, component.labels.Has("old"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.WithLabels(tt.args.labels)
+			componentAfter := tt.component.SetLabels(tt.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_AddLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		component  *Component
+		labels     labels.Map
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "add labels to new component",
+			component: New("c1"),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Labels().Len())
+				assert.True(t, component.labels.HasAll("l1", "l2"))
+			},
+		},
+		{
+			name:      "add labels merges with existing",
+			component: New("c1").AddLabels(labels.Map{"existing": "label"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 3, component.Labels().Len())
+				assert.True(t, component.labels.HasAll("existing", "l1", "l2"))
+			},
+		},
+		{
+			name:      "add labels updates existing key",
+			component: New("c1").AddLabels(labels.Map{"l1": "old"}),
+			labels: labels.Map{
+				"l1": "new",
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 1, component.Labels().Len())
+				assert.True(t, component.labels.ValueIs("l1", "new"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.AddLabels(tt.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}

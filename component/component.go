@@ -67,8 +67,17 @@ func (c *Component) Labels() *labels.Collection {
 	return c.labels
 }
 
-// WithLabels sets labels and returns the component.
-func (c *Component) WithLabels(labelMap labels.Map) *Component {
+// SetLabels replaces all labels and returns the component for chaining.
+func (c *Component) SetLabels(labelMap labels.Map) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.labels.Clear().WithMany(labelMap)
+	return c
+}
+
+// AddLabels adds or updates labels and returns the component for chaining.
+func (c *Component) AddLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
 	}

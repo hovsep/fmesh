@@ -120,11 +120,11 @@ func TestSignal_Map(t *testing.T) {
 			name:   "happy path",
 			signal: New(1),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithLabels(labels.Map{
+				return signal.SetLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
-			want: New(1).WithLabels(labels.Map{
+			want: New(1).SetLabels(labels.Map{
 				"l1": "v1",
 			}),
 		},
@@ -132,7 +132,7 @@ func TestSignal_Map(t *testing.T) {
 			name:   "with chain error",
 			signal: New(1).WithChainableErr(errors.New("some error in chain")),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithLabels(labels.Map{
+				return signal.SetLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
@@ -173,6 +173,102 @@ func TestSignal_MapPayload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.signal.MapPayload(tt.mapperFunc))
+		})
+	}
+}
+
+func TestSignal_SetLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		labels     labels.Map
+		assertions func(t *testing.T, signal *Signal)
+	}{
+		{
+			name:   "set labels on new signal",
+			signal: New(123),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Labels().Len())
+				assert.True(t, signal.labels.HasAll("l1", "l2"))
+			},
+		},
+		{
+			name:   "set labels replaces existing labels",
+			signal: New(123).AddLabels(labels.Map{"old": "value"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Labels().Len())
+				assert.True(t, signal.labels.HasAll("l1", "l2"))
+				assert.False(t, signal.labels.Has("old"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signalAfter := tt.signal.SetLabels(tt.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, signalAfter)
+			}
+		})
+	}
+}
+
+func TestSignal_AddLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		labels     labels.Map
+		assertions func(t *testing.T, signal *Signal)
+	}{
+		{
+			name:   "add labels to new signal",
+			signal: New(123),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Labels().Len())
+				assert.True(t, signal.labels.HasAll("l1", "l2"))
+			},
+		},
+		{
+			name:   "add labels merges with existing",
+			signal: New(123).AddLabels(labels.Map{"existing": "label"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 3, signal.Labels().Len())
+				assert.True(t, signal.labels.HasAll("existing", "l1", "l2"))
+			},
+		},
+		{
+			name:   "add labels updates existing key",
+			signal: New(123).AddLabels(labels.Map{"l1": "old"}),
+			labels: labels.Map{
+				"l1": "new",
+			},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Labels().Len())
+				assert.True(t, signal.labels.ValueIs("l1", "new"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signalAfter := tt.signal.AddLabels(tt.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, signalAfter)
+			}
 		})
 	}
 }

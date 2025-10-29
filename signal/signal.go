@@ -28,6 +28,24 @@ func (s *Signal) Labels() *labels.Collection {
 	return s.labels
 }
 
+// SetLabels replaces all labels and returns the signal for chaining.
+func (s *Signal) SetLabels(labelMap labels.Map) *Signal {
+	if s.HasChainableErr() {
+		return s
+	}
+	s.labels.Clear().WithMany(labelMap)
+	return s
+}
+
+// AddLabels adds or updates labels and returns the signal for chaining.
+func (s *Signal) AddLabels(labelMap labels.Map) *Signal {
+	if s.HasChainableErr() {
+		return s
+	}
+	s.labels.WithMany(labelMap)
+	return s
+}
+
 // Payload returns the signal's payload.
 func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {
@@ -64,16 +82,6 @@ func (s *Signal) HasChainableErr() bool {
 // ChainableErr returns the chainable error.
 func (s *Signal) ChainableErr() error {
 	return s.chainableErr
-}
-
-// WithLabels sets labels and returns the signal.
-func (s *Signal) WithLabels(labelMap labels.Map) *Signal {
-	if s.HasChainableErr() {
-		return s
-	}
-
-	s.labels.WithMany(labelMap)
-	return s
 }
 
 // Map applies a given mapper func and returns a new signal.

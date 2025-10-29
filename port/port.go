@@ -56,6 +56,24 @@ func (p *Port) Labels() *labels.Collection {
 	return p.labels
 }
 
+// SetLabels replaces all labels and returns the port for chaining.
+func (p *Port) SetLabels(labelMap labels.Map) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	p.labels.Clear().WithMany(labelMap)
+	return p
+}
+
+// AddLabels adds or updates labels and returns the port for chaining.
+func (p *Port) AddLabels(labelMap labels.Map) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	p.labels.WithMany(labelMap)
+	return p
+}
+
 // WithDescription sets a description.
 func (p *Port) WithDescription(description string) *Port {
 	if p.HasChainableErr() {
@@ -203,16 +221,6 @@ func validatePipe(srcPort, dstPort *Port) error {
 	}
 
 	return nil
-}
-
-// WithLabels sets labels and returns the port.
-func (p *Port) WithLabels(labelMap labels.Map) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
-	p.labels.WithMany(labelMap)
-	return p
 }
 
 // ForwardSignals copies all signals from source port to destination port, without clearing the source port.

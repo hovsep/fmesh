@@ -329,9 +329,9 @@ func TestPort_HasPipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").WithLabels(labels.Map{
+			port: New("p1").SetLabels(labels.Map{
 				DirectionLabel: DirectionOut,
-			}).PipeTo(New("p2").WithLabels(labels.Map{
+			}).PipeTo(New("p2").SetLabels(labels.Map{
 				DirectionLabel: DirectionIn,
 			})),
 			want: true,
@@ -362,16 +362,16 @@ func TestPort_Flush(t *testing.T) {
 		{
 			name: "empty port with pipes is not flushed",
 			srcPort: New("p").
-				WithLabels(
+				SetLabels(
 					labels.Map{
 						DirectionLabel: DirectionOut,
 					}).PipeTo(
 				New("p1").
-					WithLabels(
+					SetLabels(
 						labels.Map{
 							DirectionLabel: DirectionIn,
 						}), New("p2").
-					WithLabels(
+					SetLabels(
 						labels.Map{
 							DirectionLabel: DirectionIn,
 						})),
@@ -382,14 +382,14 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to empty ports",
-			srcPort: New("p").WithLabels(labels.Map{
+			srcPort: New("p").SetLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").WithLabels(labels.Map{
+					New("p1").SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}),
-					New("p2").WithLabels(labels.Map{
+					New("p2").SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					})),
 			assertions: func(t *testing.T, srcPort *Port) {
@@ -410,15 +410,15 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to non empty ports",
-			srcPort: New("p").WithLabels(labels.Map{
+			srcPort: New("p").SetLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).
 				PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").WithLabels(labels.Map{
+					New("p1").SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).PutSignalGroups(signal.NewGroup(4, 5, 6)),
-					New("p2").WithLabels(labels.Map{
+					New("p2").SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}).PutSignalGroups(signal.NewGroup(7, 8, 9))),
 			assertions: func(t *testing.T, srcPort *Port) {
@@ -448,34 +448,95 @@ func TestPort_Flush(t *testing.T) {
 	}
 }
 
-func TestPort_WithLabels(t *testing.T) {
-	type args struct {
-		labels labels.Map
-	}
+func TestPort_SetLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		port       *Port
-		args       args
+		labels     labels.Map
 		assertions func(t *testing.T, port *Port)
 	}{
 		{
-			name: "happy path",
+			name: "set labels on new port",
 			port: New("p1"),
-			args: args{
-				labels: labels.Map{
-					"l1": "v1",
-					"l2": "v2",
-				},
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
 			},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 2, port.Labels().Len())
 				assert.True(t, port.labels.HasAll("l1", "l2"))
 			},
 		},
+		{
+			name: "set labels replaces existing labels",
+			port: New("p1").AddLabels(labels.Map{"old": "value"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 2, port.Labels().Len())
+				assert.True(t, port.labels.HasAll("l1", "l2"))
+				assert.False(t, port.labels.Has("old"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.WithLabels(tt.args.labels)
+			portAfter := tt.port.SetLabels(tt.labels)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
+		})
+	}
+}
+
+func TestPort_AddLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		port       *Port
+		labels     labels.Map
+		assertions func(t *testing.T, port *Port)
+	}{
+		{
+			name: "add labels to new port",
+			port: New("p1"),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 2, port.Labels().Len())
+				assert.True(t, port.labels.HasAll("l1", "l2"))
+			},
+		},
+		{
+			name: "add labels merges with existing",
+			port: New("p1").AddLabels(labels.Map{"existing": "label"}),
+			labels: labels.Map{
+				"l1": "v1",
+				"l2": "v2",
+			},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 3, port.Labels().Len())
+				assert.True(t, port.labels.HasAll("existing", "l1", "l2"))
+			},
+		},
+		{
+			name: "add labels updates existing key",
+			port: New("p1").AddLabels(labels.Map{"l1": "old"}),
+			labels: labels.Map{
+				"l1": "new",
+			},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 1, port.Labels().Len())
+				assert.True(t, port.labels.ValueIs("l1", "new"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.AddLabels(tt.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -497,14 +558,14 @@ func TestPort_Pipes(t *testing.T) {
 		{
 			name: "with pipes",
 			port: New("p1").
-				WithLabels(labels.Map{
+				SetLabels(labels.Map{
 					DirectionLabel: DirectionOut,
 				}).PipeTo(
 				New("p2").
-					WithLabels(labels.Map{
+					SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					}), New("p3").
-					WithLabels(labels.Map{
+					SetLabels(labels.Map{
 						DirectionLabel: DirectionIn,
 					})),
 			want: NewGroup("p2", "p3").WithPortLabels(labels.Map{
@@ -726,7 +787,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
 				destPort: New("p2"),
 				mapperFunc: func(signal *signal.Signal) *signal.Signal {
-					return signal.WithLabels(labels.Map{
+					return signal.SetLabels(labels.Map{
 						"l1": "v1",
 					})
 				},

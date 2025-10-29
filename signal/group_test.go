@@ -342,16 +342,16 @@ func TestGroup_Signals(t *testing.T) {
 		{
 			name: "with labeled signals",
 			group: NewGroup(1, nil, 3).ForEach(func(s *Signal) {
-				s.WithLabels(labels.Map{"flavor": "banana"})
+				s.SetLabels(labels.Map{"flavor": "banana"})
 			}),
 			want: Signals{
-				New(1).WithLabels(labels.Map{
+				New(1).SetLabels(labels.Map{
 					"flavor": "banana",
 				}),
-				New(nil).WithLabels(labels.Map{
+				New(nil).SetLabels(labels.Map{
 					"flavor": "banana",
 				}),
-				New(3).WithLabels(labels.Map{
+				New(3).SetLabels(labels.Map{
 					"flavor": "banana",
 				})},
 			wantErrorString: "",

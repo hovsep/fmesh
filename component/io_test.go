@@ -367,7 +367,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "happy path",
 			getComponent: func() *Component {
-				sink := port.New("sink").WithLabels(labels.Map{
+				sink := port.New("sink").SetLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				})
 				c := New("c1").WithOutputs("o1", "o2")
