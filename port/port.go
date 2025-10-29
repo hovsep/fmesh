@@ -74,6 +74,15 @@ func (p *Port) AddLabels(labelMap labels.Map) *Port {
 	return p
 }
 
+// AddLabel adds or updates a single label and returns the port for chaining.
+func (p *Port) AddLabel(name, value string) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	p.labels.With(name, value)
+	return p
+}
+
 // WithDescription sets a description.
 func (p *Port) WithDescription(description string) *Port {
 	if p.HasChainableErr() {

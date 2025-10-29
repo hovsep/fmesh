@@ -85,6 +85,15 @@ func (c *Component) AddLabels(labelMap labels.Map) *Component {
 	return c
 }
 
+// AddLabel adds or updates a single label and returns the component for chaining.
+func (c *Component) AddLabel(name, value string) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.labels.With(name, value)
+	return c
+}
+
 // propagateChainErrors propagates up all chain errors that might have not been propagated yet.
 func (c *Component) propagateChainErrors() {
 	if c.Inputs().HasChainableErr() {
