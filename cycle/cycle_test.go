@@ -6,6 +6,7 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -262,5 +263,111 @@ func TestCycle_Chainability(t *testing.T) {
 			WithNumber(2)
 
 		assert.Equal(t, 2, c.Number())
+	})
+}
+
+func TestCycle_AllErrorsCombined(t *testing.T) {
+	err1 := errors.New("error 1")
+	err2 := errors.New("error 2")
+
+	tests := []struct {
+		name    string
+		cycle   *Cycle
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name:    "no errors",
+			cycle:   New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+			wantErr: false,
+		},
+		{
+			name: "single error",
+			cycle: New().WithActivationResults(
+				component.NewActivationResult("c1").WithActivationError(err1).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
+			),
+			wantErr: true,
+			wantMsg: "error 1",
+		},
+		{
+			name: "multiple errors",
+			cycle: New().WithActivationResults(
+				component.NewActivationResult("c1").WithActivationError(err1).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
+				component.NewActivationResult("c2").WithActivationError(err2).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
+			),
+			wantErr: true,
+			wantMsg: "error 1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cycle.AllErrorsCombined()
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCycle_AllPanicsCombined(t *testing.T) {
+	panic1 := errors.New("panic 1")
+	panic2 := errors.New("panic 2")
+
+	tests := []struct {
+		name    string
+		cycle   *Cycle
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name:    "no panics",
+			cycle:   New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+			wantErr: false,
+		},
+		{
+			name: "single panic",
+			cycle: New().WithActivationResults(
+				component.NewActivationResult("c1").WithActivationError(panic1).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
+			),
+			wantErr: true,
+			wantMsg: "panic 1",
+		},
+		{
+			name: "multiple panics",
+			cycle: New().WithActivationResults(
+				component.NewActivationResult("c1").WithActivationError(panic1).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
+				component.NewActivationResult("c2").WithActivationError(panic2).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
+			),
+			wantErr: true,
+			wantMsg: "panic 1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cycle.AllPanicsCombined()
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCycle_ChainableErr(t *testing.T) {
+	t.Run("cycle with error", func(t *testing.T) {
+		c := New().WithChainableErr(errors.New("test error"))
+		assert.True(t, c.HasChainableErr())
+		assert.EqualError(t, c.ChainableErr(), "test error")
+	})
+
+	t.Run("cycle without error", func(t *testing.T) {
+		c := New()
+		assert.False(t, c.HasChainableErr())
+		assert.NoError(t, c.ChainableErr())
 	})
 }
