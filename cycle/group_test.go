@@ -185,40 +185,6 @@ func TestGroup_First(t *testing.T) {
 	})
 }
 
-func TestGroup_FirstOrDefault(t *testing.T) {
-	c1 := New().WithNumber(1)
-	defaultCycle := New().WithNumber(99)
-
-	t.Run("returns first when not empty", func(t *testing.T) {
-		group := NewGroup().With(c1)
-		result := group.FirstOrDefault(defaultCycle)
-		assert.Equal(t, 1, result.Number())
-	})
-
-	t.Run("returns default when empty", func(t *testing.T) {
-		group := NewGroup()
-		result := group.FirstOrDefault(defaultCycle)
-		assert.Equal(t, 99, result.Number())
-	})
-}
-
-func TestGroup_FirstOrNil(t *testing.T) {
-	c1 := New().WithNumber(1)
-
-	t.Run("returns first when not empty", func(t *testing.T) {
-		group := NewGroup().With(c1)
-		result := group.FirstOrNil()
-		assert.NotNil(t, result)
-		assert.Equal(t, 1, result.Number())
-	})
-
-	t.Run("returns nil when empty", func(t *testing.T) {
-		group := NewGroup()
-		result := group.FirstOrNil()
-		assert.Nil(t, result)
-	})
-}
-
 func TestGroup_All(t *testing.T) {
 	c1 := New().WithNumber(1)
 	c2 := New().WithNumber(2)

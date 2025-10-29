@@ -100,22 +100,6 @@ func (g *Group) First() *Cycle {
 	return g.cycles[0]
 }
 
-// FirstOrDefault returns the first cycle or the provided default.
-func (g *Group) FirstOrDefault(defaultCycle *Cycle) *Cycle {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return defaultCycle
-	}
-	return g.cycles[0]
-}
-
-// FirstOrNil returns the first cycle or nil.
-func (g *Group) FirstOrNil() *Cycle {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return nil
-	}
-	return g.cycles[0]
-}
-
 // All returns all cycles as a slice.
 func (g *Group) All() (Cycles, error) {
 	if g.HasChainableErr() {

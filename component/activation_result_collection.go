@@ -166,38 +166,6 @@ func (c *ActivationResultCollection) Any() *ActivationResult {
 	return nil
 }
 
-// AnyOrDefault returns any arbitrary activation result or the provided default.
-func (c *ActivationResultCollection) AnyOrDefault(defaultResult *ActivationResult) *ActivationResult {
-	if c.HasChainableErr() {
-		return defaultResult
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.IsEmpty() {
-		return defaultResult
-	}
-	for _, result := range c.activationResults {
-		return result
-	}
-	return defaultResult
-}
-
-// AnyOrNil returns any arbitrary activation result or nil.
-func (c *ActivationResultCollection) AnyOrNil() *ActivationResult {
-	if c.HasChainableErr() {
-		return nil
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.IsEmpty() {
-		return nil
-	}
-	for _, result := range c.activationResults {
-		return result
-	}
-	return nil
-}
-
 // AllMatch returns true if all activation results match the predicate.
 func (c *ActivationResultCollection) AllMatch(predicate ActivationResultPredicate) bool {
 	if c.HasChainableErr() {

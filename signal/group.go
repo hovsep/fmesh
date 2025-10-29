@@ -328,14 +328,6 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	return NewGroup().withSignals(mappedSignals)
 }
 
-// FirstOrDefault returns the first signal or the provided default.
-func (g *Group) FirstOrDefault(defaultSignal *Signal) *Signal {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return defaultSignal
-	}
-	return g.signals[0]
-}
-
 // FirstOrNil returns the first signal or nil.
 func (g *Group) FirstOrNil() *Signal {
 	if g.HasChainableErr() || g.IsEmpty() {

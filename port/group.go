@@ -138,14 +138,6 @@ func (g *Group) First() *Port {
 	return g.ports[0]
 }
 
-// FirstOrDefault returns the first port or the provided default.
-func (g *Group) FirstOrDefault(defaultPort *Port) *Port {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return defaultPort
-	}
-	return g.ports[0]
-}
-
 // FirstOrNil returns the first port or nil.
 func (g *Group) FirstOrNil() *Port {
 	if g.HasChainableErr() || g.IsEmpty() {

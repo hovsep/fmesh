@@ -113,28 +113,6 @@ func (c *Collection) Any() *Component {
 	return New("").WithChainableErr(errUnexpectedErrorGettingComponent)
 }
 
-// AnyOrDefault returns any arbitrary component or the provided default.
-func (c *Collection) AnyOrDefault(defaultComponent *Component) *Component {
-	if c.HasChainableErr() || c.IsEmpty() {
-		return defaultComponent
-	}
-	for _, comp := range c.components {
-		return comp
-	}
-	return defaultComponent
-}
-
-// AnyOrNil returns any arbitrary component or nil.
-func (c *Collection) AnyOrNil() *Component {
-	if c.HasChainableErr() || c.IsEmpty() {
-		return nil
-	}
-	for _, comp := range c.components {
-		return comp
-	}
-	return nil
-}
-
 // All returns all components as a map.
 func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
