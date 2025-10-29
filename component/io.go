@@ -152,6 +152,13 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) 
 }
 
 // Inputs returns the component's input ports collection.
+// Use this to access multiple ports or perform collection operations like filtering.
+//
+// Example (in activation function):
+//
+//	if !this.Inputs().AllHaveSignals() {
+//	    return nil // Wait for all inputs
+//	}
 func (c *Component) Inputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
@@ -161,6 +168,13 @@ func (c *Component) Inputs() *port.Collection {
 }
 
 // Outputs returns the component's output ports collection.
+// Use this to access multiple output ports or perform collection operations.
+//
+// Example (in activation function):
+//
+//	this.Outputs().ForEach(func(p *port.Port) {
+//	    p.Clear() // Clear all outputs
+//	})
 func (c *Component) Outputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
@@ -169,7 +183,13 @@ func (c *Component) Outputs() *port.Collection {
 	return c.outputPorts
 }
 
-// OutputByName is shortcut method.
+// OutputByName retrieves an output port by its name.
+// This is the most common way to write data from your component.
+//
+// Example (in activation function):
+//
+//	result := processData(input)
+//	this.OutputByName("result").PutSignals(signal.New(result))
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasChainableErr() {
 		return port.New("").WithChainableErr(c.ChainableErr())
@@ -182,7 +202,13 @@ func (c *Component) OutputByName(name string) *port.Port {
 	return outputPort
 }
 
-// InputByName is shortcut method.
+// InputByName retrieves an input port by its name.
+// This is the most common way to read data in your component's activation function.
+//
+// Example (in activation function):
+//
+//	data := this.InputByName("data").Signals().FirstPayloadOrDefault("").(string)
+//	config := this.InputByName("config").Signals().FirstPayloadOrNil()
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasChainableErr() {
 		return port.New("").WithChainableErr(c.ChainableErr())

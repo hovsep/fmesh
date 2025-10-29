@@ -97,7 +97,16 @@ func (g *Group) FirstMatch(p Predicate) *Signal {
 	return New(nil).WithChainableErr(g.ChainableErr())
 }
 
-// FirstPayload returns the payload of the first signal.
+// FirstPayload returns the payload of the first signal with error handling.
+// Use this when you need explicit error handling.
+//
+// Example (in activation function):
+//
+//	payload, err := this.InputByName("data").Signals().FirstPayload()
+//	if err != nil {
+//	    return err // Handle the error
+//	}
+//	data := payload.(string)
 func (g *Group) FirstPayload() (any, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
@@ -106,7 +115,16 @@ func (g *Group) FirstPayload() (any, error) {
 	return g.First().Payload()
 }
 
-// FirstPayloadOrDefault returns the payload of the first signal or the provided default.
+// FirstPayloadOrDefault returns the payload of the first signal or a default value.
+// This is the most commonly used method for reading input data.
+// Returns the default if no signals exist or an error occurs.
+//
+// Example (in activation function):
+//
+//	// Read with type-appropriate defaults
+//	name := this.InputByName("name").Signals().FirstPayloadOrDefault("").(string)
+//	count := this.InputByName("count").Signals().FirstPayloadOrDefault(0).(int)
+//	enabled := this.InputByName("enabled").Signals().FirstPayloadOrDefault(false).(bool)
 func (g *Group) FirstPayloadOrDefault(defaultPayload any) any {
 	payload, err := g.FirstPayload()
 	if err != nil {
@@ -115,7 +133,15 @@ func (g *Group) FirstPayloadOrDefault(defaultPayload any) any {
 	return payload
 }
 
-// FirstPayloadOrNil returns the payload of the first signal or nil in case of error.
+// FirstPayloadOrNil returns the payload of the first signal or nil.
+// Use this when nil is a valid/expected value for missing signals.
+//
+// Example (in activation function):
+//
+//	optionalData := this.InputByName("optional").Signals().FirstPayloadOrNil()
+//	if optionalData != nil {
+//	    // Process optional data
+//	}
 func (g *Group) FirstPayloadOrNil() any {
 	return g.FirstPayloadOrDefault(nil)
 }
@@ -196,7 +222,19 @@ func (g *Group) withSignals(signals Signals) *Group {
 	return g
 }
 
-// All returns all signals as a slice.
+// All returns all signals in the group as a slice.
+// Use this when you need to iterate over multiple signals or batch process.
+//
+// Example (in activation function):
+//
+//	signals, err := this.InputByName("batch").Signals().All()
+//	if err != nil {
+//	    return err
+//	}
+//	for _, sig := range signals {
+//	    payload, _ := sig.Payload()
+//	    // Process each signal
+//	}
 func (g *Group) All() (Signals, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
@@ -220,7 +258,13 @@ func (g *Group) ChainableErr() error {
 	return g.chainableErr
 }
 
-// Len returns a number of signals in a group.
+// Len returns the number of signals in the group.
+// Use this to check how many signals are available or to iterate.
+//
+// Example (in activation function):
+//
+//	signalCount := this.InputByName("batch").Signals().Len()
+//	this.Logger().Printf("Processing %d items", signalCount)
 func (g *Group) Len() int {
 	return len(g.signals)
 }

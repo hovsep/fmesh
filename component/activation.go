@@ -5,7 +5,20 @@ import (
 	"fmt"
 )
 
-// WithActivationFunc sets the activation function.
+// WithActivationFunc sets the component's activation function.
+// This is where you define what the component does when it runs.
+// The function receives the component itself, allowing you to read inputs and write outputs.
+//
+// Example:
+//
+//	c := component.New("multiplier").
+//	    AddInputs("number").
+//	    AddOutputs("result").
+//	    WithActivationFunc(func(this *component.Component) error {
+//	        num := this.InputByName("number").Signals().FirstPayloadOrDefault(1).(int)
+//	        this.OutputByName("result").PutSignals(signal.New(num * 2))
+//	        return nil
+//	    })
 func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	if c.HasChainableErr() {
 		return c
