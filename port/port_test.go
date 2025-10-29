@@ -895,3 +895,68 @@ func TestPort_ForwardWithMap(t *testing.T) {
 		})
 	}
 }
+
+func TestPort_Chainability(t *testing.T) {
+	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
+		p := New("p1").
+			SetLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			SetLabels(labels.Map{"k3": "v3"})
+
+		assert.Equal(t, 1, p.Labels().Len())
+		assert.False(t, p.Labels().Has("k1"), "k1 should be replaced")
+		assert.False(t, p.Labels().Has("k2"), "k2 should be replaced")
+		assert.True(t, p.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
+		p := New("p1").
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			AddLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
+
+		assert.Equal(t, 3, p.Labels().Len())
+		assert.True(t, p.Labels().ValueIs("k1", "v1"))
+		assert.True(t, p.Labels().ValueIs("k2", "v2-updated"), "should update existing key")
+		assert.True(t, p.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("mixed Set and Add operations", func(t *testing.T) {
+		p := New("p1").
+			AddLabel("k1", "v1").
+			AddLabels(labels.Map{"k2": "v2", "k3": "v3"}).
+			SetLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
+			AddLabel("k5", "v5")               // Merges with k4
+
+		assert.Equal(t, 2, p.Labels().Len())
+		assert.False(t, p.Labels().Has("k1"), "wiped by SetLabels")
+		assert.False(t, p.Labels().Has("k2"), "wiped by SetLabels")
+		assert.False(t, p.Labels().Has("k3"), "wiped by SetLabels")
+		assert.True(t, p.Labels().ValueIs("k4", "v4"))
+		assert.True(t, p.Labels().ValueIs("k5", "v5"))
+	})
+
+	t.Run("WithDescription replaces previous value", func(t *testing.T) {
+		p := New("p1").
+			WithDescription("first").
+			WithDescription("second")
+
+		assert.Equal(t, "second", p.Description())
+	})
+
+	t.Run("PutSignals called twice adds signals", func(t *testing.T) {
+		p := New("p1").
+			PutSignals(signal.New(1), signal.New(2)).
+			PutSignals(signal.New(3))
+
+		assert.Equal(t, 3, p.Signals().Len())
+	})
+
+	t.Run("Clear removes all signals", func(t *testing.T) {
+		p := New("p1").
+			PutSignals(signal.New(1), signal.New(2)).
+			PutSignals(signal.New(3)).
+			Clear()
+
+		assert.Equal(t, 0, p.Signals().Len())
+		assert.False(t, p.HasSignals())
+	})
+}

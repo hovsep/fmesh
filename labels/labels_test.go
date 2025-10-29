@@ -910,6 +910,29 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 		assert.True(t, lc.Has("region"))
 		assert.False(t, lc.Has("zone"))
 	})
+
+	t.Run("WithMany called twice merges labels", func(t *testing.T) {
+		lc := NewCollection(nil).
+			WithMany(Map{"k1": "v1", "k2": "v2"}).
+			WithMany(Map{"k3": "v3", "k2": "v2-updated"})
+
+		assert.Equal(t, 3, lc.Len())
+		assert.True(t, lc.ValueIs("k1", "v1"))
+		assert.True(t, lc.ValueIs("k2", "v2-updated"), "should update existing key")
+		assert.True(t, lc.ValueIs("k3", "v3"))
+	})
+
+	t.Run("Without called twice removes both sets", func(t *testing.T) {
+		lc := NewCollection(Map{"k1": "v1", "k2": "v2", "k3": "v3", "k4": "v4"}).
+			Without("k1", "k2").
+			Without("k3")
+
+		assert.Equal(t, 1, lc.Len())
+		assert.True(t, lc.ValueIs("k4", "v4"))
+		assert.False(t, lc.Has("k1"))
+		assert.False(t, lc.Has("k2"))
+		assert.False(t, lc.Has("k3"))
+	})
 }
 
 func TestLabelsCollection_ErrorHandling(t *testing.T) {

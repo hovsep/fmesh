@@ -215,3 +215,52 @@ func TestCycle_WithActivationResults(t *testing.T) {
 		})
 	}
 }
+
+func TestCycle_Chainability(t *testing.T) {
+	t.Run("WithActivationResults called twice adds results", func(t *testing.T) {
+		r1 := component.NewActivationResult("c1")
+		r2 := component.NewActivationResult("c2")
+		r3 := component.NewActivationResult("c3")
+
+		c := New().
+			WithActivationResults(r1, r2).
+			WithActivationResults(r3)
+
+		assert.Equal(t, 3, c.ActivationResults().Len())
+	})
+
+	t.Run("AddActivationResult called multiple times adds results", func(t *testing.T) {
+		r1 := component.NewActivationResult("c1")
+		r2 := component.NewActivationResult("c2")
+		r3 := component.NewActivationResult("c3")
+
+		c := New().
+			AddActivationResult(r1).
+			AddActivationResult(r2).
+			AddActivationResult(r3)
+
+		assert.Equal(t, 3, c.ActivationResults().Len())
+	})
+
+	t.Run("mixed Add and With", func(t *testing.T) {
+		r1 := component.NewActivationResult("c1")
+		r2 := component.NewActivationResult("c2")
+		r3 := component.NewActivationResult("c3")
+		r4 := component.NewActivationResult("c4")
+
+		c := New().
+			AddActivationResult(r1).
+			WithActivationResults(r2, r3).
+			AddActivationResult(r4)
+
+		assert.Equal(t, 4, c.ActivationResults().Len())
+	})
+
+	t.Run("WithNumber replaces previous value", func(t *testing.T) {
+		c := New().
+			WithNumber(1).
+			WithNumber(2)
+
+		assert.Equal(t, 2, c.Number())
+	})
+}
