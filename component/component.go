@@ -14,8 +14,8 @@ type Component struct {
 	description  string
 	labels       *labels.Collection
 	chainableErr error
-	inputs       *port.Collection
-	outputs      *port.Collection
+	inputPorts   *port.Collection
+	outputPorts  *port.Collection
 	f            ActivationFunc
 	logger       *log.Logger
 	state        State
@@ -29,10 +29,10 @@ func New(name string) *Component {
 		description:  "",
 		labels:       labels.NewCollection(nil),
 		chainableErr: nil,
-		inputs: port.NewCollection().WithDefaultLabels(labels.Map{
+		inputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
 			port.DirectionLabel: port.DirectionIn,
 		}),
-		outputs: port.NewCollection().WithDefaultLabels(labels.Map{
+		outputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
 			port.DirectionLabel: port.DirectionOut,
 		}),
 		state: NewState(),

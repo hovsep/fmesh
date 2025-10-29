@@ -60,7 +60,7 @@ func Test_FMesh(t *testing.T) {
 			name: "no errors",
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
-					component.New("c1").WithInputs("num1", "num2").
+					component.New("c1").AddInputs("num1", "num2").
 						WithOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
 							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
@@ -132,7 +132,7 @@ func Test_FMesh(t *testing.T) {
 			name: "error propagated from signal",
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
-					component.New("c1").WithInputs("num1", "num2").
+					component.New("c1").AddInputs("num1", "num2").
 						WithOutputs("sum").WithActivationFunc(func(this *component.Component) error {
 						num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
 						num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)

@@ -9,6 +9,7 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
+	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,118 @@ func Test_Math(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 1, resultSignals.Len())
 				assert.Equal(t, 102, sig.(int))
+			},
+		},
+		{
+			name: "mixed port creation - simple and advanced",
+			setupFM: func() *fmesh.FMesh {
+				// Component with mixed port creation
+				processor := component.New("processor").
+					WithDescription("processes data using mixed ports").
+					// Simple ports (created by name only)
+					AddInputs("raw_data", "metadata").
+					// Advanced port (pre-configured with description and labels)
+					AttachInputPorts(
+						port.New("config").
+							WithDescription("Configuration parameters").
+							AddLabel("required", "true").
+							AddLabel("type", "config"),
+					).
+					// Simple output port
+					AddOutputs("logs").
+					// Advanced output ports (pre-configured)
+					AttachOutputPorts(
+						port.New("result").
+							WithDescription("Processed result").
+							AddLabel("format", "json"),
+						port.New("error").
+							WithDescription("Error details if any").
+							AddLabel("status", "error"),
+					).
+					WithActivationFunc(func(this *component.Component) error {
+						// Check if all required inputs have signals
+						if !this.Inputs().AllHaveSignals() {
+							return nil // Wait for all inputs
+						}
+
+						// Verify all ports are functional regardless of creation method
+						rawData := this.InputByName("raw_data").Signals().FirstPayloadOrDefault(0).(int)
+						metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("").(string)
+						config := this.InputByName("config").Signals().FirstPayloadOrDefault(1).(int)
+
+						// Process: (rawData * config) + len(metadata)
+						result := (rawData * config) + len(metadata)
+
+						// Write to all outputs (both simple and advanced)
+						this.OutputByName("result").PutSignals(signal.New(result))
+						this.OutputByName("logs").PutSignals(signal.New("Processed with metadata: " + metadata))
+						// error port stays empty (no error)
+
+						return nil
+					})
+
+				// Verifier component with simple ports
+				verifier := component.New("verifier").
+					AddInputs("value", "log").
+					AddOutputs("verified").
+					WithActivationFunc(func(this *component.Component) error {
+						// Wait for all inputs
+						if !this.Inputs().AllHaveSignals() {
+							return nil
+						}
+
+						value := this.InputByName("value").Signals().FirstPayloadOrDefault(0).(int)
+						log := this.InputByName("log").Signals().FirstPayloadOrDefault("").(string)
+
+						// Verify we received data from both simple and advanced ports
+						verified := value > 0 && log != ""
+						this.OutputByName("verified").PutSignals(signal.New(verified))
+						return nil
+					})
+
+				// Connect ports
+				processor.OutputByName("result").PipeTo(verifier.InputByName("value"))
+				processor.OutputByName("logs").PipeTo(verifier.InputByName("log"))
+
+				return fmesh.NewWithConfig("mixed_ports_fm", &fmesh.Config{
+					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+					CyclesLimit:           10,
+				}).WithComponents(processor, verifier)
+			},
+			setInputs: func(fm *fmesh.FMesh) {
+				proc := fm.Components().ByName("processor")
+				// Send data to simple ports
+				proc.InputByName("raw_data").PutSignals(signal.New(10))
+				proc.InputByName("metadata").PutSignals(signal.New("test"))
+				// Send data to advanced port
+				proc.InputByName("config").PutSignals(signal.New(5))
+			},
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+				require.NoError(t, err)
+				require.NotEmpty(t, cycles, "should have at least one cycle")
+
+				proc := fm.Components().ByName("processor")
+				verif := fm.Components().ByName("verifier")
+
+				// Verify mesh executed successfully
+				assert.Len(t, cycles, 3, "should take 3 cycles: processor -> verifier -> done")
+
+				// Verify port metadata (only advanced ports have descriptions/labels)
+				assert.Empty(t, proc.InputByName("raw_data").Description(), "simple port should have no description")
+				assert.Empty(t, proc.InputByName("metadata").Description(), "simple port should have no description")
+				assert.Equal(t, "Configuration parameters", proc.InputByName("config").Description(), "advanced port should have description")
+				assert.True(t, proc.InputByName("config").Labels().ValueIs("required", "true"), "advanced port should have labels")
+
+				assert.Empty(t, proc.OutputByName("logs").Description(), "simple port should have no description")
+				assert.Equal(t, "Processed result", proc.OutputByName("result").Description(), "advanced port should have description")
+				assert.True(t, proc.OutputByName("result").Labels().ValueIs("format", "json"), "advanced port should have labels")
+
+				// Verify data flowed correctly through the entire chain (processor -> verifier)
+				// The verifier's output confirms that both simple and advanced ports worked
+				verifiedSignals := verif.OutputByName("verified").Signals()
+				verified, err := verifiedSignals.FirstPayload()
+				require.NoError(t, err)
+				assert.True(t, verified.(bool), "verifier should confirm data flowed through all port types (simple and advanced)")
 			},
 		},
 	}
