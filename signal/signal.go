@@ -11,7 +11,18 @@ type Signal struct {
 	payload      []any // Slice is used in order to support nil payload
 }
 
-// New creates a new signal from the given payloads.
+// New creates a new signal with the given payload.
+// Signals carry data between components through ports.
+// The payload can be any type (string, int, struct, etc.).
+//
+// Example (in activation function):
+//
+//	// Send a simple value
+//	this.OutputByName("count").PutSignals(signal.New(42))
+//
+//	// Send a complex value
+//	result := map[string]interface{}{"status": "ok", "data": items}
+//	this.OutputByName("result").PutSignals(signal.New(result))
 func New(payload any) *Signal {
 	return &Signal{
 		chainableErr: nil,

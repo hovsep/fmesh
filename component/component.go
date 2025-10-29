@@ -22,7 +22,15 @@ type Component struct {
 	parentMesh   ParentMesh
 }
 
-// New creates initialized component.
+// New creates a new component with the specified name.
+// This is the starting point for building any component in your F-Mesh.
+//
+// Example:
+//
+//	processor := component.New("data-processor").
+//	    WithDescription("Processes incoming data").
+//	    AddInputs("data", "config").
+//	    AddOutputs("result")
 func New(name string) *Component {
 	return &Component{
 		name:         name,
@@ -49,7 +57,13 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// WithDescription sets a description.
+// WithDescription sets a human-readable description for the component.
+// Use this to document what your component does. Helpful for debugging and documentation.
+//
+// Example:
+//
+//	c := component.New("validator").
+//	    WithDescription("Validates user input against business rules")
 func (c *Component) WithDescription(description string) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -180,7 +194,13 @@ func (c *Component) WithLogger(logger *log.Logger) *Component {
 	return c
 }
 
-// Logger returns component logger.
+// Logger returns the component's logger for debugging and monitoring.
+// Use this to log information during component activation.
+//
+// Example (in activation function):
+//
+//	this.Logger().Printf("Processing %d items", count)
+//	this.Logger().Println("Validation completed successfully")
 func (c *Component) Logger() *log.Logger {
 	return c.logger
 }

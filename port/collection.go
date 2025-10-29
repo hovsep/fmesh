@@ -29,7 +29,12 @@ func NewCollection() *Collection {
 	}
 }
 
-// ByName returns a port by its name.
+// ByName retrieves a specific port from the collection by its name.
+// Commonly used to access individual ports from input/output collections.
+//
+// Example (in activation function):
+//
+//	data := this.Inputs().ByName("primary").Signals().FirstPayloadOrDefault("")
 func (c *Collection) ByName(name string) *Port {
 	if c.HasChainableErr() {
 		return New("").WithChainableErr(c.ChainableErr())
@@ -42,7 +47,15 @@ func (c *Collection) ByName(name string) *Port {
 	return port
 }
 
-// ByNames returns multiple ports by their names.
+// ByNames retrieves a subset of ports by their names, returning a new collection.
+// Useful for operating on a specific group of ports together.
+//
+// Example (in activation function):
+//
+//	// Check if specific required inputs have signals
+//	if !this.Inputs().ByNames("data", "config").AllHaveSignals() {
+//	    return nil // Wait for required inputs
+//	}
 func (c *Collection) ByNames(names ...string) *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())
@@ -67,7 +80,15 @@ func (c *Collection) AnyHasSignals() bool {
 	})
 }
 
-// AllHaveSignals returns true when all ports in collection have signals.
+// AllHaveSignals returns true when all ports in the collection have signals.
+// Use this to check if all required inputs are ready before processing.
+//
+// Example (in activation function):
+//
+//	if !this.Inputs().AllHaveSignals() {
+//	    return nil // Wait until all inputs have data
+//	}
+//	// Process all inputs...
 func (c *Collection) AllHaveSignals() bool {
 	return c.AllMatch(func(p *Port) bool {
 		return p.HasSignals()
@@ -90,7 +111,20 @@ func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	return c
 }
 
-// ForEach applies the action to each port and returns the collection for chaining.
+// ForEach applies an action to each port in the collection and returns it for chaining.
+// Use this to perform operations on all ports, such as clearing signals or adding labels.
+//
+// Example (in activation function):
+//
+//	// Clear all output ports before writing new data
+//	this.Outputs().ForEach(func(p *port.Port) {
+//	    p.Clear()
+//	})
+//
+//	// Add labels to all input ports
+//	this.Inputs().ForEach(func(p *port.Port) {
+//	    p.AddLabel("processed", "true")
+//	})
 func (c *Collection) ForEach(action func(*Port)) *Collection {
 	if c.HasChainableErr() {
 		return c
@@ -279,7 +313,15 @@ func (c *Collection) NoneMatch(predicate Predicate) bool {
 	return !c.AnyMatch(predicate)
 }
 
-// CountMatch returns the number of ports that match the predicate.
+// CountMatch returns the number of ports that match the given predicate.
+// Use this to count ports with specific characteristics.
+//
+// Example (in activation function):
+//
+//	readyCount := this.Inputs().CountMatch(func(p *port.Port) bool {
+//	    return p.HasSignals()
+//	})
+//	this.Logger().Printf("%d inputs ready out of %d", readyCount, this.Inputs().Len())
 func (c *Collection) CountMatch(predicate Predicate) int {
 	if c.HasChainableErr() {
 		return 0
@@ -308,7 +350,21 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 	return New("").WithChainableErr(c.ChainableErr())
 }
 
-// Filter returns a new collection with ports that match the predicate.
+// Filter returns a new collection containing only ports that match the predicate.
+// Use this to work with a subset of ports based on specific criteria.
+//
+// Example (in activation function):
+//
+//	// Get only ports with signals
+//	portsWithData := this.Inputs().Filter(func(p *port.Port) bool {
+//	    return p.HasSignals()
+//	})
+//
+//	// Get priority ports
+//	priorityPorts := this.Inputs().Filter(func(p *port.Port) bool {
+//	    labels, _ := p.Labels().All()
+//	    return labels["priority"] == "high"
+//	})
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())

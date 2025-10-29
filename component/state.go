@@ -12,7 +12,23 @@ func NewState() State {
 	return make(State)
 }
 
-// WithInitialState sets initial state (optional).
+// WithInitialState sets the initial state for the component.
+// Use this to initialize state values before the first activation.
+// State persists across activation cycles, allowing components to remember data.
+//
+// Example:
+//
+//	counter := component.New("counter").
+//	    AddInputs("trigger").
+//	    WithInitialState(func(state component.State) {
+//	        state.Set("count", 0)
+//	        state.Set("total", 0)
+//	    }).
+//	    WithActivationFunc(func(this *component.Component) error {
+//	        count := this.State().Get("count").(int)
+//	        this.State().Set("count", count+1)
+//	        return nil
+//	    })
 func (c *Component) WithInitialState(init func(state State)) *Component {
 	if init != nil {
 		init(c.state)
@@ -21,7 +37,14 @@ func (c *Component) WithInitialState(init func(state State)) *Component {
 	return c
 }
 
-// State returns the current state.
+// State returns the component's state for reading and writing persistent data.
+// Use this in your activation function to access data that persists across activations.
+//
+// Example (in activation function):
+//
+//	count := this.State().Get("count").(int)
+//	this.State().Set("count", count+1)
+//	this.Logger().Printf("Processed %d items total", count)
 func (c *Component) State() State {
 	return c.state
 }

@@ -28,7 +28,17 @@ type FMesh struct {
 	config       *Config
 }
 
-// New creates a new f-mesh with default config.
+// New creates a new F-Mesh with the specified name and default configuration.
+// An F-Mesh is a container for components that work together to process data.
+//
+// Example:
+//
+//	fm := fmesh.New("data-pipeline").
+//	    WithComponents(
+//	        extractor,
+//	        transformer,
+//	        loader,
+//	    )
 func New(name string) *FMesh {
 	return &FMesh{
 		name:         name,
@@ -53,12 +63,29 @@ func (fm *FMesh) Description() string {
 	return fm.description
 }
 
-// NewWithConfig creates a new f-mesh with custom config.
+// NewWithConfig creates a new F-Mesh with custom configuration.
+// Use this when you need to customize error handling strategy or cycle limits.
+//
+// Example:
+//
+//	fm := fmesh.NewWithConfig("pipeline", &fmesh.Config{
+//	    ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
+//	    CyclesLimit:           100,
+//	})
 func NewWithConfig(name string, config *Config) *FMesh {
 	return New(name).withConfig(config)
 }
 
-// Components returns all components in the F-Mesh.
+// Components returns the component collection for accessing all components in the mesh.
+// Use this to access components after building or during/after mesh execution.
+//
+// Example:
+//
+//	// Access a specific component
+//	processor := fm.Components().ByName("processor")
+//
+//	// Check component outputs after running
+//	result := fm.Components().ByName("validator").OutputByName("result")
 func (fm *FMesh) Components() *component.Collection {
 	if fm.HasChainableErr() {
 		return component.NewCollection().WithChainableErr(fm.ChainableErr())
@@ -66,7 +93,13 @@ func (fm *FMesh) Components() *component.Collection {
 	return fm.components
 }
 
-// ComponentByName shortcut method.
+// ComponentByName retrieves a component by name (convenience method).
+// Equivalent to fm.Components().ByName(name).
+//
+// Example:
+//
+//	validator := fm.ComponentByName("validator")
+//	result := validator.OutputByName("result").Signals().FirstPayload()
 func (fm *FMesh) ComponentByName(name string) *component.Component {
 	return fm.Components().ByName(name)
 }
@@ -81,7 +114,18 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 	return fm
 }
 
-// WithComponents adds components to f-mesh.
+// WithComponents adds components to the F-Mesh and returns it for chaining.
+// Use this to assemble your mesh with all the components you've created.
+//
+// Example:
+//
+//	fm := fmesh.New("pipeline").
+//	    WithComponents(
+//	        extractor,
+//	        transformer,
+//	        validator,
+//	        loader,
+//	    )
 func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 	if fm.HasChainableErr() {
 		return fm
@@ -247,7 +291,23 @@ func (fm *FMesh) clearInputs() {
 	}
 }
 
-// Run starts the computation until there is no component that activates (mesh has no unprocessed inputs).
+// Run executes the F-Mesh, activating components cycle by cycle until completion.
+// The mesh runs until no more components can be activated or the cycle limit is reached.
+// Returns runtime information including cycles executed and any errors encountered.
+//
+// Example:
+//
+//	// Set input signals before running
+//	fm.Components().ByName("loader").InputByName("file").PutSignals(signal.New("data.csv"))
+//
+//	// Run the mesh
+//	runResult, err := fm.Run()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	// Extract results after running
+//	result := fm.Components().ByName("processor").OutputByName("result").Signals().FirstPayload()
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	fm.runtimeInfo.StartedAt = time.Now()
 	defer func() {
