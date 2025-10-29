@@ -272,3 +272,63 @@ func TestSignal_AddLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestSignal_AddLabel(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		labelName  string
+		labelValue string
+		assertions func(t *testing.T, signal *Signal)
+	}{
+		{
+			name:       "add single label to new signal",
+			signal:     New(123),
+			labelName:  "priority",
+			labelValue: "high",
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Labels().Len())
+				assert.True(t, signal.labels.ValueIs("priority", "high"))
+			},
+		},
+		{
+			name:       "add label merges with existing",
+			signal:     New(123).AddLabel("existing", "label"),
+			labelName:  "priority",
+			labelValue: "high",
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Labels().Len())
+				assert.True(t, signal.labels.HasAll("existing", "priority"))
+			},
+		},
+		{
+			name:       "add label updates existing key",
+			signal:     New(123).AddLabel("priority", "low"),
+			labelName:  "priority",
+			labelValue: "high",
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Labels().Len())
+				assert.True(t, signal.labels.ValueIs("priority", "high"))
+			},
+		},
+		{
+			name:       "chainable",
+			signal:     New(123),
+			labelName:  "l1",
+			labelValue: "v1",
+			assertions: func(t *testing.T, signal *Signal) {
+				result := signal.AddLabel("l2", "v2").AddLabel("l3", "v3")
+				assert.Equal(t, 3, result.Labels().Len())
+				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signalAfter := tt.signal.AddLabel(tt.labelName, tt.labelValue)
+			if tt.assertions != nil {
+				tt.assertions(t, signalAfter)
+			}
+		})
+	}
+}

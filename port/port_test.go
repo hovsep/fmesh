@@ -544,6 +544,66 @@ func TestPort_AddLabels(t *testing.T) {
 	}
 }
 
+func TestPort_AddLabel(t *testing.T) {
+	tests := []struct {
+		name       string
+		port       *Port
+		labelName  string
+		labelValue string
+		assertions func(t *testing.T, port *Port)
+	}{
+		{
+			name:       "add single label to new port",
+			port:       New("p1"),
+			labelName:  "direction",
+			labelValue: "in",
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 1, port.Labels().Len())
+				assert.True(t, port.labels.ValueIs("direction", "in"))
+			},
+		},
+		{
+			name:       "add label merges with existing",
+			port:       New("p1").AddLabel("existing", "label"),
+			labelName:  "direction",
+			labelValue: "in",
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 2, port.Labels().Len())
+				assert.True(t, port.labels.HasAll("existing", "direction"))
+			},
+		},
+		{
+			name:       "add label updates existing key",
+			port:       New("p1").AddLabel("direction", "in"),
+			labelName:  "direction",
+			labelValue: "out",
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 1, port.Labels().Len())
+				assert.True(t, port.labels.ValueIs("direction", "out"))
+			},
+		},
+		{
+			name:       "chainable",
+			port:       New("p1"),
+			labelName:  "l1",
+			labelValue: "v1",
+			assertions: func(t *testing.T, port *Port) {
+				result := port.AddLabel("l2", "v2").AddLabel("l3", "v3")
+				assert.Equal(t, 3, result.Labels().Len())
+				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.AddLabel(tt.labelName, tt.labelValue)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
+		})
+	}
+}
+
 func TestPort_Pipes(t *testing.T) {
 	tests := []struct {
 		name string

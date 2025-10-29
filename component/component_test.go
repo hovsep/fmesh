@@ -173,3 +173,63 @@ func TestComponent_AddLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestComponent_AddLabel(t *testing.T) {
+	tests := []struct {
+		name       string
+		component  *Component
+		labelName  string
+		labelValue string
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:       "add single label to new component",
+			component:  New("c1"),
+			labelName:  "env",
+			labelValue: "prod",
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 1, component.Labels().Len())
+				assert.True(t, component.labels.ValueIs("env", "prod"))
+			},
+		},
+		{
+			name:       "add label merges with existing",
+			component:  New("c1").AddLabel("existing", "label"),
+			labelName:  "env",
+			labelValue: "prod",
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Labels().Len())
+				assert.True(t, component.labels.HasAll("existing", "env"))
+			},
+		},
+		{
+			name:       "add label updates existing key",
+			component:  New("c1").AddLabel("env", "dev"),
+			labelName:  "env",
+			labelValue: "prod",
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 1, component.Labels().Len())
+				assert.True(t, component.labels.ValueIs("env", "prod"))
+			},
+		},
+		{
+			name:       "chainable",
+			component:  New("c1"),
+			labelName:  "l1",
+			labelValue: "v1",
+			assertions: func(t *testing.T, component *Component) {
+				result := component.AddLabel("l2", "v2").AddLabel("l3", "v3")
+				assert.Equal(t, 3, result.Labels().Len())
+				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.AddLabel(tt.labelName, tt.labelValue)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}

@@ -46,6 +46,15 @@ func (s *Signal) AddLabels(labelMap labels.Map) *Signal {
 	return s
 }
 
+// AddLabel adds or updates a single label and returns the signal for chaining.
+func (s *Signal) AddLabel(name, value string) *Signal {
+	if s.HasChainableErr() {
+		return s
+	}
+	s.labels.With(name, value)
+	return s
+}
+
 // Payload returns the signal's payload.
 func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {
