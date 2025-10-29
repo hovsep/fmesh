@@ -55,6 +55,24 @@ func (s *Signal) AddLabel(name, value string) *Signal {
 	return s
 }
 
+// ClearLabels removes all labels and returns the signal for chaining.
+func (s *Signal) ClearLabels() *Signal {
+	if s.HasChainableErr() {
+		return s
+	}
+	s.labels.Clear()
+	return s
+}
+
+// WithoutLabels removes specific labels and returns the signal for chaining.
+func (s *Signal) WithoutLabels(names ...string) *Signal {
+	if s.HasChainableErr() {
+		return s
+	}
+	s.labels.Without(names...)
+	return s
+}
+
 // Payload returns the signal's payload.
 func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {

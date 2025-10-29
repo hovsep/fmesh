@@ -83,6 +83,24 @@ func (p *Port) AddLabel(name, value string) *Port {
 	return p
 }
 
+// ClearLabels removes all labels and returns the port for chaining.
+func (p *Port) ClearLabels() *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	p.labels.Clear()
+	return p
+}
+
+// WithoutLabels removes specific labels and returns the port for chaining.
+func (p *Port) WithoutLabels(names ...string) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	p.labels.Without(names...)
+	return p
+}
+
 // WithDescription sets a description.
 func (p *Port) WithDescription(description string) *Port {
 	if p.HasChainableErr() {

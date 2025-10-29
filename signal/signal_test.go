@@ -333,6 +333,111 @@ func TestSignal_AddLabel(t *testing.T) {
 	}
 }
 
+func TestSignal_ClearLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		signal     *Signal
+		assertions func(t *testing.T, signal *Signal)
+	}{
+		{
+			name:   "clear labels from signal with labels",
+			signal: New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 0, signal.Labels().Len())
+				assert.False(t, signal.Labels().Has("k1"))
+				assert.False(t, signal.Labels().Has("k2"))
+			},
+		},
+		{
+			name:   "clear labels from signal without labels",
+			signal: New(123),
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 0, signal.Labels().Len())
+			},
+		},
+		{
+			name:   "chainable",
+			signal: New(123).AddLabels(labels.Map{"k1": "v1"}),
+			assertions: func(t *testing.T, signal *Signal) {
+				result := signal.ClearLabels().AddLabel("k2", "v2")
+				assert.Equal(t, 1, result.Labels().Len())
+				assert.False(t, result.Labels().Has("k1"))
+				assert.True(t, result.Labels().ValueIs("k2", "v2"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signalAfter := tt.signal.ClearLabels()
+			if tt.assertions != nil {
+				tt.assertions(t, signalAfter)
+			}
+		})
+	}
+}
+
+func TestSignal_WithoutLabels(t *testing.T) {
+	tests := []struct {
+		name           string
+		signal         *Signal
+		labelsToRemove []string
+		assertions     func(t *testing.T, signal *Signal)
+	}{
+		{
+			name:           "remove single label",
+			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1"},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Labels().Len())
+				assert.False(t, signal.Labels().Has("k1"))
+				assert.True(t, signal.Labels().Has("k2"))
+				assert.True(t, signal.Labels().Has("k3"))
+			},
+		},
+		{
+			name:           "remove multiple labels",
+			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1", "k2"},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Labels().Len())
+				assert.False(t, signal.Labels().Has("k1"))
+				assert.False(t, signal.Labels().Has("k2"))
+				assert.True(t, signal.Labels().ValueIs("k3", "v3"))
+			},
+		},
+		{
+			name:           "remove non-existent label",
+			signal:         New(123).AddLabels(labels.Map{"k1": "v1"}),
+			labelsToRemove: []string{"k2"},
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Labels().Len())
+				assert.True(t, signal.Labels().ValueIs("k1", "v1"))
+			},
+		},
+		{
+			name:           "chainable",
+			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1"},
+			assertions: func(t *testing.T, signal *Signal) {
+				result := signal.WithoutLabels("k2").AddLabel("k4", "v4")
+				assert.Equal(t, 2, result.Labels().Len())
+				assert.False(t, result.Labels().Has("k1"))
+				assert.False(t, result.Labels().Has("k2"))
+				assert.True(t, result.Labels().ValueIs("k3", "v3"))
+				assert.True(t, result.Labels().ValueIs("k4", "v4"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signalAfter := tt.signal.WithoutLabels(tt.labelsToRemove...)
+			if tt.assertions != nil {
+				tt.assertions(t, signalAfter)
+			}
+		})
+	}
+}
+
 func TestSignal_Chainability(t *testing.T) {
 	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
 		s := New(123).
@@ -369,5 +474,30 @@ func TestSignal_Chainability(t *testing.T) {
 		assert.False(t, s.Labels().Has("k3"), "wiped by SetLabels")
 		assert.True(t, s.Labels().ValueIs("k4", "v4"))
 		assert.True(t, s.Labels().ValueIs("k5", "v5"))
+	})
+
+	t.Run("ClearLabels removes all labels", func(t *testing.T) {
+		s := New(123).
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			ClearLabels().
+			AddLabel("k3", "v3")
+
+		assert.Equal(t, 1, s.Labels().Len())
+		assert.False(t, s.Labels().Has("k1"))
+		assert.False(t, s.Labels().Has("k2"))
+		assert.True(t, s.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
+		s := New(123).
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			WithoutLabels("k1", "k2").
+			AddLabel("k4", "v4")
+
+		assert.Equal(t, 2, s.Labels().Len())
+		assert.False(t, s.Labels().Has("k1"))
+		assert.False(t, s.Labels().Has("k2"))
+		assert.True(t, s.Labels().ValueIs("k3", "v3"))
+		assert.True(t, s.Labels().ValueIs("k4", "v4"))
 	})
 }
