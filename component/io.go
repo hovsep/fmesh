@@ -10,11 +10,11 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
-	c.inputs = collection.WithParentComponent(c)
+	c.inputPorts = collection.WithParentComponent(c)
 	return c
 }
 
-// withOutputPorts sets input ports collection.
+// withOutputPorts sets output ports collection.
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -23,12 +23,19 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
 
-	c.outputs = collection.WithParentComponent(c)
+	c.outputPorts = collection.WithParentComponent(c)
 	return c
 }
 
-// WithInputs ads input ports.
-func (c *Component) WithInputs(portNames ...string) *Component {
+// AddInputs creates and adds input ports by name (simple API).
+// Use this when you only need to specify port names.
+// For ports with descriptions, labels, or other configuration, use AttachInputPorts.
+//
+// Example:
+//
+//	c := component.New("processor").
+//	    AddInputs("data", "config", "metadata")
+func (c *Component) AddInputs(portNames ...string) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -42,8 +49,35 @@ func (c *Component) WithInputs(portNames ...string) *Component {
 	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
-// WithOutputs adds output ports.
-func (c *Component) WithOutputs(portNames ...string) *Component {
+// AttachInputPorts attaches pre-configured input port instances (advanced API).
+// Use this when you need to set descriptions, labels, or other port configuration.
+// Can be mixed with AddInputs for flexibility.
+//
+// Example:
+//
+//	c := component.New("processor").
+//	    AttachInputPorts(
+//	        port.New("request").
+//	            WithDescription("HTTP request data").
+//	            AddLabel("content-type", "json"),
+//	    )
+func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+
+	return c.withInputPorts(c.Inputs().With(ports...))
+}
+
+// AddOutputs creates and adds output ports by name (simple API).
+// Use this when you only need to specify port names.
+// For ports with descriptions, labels, or other configuration, use AttachOutputPorts.
+//
+// Example:
+//
+//	c := component.New("processor").
+//	    AddOutputs("result", "error", "logs")
+func (c *Component) AddOutputs(portNames ...string) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -54,6 +88,49 @@ func (c *Component) WithOutputs(portNames ...string) *Component {
 		return New("").WithChainableErr(c.ChainableErr())
 	}
 	return c.withOutputPorts(c.Outputs().With(ports...))
+}
+
+// AttachOutputPorts attaches pre-configured output port instances (advanced API).
+// Use this when you need to set descriptions, labels, or other port configuration.
+// Can be mixed with AddOutputs for flexibility.
+//
+// Example:
+//
+//	c := component.New("processor").
+//	    AttachOutputPorts(
+//	        port.New("response").
+//	            WithDescription("HTTP response data").
+//	            AddLabel("status", "success"),
+//	        port.New("error").
+//	            WithDescription("Error details").
+//	            AddLabel("status", "error"),
+//	    )
+func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+
+	return c.withOutputPorts(c.Outputs().With(ports...))
+}
+
+// WithInputs is deprecated. Use AddInputs instead.
+func (c *Component) WithInputs(portNames ...string) *Component {
+	return c.AddInputs(portNames...)
+}
+
+// WithInputPorts is deprecated. Use AttachInputPorts instead.
+func (c *Component) WithInputPorts(ports ...*port.Port) *Component {
+	return c.AttachInputPorts(ports...)
+}
+
+// WithOutputs is deprecated. Use AddOutputs instead.
+func (c *Component) WithOutputs(portNames ...string) *Component {
+	return c.AddOutputs(portNames...)
+}
+
+// WithOutputPorts is deprecated. Use AttachOutputPorts instead.
+func (c *Component) WithOutputPorts(ports ...*port.Port) *Component {
+	return c.AttachOutputPorts(ports...)
 }
 
 // WithInputsIndexed creates multiple prefixed ports.
@@ -80,7 +157,7 @@ func (c *Component) Inputs() *port.Collection {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
 	}
 
-	return c.inputs
+	return c.inputPorts
 }
 
 // Outputs returns the component's output ports collection.
@@ -89,7 +166,7 @@ func (c *Component) Outputs() *port.Collection {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
 	}
 
-	return c.outputs
+	return c.outputPorts
 }
 
 // OutputByName is shortcut method.

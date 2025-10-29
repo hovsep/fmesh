@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestComponent_WithInputs(t *testing.T) {
+func TestComponent_AddInputs(t *testing.T) {
 	type args struct {
 		portNames []string
 	}
@@ -56,7 +56,7 @@ func TestComponent_WithInputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.WithInputs(tt.args.portNames...)
+			componentAfter := tt.component.AddInputs(tt.args.portNames...)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}
@@ -64,7 +64,7 @@ func TestComponent_WithInputs(t *testing.T) {
 	}
 }
 
-func TestComponent_WithOutputs(t *testing.T) {
+func TestComponent_AddOutputs(t *testing.T) {
 	type args struct {
 		portNames []string
 	}
@@ -109,7 +109,7 @@ func TestComponent_WithOutputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.WithOutputs(tt.args.portNames...)
+			componentAfter := tt.component.AddOutputs(tt.args.portNames...)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}
@@ -131,7 +131,7 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 	}{
 		{
 			name:      "component has no ports before",
-			component: New("c").WithOutputs("o1", "o2"),
+			component: New("c").AddOutputs("o1", "o2"),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -144,7 +144,7 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 		},
 		{
 			name:      "component has ports before",
-			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			component: New("c").AddInputs("i1", "i2").AddOutputs("o1", "o2"),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -180,7 +180,7 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 	}{
 		{
 			name:      "component has no ports before",
-			component: New("c").WithInputs("i1", "i2"),
+			component: New("c").AddInputs("i1", "i2"),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -193,7 +193,7 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 		},
 		{
 			name:      "component has ports before",
-			component: New("c").WithInputs("i1", "i2").WithOutputs("o1", "o2"),
+			component: New("c").AddInputs("i1", "i2").AddOutputs("o1", "o2"),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -230,7 +230,7 @@ func TestComponent_Inputs(t *testing.T) {
 		},
 		{
 			name:      "with inputs",
-			component: New("c1").WithInputs("i1", "i2"),
+			component: New("c1").AddInputs("i1", "i2"),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
 				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
@@ -264,7 +264,7 @@ func TestComponent_Outputs(t *testing.T) {
 		},
 		{
 			name:      "with outputs",
-			component: New("c1").WithOutputs("o1", "o2"),
+			component: New("c1").AddOutputs("o1", "o2"),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
 				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
@@ -285,12 +285,12 @@ func TestComponent_Outputs(t *testing.T) {
 
 func TestComponent_ShortcutMethods(t *testing.T) {
 	t.Run("InputByName", func(t *testing.T) {
-		c := New("c").WithInputs("a", "b", "c")
+		c := New("c").AddInputs("a", "b", "c")
 		assert.Equal(t, "b", c.InputByName("b").Name())
 	})
 
 	t.Run("OutputByName", func(t *testing.T) {
-		c := New("c").WithOutputs("a", "b", "c")
+		c := New("c").AddOutputs("a", "b", "c")
 		assert.Equal(t, "c", c.OutputByName("c").Name())
 	})
 }
@@ -304,7 +304,7 @@ func TestComponent_ClearInputs(t *testing.T) {
 		{
 			name: "no side effects",
 			getComponent: func() *Component {
-				return New("c").WithInputs("i1").WithOutputs("o1")
+				return New("c").AddInputs("i1").AddOutputs("o1")
 			},
 			assertions: func(t *testing.T, componentAfter *Component) {
 				assert.Equal(t, 1, componentAfter.Inputs().Len())
@@ -316,7 +316,7 @@ func TestComponent_ClearInputs(t *testing.T) {
 		{
 			name: "only inputs are cleared",
 			getComponent: func() *Component {
-				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c := New("c").AddInputs("i1").AddOutputs("o1")
 				c.Inputs().ByName("i1").PutSignals(signal.New(10))
 				c.Outputs().ByName("o1").PutSignals(signal.New(20))
 				return c
@@ -358,7 +358,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "output has no signal set",
 			getComponent: func() *Component {
-				return New("c1").WithOutputs("o1", "o2")
+				return New("c1").AddOutputs("o1", "o2")
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
@@ -370,7 +370,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 				sink := port.New("sink").SetLabels(labels.Map{
 					port.DirectionLabel: port.DirectionIn,
 				})
-				c := New("c1").WithOutputs("o1", "o2")
+				c := New("c1").AddOutputs("o1", "o2")
 				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
 				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
 				c.Outputs().ByNames("o1", "o2").PipeTo(sink)
@@ -391,7 +391,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			name: "with chain error",
 			getComponent: func() *Component {
 				sink := port.New("sink")
-				c := New("c").WithOutputs("o1").WithChainableErr(errors.New("some error"))
+				c := New("c").AddOutputs("o1").WithChainableErr(errors.New("some error"))
 				// Lines below are ignored as error immediately propagates up to component level
 				c.Outputs().ByName("o1").PipeTo(sink)
 				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))
@@ -408,4 +408,212 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			tt.assertions(t, componentAfter)
 		})
 	}
+}
+
+func TestComponent_AttachInputPorts(t *testing.T) {
+	tests := []struct {
+		name       string
+		component  *Component
+		ports      []*port.Port
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "add single input port with description",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("in1").WithDescription("input port 1"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 1, component.Inputs().Len())
+				assert.Equal(t, "input port 1", component.InputByName("in1").Description())
+			},
+		},
+		{
+			name:      "add multiple input ports with descriptions and labels",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("in1").
+					WithDescription("first input").
+					AddLabel("priority", "high"),
+				port.New("in2").
+					WithDescription("second input").
+					AddLabel("priority", "low"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Inputs().Len())
+				assert.Equal(t, "first input", component.InputByName("in1").Description())
+				assert.Equal(t, "second input", component.InputByName("in2").Description())
+				assert.True(t, component.InputByName("in1").Labels().ValueIs("priority", "high"))
+				assert.True(t, component.InputByName("in2").Labels().ValueIs("priority", "low"))
+			},
+		},
+		{
+			name:      "add ports to existing inputs",
+			component: New("c1").AddInputs("in1"),
+			ports: []*port.Port{
+				port.New("in2").WithDescription("second input"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Inputs().Len())
+				assert.Equal(t, "second input", component.InputByName("in2").Description())
+			},
+		},
+		{
+			name:      "chainable",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("in1").WithDescription("input 1"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				result := component.AttachInputPorts(
+					port.New("in2").WithDescription("input 2"),
+				)
+				assert.Equal(t, 2, result.Inputs().Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.AttachInputPorts(tt.ports...)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_AttachOutputPorts(t *testing.T) {
+	tests := []struct {
+		name       string
+		component  *Component
+		ports      []*port.Port
+		assertions func(t *testing.T, component *Component)
+	}{
+		{
+			name:      "add single output port with description",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("out1").WithDescription("output port 1"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 1, component.Outputs().Len())
+				assert.Equal(t, "output port 1", component.OutputByName("out1").Description())
+			},
+		},
+		{
+			name:      "add multiple output ports with descriptions and labels",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("out1").
+					WithDescription("first output").
+					AddLabel("type", "result"),
+				port.New("out2").
+					WithDescription("second output").
+					AddLabel("type", "error"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Outputs().Len())
+				assert.Equal(t, "first output", component.OutputByName("out1").Description())
+				assert.Equal(t, "second output", component.OutputByName("out2").Description())
+				assert.True(t, component.OutputByName("out1").Labels().ValueIs("type", "result"))
+				assert.True(t, component.OutputByName("out2").Labels().ValueIs("type", "error"))
+			},
+		},
+		{
+			name:      "add ports to existing outputs",
+			component: New("c1").AddOutputs("out1"),
+			ports: []*port.Port{
+				port.New("out2").WithDescription("second output"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				assert.Equal(t, 2, component.Outputs().Len())
+				assert.Equal(t, "second output", component.OutputByName("out2").Description())
+			},
+		},
+		{
+			name:      "chainable",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.New("out1").WithDescription("output 1"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				result := component.AttachOutputPorts(
+					port.New("out2").WithDescription("output 2"),
+				)
+				assert.Equal(t, 2, result.Outputs().Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			componentAfter := tt.component.AttachOutputPorts(tt.ports...)
+			if tt.assertions != nil {
+				tt.assertions(t, componentAfter)
+			}
+		})
+	}
+}
+
+func TestComponent_MultipleInputOutputCalls(t *testing.T) {
+	t.Run("multiple AddInputs calls add ports incrementally", func(t *testing.T) {
+		c := New("c1").
+			AddInputs("in1").
+			AddInputs("in2", "in3").
+			AddInputs("in4")
+
+		assert.Equal(t, 4, c.Inputs().Len())
+		assert.NotNil(t, c.InputByName("in1"))
+		assert.NotNil(t, c.InputByName("in2"))
+		assert.NotNil(t, c.InputByName("in3"))
+		assert.NotNil(t, c.InputByName("in4"))
+	})
+
+	t.Run("multiple AddOutputs calls add ports incrementally", func(t *testing.T) {
+		c := New("c1").
+			AddOutputs("out1").
+			AddOutputs("out2", "out3").
+			AddOutputs("out4")
+
+		assert.Equal(t, 4, c.Outputs().Len())
+		assert.NotNil(t, c.OutputByName("out1"))
+		assert.NotNil(t, c.OutputByName("out2"))
+		assert.NotNil(t, c.OutputByName("out3"))
+		assert.NotNil(t, c.OutputByName("out4"))
+	})
+
+	t.Run("mixing AddInputs and AttachInputPorts", func(t *testing.T) {
+		c := New("c1").
+			AddInputs("in1", "in2").
+			AttachInputPorts(
+				port.New("in3").WithDescription("third input"),
+				port.New("in4").WithDescription("fourth input").AddLabel("important", "true"),
+			).
+			AddInputs("in5")
+
+		assert.Equal(t, 5, c.Inputs().Len())
+		assert.Empty(t, c.InputByName("in1").Description())
+		assert.Empty(t, c.InputByName("in2").Description())
+		assert.Equal(t, "third input", c.InputByName("in3").Description())
+		assert.Equal(t, "fourth input", c.InputByName("in4").Description())
+		assert.True(t, c.InputByName("in4").Labels().ValueIs("important", "true"))
+		assert.Empty(t, c.InputByName("in5").Description())
+	})
+
+	t.Run("mixing AddOutputs and AttachOutputPorts", func(t *testing.T) {
+		c := New("c1").
+			AddOutputs("out1", "out2").
+			AttachOutputPorts(
+				port.New("out3").WithDescription("third output"),
+				port.New("out4").WithDescription("fourth output").AddLabel("type", "error"),
+			).
+			AddOutputs("out5")
+
+		assert.Equal(t, 5, c.Outputs().Len())
+		assert.Empty(t, c.OutputByName("out1").Description())
+		assert.Empty(t, c.OutputByName("out2").Description())
+		assert.Equal(t, "third output", c.OutputByName("out3").Description())
+		assert.Equal(t, "fourth output", c.OutputByName("out4").Description())
+		assert.True(t, c.OutputByName("out4").Labels().ValueIs("type", "error"))
+		assert.Empty(t, c.OutputByName("out5").Description())
+	})
 }

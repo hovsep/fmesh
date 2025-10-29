@@ -24,8 +24,8 @@ func Test_WaitingForInputs(t *testing.T) {
 				getDoubler := func(name string) *component.Component {
 					return component.New(name).
 						WithDescription("This component just doubles the input").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 
@@ -42,8 +42,8 @@ func Test_WaitingForInputs(t *testing.T) {
 
 				s := component.New("sum").
 					WithDescription("This component just sums 2 inputs").
-					WithInputs("i1", "i2").
-					WithOutputs("o1").
+					AddInputs("i1", "i2").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return component.NewErrWaitForInputs(true)

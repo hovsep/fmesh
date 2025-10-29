@@ -36,8 +36,8 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
 			// Compare activation functions by they result and error
-			dummyComponent1 := New("c1").WithInputs("i1", "i2").WithOutputs("o1", "o2")
-			dummyComponent2 := New("c2").WithInputs("i1", "i2").WithOutputs("o1", "o2")
+			dummyComponent1 := New("c1").AddInputs("i1", "i2").AddOutputs("o1", "o2")
+			dummyComponent2 := New("c2").AddInputs("i1", "i2").AddOutputs("o1", "o2")
 			err1 := componentAfter.f(dummyComponent1)
 			err2 := tt.args.f(dummyComponent2)
 			assert.Equal(t, err1, err2)
@@ -71,7 +71,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component with inputs set, but no activation func",
 			getComponent: func() *Component {
-				c := New("c1").WithInputs("i1")
+				c := New("c1").AddInputs("i1")
 				c.InputByName("i1").PutSignals(signal.New(123))
 				return c
 			},
@@ -217,7 +217,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "with chain error from input port",
 			getComponent: func() *Component {
-				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c := New("c").AddInputs("i1").AddOutputs("o1")
 				c.Inputs().With(port.New("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
@@ -228,7 +228,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "with chain error from output port",
 			getComponent: func() *Component {
-				c := New("c").WithInputs("i1").WithOutputs("o1")
+				c := New("c").AddInputs("i1").AddOutputs("o1")
 				c.Outputs().With(port.New("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
