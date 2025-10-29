@@ -233,3 +233,72 @@ func TestComponent_AddLabel(t *testing.T) {
 		})
 	}
 }
+
+func TestComponent_Chainability(t *testing.T) {
+	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
+		c := New("c1").
+			SetLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			SetLabels(labels.Map{"k3": "v3"})
+
+		assert.Equal(t, 1, c.Labels().Len())
+		assert.False(t, c.Labels().Has("k1"), "k1 should be replaced")
+		assert.False(t, c.Labels().Has("k2"), "k2 should be replaced")
+		assert.True(t, c.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
+		c := New("c1").
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			AddLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
+
+		assert.Equal(t, 3, c.Labels().Len())
+		assert.True(t, c.Labels().ValueIs("k1", "v1"))
+		assert.True(t, c.Labels().ValueIs("k2", "v2-updated"), "should update existing key")
+		assert.True(t, c.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("mixed Set and Add operations", func(t *testing.T) {
+		c := New("c1").
+			AddLabel("k1", "v1").
+			AddLabels(labels.Map{"k2": "v2", "k3": "v3"}).
+			SetLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
+			AddLabel("k5", "v5")               // Merges with k4
+
+		assert.Equal(t, 2, c.Labels().Len())
+		assert.False(t, c.Labels().Has("k1"), "wiped by SetLabels")
+		assert.False(t, c.Labels().Has("k2"), "wiped by SetLabels")
+		assert.False(t, c.Labels().Has("k3"), "wiped by SetLabels")
+		assert.True(t, c.Labels().ValueIs("k4", "v4"))
+		assert.True(t, c.Labels().ValueIs("k5", "v5"))
+	})
+
+	t.Run("WithDescription replaces previous value", func(t *testing.T) {
+		c := New("c1").
+			WithDescription("first").
+			WithDescription("second")
+
+		assert.Equal(t, "second", c.Description())
+	})
+
+	t.Run("WithInputs called twice adds ports without duplicates", func(t *testing.T) {
+		c := New("c1").
+			WithInputs("in1", "in2").
+			WithInputs("in3", "in1") // in1 already exists
+
+		assert.Equal(t, 3, c.Inputs().Len())
+		assert.NotNil(t, c.Inputs().ByName("in1"))
+		assert.NotNil(t, c.Inputs().ByName("in2"))
+		assert.NotNil(t, c.Inputs().ByName("in3"))
+	})
+
+	t.Run("WithOutputs called twice adds ports without duplicates", func(t *testing.T) {
+		c := New("c1").
+			WithOutputs("out1", "out2").
+			WithOutputs("out3", "out1") // out1 already exists
+
+		assert.Equal(t, 3, c.Outputs().Len())
+		assert.NotNil(t, c.Outputs().ByName("out1"))
+		assert.NotNil(t, c.Outputs().ByName("out2"))
+		assert.NotNil(t, c.Outputs().ByName("out3"))
+	})
+}
