@@ -260,28 +260,6 @@ func (c *Collection) Any() *Port {
 	return New("").WithChainableErr(errUnexpectedErrorGettingPort)
 }
 
-// AnyOrDefault returns any arbitrary port or the provided default.
-func (c *Collection) AnyOrDefault(defaultPort *Port) *Port {
-	if c.HasChainableErr() || c.IsEmpty() {
-		return defaultPort
-	}
-	for _, port := range c.ports {
-		return port
-	}
-	return defaultPort
-}
-
-// AnyOrNil returns any arbitrary port or nil.
-func (c *Collection) AnyOrNil() *Port {
-	if c.HasChainableErr() || c.IsEmpty() {
-		return nil
-	}
-	for _, port := range c.ports {
-		return port
-	}
-	return nil
-}
-
 // AllMatch returns true if all ports match the predicate.
 func (c *Collection) AllMatch(predicate Predicate) bool {
 	if c.HasChainableErr() {

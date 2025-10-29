@@ -146,39 +146,6 @@ func TestActivationResultCollection_Any(t *testing.T) {
 	})
 }
 
-func TestActivationResultCollection_AnyOrDefault(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	defaultResult := NewActivationResult("default")
-
-	t.Run("returns arbitrary when not empty", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
-		result := collection.AnyOrDefault(defaultResult)
-		assert.Equal(t, "c1", result.ComponentName())
-	})
-
-	t.Run("returns default when empty", func(t *testing.T) {
-		collection := NewActivationResultCollection()
-		result := collection.AnyOrDefault(defaultResult)
-		assert.Equal(t, "default", result.ComponentName())
-	})
-}
-
-func TestActivationResultCollection_AnyOrNil(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-
-	t.Run("returns result when not empty", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
-		result := collection.AnyOrNil()
-		assert.NotNil(t, result)
-	})
-
-	t.Run("returns nil when empty", func(t *testing.T) {
-		collection := NewActivationResultCollection()
-		result := collection.AnyOrNil()
-		assert.Nil(t, result)
-	})
-}
-
 func TestActivationResultCollection_AllMatch(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(true)
