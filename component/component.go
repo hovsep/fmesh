@@ -94,6 +94,24 @@ func (c *Component) AddLabel(name, value string) *Component {
 	return c
 }
 
+// ClearLabels removes all labels and returns the component for chaining.
+func (c *Component) ClearLabels() *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.labels.Clear()
+	return c
+}
+
+// WithoutLabels removes specific labels and returns the component for chaining.
+func (c *Component) WithoutLabels(names ...string) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.labels.Without(names...)
+	return c
+}
+
 // propagateChainErrors propagates up all chain errors that might have not been propagated yet.
 func (c *Component) propagateChainErrors() {
 	if c.Inputs().HasChainableErr() {

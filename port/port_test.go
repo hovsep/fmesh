@@ -604,6 +604,111 @@ func TestPort_AddLabel(t *testing.T) {
 	}
 }
 
+func TestPort_ClearLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		port       *Port
+		assertions func(t *testing.T, port *Port)
+	}{
+		{
+			name: "clear labels from port with labels",
+			port: New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 0, port.Labels().Len())
+				assert.False(t, port.Labels().Has("k1"))
+				assert.False(t, port.Labels().Has("k2"))
+			},
+		},
+		{
+			name: "clear labels from port without labels",
+			port: New("p1"),
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 0, port.Labels().Len())
+			},
+		},
+		{
+			name: "chainable",
+			port: New("p1").AddLabels(labels.Map{"k1": "v1"}),
+			assertions: func(t *testing.T, port *Port) {
+				result := port.ClearLabels().AddLabel("k2", "v2")
+				assert.Equal(t, 1, result.Labels().Len())
+				assert.False(t, result.Labels().Has("k1"))
+				assert.True(t, result.Labels().ValueIs("k2", "v2"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.ClearLabels()
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
+		})
+	}
+}
+
+func TestPort_WithoutLabels(t *testing.T) {
+	tests := []struct {
+		name           string
+		port           *Port
+		labelsToRemove []string
+		assertions     func(t *testing.T, port *Port)
+	}{
+		{
+			name:           "remove single label",
+			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1"},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 2, port.Labels().Len())
+				assert.False(t, port.Labels().Has("k1"))
+				assert.True(t, port.Labels().Has("k2"))
+				assert.True(t, port.Labels().Has("k3"))
+			},
+		},
+		{
+			name:           "remove multiple labels",
+			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1", "k2"},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 1, port.Labels().Len())
+				assert.False(t, port.Labels().Has("k1"))
+				assert.False(t, port.Labels().Has("k2"))
+				assert.True(t, port.Labels().ValueIs("k3", "v3"))
+			},
+		},
+		{
+			name:           "remove non-existent label",
+			port:           New("p1").AddLabels(labels.Map{"k1": "v1"}),
+			labelsToRemove: []string{"k2"},
+			assertions: func(t *testing.T, port *Port) {
+				assert.Equal(t, 1, port.Labels().Len())
+				assert.True(t, port.Labels().ValueIs("k1", "v1"))
+			},
+		},
+		{
+			name:           "chainable",
+			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			labelsToRemove: []string{"k1"},
+			assertions: func(t *testing.T, port *Port) {
+				result := port.WithoutLabels("k2").AddLabel("k4", "v4")
+				assert.Equal(t, 2, result.Labels().Len())
+				assert.False(t, result.Labels().Has("k1"))
+				assert.False(t, result.Labels().Has("k2"))
+				assert.True(t, result.Labels().ValueIs("k3", "v3"))
+				assert.True(t, result.Labels().ValueIs("k4", "v4"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.WithoutLabels(tt.labelsToRemove...)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
+		})
+	}
+}
+
 func TestPort_Pipes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -958,5 +1063,30 @@ func TestPort_Chainability(t *testing.T) {
 
 		assert.Equal(t, 0, p.Signals().Len())
 		assert.False(t, p.HasSignals())
+	})
+
+	t.Run("ClearLabels removes all labels", func(t *testing.T) {
+		p := New("p1").
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			ClearLabels().
+			AddLabel("k3", "v3")
+
+		assert.Equal(t, 1, p.Labels().Len())
+		assert.False(t, p.Labels().Has("k1"))
+		assert.False(t, p.Labels().Has("k2"))
+		assert.True(t, p.Labels().ValueIs("k3", "v3"))
+	})
+
+	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
+		p := New("p1").
+			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			WithoutLabels("k1", "k2").
+			AddLabel("k4", "v4")
+
+		assert.Equal(t, 2, p.Labels().Len())
+		assert.False(t, p.Labels().Has("k1"))
+		assert.False(t, p.Labels().Has("k2"))
+		assert.True(t, p.Labels().ValueIs("k3", "v3"))
+		assert.True(t, p.Labels().ValueIs("k4", "v4"))
 	})
 }
