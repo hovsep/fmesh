@@ -97,7 +97,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: New("p1").WithLabels(labels.Map{
+			want: New("p1").SetLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}),
 		},
@@ -109,7 +109,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p2",
 			},
-			want: New("p2").WithLabels(labels.Map{
+			want: New("p2").SetLabels(labels.Map{
 				DirectionLabel: DirectionOut,
 			}).PutSignals(signal.New(12)),
 		},
@@ -277,15 +277,15 @@ func TestCollection_Flush(t *testing.T) {
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
 				New("src").
-					WithLabels(labels.Map{
+					SetLabels(labels.Map{
 						DirectionLabel: DirectionOut,
 					}).
 					PutSignalGroups(signal.NewGroup(1, 2, 3)).
 					PipeTo(New("dst1").
-						WithLabels(labels.Map{
+						SetLabels(labels.Map{
 							DirectionLabel: DirectionIn,
 						}), New("dst2").
-						WithLabels(labels.Map{
+						SetLabels(labels.Map{
 							DirectionLabel: DirectionIn,
 						})),
 			),

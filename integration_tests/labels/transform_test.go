@@ -16,7 +16,7 @@ import (
 func Test_LabelTransformation(t *testing.T) {
 	t.Run("normalize label keys to uppercase", func(t *testing.T) {
 		// Scenario: You receive signals with mixed-case labels and want to normalize them
-		sig := signal.New(100).WithLabels(labels.Map{
+		sig := signal.New(100).SetLabels(labels.Map{
 			"env":    "production",
 			"Region": "us-east",
 			"Tier":   "backend",
@@ -39,7 +39,7 @@ func Test_LabelTransformation(t *testing.T) {
 		c := component.New("processor").
 			WithInputs("in").
 			WithOutputs("out").
-			WithLabels(labels.Map{
+			SetLabels(labels.Map{
 				"version": "1.0",
 				"type":    "transformer",
 			})
@@ -56,7 +56,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("add prefix to label values", func(t *testing.T) {
 		// Scenario: You want to mark all label values as coming from a specific source
-		sig := signal.New("data").WithLabels(labels.Map{
+		sig := signal.New("data").SetLabels(labels.Map{
 			"source": "api",
 			"format": "json",
 		})
@@ -72,7 +72,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("convert labels to debug format", func(t *testing.T) {
 		// Scenario: You want to wrap all label values in brackets for debugging
-		sig := signal.New(42).WithLabels(labels.Map{
+		sig := signal.New(42).SetLabels(labels.Map{
 			"id":   "123",
 			"name": "test",
 		})
@@ -106,7 +106,7 @@ func Test_LabelTransformation(t *testing.T) {
 					// Create new signal with normalized labels
 					labelsMap, err := normalizedLabels.All()
 					if err == nil {
-						newSignal := signal.New(sig.PayloadOrNil()).WithLabels(labelsMap)
+						newSignal := signal.New(sig.PayloadOrNil()).SetLabels(labelsMap)
 						outPort.PutSignals(newSignal)
 					}
 				})
@@ -118,7 +118,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 		// Input signal with mixed-case labels
 		fm.ComponentByName("normalizer").InputByName("in").PutSignals(
-			signal.New(100).WithLabels(labels.Map{
+			signal.New(100).SetLabels(labels.Map{
 				"ENV":    "prod",
 				"Region": "us-west",
 				"TIER":   "frontend",
@@ -144,7 +144,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("chain Map with Filter", func(t *testing.T) {
 		// Scenario: Transform labels and then filter them
-		sig := signal.New("data").WithLabels(labels.Map{
+		sig := signal.New("data").SetLabels(labels.Map{
 			"app.version": "1.0",
 			"app.type":    "service",
 			"sys.cpu":     "high",
