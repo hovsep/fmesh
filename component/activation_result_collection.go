@@ -196,11 +196,6 @@ func (c *ActivationResultCollection) AnyMatch(predicate ActivationResultPredicat
 	return false
 }
 
-// NoneMatch returns true if no activation results match the predicate.
-func (c *ActivationResultCollection) NoneMatch(predicate ActivationResultPredicate) bool {
-	return !c.AnyMatch(predicate)
-}
-
 // CountMatch returns the number of activation results that match the predicate.
 func (c *ActivationResultCollection) CountMatch(predicate ActivationResultPredicate) int {
 	if c.HasChainableErr() {

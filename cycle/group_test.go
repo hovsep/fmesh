@@ -263,27 +263,6 @@ func TestGroup_AnyMatch(t *testing.T) {
 	})
 }
 
-func TestGroup_NoneMatch(t *testing.T) {
-	c1 := New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))
-	c2 := New().WithActivationResults(component.NewActivationResult("c2").SetActivated(true))
-
-	t.Run("none match", func(t *testing.T) {
-		group := NewGroup().With(c1)
-		result := group.NoneMatch(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("at least one matches", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
-		result := group.NoneMatch(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.False(t, result)
-	})
-}
-
 func TestGroup_CountMatch(t *testing.T) {
 	c1 := New().WithNumber(1).WithActivationResults(component.NewActivationResult("c1").SetActivated(true))
 	c2 := New().WithNumber(2).WithActivationResults(component.NewActivationResult("c2").SetActivated(false))
@@ -303,29 +282,6 @@ func TestGroup_CountMatch(t *testing.T) {
 			return c.HasActivatedComponents()
 		})
 		assert.Equal(t, 0, count)
-	})
-}
-
-func TestGroup_FirstMatch(t *testing.T) {
-	c1 := New().WithNumber(1).WithActivationResults(component.NewActivationResult("c1").SetActivated(false))
-	c2 := New().WithNumber(2).WithActivationResults(component.NewActivationResult("c2").SetActivated(true))
-	c3 := New().WithNumber(3).WithActivationResults(component.NewActivationResult("c3").SetActivated(true))
-
-	t.Run("finds first matching cycle", func(t *testing.T) {
-		group := NewGroup().With(c1, c2, c3)
-		result := group.FirstMatch(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.False(t, result.HasChainableErr())
-		assert.True(t, result.HasActivatedComponents())
-	})
-
-	t.Run("no match returns error", func(t *testing.T) {
-		group := NewGroup().With(c1)
-		result := group.FirstMatch(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.True(t, result.HasChainableErr())
 	})
 }
 

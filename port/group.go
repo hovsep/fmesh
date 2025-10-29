@@ -172,11 +172,6 @@ func (g *Group) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// NoneMatch returns true if no ports match the predicate.
-func (g *Group) NoneMatch(predicate Predicate) bool {
-	return !g.AnyMatch(predicate)
-}
-
 // CountMatch returns the number of ports that match the predicate.
 func (g *Group) CountMatch(predicate Predicate) int {
 	if g.HasChainableErr() {
@@ -189,20 +184,6 @@ func (g *Group) CountMatch(predicate Predicate) int {
 		}
 	}
 	return count
-}
-
-// FirstMatch returns the first port that matches the predicate.
-func (g *Group) FirstMatch(predicate Predicate) *Port {
-	if g.HasChainableErr() {
-		return New("").WithChainableErr(g.ChainableErr())
-	}
-	for _, port := range g.ports {
-		if predicate(port) {
-			return port
-		}
-	}
-	g.WithChainableErr(ErrNoPortMatchesPredicate)
-	return New("").WithChainableErr(g.ChainableErr())
 }
 
 // Filter returns a new group with ports that match the predicate.

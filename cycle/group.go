@@ -134,11 +134,6 @@ func (g *Group) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// NoneMatch returns true if no cycles match the predicate.
-func (g *Group) NoneMatch(predicate Predicate) bool {
-	return !g.AnyMatch(predicate)
-}
-
 // CountMatch returns the number of cycles that match the predicate.
 func (g *Group) CountMatch(predicate Predicate) int {
 	if g.HasChainableErr() {
@@ -151,20 +146,6 @@ func (g *Group) CountMatch(predicate Predicate) int {
 		}
 	}
 	return count
-}
-
-// FirstMatch returns the first cycle that matches the predicate.
-func (g *Group) FirstMatch(predicate Predicate) *Cycle {
-	if g.HasChainableErr() {
-		return New().WithChainableErr(g.ChainableErr())
-	}
-	for _, cyc := range g.cycles {
-		if predicate(cyc) {
-			return cyc
-		}
-	}
-	g.WithChainableErr(errNoCyclesInGroup)
-	return New().WithChainableErr(g.ChainableErr())
 }
 
 // Filter returns a new group with cycles that match the predicate.

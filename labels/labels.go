@@ -56,11 +56,6 @@ func (c *Collection) AnyMatch(pred LabelPredicate) bool {
 	return false
 }
 
-// NoneMatch returns true if no labels match the predicate.
-func (c *Collection) NoneMatch(pred LabelPredicate) bool {
-	return !c.AnyMatch(pred)
-}
-
 // CountMatch returns the number of labels that match the predicate.
 func (c *Collection) CountMatch(pred LabelPredicate) int {
 	if c.HasChainableErr() {
@@ -153,19 +148,6 @@ func (c *Collection) HasAll(labels ...string) bool {
 	return true
 }
 
-// MatchesAll returns true if the collection contains all key-value pairs from the given map.
-func (c *Collection) MatchesAll(labels Map) bool {
-	if c.HasChainableErr() {
-		return false
-	}
-	for k, v := range labels {
-		if !c.ValueIs(k, v) {
-			return false
-		}
-	}
-	return true
-}
-
 // HasAny checks if a collection has any of the given labels.
 func (c *Collection) HasAny(labels ...string) bool {
 	if c.HasChainableErr() {
@@ -173,19 +155,6 @@ func (c *Collection) HasAny(labels ...string) bool {
 	}
 	for _, label := range labels {
 		if c.Has(label) {
-			return true
-		}
-	}
-	return false
-}
-
-// MatchesAny returns true if the collection contains any key-value pair from the given map.
-func (c *Collection) MatchesAny(labels Map) bool {
-	if c.HasChainableErr() {
-		return false
-	}
-	for k, v := range labels {
-		if c.ValueIs(k, v) {
 			return true
 		}
 	}
