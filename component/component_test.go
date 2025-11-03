@@ -383,8 +383,8 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("WithInputs called twice adds ports without duplicates", func(t *testing.T) {
 		c := New("c1").
-			WithInputs("in1", "in2").
-			WithInputs("in3", "in1") // in1 already exists
+			AddInputs("in1", "in2").
+			AddInputs("in3", "in1") // in1 already exists
 
 		assert.Equal(t, 3, c.Inputs().Len())
 		assert.NotNil(t, c.Inputs().ByName("in1"))
@@ -394,8 +394,8 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("WithOutputs called twice adds ports without duplicates", func(t *testing.T) {
 		c := New("c1").
-			WithOutputs("out1", "out2").
-			WithOutputs("out3", "out1") // out1 already exists
+			AddOutputs("out1", "out2").
+			AddOutputs("out3", "out1") // out1 already exists
 
 		assert.Equal(t, 3, c.Outputs().Len())
 		assert.NotNil(t, c.Outputs().ByName("out1"))

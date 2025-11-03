@@ -18,12 +18,12 @@ func TestPort_HasSignals(t *testing.T) {
 	}{
 		{
 			name: "empty port",
-			port: New("emptyPort"),
+			port: NewOutput("emptyPort"),
 			want: false,
 		},
 		{
 			name: "port has signals",
-			port: New("p").PutSignals(signal.New(123)),
+			port: NewOutput("p").PutSignals(signal.New(123)),
 			want: true,
 		},
 	}
@@ -42,17 +42,17 @@ func TestPort_Signals(t *testing.T) {
 	}{
 		{
 			name: "empty signals",
-			port: New("noSignal"),
+			port: NewOutput("noSignal"),
 			want: signal.NewGroup(),
 		},
 		{
 			name: "with signal",
-			port: New("p").PutSignals(signal.New(123)),
+			port: NewOutput("p").PutSignals(signal.New(123)),
 			want: signal.NewGroup(123),
 		},
 		{
 			name: "with chain error",
-			port: New("p").WithChainableErr(errors.New("some error")),
+			port: NewOutput("p").WithChainableErr(errors.New("some error")),
 			want: signal.NewGroup().WithChainableErr(errors.New("some error")),
 		},
 	}
@@ -71,13 +71,13 @@ func TestPort_Clear(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			before: New("p").PutSignals(signal.New(111)),
-			after:  New("p"),
+			before: NewOutput("p").PutSignals(signal.New(111)),
+			after:  NewOutput("p"),
 		},
 		{
 			name:   "cleaning empty port",
-			before: New("emptyPort"),
-			after:  New("emptyPort"),
+			before: NewOutput("emptyPort"),
+			after:  NewOutput("emptyPort"),
 		},
 	}
 	for _, tt := range tests {
@@ -185,7 +185,7 @@ func TestPort_PutSignals(t *testing.T) {
 	}{
 		{
 			name: "single signal to empty port",
-			port: New("emptyPort"),
+			port: NewOutput("emptyPort"),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11), portAfter.Signals())
 			},
@@ -196,7 +196,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "multiple signals to empty port",
-			port: New("p"),
+			port: NewOutput("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
@@ -207,7 +207,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "single signal to port with single signal",
-			port: New("p").PutSignals(signal.New(11)),
+			port: NewOutput("p").PutSignals(signal.New(11)),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
@@ -218,7 +218,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "single signal to port with multiple signals",
-			port: New("p").PutSignalGroups(signal.NewGroup(11, 12)),
+			port: NewOutput("p").PutSignalGroups(signal.NewGroup(11, 12)),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
 			},
@@ -229,7 +229,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "multiple signals to port with multiple signals",
-			port: New("p").PutSignalGroups(signal.NewGroup(55, 66)),
+			port: NewOutput("p").PutSignalGroups(signal.NewGroup(55, 66)),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
 			},
@@ -240,7 +240,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "chain error propagated from signals",
-			port: New("p"),
+			port: NewOutput("p"),
 			assertions: func(t *testing.T, portAfter *Port) {
 				assert.Zero(t, portAfter.Signals().Len())
 				assert.True(t, portAfter.Signals().HasChainableErr())
@@ -251,7 +251,7 @@ func TestPort_PutSignals(t *testing.T) {
 		},
 		{
 			name: "with chain error",
-			port: New("p").WithChainableErr(errors.New("some error in port")),
+			port: NewOutput("p").WithChainableErr(errors.New("some error in port")),
 			args: args{
 				signals: signal.Signals{signal.New(123)},
 			},
@@ -285,19 +285,19 @@ func TestNewPort(t *testing.T) {
 			args: args{
 				name: "",
 			},
-			want: New(""),
+			want: NewOutput(""),
 		},
 		{
 			name: "with name",
 			args: args{
 				name: "p1",
 			},
-			want: New("p1"),
+			want: NewOutput("p1"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, New(tt.args.name))
+			assert.Equal(t, tt.want, NewOutput(tt.args.name))
 		})
 	}
 }
@@ -310,7 +310,7 @@ func TestPort_Direction(t *testing.T) {
 	}{
 		{
 			name: "default direction is out (zero-value)",
-			port: New("p"),
+			port: NewOutput("p"),
 			want: DirectionOut,
 		},
 		{
@@ -348,7 +348,7 @@ func TestPort_HasPipes(t *testing.T) {
 	}{
 		{
 			name: "no pipes",
-			port: New("p"),
+			port: NewOutput("p"),
 			want: false,
 		},
 		{
@@ -372,7 +372,7 @@ func TestPort_Flush(t *testing.T) {
 	}{
 		{
 			name:    "port with signals and no pipes is not flushed",
-			srcPort: New("p").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+			srcPort: NewOutput("p").PutSignalGroups(signal.NewGroup(1, 2, 3)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.True(t, srcPort.HasSignals())
 				assert.Equal(t, 3, srcPort.Signals().Len())
@@ -435,6 +435,15 @@ func TestPort_Flush(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:    "GUARDRAIL: cannot flush input port",
+			srcPort: NewInput("input1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+			assertions: func(t *testing.T, srcPort *Port) {
+				require.Error(t, srcPort.ChainableErr())
+				assert.Contains(t, srcPort.ChainableErr().Error(), "cannot flush input port")
+				assert.Contains(t, srcPort.ChainableErr().Error(), "input1")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -455,7 +464,7 @@ func TestPort_SetLabels(t *testing.T) {
 	}{
 		{
 			name: "set labels on new port",
-			port: New("p1"),
+			port: NewOutput("p1"),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -467,7 +476,7 @@ func TestPort_SetLabels(t *testing.T) {
 		},
 		{
 			name: "set labels replaces existing labels",
-			port: New("p1").AddLabels(labels.Map{"old": "value"}),
+			port: NewOutput("p1").AddLabels(labels.Map{"old": "value"}),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -498,7 +507,7 @@ func TestPort_AddLabels(t *testing.T) {
 	}{
 		{
 			name: "add labels to new port",
-			port: New("p1"),
+			port: NewOutput("p1"),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -510,7 +519,7 @@ func TestPort_AddLabels(t *testing.T) {
 		},
 		{
 			name: "add labels merges with existing",
-			port: New("p1").AddLabels(labels.Map{"existing": "label"}),
+			port: NewOutput("p1").AddLabels(labels.Map{"existing": "label"}),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -522,7 +531,7 @@ func TestPort_AddLabels(t *testing.T) {
 		},
 		{
 			name: "add labels updates existing key",
-			port: New("p1").AddLabels(labels.Map{"l1": "old"}),
+			port: NewOutput("p1").AddLabels(labels.Map{"l1": "old"}),
 			labels: labels.Map{
 				"l1": "new",
 			},
@@ -552,7 +561,7 @@ func TestPort_AddLabel(t *testing.T) {
 	}{
 		{
 			name:       "add single label to new port",
-			port:       New("p1"),
+			port:       NewOutput("p1"),
 			labelName:  "direction",
 			labelValue: "in",
 			assertions: func(t *testing.T, port *Port) {
@@ -562,7 +571,7 @@ func TestPort_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label merges with existing",
-			port:       New("p1").AddLabel("existing", "label"),
+			port:       NewOutput("p1").AddLabel("existing", "label"),
 			labelName:  "direction",
 			labelValue: "in",
 			assertions: func(t *testing.T, port *Port) {
@@ -572,7 +581,7 @@ func TestPort_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label updates existing key",
-			port:       New("p1").AddLabel("direction", "in"),
+			port:       NewOutput("p1").AddLabel("direction", "in"),
 			labelName:  "direction",
 			labelValue: "out",
 			assertions: func(t *testing.T, port *Port) {
@@ -582,7 +591,7 @@ func TestPort_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "chainable",
-			port:       New("p1"),
+			port:       NewOutput("p1"),
 			labelName:  "l1",
 			labelValue: "v1",
 			assertions: func(t *testing.T, port *Port) {
@@ -610,7 +619,7 @@ func TestPort_ClearLabels(t *testing.T) {
 	}{
 		{
 			name: "clear labels from port with labels",
-			port: New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
+			port: NewOutput("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 0, port.Labels().Len())
 				assert.False(t, port.Labels().Has("k1"))
@@ -619,14 +628,14 @@ func TestPort_ClearLabels(t *testing.T) {
 		},
 		{
 			name: "clear labels from port without labels",
-			port: New("p1"),
+			port: NewOutput("p1"),
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 0, port.Labels().Len())
 			},
 		},
 		{
 			name: "chainable",
-			port: New("p1").AddLabels(labels.Map{"k1": "v1"}),
+			port: NewOutput("p1").AddLabels(labels.Map{"k1": "v1"}),
 			assertions: func(t *testing.T, port *Port) {
 				result := port.ClearLabels().AddLabel("k2", "v2")
 				assert.Equal(t, 1, result.Labels().Len())
@@ -654,7 +663,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 	}{
 		{
 			name:           "remove single label",
-			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           NewOutput("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 2, port.Labels().Len())
@@ -665,7 +674,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "remove multiple labels",
-			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           NewOutput("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1", "k2"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 1, port.Labels().Len())
@@ -676,7 +685,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "remove non-existent label",
-			port:           New("p1").AddLabels(labels.Map{"k1": "v1"}),
+			port:           NewOutput("p1").AddLabels(labels.Map{"k1": "v1"}),
 			labelsToRemove: []string{"k2"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 1, port.Labels().Len())
@@ -685,7 +694,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "chainable",
-			port:           New("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           NewOutput("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, port *Port) {
 				result := port.WithoutLabels("k2").AddLabel("k4", "v4")
@@ -709,13 +718,14 @@ func TestPort_WithoutLabels(t *testing.T) {
 
 func TestPort_Pipes(t *testing.T) {
 	tests := []struct {
-		name string
-		port *Port
-		want *Group
+		name              string
+		port              *Port
+		want              *Group
+		wantErrContaining string
 	}{
 		{
 			name: "no pipes",
-			port: New("p"),
+			port: NewOutput("p"),
 			want: NewGroup(),
 		},
 		{
@@ -727,38 +737,51 @@ func TestPort_Pipes(t *testing.T) {
 			want: NewGroup().With(NewInput("p2"), NewInput("p3")),
 		},
 		{
-			name: "with chain error",
-			port: New("p").WithChainableErr(errors.New("some error")),
-			want: NewGroup().WithChainableErr(errors.New("some error")),
+			name:              "with chain error",
+			port:              NewOutput("p").WithChainableErr(errors.New("some error")),
+			want:              NewGroup().WithChainableErr(errors.New("some error")),
+			wantErrContaining: "some error",
+		},
+		{
+			name:              "GUARDRAIL: input port cannot have pipes",
+			port:              NewInput("input1"),
+			want:              NewGroup().WithChainableErr(errors.New("port 'input1' is an input port and cannot have outbound pipes")),
+			wantErrContaining: "input port",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Pipes())
+			got := tt.port.Pipes()
+			if tt.wantErrContaining != "" {
+				require.Error(t, got.ChainableErr())
+				assert.Contains(t, got.ChainableErr().Error(), tt.wantErrContaining)
+			} else {
+				assert.NoError(t, got.ChainableErr())
+			}
 		})
 	}
 }
 
 func TestPort_SignalsAccess(t *testing.T) {
 	t.Run("FirstSignalPayload", func(t *testing.T) {
-		port := New("p").PutSignalGroups(signal.NewGroup(4, 7, 6, 5))
+		port := NewOutput("p").PutSignalGroups(signal.NewGroup(4, 7, 6, 5))
 		payload, err := port.Signals().FirstPayload()
 		require.NoError(t, err)
 		assert.Equal(t, 4, payload)
 	})
 
 	t.Run("FirstSignalPayloadOrNil", func(t *testing.T) {
-		port := New("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
+		port := NewOutput("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
 		assert.Nil(t, port.Signals().FirstPayloadOrNil())
 	})
 
 	t.Run("FirstSignalPayloadOrDefault", func(t *testing.T) {
-		port := New("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
+		port := NewOutput("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
 		assert.Equal(t, 888, port.Signals().FirstPayloadOrDefault(888))
 	})
 
 	t.Run("All with error", func(t *testing.T) {
-		port := New("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
+		port := NewOutput("p").PutSignals(signal.New(123).WithChainableErr(errors.New("some error")))
 		_, err := port.Signals().All()
 		assert.Error(t, err)
 	})
@@ -777,8 +800,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
@@ -789,8 +812,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 		{
 			name: "signals are added to dest port",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
@@ -801,8 +824,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 		{
 			name: "src with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
+				destPort: NewOutput("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -813,8 +836,8 @@ func TestPort_ForwardSignals(t *testing.T) {
 		{
 			name: "dest with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2").WithChainableErr(errors.New("some error")),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2").WithChainableErr(errors.New("some error")),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -847,8 +870,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 		{
 			name: "all kept",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2"),
 				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 0
 				},
@@ -862,8 +885,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 		{
 			name: "some dropped",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
-				destPort: New("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
+				destPort: NewOutput("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
 				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 10
 				},
@@ -877,8 +900,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 		{
 			name: "all dropped",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
-				destPort: New("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(7, 8, 9, 10, 11, 12, 13)),
+				destPort: NewOutput("p2").PutSignalGroups(signal.NewGroup(1, 2, 3, 4, 5, 6)),
 				predicate: func(signal *signal.Signal) bool {
 					return signal.PayloadOrDefault(0).(int) > 99
 				},
@@ -892,8 +915,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 		{
 			name: "src with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
+				destPort: NewOutput("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -904,8 +927,8 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 		{
 			name: "dest with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2").WithChainableErr(errors.New("some error")),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2").WithChainableErr(errors.New("some error")),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -938,8 +961,8 @@ func TestPort_ForwardWithMap(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2"),
 				mapperFunc: func(signal *signal.Signal) *signal.Signal {
 					return signal.SetLabels(labels.Map{
 						"l1": "v1",
@@ -958,8 +981,8 @@ func TestPort_ForwardWithMap(t *testing.T) {
 		{
 			name: "src with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
-				destPort: New("p2"),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)).WithChainableErr(errors.New("some error")),
+				destPort: NewOutput("p2"),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -970,8 +993,8 @@ func TestPort_ForwardWithMap(t *testing.T) {
 		{
 			name: "dest with chain error",
 			args: args{
-				srcPort:  New("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
-				destPort: New("p2").WithChainableErr(errors.New("some error")),
+				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
+				destPort: NewOutput("p2").WithChainableErr(errors.New("some error")),
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.Error(t, err)
@@ -992,7 +1015,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 
 func TestPort_Chainability(t *testing.T) {
 	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			SetLabels(labels.Map{"k1": "v1", "k2": "v2"}).
 			SetLabels(labels.Map{"k3": "v3"})
 
@@ -1003,7 +1026,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
 			AddLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
 
@@ -1014,7 +1037,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("mixed Set and Add operations", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			AddLabel("k1", "v1").
 			AddLabels(labels.Map{"k2": "v2", "k3": "v3"}).
 			SetLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
@@ -1029,7 +1052,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("WithDescription replaces previous value", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			WithDescription("first").
 			WithDescription("second")
 
@@ -1037,7 +1060,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("PutSignals called twice adds signals", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			PutSignals(signal.New(1), signal.New(2)).
 			PutSignals(signal.New(3))
 
@@ -1045,7 +1068,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("Clear removes all signals", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			PutSignals(signal.New(1), signal.New(2)).
 			PutSignals(signal.New(3)).
 			Clear()
@@ -1055,7 +1078,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("ClearLabels removes all labels", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
 			ClearLabels().
 			AddLabel("k3", "v3")
@@ -1067,7 +1090,7 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
-		p := New("p1").
+		p := NewOutput("p1").
 			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
 			WithoutLabels("k1", "k2").
 			AddLabel("k4", "v4")

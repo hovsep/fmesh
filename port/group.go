@@ -20,7 +20,7 @@ func NewGroup(names ...string) *Group {
 	}
 	ports := make(Ports, len(names))
 	for i, name := range names {
-		ports[i] = New(name)
+		ports[i] = NewOutput(name)
 	}
 	return newGroup.withPorts(ports)
 }
@@ -35,7 +35,7 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	ports := make(Ports, endIndex-startIndex+1)
 
 	for i := startIndex; i <= endIndex; i++ {
-		ports[i-startIndex] = New(fmt.Sprintf("%s%d", prefix, i))
+		ports[i-startIndex] = NewOutput(fmt.Sprintf("%s%d", prefix, i))
 	}
 
 	return NewGroup().withPorts(ports)
@@ -129,11 +129,11 @@ func (g *Group) IsEmpty() bool {
 // First returns the first port in the group.
 func (g *Group) First() *Port {
 	if g.HasChainableErr() {
-		return New("").WithChainableErr(g.ChainableErr())
+		return NewOutput("").WithChainableErr(g.ChainableErr())
 	}
 	if g.IsEmpty() {
 		g.WithChainableErr(ErrNoPortsInGroup)
-		return New("").WithChainableErr(g.ChainableErr())
+		return NewOutput("").WithChainableErr(g.ChainableErr())
 	}
 	return g.ports[0]
 }

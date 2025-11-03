@@ -30,16 +30,7 @@ type Port struct {
 	parentComponent ParentComponent
 }
 
-// NewInput creates a new input port with the specified name.
-// Use this for advanced port creation when you need to set descriptions or labels.
-// For simple port creation, use component.AddInputs() instead.
-//
-// Example:
-//
-//	configPort := port.NewInput("config").
-//	    WithDescription("Configuration parameters").
-//	    AddLabel("required", "true").
-//	    AddLabel("format", "json")
+// NewInput creates a new input port.
 func NewInput(name string) *Port {
 	return &Port{
 		name:         name,
@@ -51,15 +42,7 @@ func NewInput(name string) *Port {
 	}
 }
 
-// NewOutput creates a new output port with the specified name.
-// Use this for advanced port creation when you need to set descriptions or labels.
-// For simple port creation, use component.AddOutputs() instead.
-//
-// Example:
-//
-//	resultPort := port.NewOutput("result").
-//	    WithDescription("Processed result data").
-//	    AddLabel("format", "json")
+// NewOutput creates a new output port.
 func NewOutput(name string) *Port {
 	return &Port{
 		name:         name,
@@ -69,13 +52,6 @@ func NewOutput(name string) *Port {
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
 	}
-}
-
-// New creates a new port with the specified name.
-// Deprecated: Use NewInput() or NewOutput() instead to make direction explicit.
-// This constructor creates a port with DirectionOut (output) by default.
-func New(name string) *Port {
-	return NewOutput(name)
 }
 
 // Name returns the port's name.
@@ -129,15 +105,7 @@ func (p *Port) AddLabels(labelMap labels.Map) *Port {
 	return p
 }
 
-// AddLabel adds or updates a single label on the port and returns it for chaining.
-// Use this to tag ports with metadata like priority, type, or requirements.
-//
-// Example:
-//
-//	port.New("request").
-//	    AddLabel("content-type", "json").
-//	    AddLabel("required", "true").
-//	    AddLabel("priority", "high")
+// AddLabel adds or updates a single label and returns the port for chaining.
 func (p *Port) AddLabel(name, value string) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -164,13 +132,7 @@ func (p *Port) WithoutLabels(names ...string) *Port {
 	return p
 }
 
-// WithDescription sets a human-readable description for the port.
-// Use this when creating ports with the advanced API to document their purpose.
-//
-// Example:
-//
-//	configPort := port.New("config").
-//	    WithDescription("JSON configuration parameters for the processor")
+// WithDescription sets the port description and returns the port for chaining.
 func (p *Port) WithDescription(description string) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -180,11 +142,16 @@ func (p *Port) WithDescription(description string) *Port {
 	return p
 }
 
-// Pipes returns the group of outbound pipes.
+// Pipes returns outbound pipes (output ports only).
 func (p *Port) Pipes() *Group {
 	if p.HasChainableErr() {
 		return NewGroup().WithChainableErr(p.ChainableErr())
 	}
+
+	if p.IsInput() {
+		return NewGroup().WithChainableErr(fmt.Errorf("port '%s' is an input port and cannot have outbound pipes", p.Name()))
+	}
+
 	return p.pipes
 }
 
@@ -196,22 +163,13 @@ func (p *Port) withSignals(signalsGroup *signal.Group) *Port {
 
 	if signalsGroup.HasChainableErr() {
 		p.WithChainableErr(signalsGroup.ChainableErr())
-		return New("").WithChainableErr(p.ChainableErr())
+		return NewOutput("").WithChainableErr(p.ChainableErr())
 	}
 	p.signals = signalsGroup
 	return p
 }
 
-// Signals returns the signal group containing all signals in the port.
-// Use this to access and read signals from input ports.
-//
-// Example (in activation function):
-//
-//	// Read first signal
-//	data := this.InputByName("data").Signals().FirstPayloadOrDefault("").(string)
-//
-//	// Check signal count
-//	count := this.InputByName("batch").Signals().Len()
+// Signals returns all signals in the port.
 func (p *Port) Signals() *signal.Group {
 	if p.HasChainableErr() {
 		return signal.NewGroup().WithChainableErr(p.ChainableErr())
@@ -219,20 +177,7 @@ func (p *Port) Signals() *signal.Group {
 	return p.signals
 }
 
-// PutSignals adds signals to the port (typically used for writing to output ports).
-// This is how you send data from your component to downstream components.
-//
-// Example (in activation function):
-//
-//	// Send a single result
-//	this.OutputByName("result").PutSignals(signal.New(processedData))
-//
-//	// Send multiple signals
-//	this.OutputByName("batch").PutSignals(
-//	    signal.New(item1),
-//	    signal.New(item2),
-//	    signal.New(item3),
-//	)
+// PutSignals adds signals to the port and returns the port for chaining.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -240,20 +185,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	return p.withSignals(p.Signals().With(signals...))
 }
 
-// PutSignalGroups adds all signals from one or more signal groups to the port.
-// Use this to forward or fan-out signals from input ports to output ports.
-//
-// Example (in activation function):
-//
-//	// Forward all signals from input to output
-//	inputSignals := this.InputByName("batch").Signals()
-//	this.OutputByName("processed").PutSignalGroups(inputSignals)
-//
-//	// Fan-out: merge signals from multiple inputs to one output
-//	this.OutputByName("merged").PutSignalGroups(
-//	    this.InputByName("source1").Signals(),
-//	    this.InputByName("source2").Signals(),
-//	)
+// PutSignalGroups adds all signals from signal groups and returns the port for chaining.
 func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -262,24 +194,18 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 		signals, err := group.All()
 		if err != nil {
 			p.WithChainableErr(err)
-			return New("").WithChainableErr(p.ChainableErr())
+			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
 		p.PutSignals(signals...)
 		if p.HasChainableErr() {
-			return New("").WithChainableErr(p.ChainableErr())
+			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
 	}
 
 	return p
 }
 
-// Clear removes all signals from the port and returns the port for chaining.
-// Use this to reset a port's signals, typically for output ports between activations.
-//
-// Example (in activation function):
-//
-//	// Clear previous outputs before writing new ones
-//	this.OutputByName("result").Clear().PutSignals(signal.New(newData))
+// Clear removes all signals and returns the port for chaining.
 func (p *Port) Clear() *Port {
 	if p.HasChainableErr() {
 		return p
@@ -287,10 +213,15 @@ func (p *Port) Clear() *Port {
 	return p.withSignals(signal.NewGroup())
 }
 
-// Flush pushes signals to all pipes and clears the port.
+// Flush pushes signals to pipes and clears the port (output ports only).
 func (p *Port) Flush() *Port {
 	if p.HasChainableErr() {
 		return p
+	}
+
+	if p.IsInput() {
+		p.WithChainableErr(fmt.Errorf("cannot flush input port '%s': only output ports can be flushed", p.Name()))
+		return NewOutput("").WithChainableErr(p.ChainableErr())
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
@@ -302,7 +233,7 @@ func (p *Port) Flush() *Port {
 	pipes, err := p.pipes.All()
 	if err != nil {
 		p.WithChainableErr(err)
-		return New("").WithChainableErr(p.ChainableErr())
+		return NewOutput("").WithChainableErr(p.ChainableErr())
 	}
 
 	for _, outboundPort := range pipes {
@@ -310,21 +241,13 @@ func (p *Port) Flush() *Port {
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
 			p.WithChainableErr(err)
-			return New("").WithChainableErr(p.ChainableErr())
+			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
 	}
 	return p.Clear()
 }
 
 // HasSignals returns true if the port has any signals.
-// Use this to check if input data is available before processing.
-//
-// Example (in activation function):
-//
-//	if !this.InputByName("data").HasSignals() {
-//	    return nil // Wait for data
-//	}
-//	// Process data...
 func (p *Port) HasSignals() bool {
 	return !p.Signals().IsEmpty()
 }
@@ -334,20 +257,7 @@ func (p *Port) HasPipes() bool {
 	return !p.Pipes().IsEmpty()
 }
 
-// PipeTo creates pipes from this port to one or more destination ports.
-// Use this when building your mesh to connect component outputs to inputs.
-// Signals written to this port will automatically flow to all connected ports.
-//
-// Example (building mesh):
-//
-//	// Simple connection
-//	processor.OutputByName("result").PipeTo(validator.InputByName("input"))
-//
-//	// Fan-out: one output to multiple inputs
-//	producer.OutputByName("data").PipeTo(
-//	    consumer1.InputByName("input"),
-//	    consumer2.InputByName("input"),
-//	)
+// PipeTo connects this port to destination ports and returns the port for chaining.
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -356,7 +266,7 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
 			p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
-			return New("").WithChainableErr(p.ChainableErr())
+			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
 		p.pipes = p.pipes.With(destPort)
 	}
@@ -376,20 +286,7 @@ func validatePipe(srcPort, dstPort *Port) error {
 	return nil
 }
 
-// ForwardSignals copies all signals from source port to destination port (utility function).
-// The source port is not cleared, allowing signals to be copied rather than moved.
-// This is useful when you need to bypass or duplicate signals between ports.
-//
-// Example (in activation function):
-//
-//	// Forward all signals from input to output
-//	err := port.ForwardSignals(
-//	    this.InputByName("data"),
-//	    this.OutputByName("passthrough"),
-//	)
-//	if err != nil {
-//	    return err
-//	}
+// ForwardSignals copies all signals from source to destination port without clearing source.
 func ForwardSignals(source, dest *Port) error {
 	if source.HasChainableErr() {
 		return source.ChainableErr()

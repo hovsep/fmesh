@@ -61,7 +61,7 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").AddInputs("num1", "num2").
-						WithOutputs("sum").
+						AddOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
 							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
 							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
@@ -83,8 +83,8 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").
-						WithInputs("num1", "num2").
-						WithOutputs("sum").
+						AddInputs("num1", "num2").
+						AddOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
 							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
 							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
@@ -108,8 +108,8 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").
-						WithInputs("num1", "num2").
-						WithOutputs("sum").
+						AddInputs("num1", "num2").
+						AddOutputs("sum").
 						WithActivationFunc(func(this *component.Component) error {
 							num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
 							num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
@@ -133,7 +133,7 @@ func Test_FMesh(t *testing.T) {
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").WithComponents(
 					component.New("c1").AddInputs("num1", "num2").
-						WithOutputs("sum").WithActivationFunc(func(this *component.Component) error {
+						AddOutputs("sum").WithActivationFunc(func(this *component.Component) error {
 						num1 := this.InputByName("num1").Signals().FirstPayloadOrDefault(0).(int)
 						num2 := this.InputByName("num2").Signals().FirstPayloadOrDefault(0).(int)
 						this.OutputByName("sum").PutSignals(signal.New(num1 + num2))

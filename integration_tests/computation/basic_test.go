@@ -27,8 +27,8 @@ func Test_Math(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				c1 := component.New("c1").
 					WithDescription("adds 2 to the input").
-					WithInputs("num").
-					WithOutputs("res").
+					AddInputs("num").
+					AddOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrNil()
 						this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
@@ -37,8 +37,8 @@ func Test_Math(t *testing.T) {
 
 				c2 := component.New("c2").
 					WithDescription("multiplies by 3").
-					WithInputs("num").
-					WithOutputs("res").
+					AddInputs("num").
+					AddOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 						this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
@@ -198,8 +198,8 @@ func Test_Readme(t *testing.T) {
 		}).
 			WithComponents(
 				component.New("concat").
-					WithInputs("i1", "i2").
-					WithOutputs("res").
+					AddInputs("i1", "i2").
+					AddOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
 						word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 						word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
@@ -207,8 +207,8 @@ func Test_Readme(t *testing.T) {
 						return nil
 					}),
 				component.New("case").
-					WithInputs("i1").
-					WithOutputs("res").
+					AddInputs("i1").
+					AddOutputs("res").
 					WithActivationFunc(func(this *component.Component) error {
 						inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
