@@ -34,10 +34,10 @@ Learn more in [documentation](https://github.com/hovsep/fmesh/wiki)
 
 ```go
 fm := fmesh.New("hello world").
-	WithComponents(
+	AddComponents(
 		component.New("concat").
-			WithInputs("i1", "i2").
-			WithOutputs("res").
+			AddInputs("i1", "i2").
+			AddOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
 				word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 				word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
@@ -45,8 +45,8 @@ fm := fmesh.New("hello world").
 				return nil
 			}),
 		component.New("case").
-			WithInputs("i1").
-			WithOutputs("res").
+			AddInputs("i1").
+			AddOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
 				inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 				this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
