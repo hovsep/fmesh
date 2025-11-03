@@ -156,12 +156,9 @@ func (fm *FMesh) runCycle() {
 	}
 
 	if fm.IsDebug() {
-		activationResults, err := newCycle.ActivationResults().All()
-		if err == nil {
-			for _, ar := range activationResults {
-				fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
-			}
-		}
+		newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) {
+			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+		})
 	}
 
 	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
