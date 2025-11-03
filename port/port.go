@@ -7,18 +7,21 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
+// Direction represents the direction of a port (input or output).
+// It's a boolean type where true = input, false = output.
+type Direction bool
+
 const (
-	// DirectionLabel is the label for the port direction.
-	DirectionLabel = "fmesh:port:direction"
 	// DirectionIn is the direction for input ports.
-	DirectionIn = "in"
+	DirectionIn Direction = true
 	// DirectionOut is the direction for output ports.
-	DirectionOut = "out"
+	DirectionOut Direction = false
 )
 
 // Port defines a connectivity point of a component.
 type Port struct {
 	name            string
+	direction       Direction // Input or output direction
 	description     string
 	labels          *labels.Collection
 	chainableErr    error
@@ -55,6 +58,28 @@ func (p *Port) Name() string {
 // Description returns the port's description.
 func (p *Port) Description() string {
 	return p.description
+}
+
+// Direction returns the port's direction (input or output).
+func (p *Port) Direction() Direction {
+	return p.direction
+}
+
+// IsInput returns true if the port is an input port.
+func (p *Port) IsInput() bool {
+	return p.direction == DirectionIn
+}
+
+// IsOutput returns true if the port is an output port.
+func (p *Port) IsOutput() bool {
+	return p.direction == DirectionOut
+}
+
+// SetDirection sets the port's direction. This is a framework-internal method.
+// Users should not call this directly - use component.AddInputs() / AddOutputs() or AttachInputPorts() / AttachOutputPorts() instead.
+func (p *Port) SetDirection(direction Direction) *Port {
+	p.direction = direction
+	return p
 }
 
 // Labels returns the port's labels collection.
@@ -322,13 +347,8 @@ func validatePipe(srcPort, dstPort *Port) error {
 		return ErrNilPort
 	}
 
-	srcDir, dstDir := srcPort.labels.ValueOrDefault(DirectionLabel, ""), dstPort.labels.ValueOrDefault(DirectionLabel, "")
-
-	if srcDir == "" || dstDir == "" {
-		return ErrMissingLabel
-	}
-
-	if srcDir == "in" || dstDir == "out" {
+	// Pipes must go from output to input
+	if !srcPort.IsOutput() || !dstPort.IsInput() {
 		return ErrInvalidPipeDirection
 	}
 

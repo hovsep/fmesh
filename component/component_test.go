@@ -60,14 +60,10 @@ func TestComponent_WithDescription(t *testing.T) {
 				description:  "descr",
 				labels:       labels.NewCollection(nil),
 				chainableErr: nil,
-				inputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				}),
-				outputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
-					port.DirectionLabel: port.DirectionOut,
-				}),
-				f:     nil,
-				state: NewState(),
+				inputPorts:   port.NewCollection(),
+				outputPorts:  port.NewCollection(),
+				f:            nil,
+				state:        NewState(),
 			},
 		},
 	}
