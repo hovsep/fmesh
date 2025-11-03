@@ -2,7 +2,7 @@ package component
 
 import "github.com/hovsep/fmesh/port"
 
-// withInputPorts sets input ports collection.
+// withInputPorts sets input ports collection and ensures all ports have input direction.
 func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -10,11 +10,15 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
+	// Set direction on all ports to input
+	collection.ForEach(func(p *port.Port) {
+		p.SetDirection(port.DirectionIn)
+	})
 	c.inputPorts = collection.WithParentComponent(c)
 	return c
 }
 
-// withOutputPorts sets output ports collection.
+// withOutputPorts sets output ports collection and ensures all ports have output direction.
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -22,7 +26,10 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
-
+	// Set direction on all ports to output
+	collection.ForEach(func(p *port.Port) {
+		p.SetDirection(port.DirectionOut)
+	})
 	c.outputPorts = collection.WithParentComponent(c)
 	return c
 }

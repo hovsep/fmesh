@@ -3,7 +3,6 @@ package port
 import (
 	"fmt"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -16,16 +15,13 @@ type Map map[string]*Port
 type Collection struct {
 	chainableErr error
 	ports        Map
-	// Labels added by default to each port in a collection
-	defaultLabels labels.Map
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		chainableErr:  nil,
-		ports:         make(Map),
-		defaultLabels: labels.Map{},
+		chainableErr: nil,
+		ports:        make(Map),
 	}
 }
 
@@ -61,8 +57,7 @@ func (c *Collection) ByNames(names ...string) *Collection {
 		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
 
-	// Preserve c config
-	selectedPorts := NewCollection().WithDefaultLabels(c.defaultLabels)
+	selectedPorts := NewCollection()
 
 	for _, name := range names {
 		if p, ok := c.ports[name]; ok {
@@ -183,7 +178,6 @@ func (c *Collection) With(ports ...*Port) *Collection {
 		if port.HasChainableErr() {
 			return c.WithChainableErr(port.ChainableErr())
 		}
-		port.labels.WithMany(c.defaultLabels)
 		c.ports[port.Name()] = port
 	}
 
@@ -342,7 +336,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
-	filtered := NewCollection().WithDefaultLabels(c.defaultLabels)
+	filtered := NewCollection()
 	for _, port := range c.ports {
 		if predicate(port) {
 			filtered = filtered.With(port)
@@ -359,7 +353,7 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
-	mapped := NewCollection().WithDefaultLabels(c.defaultLabels)
+	mapped := NewCollection()
 	for _, port := range c.ports {
 		transformedPort := mapper(port)
 		if transformedPort != nil {
@@ -391,12 +385,6 @@ func (c *Collection) ChainableErr() error {
 // Len returns the number of ports in a collection.
 func (c *Collection) Len() int {
 	return len(c.ports)
-}
-
-// WithDefaultLabels adds default labels to all ports in collection.
-func (c *Collection) WithDefaultLabels(labelMap labels.Map) *Collection {
-	c.defaultLabels = labelMap
-	return c
 }
 
 // WithParentComponent adds a parent component to all ports in a collection.

@@ -89,20 +89,12 @@ func TestPort_Clear(t *testing.T) {
 }
 
 func TestPort_PipeTo(t *testing.T) {
-	outputPorts := NewCollection().
-		WithDefaultLabels(
-			labels.Map{
-				DirectionLabel: DirectionOut,
-			})
-	outPorts, _ := NewIndexedGroup("out", 1, 3).All()
+	outputPorts := NewCollection()
+	outPorts, _ := NewIndexedGroup("out", 1, 3).WithPortDirection(DirectionOut).All()
 	outputPorts = outputPorts.With(outPorts...)
 
-	inputPorts := NewCollection().
-		WithDefaultLabels(
-			labels.Map{
-				DirectionLabel: DirectionIn,
-			})
-	inPorts, _ := NewIndexedGroup("in", 1, 3).All()
+	inputPorts := NewCollection()
+	inPorts, _ := NewIndexedGroup("in", 1, 3).WithPortDirection(DirectionIn).All()
 	inputPorts = inputPorts.With(inPorts...)
 
 	type args struct {
@@ -124,18 +116,6 @@ func TestPort_PipeTo(t *testing.T) {
 				assert.False(t, portAfter.HasChainableErr())
 				require.NoError(t, portAfter.ChainableErr())
 				assert.Equal(t, 2, portAfter.Pipes().Len())
-			},
-		},
-		{
-			name:   "port must have direction label",
-			before: New("out_without_dir"),
-			args: args{
-				toPorts: Ports{inputPorts.ByName("in1")},
-			},
-			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Empty(t, portAfter.Name())
-				assert.True(t, portAfter.HasChainableErr())
-				assert.Error(t, portAfter.ChainableErr())
 			},
 		},
 		{
@@ -329,11 +309,7 @@ func TestPort_HasPipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").SetLabels(labels.Map{
-				DirectionLabel: DirectionOut,
-			}).PipeTo(New("p2").SetLabels(labels.Map{
-				DirectionLabel: DirectionIn,
-			})),
+			port: New("p1").SetDirection(DirectionOut).PipeTo(New("p2").SetDirection(DirectionIn)),
 			want: true,
 		},
 	}
@@ -362,19 +338,10 @@ func TestPort_Flush(t *testing.T) {
 		{
 			name: "empty port with pipes is not flushed",
 			srcPort: New("p").
-				SetLabels(
-					labels.Map{
-						DirectionLabel: DirectionOut,
-					}).PipeTo(
+				SetDirection(DirectionOut).PipeTo(
 				New("p1").
-					SetLabels(
-						labels.Map{
-							DirectionLabel: DirectionIn,
-						}), New("p2").
-					SetLabels(
-						labels.Map{
-							DirectionLabel: DirectionIn,
-						})),
+					SetDirection(DirectionIn), New("p2").
+					SetDirection(DirectionIn)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -382,16 +349,10 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to empty ports",
-			srcPort: New("p").SetLabels(labels.Map{
-				DirectionLabel: DirectionOut,
-			}).PutSignalGroups(signal.NewGroup(1, 2, 3)).
+			srcPort: New("p").SetDirection(DirectionOut).PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					}),
-					New("p2").SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					})),
+					New("p1").SetDirection(DirectionIn),
+					New("p2").SetDirection(DirectionIn)),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -410,17 +371,11 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to non empty ports",
-			srcPort: New("p").SetLabels(labels.Map{
-				DirectionLabel: DirectionOut,
-			}).
+			srcPort: New("p").SetDirection(DirectionOut).
 				PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					}).PutSignalGroups(signal.NewGroup(4, 5, 6)),
-					New("p2").SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					}).PutSignalGroups(signal.NewGroup(7, 8, 9))),
+					New("p1").SetDirection(DirectionIn).PutSignalGroups(signal.NewGroup(4, 5, 6)),
+					New("p2").SetDirection(DirectionIn).PutSignalGroups(signal.NewGroup(7, 8, 9))),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -723,19 +678,11 @@ func TestPort_Pipes(t *testing.T) {
 		{
 			name: "with pipes",
 			port: New("p1").
-				SetLabels(labels.Map{
-					DirectionLabel: DirectionOut,
-				}).PipeTo(
+				SetDirection(DirectionOut).PipeTo(
 				New("p2").
-					SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					}), New("p3").
-					SetLabels(labels.Map{
-						DirectionLabel: DirectionIn,
-					})),
-			want: NewGroup("p2", "p3").WithPortLabels(labels.Map{
-				DirectionLabel: DirectionIn,
-			}),
+					SetDirection(DirectionIn), New("p3").
+					SetDirection(DirectionIn)),
+			want: NewGroup("p2", "p3").WithPortDirection(DirectionIn),
 		},
 		{
 			name: "with chain error",

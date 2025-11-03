@@ -37,13 +37,9 @@ func New(name string) *Component {
 		description:  "",
 		labels:       labels.NewCollection(nil),
 		chainableErr: nil,
-		inputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
-			port.DirectionLabel: port.DirectionIn,
-		}),
-		outputPorts: port.NewCollection().WithDefaultLabels(labels.Map{
-			port.DirectionLabel: port.DirectionOut,
-		}),
-		state: NewState(),
+		inputPorts:   port.NewCollection(),
+		outputPorts:  port.NewCollection(),
+		state:        NewState(),
 	}
 }
 

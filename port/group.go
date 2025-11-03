@@ -121,6 +121,15 @@ func (g *Group) WithPortLabels(labelMap labels.Map) *Group {
 	return g
 }
 
+// WithPortDirection sets the direction for all ports in the group and returns it.
+// This is a testing helper method.
+func (g *Group) WithPortDirection(direction Direction) *Group {
+	for _, p := range g.ports {
+		p.SetDirection(direction)
+	}
+	return g
+}
+
 // IsEmpty returns true when there are no ports in the group.
 func (g *Group) IsEmpty() bool {
 	return g.Len() == 0

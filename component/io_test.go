@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -234,7 +233,7 @@ func TestComponent_Inputs(t *testing.T) {
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
 				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
-					return p.Labels().ValueIs(port.DirectionLabel, port.DirectionIn)
+					return p.IsInput()
 				}))
 			},
 		},
@@ -268,7 +267,7 @@ func TestComponent_Outputs(t *testing.T) {
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
 				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
-					return p.Labels().ValueIs(port.DirectionLabel, port.DirectionOut)
+					return p.IsOutput()
 				}))
 			},
 		},
@@ -367,9 +366,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "happy path",
 			getComponent: func() *Component {
-				sink := port.New("sink").SetLabels(labels.Map{
-					port.DirectionLabel: port.DirectionIn,
-				})
+				sink := port.New("sink").SetDirection(port.DirectionIn)
 				c := New("c1").AddOutputs("o1", "o2")
 				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
 				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
