@@ -79,12 +79,6 @@ func (c *Cycle) AddActivationResults(activationResults ...*component.ActivationR
 	return c
 }
 
-// AddActivationResult adds a single activation result in a thread-safe way.
-func (c *Cycle) AddActivationResult(result *component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().Add(result)
-	return c
-}
-
 // Number returns sequence number.
 func (c *Cycle) Number() int {
 	return c.number

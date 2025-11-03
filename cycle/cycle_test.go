@@ -230,29 +230,29 @@ func TestCycle_Chainability(t *testing.T) {
 		assert.Equal(t, 3, c.ActivationResults().Len())
 	})
 
-	t.Run("AddActivationResult called multiple times adds results", func(t *testing.T) {
+	t.Run("AddActivationResults called multiple times adds results", func(t *testing.T) {
 		r1 := component.NewActivationResult("c1")
 		r2 := component.NewActivationResult("c2")
 		r3 := component.NewActivationResult("c3")
 
 		c := New().
-			AddActivationResult(r1).
-			AddActivationResult(r2).
-			AddActivationResult(r3)
+			AddActivationResults(r1).
+			AddActivationResults(r2).
+			AddActivationResults(r3)
 
 		assert.Equal(t, 3, c.ActivationResults().Len())
 	})
 
-	t.Run("mixed Add and With", func(t *testing.T) {
+	t.Run("AddActivationResults supports variadic", func(t *testing.T) {
 		r1 := component.NewActivationResult("c1")
 		r2 := component.NewActivationResult("c2")
 		r3 := component.NewActivationResult("c3")
 		r4 := component.NewActivationResult("c4")
 
 		c := New().
-			AddActivationResult(r1).
+			AddActivationResults(r1).
 			AddActivationResults(r2, r3).
-			AddActivationResult(r4)
+			AddActivationResults(r4)
 
 		assert.Equal(t, 4, c.ActivationResults().Len())
 	})

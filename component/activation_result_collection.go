@@ -147,25 +147,6 @@ func (c *ActivationResultCollection) ChainableErr() error {
 	return c.chainableErr
 }
 
-// Any returns any arbitrary activation result from the collection.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
-func (c *ActivationResultCollection) Any() *ActivationResult {
-	if c.HasChainableErr() {
-		return nil
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.IsEmpty() {
-		c.WithChainableErr(ErrNoComponentsInCollection)
-		return nil
-	}
-	// Get arbitrary result from map (order not guaranteed)
-	for _, result := range c.activationResults {
-		return result
-	}
-	return nil
-}
-
 // AllMatch returns true if all activation results match the predicate.
 func (c *ActivationResultCollection) AllMatch(predicate ActivationResultPredicate) bool {
 	if c.HasChainableErr() {
@@ -210,90 +191,6 @@ func (c *ActivationResultCollection) CountMatch(predicate ActivationResultPredic
 		}
 	}
 	return count
-}
-
-// FindAny returns any arbitrary activation result that matches the predicate.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
-func (c *ActivationResultCollection) FindAny(predicate ActivationResultPredicate) *ActivationResult {
-	if c.HasChainableErr() {
-		return nil
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
-		if predicate(result) {
-			return result
-		}
-	}
-	c.WithChainableErr(ErrNoComponentMatchesPredicate)
-	return nil
-}
-
-// Filter returns a new collection with activation results that match the predicate.
-func (c *ActivationResultCollection) Filter(predicate ActivationResultPredicate) *ActivationResultCollection {
-	if c.HasChainableErr() {
-		return NewActivationResultCollection().WithChainableErr(c.ChainableErr())
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	filtered := NewActivationResultCollection()
-	for _, result := range c.activationResults {
-		if predicate(result) {
-			filtered = filtered.Add(result)
-			if filtered.HasChainableErr() {
-				return filtered
-			}
-		}
-	}
-	return filtered
-}
-
-// Map returns a new collection with activation results transformed by the mapper function.
-func (c *ActivationResultCollection) Map(mapper ActivationResultMapper) *ActivationResultCollection {
-	if c.HasChainableErr() {
-		return NewActivationResultCollection().WithChainableErr(c.ChainableErr())
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	mapped := NewActivationResultCollection()
-	for _, result := range c.activationResults {
-		transformedResult := mapper(result)
-		if transformedResult != nil {
-			mapped = mapped.Add(transformedResult)
-			if mapped.HasChainableErr() {
-				return mapped
-			}
-		}
-	}
-	return mapped
-}
-
-// AllThatErrored returns a new collection containing only activation results that returned errors.
-func (c *ActivationResultCollection) AllThatErrored() *ActivationResultCollection {
-	return c.Filter(func(result *ActivationResult) bool {
-		return result.IsError()
-	})
-}
-
-// AllThatPanicked returns a new collection containing only activation results that panicked.
-func (c *ActivationResultCollection) AllThatPanicked() *ActivationResultCollection {
-	return c.Filter(func(result *ActivationResult) bool {
-		return result.IsPanic()
-	})
-}
-
-// AllThatActivated returns a new collection containing only activation results where the component activated.
-func (c *ActivationResultCollection) AllThatActivated() *ActivationResultCollection {
-	return c.Filter(func(result *ActivationResult) bool {
-		return result.Activated()
-	})
-}
-
-// AllThatSucceeded returns a new collection containing only successful activation results (ActivationCodeOK).
-func (c *ActivationResultCollection) AllThatSucceeded() *ActivationResultCollection {
-	return c.Filter(func(result *ActivationResult) bool {
-		return result.Code() == ActivationCodeOK
-	})
 }
 
 // ForEach applies the action to each activation result and returns the collection for chaining.
