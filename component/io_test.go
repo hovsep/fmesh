@@ -157,7 +157,7 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.WithInputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			componentAfter := tt.component.AddIndexedInputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}
@@ -206,7 +206,7 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.WithOutputsIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			componentAfter := tt.component.AddIndexedOutputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
 			if tt.assertions != nil {
 				tt.assertions(t, componentAfter)
 			}

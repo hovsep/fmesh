@@ -70,7 +70,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		processor.InputByName("metadata").PutSignals(signal.New("user123"))
 
 		// Create and run mesh
-		fm := fmesh.New("test-mesh").WithComponents(processor)
+		fm := fmesh.New("test-mesh").AddComponents(processor)
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -164,7 +164,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		// Set up and run
 		c.InputByName("input").PutSignals(signal.New("data"))
-		fm := fmesh.New("label-mesh").WithComponents(c)
+		fm := fmesh.New("label-mesh").AddComponents(c)
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -205,7 +205,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		c.InputByName("b").PutSignals(signal.New(2))
 		c.InputByName("c").PutSignals(signal.New(3))
 
-		fm := fmesh.New("incremental-mesh").WithComponents(c)
+		fm := fmesh.New("incremental-mesh").AddComponents(c)
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -261,7 +261,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		c.InputByName("i2").PutSignals(signal.New(2))
 		c.InputByName("i4").PutSignals(signal.New(4))
 
-		fm := fmesh.New("collection-mesh").WithComponents(c)
+		fm := fmesh.New("collection-mesh").AddComponents(c)
 		_, err := fm.Run()
 		require.NoError(t, err)
 

@@ -111,7 +111,7 @@ func TestFMesh_WithConfig(t *testing.T) {
 	}
 }
 
-func TestFMesh_WithComponents(t *testing.T) {
+func TestFMesh_AddComponents(t *testing.T) {
 	type args struct {
 		components []*component.Component
 	}
@@ -203,7 +203,7 @@ func TestFMesh_WithComponents(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fmAfter := tt.fm.WithComponents(tt.args.components...)
+			fmAfter := tt.fm.AddComponents(tt.args.components...)
 			if tt.assertions != nil {
 				tt.assertions(t, fmAfter)
 			}
@@ -222,7 +222,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name:       "empty mesh stops after first cycle",
 			fm:         New("fm"),
-			wantCycles: cycle.NewGroup().With(cycle.New().WithNumber(1)),
+			wantCycles: cycle.NewGroup().Add(cycle.New().WithNumber(1)),
 			wantErr:    true,
 		},
 		{
@@ -231,7 +231,7 @@ func TestFMesh_Run(t *testing.T) {
 				ErrorHandlingStrategy: 100,
 				CyclesLimit:           0,
 			}).
-				WithComponents(
+				AddComponents(
 					component.New("c1").
 						WithDescription("This component simply puts a constant on o1").
 						AddInputs("i1").
@@ -245,9 +245,9 @@ func TestFMesh_Run(t *testing.T) {
 				// Fire the mesh
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start c1"))
 			},
-			wantCycles: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().Add(
 				cycle.New().
-					WithActivationResults(component.NewActivationResult("c1").
+					AddActivationResults(component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK)),
 			),
@@ -258,7 +258,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: NewWithConfig("fm", &Config{
 				ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 			}).
-				WithComponents(
+				AddComponents(
 					component.New("c1").
 						WithDescription("This component just returns an unexpected error").
 						AddInputs("i1").
@@ -268,9 +268,9 @@ func TestFMesh_Run(t *testing.T) {
 			initFM: func(fm *FMesh) {
 				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("start"))
 			},
-			wantCycles: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().Add(
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeReturnedError).
@@ -284,7 +284,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: NewWithConfig("fm", &Config{
 				ErrorHandlingStrategy: StopOnFirstPanic,
 			}).
-				WithComponents(
+				AddComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
 						AddInputs("i1").
@@ -325,9 +325,9 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			wantCycles: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().Add(
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeOK),
@@ -343,7 +343,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -358,7 +358,7 @@ func TestFMesh_Run(t *testing.T) {
 							WithActivationCode(component.ActivationCodeNoInput),
 					),
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -381,7 +381,7 @@ func TestFMesh_Run(t *testing.T) {
 			fm: NewWithConfig("fm", &Config{
 				ErrorHandlingStrategy: IgnoreAll,
 			}).
-				WithComponents(
+				AddComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
 						AddInputs("i1").
@@ -435,10 +435,10 @@ func TestFMesh_Run(t *testing.T) {
 				c1.InputByName("i1").PutSignals(signal.New("start c1"))
 				c3.InputByName("i1").PutSignals(signal.New("start c3"))
 			},
-			wantCycles: cycle.NewGroup().With(
+			wantCycles: cycle.NewGroup().Add(
 				// c1 and c3 activated, c3 finishes with error
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							WithActivationCode(component.ActivationCodeOK),
@@ -458,7 +458,7 @@ func TestFMesh_Run(t *testing.T) {
 					),
 				// Only c2 is activated
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -477,7 +477,7 @@ func TestFMesh_Run(t *testing.T) {
 					),
 				// Only c4 is activated and panicked
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -497,7 +497,7 @@ func TestFMesh_Run(t *testing.T) {
 					),
 				// Only c5 is activated (after c4 panicked in the previous cycle)
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -516,7 +516,7 @@ func TestFMesh_Run(t *testing.T) {
 					),
 				// Last (control) cycle, no component activated, so f-mesh stops naturally
 				cycle.New().
-					WithActivationResults(
+					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
 							WithActivationCode(component.ActivationCodeNoInput),
@@ -596,7 +596,7 @@ func TestFMesh_runCycle(t *testing.T) {
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",
-			fm: New("test").WithComponents(
+			fm: New("test").AddComponents(
 				component.New("c1").
 					WithDescription("").
 					AddInputs("i1").
@@ -632,7 +632,7 @@ func TestFMesh_runCycle(t *testing.T) {
 				fm.Components().ByName("c2").InputByName("i1").PutSignals(signal.New(2))
 				fm.Components().ByName("c3").InputByName("i1").PutSignals(signal.New(3))
 			},
-			want: cycle.New().WithActivationResults(
+			want: cycle.New().AddActivationResults(
 				component.NewActivationResult("c1").
 					SetActivated(true).
 					WithActivationCode(component.ActivationCodeOK),
@@ -676,13 +676,13 @@ func TestFMesh_mustStop(t *testing.T) {
 			getFMesh: func() *FMesh {
 				fm := New("fm")
 
-				c := cycle.New().WithActivationResults(
+				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK),
 				).WithNumber(5)
 
-				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
 			want:    false,
@@ -692,12 +692,12 @@ func TestFMesh_mustStop(t *testing.T) {
 			name: "with default config, reached max cycles",
 			getFMesh: func() *FMesh {
 				fm := New("fm")
-				c := cycle.New().WithActivationResults(
+				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeOK),
 				).WithNumber(1001)
-				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
 			want:    true,
@@ -707,12 +707,12 @@ func TestFMesh_mustStop(t *testing.T) {
 			name: "mesh finished naturally and must stop",
 			getFMesh: func() *FMesh {
 				fm := New("fm")
-				c := cycle.New().WithActivationResults(
+				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(false).
 						WithActivationCode(component.ActivationCodeNoInput),
 				).WithNumber(5)
-				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
 			want:    true,
@@ -725,13 +725,13 @@ func TestFMesh_mustStop(t *testing.T) {
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 					CyclesLimit:           UnlimitedCycles,
 				})
-				c := cycle.New().WithActivationResults(
+				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodeReturnedError).
 						WithActivationError(errors.New("c1 activation finished with error")),
 				).WithNumber(5)
-				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
 			want:    true,
@@ -743,13 +743,13 @@ func TestFMesh_mustStop(t *testing.T) {
 				fm := NewWithConfig("fm", &Config{
 					ErrorHandlingStrategy: StopOnFirstPanic,
 				})
-				c := cycle.New().WithActivationResults(
+				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						WithActivationCode(component.ActivationCodePanicked).
 						WithActivationError(errors.New("c1 panicked")),
 				).WithNumber(5)
-				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(c)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
 			want:    true,

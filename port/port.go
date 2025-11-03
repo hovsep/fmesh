@@ -92,7 +92,7 @@ func (p *Port) SetLabels(labelMap labels.Map) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	p.labels.Clear().WithMany(labelMap)
+	p.labels.Clear().AddMany(labelMap)
 	return p
 }
 
@@ -101,7 +101,7 @@ func (p *Port) AddLabels(labelMap labels.Map) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	p.labels.WithMany(labelMap)
+	p.labels.AddMany(labelMap)
 	return p
 }
 
@@ -110,7 +110,7 @@ func (p *Port) AddLabel(name, value string) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	p.labels.With(name, value)
+	p.labels.Add(name, value)
 	return p
 }
 
@@ -182,7 +182,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withSignals(p.Signals().With(signals...))
+	return p.withSignals(p.Signals().Add(signals...))
 }
 
 // PutSignalGroups adds all signals from signal groups and returns the port for chaining.
@@ -268,7 +268,7 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 			p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
 			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
-		p.pipes = p.pipes.With(destPort)
+		p.pipes = p.pipes.Add(destPort)
 	}
 	return p
 }

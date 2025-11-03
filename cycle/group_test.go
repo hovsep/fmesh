@@ -37,7 +37,7 @@ func TestGroup_With(t *testing.T) {
 		},
 		{
 			name:  "adding nothing to existing group",
-			group: NewGroup().With(New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))),
+			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))),
 			args: args{
 				cycles: nil,
 			},
@@ -49,7 +49,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to empty group",
 			group: NewGroup(),
 			args: args{
-				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
+				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 1, group.Len())
@@ -57,9 +57,9 @@ func TestGroup_With(t *testing.T) {
 		},
 		{
 			name:  "adding to existing group",
-			group: NewGroup().With(New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true))),
+			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))),
 			args: args{
-				cycles: []*Cycle{New().WithActivationResults(component.NewActivationResult("c1").SetActivated(false))},
+				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))},
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 2, group.Len())
@@ -68,7 +68,7 @@ func TestGroup_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			groupAfter := tt.group.With(tt.args.cycles...)
+			groupAfter := tt.group.Add(tt.args.cycles...)
 			if tt.assertions != nil {
 				tt.assertions(t, groupAfter)
 			}
@@ -99,7 +99,7 @@ func TestGroup_Without(t *testing.T) {
 		},
 		{
 			name:  "remove existing cycle by number",
-			group: NewGroup().With(c1, c2, c3),
+			group: NewGroup().Add(c1, c2, c3),
 			predicate: func(c *Cycle) bool {
 				return c.Number() == 2
 			},
@@ -109,7 +109,7 @@ func TestGroup_Without(t *testing.T) {
 		},
 		{
 			name:  "remove odd numbered cycles",
-			group: NewGroup().With(c1, c2, c3),
+			group: NewGroup().Add(c1, c2, c3),
 			predicate: func(c *Cycle) bool {
 				return c.Number()%2 == 1
 			},
@@ -132,7 +132,7 @@ func TestGroup_ForEach(t *testing.T) {
 	c3 := New().WithNumber(3)
 
 	t.Run("applies action to all cycles", func(t *testing.T) {
-		group := NewGroup().With(c1, c2, c3)
+		group := NewGroup().Add(c1, c2, c3)
 		count := 0
 		group.ForEach(func(c *Cycle) {
 			count++
@@ -156,7 +156,7 @@ func TestGroup_Last(t *testing.T) {
 	c3 := New().WithNumber(3)
 
 	t.Run("get last from group", func(t *testing.T) {
-		group := NewGroup().With(c1, c2, c3)
+		group := NewGroup().Add(c1, c2, c3)
 		last := group.Last()
 		assert.Equal(t, 3, last.Number())
 	})
@@ -173,7 +173,7 @@ func TestGroup_First(t *testing.T) {
 	c2 := New().WithNumber(2)
 
 	t.Run("get first from group", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
+		group := NewGroup().Add(c1, c2)
 		first := group.First()
 		assert.Equal(t, 1, first.Number())
 	})
@@ -190,7 +190,7 @@ func TestGroup_All(t *testing.T) {
 	c2 := New().WithNumber(2)
 
 	t.Run("returns all cycles", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
+		group := NewGroup().Add(c1, c2)
 		all, err := group.All()
 		require.NoError(t, err)
 		assert.Len(t, all, 2)
@@ -205,12 +205,12 @@ func TestGroup_All(t *testing.T) {
 }
 
 func TestGroup_AllMatch(t *testing.T) {
-	c1 := New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithActivationResults(component.NewActivationResult("c2").SetActivated(true))
-	c3 := New().WithActivationResults(component.NewActivationResult("c3").SetActivated(false))
+	c1 := New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().AddActivationResults(component.NewActivationResult("c2").SetActivated(true))
+	c3 := New().AddActivationResults(component.NewActivationResult("c3").SetActivated(false))
 
 	t.Run("all match", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
+		group := NewGroup().Add(c1, c2)
 		result := group.AllMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -218,7 +218,7 @@ func TestGroup_AllMatch(t *testing.T) {
 	})
 
 	t.Run("not all match", func(t *testing.T) {
-		group := NewGroup().With(c1, c3)
+		group := NewGroup().Add(c1, c3)
 		result := group.AllMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -235,11 +235,11 @@ func TestGroup_AllMatch(t *testing.T) {
 }
 
 func TestGroup_AnyMatch(t *testing.T) {
-	c1 := New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithActivationResults(component.NewActivationResult("c2").SetActivated(false))
+	c1 := New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
 
 	t.Run("at least one matches", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
+		group := NewGroup().Add(c1, c2)
 		result := group.AnyMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -247,7 +247,7 @@ func TestGroup_AnyMatch(t *testing.T) {
 	})
 
 	t.Run("none match", func(t *testing.T) {
-		group := NewGroup().With(c2)
+		group := NewGroup().Add(c2)
 		result := group.AnyMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -264,12 +264,12 @@ func TestGroup_AnyMatch(t *testing.T) {
 }
 
 func TestGroup_CountMatch(t *testing.T) {
-	c1 := New().WithNumber(1).WithActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithNumber(2).WithActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().WithNumber(3).WithActivationResults(component.NewActivationResult("c3").SetActivated(true))
+	c1 := New().WithNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().WithNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
+	c3 := New().WithNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
 
 	t.Run("counts matching cycles", func(t *testing.T) {
-		group := NewGroup().With(c1, c2, c3)
+		group := NewGroup().Add(c1, c2, c3)
 		count := group.CountMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -277,7 +277,7 @@ func TestGroup_CountMatch(t *testing.T) {
 	})
 
 	t.Run("no matches", func(t *testing.T) {
-		group := NewGroup().With(c2)
+		group := NewGroup().Add(c2)
 		count := group.CountMatch(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -286,12 +286,12 @@ func TestGroup_CountMatch(t *testing.T) {
 }
 
 func TestGroup_Filter(t *testing.T) {
-	c1 := New().WithNumber(1).WithActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithNumber(2).WithActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().WithNumber(3).WithActivationResults(component.NewActivationResult("c3").SetActivated(true))
+	c1 := New().WithNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().WithNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
+	c3 := New().WithNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
 
 	t.Run("filters matching cycles", func(t *testing.T) {
-		group := NewGroup().With(c1, c2, c3)
+		group := NewGroup().Add(c1, c2, c3)
 		filtered := group.Filter(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -299,7 +299,7 @@ func TestGroup_Filter(t *testing.T) {
 	})
 
 	t.Run("no matches returns empty group", func(t *testing.T) {
-		group := NewGroup().With(c2)
+		group := NewGroup().Add(c2)
 		filtered := group.Filter(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
@@ -312,7 +312,7 @@ func TestGroup_Map(t *testing.T) {
 	c2 := New().WithNumber(2)
 
 	t.Run("transforms all cycles", func(t *testing.T) {
-		group := NewGroup().With(c1, c2)
+		group := NewGroup().Add(c1, c2)
 		mapped := group.Map(func(c *Cycle) *Cycle {
 			return c.WithNumber(c.Number() * 10)
 		})
@@ -337,7 +337,7 @@ func TestGroup_IsEmpty(t *testing.T) {
 	})
 
 	t.Run("non-empty group", func(t *testing.T) {
-		group := NewGroup().With(New())
+		group := NewGroup().Add(New())
 		assert.False(t, group.IsEmpty())
 	})
 }

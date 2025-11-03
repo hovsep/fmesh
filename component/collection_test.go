@@ -19,7 +19,7 @@ func TestCollection_ByName(t *testing.T) {
 	}{
 		{
 			name:       "component found",
-			components: NewCollection().With(New("c1"), New("c2")),
+			components: NewCollection().Add(New("c1"), New("c2")),
 			args: args{
 				name: "c2",
 			},
@@ -27,7 +27,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "component not found",
-			components: NewCollection().With(New("c1"), New("c2")),
+			components: NewCollection().Add(New("c1"), New("c2")),
 			args: args{
 				name: "c3",
 			},
@@ -60,7 +60,7 @@ func TestCollection_With(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(New("existing")),
+			collection: NewCollection().Add(New("existing")),
 			components: []*Component{New("c1"), New("c2")},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 3, collection.Len())
@@ -72,7 +72,7 @@ func TestCollection_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.collection.With(tt.components...)
+			result := tt.collection.Add(tt.components...)
 			if tt.assertions != nil {
 				tt.assertions(t, result)
 			}
@@ -93,7 +93,7 @@ func TestCollection_Len(t *testing.T) {
 		},
 		{
 			name:       "non-empty collection",
-			collection: NewCollection().With(New("c1"), New("c2"), New("c3")),
+			collection: NewCollection().Add(New("c1"), New("c2"), New("c3")),
 			want:       3,
 		},
 	}
@@ -117,7 +117,7 @@ func TestCollection_IsEmpty(t *testing.T) {
 		},
 		{
 			name:       "non-empty collection",
-			collection: NewCollection().With(New("c1")),
+			collection: NewCollection().Add(New("c1")),
 			want:       false,
 		},
 	}
@@ -143,13 +143,13 @@ func TestCollection_AllMatch(t *testing.T) {
 		},
 		{
 			name:       "all match",
-			collection: NewCollection().With(New("c1"), New("c2")),
+			collection: NewCollection().Add(New("c1"), New("c2")),
 			predicate:  func(c *Component) bool { return c.Name() != "" },
 			want:       true,
 		},
 		{
 			name:       "not all match",
-			collection: NewCollection().With(New("c1"), New("")),
+			collection: NewCollection().Add(New("c1"), New("")),
 			predicate:  func(c *Component) bool { return c.Name() != "" },
 			want:       false,
 		},
@@ -176,13 +176,13 @@ func TestCollection_AnyMatch(t *testing.T) {
 		},
 		{
 			name:       "at least one matches",
-			collection: NewCollection().With(New("c1"), New("")),
+			collection: NewCollection().Add(New("c1"), New("")),
 			predicate:  func(c *Component) bool { return c.Name() != "" },
 			want:       true,
 		},
 		{
 			name:       "none match",
-			collection: NewCollection().With(New(""), New("")),
+			collection: NewCollection().Add(New(""), New("")),
 			predicate:  func(c *Component) bool { return c.Name() != "" },
 			want:       false,
 		},
@@ -209,13 +209,13 @@ func TestCollection_Filter(t *testing.T) {
 		},
 		{
 			name:       "filter some components",
-			collection: NewCollection().With(New("c1"), New("c2"), New("c3")),
+			collection: NewCollection().Add(New("c1"), New("c2"), New("c3")),
 			predicate:  func(c *Component) bool { return c.Name() != "c2" },
 			want:       2,
 		},
 		{
 			name:       "filter all components",
-			collection: NewCollection().With(New("c1"), New("c2")),
+			collection: NewCollection().Add(New("c1"), New("c2")),
 			predicate:  func(c *Component) bool { return false },
 			want:       0,
 		},

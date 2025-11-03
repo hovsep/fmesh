@@ -41,8 +41,8 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
 	return NewGroup().withPorts(ports)
 }
 
-// With adds ports to group.
-func (g *Group) With(ports ...*Port) *Group {
+// Add adds ports to group.
+func (g *Group) Add(ports ...*Port) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
@@ -113,8 +113,8 @@ func (g *Group) Len() int {
 	return len(g.ports)
 }
 
-// WithPortLabels adds labels to each port within the group and returns it.
-func (g *Group) WithPortLabels(labelMap labels.Map) *Group {
+// AddLabelsToAll adds labels to each port within the group and returns it.
+func (g *Group) AddLabelsToAll(labelMap labels.Map) *Group {
 	for _, p := range g.ports {
 		p.AddLabels(labelMap)
 	}
@@ -194,7 +194,7 @@ func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := NewGroup()
 	for _, port := range g.ports {
 		if predicate(port) {
-			filtered = filtered.With(port)
+			filtered = filtered.Add(port)
 			if filtered.HasChainableErr() {
 				return filtered
 			}
@@ -212,7 +212,7 @@ func (g *Group) Map(mapper Mapper) *Group {
 	for _, port := range g.ports {
 		transformedPort := mapper(port)
 		if transformedPort != nil {
-			mapped = mapped.With(transformedPort)
+			mapped = mapped.Add(transformedPort)
 			if mapped.HasChainableErr() {
 				return mapped
 			}

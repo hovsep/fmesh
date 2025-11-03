@@ -45,7 +45,7 @@ func (c *Component) AddInputs(portNames ...string) *Component {
 		ports[i] = port.NewInput(name)
 	}
 
-	return c.withInputPorts(c.Inputs().With(ports...))
+	return c.withInputPorts(c.Inputs().Add(ports...))
 }
 
 // AttachInputPorts attaches pre-configured input ports (must be created with port.NewInput).
@@ -62,7 +62,7 @@ func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
 		}
 	}
 
-	return c.withInputPorts(c.Inputs().With(ports...))
+	return c.withInputPorts(c.Inputs().Add(ports...))
 }
 
 // AddOutputs creates output ports by name.
@@ -76,7 +76,7 @@ func (c *Component) AddOutputs(portNames ...string) *Component {
 		ports[i] = port.NewOutput(name)
 	}
 
-	return c.withOutputPorts(c.Outputs().With(ports...))
+	return c.withOutputPorts(c.Outputs().Add(ports...))
 }
 
 // AttachOutputPorts attaches pre-configured output ports (must be created with port.NewOutput).
@@ -93,11 +93,11 @@ func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
 		}
 	}
 
-	return c.withOutputPorts(c.Outputs().With(ports...))
+	return c.withOutputPorts(c.Outputs().Add(ports...))
 }
 
-// WithInputsIndexed creates multiple prefixed input ports.
-func (c *Component) WithInputsIndexed(prefix string, startIndex, endIndex int) *Component {
+// AddIndexedInputs creates multiple prefixed input ports.
+func (c *Component) AddIndexedInputs(prefix string, startIndex, endIndex int) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -112,11 +112,11 @@ func (c *Component) WithInputsIndexed(prefix string, startIndex, endIndex int) *
 		ports = append(ports, port.NewInput(fmt.Sprintf("%s%d", prefix, i)))
 	}
 
-	return c.withInputPorts(c.Inputs().With(ports...))
+	return c.withInputPorts(c.Inputs().Add(ports...))
 }
 
-// WithOutputsIndexed creates multiple prefixed output ports.
-func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) *Component {
+// AddIndexedOutputs creates multiple prefixed output ports.
+func (c *Component) AddIndexedOutputs(prefix string, startIndex, endIndex int) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -131,7 +131,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) 
 		ports = append(ports, port.NewOutput(fmt.Sprintf("%s%d", prefix, i)))
 	}
 
-	return c.withOutputPorts(c.Outputs().With(ports...))
+	return c.withOutputPorts(c.Outputs().Add(ports...))
 }
 
 // Inputs returns the component's input ports.

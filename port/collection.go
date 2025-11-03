@@ -61,7 +61,7 @@ func (c *Collection) ByNames(names ...string) *Collection {
 
 	for _, name := range names {
 		if p, ok := c.ports[name]; ok {
-			selectedPorts.With(p)
+			selectedPorts.Add(p)
 		}
 	}
 
@@ -168,8 +168,8 @@ func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
 	return c
 }
 
-// With adds ports to collection and returns it.
-func (c *Collection) With(ports ...*Port) *Collection {
+// Add adds ports to collection and returns it.
+func (c *Collection) Add(ports ...*Port) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -197,8 +197,8 @@ func (c *Collection) Without(names ...string) *Collection {
 	return c
 }
 
-// WithIndexed creates ports with names like "o1","o2","o3" and so on.
-func (c *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Collection {
+// AddIndexed creates ports with names like "o1","o2","o3" and so on.
+func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -208,7 +208,7 @@ func (c *Collection) WithIndexed(prefix string, startIndex, endIndex int) *Colle
 		c.WithChainableErr(err)
 		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
-	return c.With(indexedPorts...)
+	return c.Add(indexedPorts...)
 }
 
 // Signals returns all signals of all ports in the collection.
@@ -224,7 +224,7 @@ func (c *Collection) Signals() *signal.Group {
 			c.WithChainableErr(err)
 			return signal.NewGroup().WithChainableErr(c.ChainableErr())
 		}
-		group = group.With(signals...)
+		group = group.Add(signals...)
 	}
 	return group
 }
@@ -339,7 +339,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
 	for _, port := range c.ports {
 		if predicate(port) {
-			filtered = filtered.With(port)
+			filtered = filtered.Add(port)
 			if filtered.HasChainableErr() {
 				return filtered
 			}
@@ -357,7 +357,7 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 	for _, port := range c.ports {
 		transformedPort := mapper(port)
 		if transformedPort != nil {
-			mapped = mapped.With(transformedPort)
+			mapped = mapped.Add(transformedPort)
 			if mapped.HasChainableErr() {
 				return mapped
 			}

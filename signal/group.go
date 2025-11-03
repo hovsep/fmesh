@@ -142,8 +142,8 @@ func (g *Group) AllPayloads() ([]any, error) {
 	return all, nil
 }
 
-// With returns the group with added signals.
-func (g *Group) With(signals ...*Signal) *Group {
+// Add returns the group with added signals.
+func (g *Group) Add(signals ...*Signal) *Group {
 	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g
@@ -180,8 +180,8 @@ func (g *Group) Without(predicate Predicate) *Group {
 	})
 }
 
-// WithPayloads returns a group with added signals created from provided payloads.
-func (g *Group) WithPayloads(payloads ...any) *Group {
+// AddFromPayloads returns a group with added signals created from provided payloads.
+func (g *Group) AddFromPayloads(payloads ...any) *Group {
 	if g.HasChainableErr() {
 		// Do nothing but propagate the error
 		return g

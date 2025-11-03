@@ -71,7 +71,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           5,
 				}).
-					WithComponents(d1, d2, d3, d4, d5, s)
+					AddComponents(d1, d2, d3, d4, d5, s)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				// Put 1 signal to each chain so they start in the same cycle

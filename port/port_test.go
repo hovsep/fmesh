@@ -90,14 +90,14 @@ func TestPort_Clear(t *testing.T) {
 
 func TestPort_PipeTo(t *testing.T) {
 	outputPorts := NewCollection()
-	outputPorts = outputPorts.With(
+	outputPorts = outputPorts.Add(
 		NewOutput("out1"),
 		NewOutput("out2"),
 		NewOutput("out3"),
 	)
 
 	inputPorts := NewCollection()
-	inputPorts = inputPorts.With(
+	inputPorts = inputPorts.Add(
 		NewInput("in1"),
 		NewInput("in2"),
 		NewInput("in3"),
@@ -734,7 +734,7 @@ func TestPort_Pipes(t *testing.T) {
 				NewInput("p2"),
 				NewInput("p3"),
 			),
-			want: NewGroup().With(NewInput("p2"), NewInput("p3")),
+			want: NewGroup().Add(NewInput("p2"), NewInput("p3")),
 		},
 		{
 			name:              "with chain error",

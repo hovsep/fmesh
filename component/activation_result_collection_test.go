@@ -49,7 +49,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 		},
 		{
 			name: "adding to non-empty collection",
-			collection: NewActivationResultCollection().With(
+			collection: NewActivationResultCollection().Add(
 				New("c1").newActivationResultOK(),
 				New("c2").newActivationResultOK(),
 			),
@@ -69,7 +69,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.With(tt.args.activationResults...)
+			tt.collection.Add(tt.args.activationResults...)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}
@@ -80,7 +80,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 func TestActivationResultCollection_ByName(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(false)
-	collection := NewActivationResultCollection().With(r1, r2)
+	collection := NewActivationResultCollection().Add(r1, r2)
 
 	t.Run("existing result", func(t *testing.T) {
 		result := collection.ByName("c1")
@@ -100,7 +100,7 @@ func TestActivationResultCollection_All(t *testing.T) {
 	r2 := NewActivationResult("c2").SetActivated(false)
 
 	t.Run("returns all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		all, err := collection.All()
 		require.NoError(t, err)
 		assert.Len(t, all, 2)
@@ -123,7 +123,7 @@ func TestActivationResultCollection_IsEmpty(t *testing.T) {
 	})
 
 	t.Run("non-empty collection", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(NewActivationResult("c1"))
+		collection := NewActivationResultCollection().Add(NewActivationResult("c1"))
 		assert.False(t, collection.IsEmpty())
 	})
 }
@@ -131,7 +131,7 @@ func TestActivationResultCollection_IsEmpty(t *testing.T) {
 func TestActivationResultCollection_Any(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(false)
-	collection := NewActivationResultCollection().With(r1, r2)
+	collection := NewActivationResultCollection().Add(r1, r2)
 
 	t.Run("returns arbitrary result", func(t *testing.T) {
 		result := collection.Any()
@@ -152,7 +152,7 @@ func TestActivationResultCollection_AllMatch(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(false)
 
 	t.Run("all match", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		result := collection.AllMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -160,7 +160,7 @@ func TestActivationResultCollection_AllMatch(t *testing.T) {
 	})
 
 	t.Run("not all match", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r3)
+		collection := NewActivationResultCollection().Add(r1, r3)
 		result := collection.AllMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -181,7 +181,7 @@ func TestActivationResultCollection_AnyMatch(t *testing.T) {
 	r2 := NewActivationResult("c2").SetActivated(false)
 
 	t.Run("at least one matches", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		result := collection.AnyMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -189,7 +189,7 @@ func TestActivationResultCollection_AnyMatch(t *testing.T) {
 	})
 
 	t.Run("none match", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r2)
+		collection := NewActivationResultCollection().Add(r2)
 		result := collection.AnyMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -211,7 +211,7 @@ func TestActivationResultCollection_CountMatch(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("counts matching results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		count := collection.CountMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -219,7 +219,7 @@ func TestActivationResultCollection_CountMatch(t *testing.T) {
 	})
 
 	t.Run("no matches", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r2)
+		collection := NewActivationResultCollection().Add(r2)
 		count := collection.CountMatch(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -233,7 +233,7 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("finds matching result", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		result := collection.FindAny(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -242,7 +242,7 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 	})
 
 	t.Run("no match returns nil", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
+		collection := NewActivationResultCollection().Add(r1)
 		result := collection.FindAny(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -256,7 +256,7 @@ func TestActivationResultCollection_Filter(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("filters matching results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		filtered := collection.Filter(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -264,7 +264,7 @@ func TestActivationResultCollection_Filter(t *testing.T) {
 	})
 
 	t.Run("no matches returns empty collection", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r2)
+		collection := NewActivationResultCollection().Add(r2)
 		filtered := collection.Filter(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
@@ -277,7 +277,7 @@ func TestActivationResultCollection_Map(t *testing.T) {
 	r2 := NewActivationResult("c2")
 
 	t.Run("transforms all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		mapped := collection.Map(func(r *ActivationResult) *ActivationResult {
 			return r.SetActivated(true)
 		})
@@ -302,7 +302,7 @@ func TestActivationResultCollection_AllThatErrored(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true).WithActivationCode(ActivationCodeReturnedError).WithActivationError(errors.New("another"))
 
 	t.Run("returns only errored results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		errored := collection.AllThatErrored()
 		assert.Equal(t, 2, errored.Len())
 		assert.True(t, errored.AllMatch(func(r *ActivationResult) bool {
@@ -311,7 +311,7 @@ func TestActivationResultCollection_AllThatErrored(t *testing.T) {
 	})
 
 	t.Run("no errors", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
+		collection := NewActivationResultCollection().Add(r1)
 		errored := collection.AllThatErrored()
 		assert.Equal(t, 0, errored.Len())
 	})
@@ -323,7 +323,7 @@ func TestActivationResultCollection_AllThatPanicked(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true).WithActivationCode(ActivationCodePanicked).WithActivationError(errors.New("another panic"))
 
 	t.Run("returns only panicked results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		panicked := collection.AllThatPanicked()
 		assert.Equal(t, 2, panicked.Len())
 		assert.True(t, panicked.AllMatch(func(r *ActivationResult) bool {
@@ -332,7 +332,7 @@ func TestActivationResultCollection_AllThatPanicked(t *testing.T) {
 	})
 
 	t.Run("no panics", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1)
+		collection := NewActivationResultCollection().Add(r1)
 		panicked := collection.AllThatPanicked()
 		assert.Equal(t, 0, panicked.Len())
 	})
@@ -344,7 +344,7 @@ func TestActivationResultCollection_AllThatActivated(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("returns only activated results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		activated := collection.AllThatActivated()
 		assert.Equal(t, 2, activated.Len())
 		assert.True(t, activated.AllMatch(func(r *ActivationResult) bool {
@@ -353,7 +353,7 @@ func TestActivationResultCollection_AllThatActivated(t *testing.T) {
 	})
 
 	t.Run("none activated", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r2)
+		collection := NewActivationResultCollection().Add(r2)
 		activated := collection.AllThatActivated()
 		assert.Equal(t, 0, activated.Len())
 	})
@@ -365,13 +365,13 @@ func TestActivationResultCollection_AllThatSucceeded(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true).WithActivationCode(ActivationCodeOK)
 
 	t.Run("returns only succeeded results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		succeeded := collection.AllThatSucceeded()
 		assert.Equal(t, 2, succeeded.Len())
 	})
 
 	t.Run("none succeeded", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r2)
+		collection := NewActivationResultCollection().Add(r2)
 		succeeded := collection.AllThatSucceeded()
 		assert.Equal(t, 0, succeeded.Len())
 	})
@@ -383,7 +383,7 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 	r3 := NewActivationResult("c3")
 
 	t.Run("applies action to all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		count := 0
 		collection.ForEach(func(r *ActivationResult) {
 			count++
@@ -406,7 +406,7 @@ func TestActivationResultCollection_Clear(t *testing.T) {
 	r2 := NewActivationResult("c2")
 
 	t.Run("clears all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		assert.Equal(t, 2, collection.Len())
 		collection.Clear()
 		assert.Equal(t, 0, collection.Len())
@@ -420,19 +420,19 @@ func TestActivationResultCollection_Without(t *testing.T) {
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("removes by component name", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		result := collection.Without("c2")
 		assert.Equal(t, 2, result.Len())
 	})
 
 	t.Run("removes multiple", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2, r3)
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		result := collection.Without("c1", "c2")
 		assert.Equal(t, 1, result.Len())
 	})
 
 	t.Run("removes all", func(t *testing.T) {
-		collection := NewActivationResultCollection().With(r1, r2)
+		collection := NewActivationResultCollection().Add(r1, r2)
 		result := collection.Without("c1", "c2")
 		assert.Equal(t, 0, result.Len())
 	})

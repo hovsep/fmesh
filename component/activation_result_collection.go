@@ -17,8 +17,8 @@ func NewActivationResultCollection() *ActivationResultCollection {
 	}
 }
 
-// With adds multiple activation results and returns the collection.
-func (c *ActivationResultCollection) With(activationResults ...*ActivationResult) *ActivationResultCollection {
+// Add adds multiple activation results and returns the collection.
+func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult) *ActivationResultCollection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -239,7 +239,7 @@ func (c *ActivationResultCollection) Filter(predicate ActivationResultPredicate)
 	filtered := NewActivationResultCollection()
 	for _, result := range c.activationResults {
 		if predicate(result) {
-			filtered = filtered.With(result)
+			filtered = filtered.Add(result)
 			if filtered.HasChainableErr() {
 				return filtered
 			}
@@ -259,7 +259,7 @@ func (c *ActivationResultCollection) Map(mapper ActivationResultMapper) *Activat
 	for _, result := range c.activationResults {
 		transformedResult := mapper(result)
 		if transformedResult != nil {
-			mapped = mapped.With(transformedResult)
+			mapped = mapped.Add(transformedResult)
 			if mapped.HasChainableErr() {
 				return mapped
 			}

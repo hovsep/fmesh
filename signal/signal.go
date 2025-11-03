@@ -44,7 +44,7 @@ func (s *Signal) SetLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.Clear().WithMany(labelMap)
+	s.labels.Clear().AddMany(labelMap)
 	return s
 }
 
@@ -53,7 +53,7 @@ func (s *Signal) AddLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.WithMany(labelMap)
+	s.labels.AddMany(labelMap)
 	return s
 }
 
@@ -62,7 +62,7 @@ func (s *Signal) AddLabel(name, value string) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.With(name, value)
+	s.labels.Add(name, value)
 	return s
 }
 

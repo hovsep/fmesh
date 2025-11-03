@@ -24,7 +24,7 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-out (3 pipes from 1 source port)",
 			setupFM: func() *fmesh.FMesh {
-				fm := fmesh.New("fan-out").WithComponents(
+				fm := fmesh.New("fan-out").AddComponents(
 					component.New("producer").
 						AddInputs("start").
 						AddOutputs("o1").
@@ -126,7 +126,7 @@ func Test_Fan(t *testing.T) {
 				producer2.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
 				producer3.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
 
-				return fmesh.New("multiplexer").WithComponents(producer1, producer2, producer3, consumer)
+				return fmesh.New("multiplexer").AddComponents(producer1, producer2, producer3, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("producer1").InputByName("start").PutSignals(signal.New(struct{}{}))

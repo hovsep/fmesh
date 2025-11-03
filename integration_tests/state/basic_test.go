@@ -93,7 +93,7 @@ func Test_State(t *testing.T) {
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10000,
 				}).
-					WithComponents(producer, counter, consumer)
+					AddComponents(producer, counter, consumer)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("consumer").InputByName("start").PutSignals(signal.New("start demand"))

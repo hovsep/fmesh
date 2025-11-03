@@ -49,7 +49,7 @@ func Test_Math(t *testing.T) {
 				return fmesh.NewWithConfig("fm", &fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
-				}).WithComponents(c1, c2)
+				}).AddComponents(c1, c2)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
@@ -139,7 +139,7 @@ func Test_Math(t *testing.T) {
 				return fmesh.NewWithConfig("mixed_ports_fm", &fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
-				}).WithComponents(processor, verifier)
+				}).AddComponents(processor, verifier)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				proc := fm.Components().ByName("processor")
@@ -196,7 +196,7 @@ func Test_Readme(t *testing.T) {
 			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 			CyclesLimit:           10,
 		}).
-			WithComponents(
+			AddComponents(
 				component.New("concat").
 					AddInputs("i1", "i2").
 					AddOutputs("res").
