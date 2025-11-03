@@ -33,9 +33,9 @@ func TestChainability_CrossPackage(t *testing.T) {
 	})
 
 	t.Run("port with signals and labels", func(t *testing.T) {
-		p := port.New("data").
+		p := port.NewInput("data").
 			WithDescription("data input").
-			AddLabel("direction", "in").
+			AddLabel("type", "data").
 			PutSignals(signal.New(1), signal.New(2)).
 			AddLabel("count", "2").
 			PutSignals(signal.New(3))
@@ -80,7 +80,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("port with label reset workflow", func(t *testing.T) {
 		// Port initially configured with temporary setup labels, then cleared for production
-		p := port.New("input").
+		p := port.NewInput("input").
 			AddLabels(labels.Map{
 				"setup": "true",
 				"test":  "mode",
@@ -89,18 +89,17 @@ func TestChainability_CrossPackage(t *testing.T) {
 			PutSignals(signal.New(1), signal.New(2)).
 			ClearLabels(). // Clear all setup labels
 			AddLabels(labels.Map{
-				"direction": "in",
 				"required":  "true",
 				"validated": "true",
 			})
 
-		assert.Equal(t, 3, p.Labels().Len())
+		assert.Equal(t, 2, p.Labels().Len())
 		assert.False(t, p.Labels().Has("setup"), "setup labels cleared")
 		assert.False(t, p.Labels().Has("test"), "test labels cleared")
 		assert.False(t, p.Labels().Has("debug"), "debug labels cleared")
-		assert.True(t, p.Labels().Has("direction"), "production labels present")
 		assert.True(t, p.Labels().Has("required"), "production labels present")
 		assert.True(t, p.Labels().Has("validated"), "production labels present")
+		assert.True(t, p.IsInput(), "direction is built-in")
 		assert.Equal(t, 2, p.Signals().Len(), "signals should remain")
 	})
 
@@ -166,18 +165,17 @@ func TestChainability_CrossPackage(t *testing.T) {
 			ClearLabels().
 			AddLabels(labels.Map{"priority": "high", "source": "validated"})
 
-		p := port.New("validated-input").
+		p := port.NewInput("validated-input").
 			AddLabel("type", "input").
 			PutSignals(s1, s2).
 			AddLabel("count", "2").
-			WithoutLabels("type"). // Remove type
-			AddLabel("direction", "in")
+			WithoutLabels("type") // Remove type
 
 		assert.Equal(t, 2, p.Signals().Len())
-		assert.Equal(t, 2, p.Labels().Len())
+		assert.Equal(t, 1, p.Labels().Len())
 		assert.False(t, p.Labels().Has("type"))
-		assert.True(t, p.Labels().Has("direction"))
 		assert.True(t, p.Labels().Has("count"))
+		assert.True(t, p.IsInput()) // Direction is built-in, not a label
 
 		// Both signals should have consistent labels
 		assert.True(t, s1.Labels().ValueIs("priority", "high"))

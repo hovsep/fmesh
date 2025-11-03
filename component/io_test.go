@@ -366,7 +366,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "happy path",
 			getComponent: func() *Component {
-				sink := port.New("sink").SetDirection(port.DirectionIn)
+				sink := port.NewInput("sink")
 				c := New("c1").AddOutputs("o1", "o2")
 				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
 				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
@@ -387,9 +387,9 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "with chain error",
 			getComponent: func() *Component {
-				sink := port.New("sink")
+				sink := port.NewInput("sink")
 				c := New("c").AddOutputs("o1").WithChainableErr(errors.New("some error"))
-				// Lines below are ignored as error immediately propagates up to component level
+				// The lines below are ignored as the error immediately propagates up to the component level
 				c.Outputs().ByName("o1").PipeTo(sink)
 				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))
 				return c
@@ -418,7 +418,7 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 			name:      "add single input port with description",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("in1").WithDescription("input port 1"),
+				port.NewInput("in1").WithDescription("input port 1"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 1, component.Inputs().Len())
@@ -429,10 +429,10 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 			name:      "add multiple input ports with descriptions and labels",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("in1").
+				port.NewInput("in1").
 					WithDescription("first input").
 					AddLabel("priority", "high"),
-				port.New("in2").
+				port.NewInput("in2").
 					WithDescription("second input").
 					AddLabel("priority", "low"),
 			},
@@ -448,7 +448,7 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 			name:      "add ports to existing inputs",
 			component: New("c1").AddInputs("in1"),
 			ports: []*port.Port{
-				port.New("in2").WithDescription("second input"),
+				port.NewInput("in2").WithDescription("second input"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 2, component.Inputs().Len())
@@ -459,13 +459,39 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 			name:      "chainable",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("in1").WithDescription("input 1"),
+				port.NewInput("in1").WithDescription("input 1"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				result := component.AttachInputPorts(
-					port.New("in2").WithDescription("input 2"),
+					port.NewInput("in2").WithDescription("input 2"),
 				)
 				assert.Equal(t, 2, result.Inputs().Len())
+			},
+		},
+		{
+			name:      "GUARDRAIL: reject output port (wrong direction)",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.NewOutput("wrong_direction"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				require.Error(t, component.ChainableErr())
+				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
+				assert.Contains(t, component.ChainableErr().Error(), "wrong_direction")
+				assert.Contains(t, component.ChainableErr().Error(), "not an input port")
+			},
+		},
+		{
+			name:      "GUARDRAIL: reject mixed input and output ports",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.NewInput("correct"),
+				port.NewOutput("wrong"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				require.Error(t, component.ChainableErr())
+				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
+				assert.Contains(t, component.ChainableErr().Error(), "wrong")
 			},
 		},
 	}
@@ -490,7 +516,7 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 			name:      "add single output port with description",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("out1").WithDescription("output port 1"),
+				port.NewOutput("out1").WithDescription("output port 1"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 1, component.Outputs().Len())
@@ -501,10 +527,10 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 			name:      "add multiple output ports with descriptions and labels",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("out1").
+				port.NewOutput("out1").
 					WithDescription("first output").
 					AddLabel("type", "result"),
-				port.New("out2").
+				port.NewOutput("out2").
 					WithDescription("second output").
 					AddLabel("type", "error"),
 			},
@@ -520,7 +546,7 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 			name:      "add ports to existing outputs",
 			component: New("c1").AddOutputs("out1"),
 			ports: []*port.Port{
-				port.New("out2").WithDescription("second output"),
+				port.NewOutput("out2").WithDescription("second output"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 2, component.Outputs().Len())
@@ -531,13 +557,39 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 			name:      "chainable",
 			component: New("c1"),
 			ports: []*port.Port{
-				port.New("out1").WithDescription("output 1"),
+				port.NewOutput("out1").WithDescription("output 1"),
 			},
 			assertions: func(t *testing.T, component *Component) {
 				result := component.AttachOutputPorts(
-					port.New("out2").WithDescription("output 2"),
+					port.NewOutput("out2").WithDescription("output 2"),
 				)
 				assert.Equal(t, 2, result.Outputs().Len())
+			},
+		},
+		{
+			name:      "GUARDRAIL: reject input port (wrong direction)",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.NewInput("wrong_direction"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				require.Error(t, component.ChainableErr())
+				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
+				assert.Contains(t, component.ChainableErr().Error(), "wrong_direction")
+				assert.Contains(t, component.ChainableErr().Error(), "not an output port")
+			},
+		},
+		{
+			name:      "GUARDRAIL: reject mixed output and input ports",
+			component: New("c1"),
+			ports: []*port.Port{
+				port.NewOutput("correct"),
+				port.NewInput("wrong"),
+			},
+			assertions: func(t *testing.T, component *Component) {
+				require.Error(t, component.ChainableErr())
+				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
+				assert.Contains(t, component.ChainableErr().Error(), "wrong")
 			},
 		},
 	}
@@ -582,8 +634,8 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		c := New("c1").
 			AddInputs("in1", "in2").
 			AttachInputPorts(
-				port.New("in3").WithDescription("third input"),
-				port.New("in4").WithDescription("fourth input").AddLabel("important", "true"),
+				port.NewInput("in3").WithDescription("third input"),
+				port.NewInput("in4").WithDescription("fourth input").AddLabel("important", "true"),
 			).
 			AddInputs("in5")
 
@@ -600,8 +652,8 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		c := New("c1").
 			AddOutputs("out1", "out2").
 			AttachOutputPorts(
-				port.New("out3").WithDescription("third output"),
-				port.New("out4").WithDescription("fourth output").AddLabel("type", "error"),
+				port.NewOutput("out3").WithDescription("third output"),
+				port.NewOutput("out4").WithDescription("fourth output").AddLabel("type", "error"),
 			).
 			AddOutputs("out5")
 

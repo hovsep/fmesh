@@ -90,12 +90,18 @@ func TestPort_Clear(t *testing.T) {
 
 func TestPort_PipeTo(t *testing.T) {
 	outputPorts := NewCollection()
-	outPorts, _ := NewIndexedGroup("out", 1, 3).WithPortDirection(DirectionOut).All()
-	outputPorts = outputPorts.With(outPorts...)
+	outputPorts = outputPorts.With(
+		NewOutput("out1"),
+		NewOutput("out2"),
+		NewOutput("out3"),
+	)
 
 	inputPorts := NewCollection()
-	inPorts, _ := NewIndexedGroup("in", 1, 3).WithPortDirection(DirectionIn).All()
-	inputPorts = inputPorts.With(inPorts...)
+	inputPorts = inputPorts.With(
+		NewInput("in1"),
+		NewInput("in2"),
+		NewInput("in3"),
+	)
 
 	type args struct {
 		toPorts Ports
@@ -296,6 +302,44 @@ func TestNewPort(t *testing.T) {
 	}
 }
 
+func TestPort_Direction(t *testing.T) {
+	tests := []struct {
+		name string
+		port *Port
+		want Direction
+	}{
+		{
+			name: "default direction is out (zero-value)",
+			port: New("p"),
+			want: DirectionOut,
+		},
+		{
+			name: "explicitly set to input",
+			port: NewInput("p"),
+			want: DirectionIn,
+		},
+		{
+			name: "explicitly set to output",
+			port: NewOutput("p"),
+			want: DirectionOut,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.port.Direction())
+
+			// Also verify IsInput() and IsOutput() consistency
+			if tt.want == DirectionIn {
+				assert.True(t, tt.port.IsInput())
+				assert.False(t, tt.port.IsOutput())
+			} else {
+				assert.False(t, tt.port.IsInput())
+				assert.True(t, tt.port.IsOutput())
+			}
+		})
+	}
+}
+
 func TestPort_HasPipes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -309,7 +353,7 @@ func TestPort_HasPipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").SetDirection(DirectionOut).PipeTo(New("p2").SetDirection(DirectionIn)),
+			port: NewOutput("p1").PipeTo(NewInput("p2")),
 			want: true,
 		},
 	}
@@ -337,11 +381,10 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "empty port with pipes is not flushed",
-			srcPort: New("p").
-				SetDirection(DirectionOut).PipeTo(
-				New("p1").
-					SetDirection(DirectionIn), New("p2").
-					SetDirection(DirectionIn)),
+			srcPort: NewOutput("p").PipeTo(
+				NewInput("p1"),
+				NewInput("p2"),
+			),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -349,10 +392,10 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to empty ports",
-			srcPort: New("p").SetDirection(DirectionOut).PutSignalGroups(signal.NewGroup(1, 2, 3)).
+			srcPort: NewOutput("p").PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").SetDirection(DirectionIn),
-					New("p2").SetDirection(DirectionIn)),
+					NewInput("p1"),
+					NewInput("p2")),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -371,11 +414,11 @@ func TestPort_Flush(t *testing.T) {
 		},
 		{
 			name: "flush to non empty ports",
-			srcPort: New("p").SetDirection(DirectionOut).
+			srcPort: NewOutput("p").
 				PutSignalGroups(signal.NewGroup(1, 2, 3)).
 				PipeTo(
-					New("p1").SetDirection(DirectionIn).PutSignalGroups(signal.NewGroup(4, 5, 6)),
-					New("p2").SetDirection(DirectionIn).PutSignalGroups(signal.NewGroup(7, 8, 9))),
+					NewInput("p1").PutSignalGroups(signal.NewGroup(4, 5, 6)),
+					NewInput("p2").PutSignalGroups(signal.NewGroup(7, 8, 9))),
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
@@ -677,12 +720,11 @@ func TestPort_Pipes(t *testing.T) {
 		},
 		{
 			name: "with pipes",
-			port: New("p1").
-				SetDirection(DirectionOut).PipeTo(
-				New("p2").
-					SetDirection(DirectionIn), New("p3").
-					SetDirection(DirectionIn)),
-			want: NewGroup("p2", "p3").WithPortDirection(DirectionIn),
+			port: NewOutput("p1").PipeTo(
+				NewInput("p2"),
+				NewInput("p3"),
+			),
+			want: NewGroup().With(NewInput("p2"), NewInput("p3")),
 		},
 		{
 			name: "with chain error",

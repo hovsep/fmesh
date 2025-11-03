@@ -75,7 +75,7 @@ func Test_Math(t *testing.T) {
 					AddInputs("raw_data", "metadata").
 					// Advanced port (pre-configured with description and labels)
 					AttachInputPorts(
-						port.New("config").
+						port.NewInput("config").
 							WithDescription("Configuration parameters").
 							AddLabel("required", "true").
 							AddLabel("type", "config"),
@@ -84,10 +84,10 @@ func Test_Math(t *testing.T) {
 					AddOutputs("logs").
 					// Advanced output ports (pre-configured)
 					AttachOutputPorts(
-						port.New("result").
+						port.NewOutput("result").
 							WithDescription("Processed result").
 							AddLabel("format", "json"),
-						port.New("error").
+						port.NewOutput("error").
 							WithDescription("Error details if any").
 							AddLabel("status", "error"),
 					).
@@ -97,7 +97,7 @@ func Test_Math(t *testing.T) {
 							return nil // Wait for all inputs
 						}
 
-						// Verify all ports are functional regardless of creation method
+						// Verify all ports are functional regardless of the creation method
 						rawData := this.InputByName("raw_data").Signals().FirstPayloadOrDefault(0).(int)
 						metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("").(string)
 						config := this.InputByName("config").Signals().FirstPayloadOrDefault(1).(int)

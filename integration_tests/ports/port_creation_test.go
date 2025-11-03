@@ -21,11 +21,11 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			AddInputs("raw_data", "filter").
 			// Advanced API: create ports with descriptions and labels
 			AttachInputPorts(
-				port.New("config").
+				port.NewInput("config").
 					WithDescription("Configuration parameters").
 					AddLabel("required", "true").
 					AddLabel("type", "json"),
-				port.New("metadata").
+				port.NewInput("metadata").
 					WithDescription("Request metadata").
 					AddLabel("required", "false"),
 			).
@@ -33,7 +33,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			AddOutputs("processed", "metrics").
 			// Advanced API for outputs with labels
 			AttachOutputPorts(
-				port.New("errors").
+				port.NewOutput("errors").
 					WithDescription("Error details if processing fails").
 					AddLabel("severity", "high").
 					AddLabel("format", "structured"),
@@ -129,7 +129,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Create a component and manipulate port labels
 		c := component.New("label-demo").
 			AttachInputPorts(
-				port.New("input").
+				port.NewInput("input").
 					AddLabel("env", "dev").
 					AddLabel("version", "1.0").
 					AddLabel("owner", "team-a"),
@@ -183,9 +183,9 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 	t.Run("incremental port addition", func(t *testing.T) {
 		// Demonstrate adding ports one by one
 		c := component.New("incremental").
-			AddInputs("a").                                                 // Add first input
-			AddInputs("b").                                                 // Add second input
-			AttachInputPorts(port.New("c").WithDescription("Third input")). // Add with details
+			AddInputs("a").                                                      // Add first input
+			AddInputs("b").                                                      // Add second input
+			AttachInputPorts(port.NewInput("c").WithDescription("Third input")). // Add with details
 			AddOutputs("result").
 			WithActivationFunc(func(this *component.Component) error {
 				if !this.Inputs().AllHaveSignals() {
@@ -222,8 +222,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		c := component.New("collection-demo").
 			AddInputs("i1", "i2", "i3").
 			AttachInputPorts(
-				port.New("i4").AddLabel("priority", "high"),
-				port.New("i5").AddLabel("priority", "low"),
+				port.NewInput("i4").AddLabel("priority", "high"),
+				port.NewInput("i5").AddLabel("priority", "low"),
 			).
 			AddOutputs("summary").
 			WithActivationFunc(func(this *component.Component) error {
