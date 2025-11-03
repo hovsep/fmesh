@@ -270,10 +270,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
 		// Verify all ports were labeled
-		inputs, err := c.Inputs().All()
-		require.NoError(t, err)
-		for _, p := range inputs {
+		c.Inputs().ForEach(func(p *port.Port) {
 			assert.True(t, p.Labels().Has("checked"))
-		}
+		})
 	})
 }

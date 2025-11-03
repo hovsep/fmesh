@@ -115,10 +115,9 @@ func (g *Group) Len() int {
 
 // AddLabelsToAll adds labels to each port within the group and returns it.
 func (g *Group) AddLabelsToAll(labelMap labels.Map) *Group {
-	for _, p := range g.ports {
+	return g.ForEach(func(p *Port) {
 		p.AddLabels(labelMap)
-	}
-	return g
+	})
 }
 
 // IsEmpty returns true when there are no ports in the group.

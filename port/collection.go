@@ -389,10 +389,9 @@ func (c *Collection) Len() int {
 
 // WithParentComponent adds a parent component to all ports in a collection.
 func (c *Collection) WithParentComponent(component ParentComponent) *Collection {
-	for _, port := range c.ports {
-		port.WithParentComponent(component)
-	}
-	return c
+	return c.ForEach(func(p *Port) {
+		p.WithParentComponent(component)
+	})
 }
 
 // IsEmpty returns true when there are no ports in the collection.
