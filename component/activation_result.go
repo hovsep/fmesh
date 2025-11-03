@@ -20,23 +20,24 @@ type ActivationResultCode int
 func (a ActivationResultCode) String() string {
 	switch a {
 	case ActivationCodeUndefined:
-		return "UNDEFINED"
+
+		return "Undefined"
 	case ActivationCodeOK:
-		return "OK"
+		return "Success"
 	case ActivationCodeNoInput:
 		return "No input"
 	case ActivationCodeNoFunction:
-		return "Activation function is missing"
+		return "No activation function"
 	case ActivationCodeReturnedError:
-		return "Returned error"
+		return "Finished with error"
 	case ActivationCodePanicked:
-		return "Panicked"
+		return "Finished with panic"
 	case ActivationCodeWaitingForInputsClear:
-		return "Component is waiting for input"
+		return "Waiting for input (clear)"
 	case ActivationCodeWaitingForInputsKeep:
-		return "Component is waiting for input and wants to keep all inputs till next cycle"
+		return "Waiting for input (keep)"
 	default:
-		return "Unsupported code"
+		return "Unknown code"
 	}
 }
 
