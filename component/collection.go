@@ -37,8 +37,8 @@ func (c *Collection) ByName(name string) *Component {
 	return component
 }
 
-// With adds components and returns the collection.
-func (c *Collection) With(components ...*Component) *Collection {
+// Add adds components and returns the collection.
+func (c *Collection) Add(components ...*Component) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -184,7 +184,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
 	for _, comp := range c.components {
 		if predicate(comp) {
-			filtered = filtered.With(comp)
+			filtered = filtered.Add(comp)
 			if filtered.HasChainableErr() {
 				return filtered
 			}
@@ -202,7 +202,7 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 	for _, comp := range c.components {
 		transformedComp := mapper(comp)
 		if transformedComp != nil {
-			mapped = mapped.With(transformedComp)
+			mapped = mapped.Add(transformedComp)
 			if mapped.HasChainableErr() {
 				return mapped
 			}

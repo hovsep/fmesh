@@ -114,7 +114,7 @@ func Test_LabelTransformation(t *testing.T) {
 				return nil
 			})
 
-		fm := fmesh.New("label-transform-mesh").WithComponents(normalizer)
+		fm := fmesh.New("label-transform-mesh").AddComponents(normalizer)
 
 		// Input signal with mixed-case labels
 		fm.ComponentByName("normalizer").InputByName("in").PutSignals(

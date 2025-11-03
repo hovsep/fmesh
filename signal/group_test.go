@@ -195,9 +195,9 @@ func TestGroup_With(t *testing.T) {
 		{
 			name: "with error in chain",
 			group: NewGroup(1, 2, 3).
-				With(New("valid before invalid")).
-				With(nil).
-				WithPayloads(4, 5, 6),
+				Add(New("valid before invalid")).
+				Add(nil).
+				AddFromPayloads(4, 5, 6),
 			args: args{
 				signals: NewGroup(7, nil, 9).mustAll(),
 			},
@@ -205,18 +205,18 @@ func TestGroup_With(t *testing.T) {
 		},
 		{
 			name:  "with error in signal",
-			group: NewGroup(1, 2, 3).With(New(44).WithChainableErr(errors.New("some error in signal"))),
+			group: NewGroup(1, 2, 3).Add(New(44).WithChainableErr(errors.New("some error in signal"))),
 			args: args{
 				signals: Signals{New(456)},
 			},
 			want: NewGroup(1, 2, 3).
-				With(New(44).WithChainableErr(errors.New("some error in signal"))).
+				Add(New(44).WithChainableErr(errors.New("some error in signal"))).
 				WithChainableErr(errors.New("some error in signal")), // error propagated from signal to group
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.With(tt.args.signals...)
+			got := tt.group.Add(tt.args.signals...)
 			if tt.want.HasChainableErr() {
 				assert.Error(t, got.ChainableErr())
 				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
@@ -273,7 +273,7 @@ func TestGroup_WithPayloads(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.WithPayloads(tt.args.payloads...))
+			assert.Equal(t, tt.want, tt.group.AddFromPayloads(tt.args.payloads...))
 		})
 	}
 }
@@ -524,7 +524,7 @@ func TestGroup_Map(t *testing.T) {
 		},
 		{
 			name:  "signal with error",
-			group: NewGroup(1, 2, 3).With(New(4).WithChainableErr(errors.New("some error in chain"))),
+			group: NewGroup(1, 2, 3).Add(New(4).WithChainableErr(errors.New("some error in chain"))),
 			args: args{
 				mapperFunc: func(signal *Signal) *Signal {
 					return signal.MapPayload(func(payload any) any {
@@ -581,7 +581,7 @@ func TestGroup_MapPayloads(t *testing.T) {
 		},
 		{
 			name:  "signal with error",
-			group: NewGroup(1, 2, 3).With(New(4).WithChainableErr(errors.New("some error in chain"))),
+			group: NewGroup(1, 2, 3).Add(New(4).WithChainableErr(errors.New("some error in chain"))),
 			args: args{
 				mapperFunc: func(payload any) any {
 					return payload.(int) * 7

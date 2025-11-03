@@ -73,15 +73,15 @@ func (c *Cycle) HasActivatedComponents() bool {
 	return c.ActivationResults().HasActivatedComponents()
 }
 
-// WithActivationResults adds multiple activation results.
-func (c *Cycle) WithActivationResults(activationResults ...*component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().With(activationResults...)
+// AddActivationResults adds multiple activation results.
+func (c *Cycle) AddActivationResults(activationResults ...*component.ActivationResult) *Cycle {
+	c.activationResults = c.ActivationResults().Add(activationResults...)
 	return c
 }
 
 // AddActivationResult adds a single activation result in a thread-safe way.
 func (c *Cycle) AddActivationResult(result *component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().With(result)
+	c.activationResults = c.ActivationResults().Add(result)
 	return c
 }
 

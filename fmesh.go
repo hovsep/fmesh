@@ -81,8 +81,8 @@ func (fm *FMesh) WithDescription(description string) *FMesh {
 	return fm
 }
 
-// WithComponents adds components to the mesh and returns the mesh for chaining.
-func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
+// AddComponents adds components to the mesh and returns the mesh for chaining.
+func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 	if fm.HasChainableErr() {
 		return fm
 	}
@@ -92,7 +92,7 @@ func (fm *FMesh) WithComponents(components ...*component.Component) *FMesh {
 		if c.Logger() == nil {
 			c = c.WithLogger(fm.Logger())
 		}
-		fm.components = fm.components.With(c.WithParentMesh(fm))
+		fm.components = fm.components.Add(c.WithParentMesh(fm))
 		if c.HasChainableErr() {
 			return fm.WithChainableErr(c.ChainableErr())
 		}
@@ -132,7 +132,7 @@ func (fm *FMesh) runCycle() {
 		go func(component *component.Component, cycle *cycle.Cycle) {
 			defer wg.Done()
 
-			cycle.ActivationResults().With(component.MaybeActivate())
+			cycle.ActivationResults().Add(component.MaybeActivate())
 		}(c, newCycle)
 	}
 
@@ -164,7 +164,7 @@ func (fm *FMesh) runCycle() {
 		}
 	}
 
-	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.With(newCycle)
+	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 }
 
 // DrainComponents drains the data from activated components.

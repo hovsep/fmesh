@@ -15,8 +15,8 @@ func NewGroup() *Group {
 	return newGroup.withCycles(cycles)
 }
 
-// With adds cycles to the group and returns it.
-func (g *Group) With(cycles ...*Cycle) *Group {
+// Add adds cycles to the group and returns it.
+func (g *Group) Add(cycles ...*Cycle) *Group {
 	newCycles := make(Cycles, len(g.cycles)+len(cycles))
 	copy(newCycles, g.cycles)
 	for i, c := range cycles {
@@ -156,7 +156,7 @@ func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := NewGroup()
 	for _, cyc := range g.cycles {
 		if predicate(cyc) {
-			filtered = filtered.With(cyc)
+			filtered = filtered.Add(cyc)
 			if filtered.HasChainableErr() {
 				return filtered
 			}
@@ -174,7 +174,7 @@ func (g *Group) Map(mapper Mapper) *Group {
 	for _, cyc := range g.cycles {
 		transformedCyc := mapper(cyc)
 		if transformedCyc != nil {
-			mapped = mapped.With(transformedCyc)
+			mapped = mapped.Add(transformedCyc)
 			if mapped.HasChainableErr() {
 				return mapped
 			}

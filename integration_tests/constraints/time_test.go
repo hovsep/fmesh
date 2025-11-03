@@ -47,7 +47,7 @@ func Test_TimeConstraint(t *testing.T) {
 					TimeLimit: 2 * time.Second,
 				}).
 					WithDescription("this mesh ticks every second for 10 seconds").
-					WithComponents(ticker)
+					AddComponents(ticker)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
@@ -87,7 +87,7 @@ func Test_TimeConstraint(t *testing.T) {
 					TimeLimit: fmesh.UnlimitedTime,
 				}).
 					WithDescription("this mesh ticks every second for 10 seconds").
-					WithComponents(ticker)
+					AddComponents(ticker)
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))

@@ -68,7 +68,7 @@ func (c *Component) SetLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.labels.Clear().WithMany(labelMap)
+	c.labels.Clear().AddMany(labelMap)
 	return c
 }
 
@@ -77,7 +77,7 @@ func (c *Component) AddLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.labels.WithMany(labelMap)
+	c.labels.AddMany(labelMap)
 	return c
 }
 
@@ -86,7 +86,7 @@ func (c *Component) AddLabel(name, value string) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.labels.With(name, value)
+	c.labels.Add(name, value)
 	return c
 }
 

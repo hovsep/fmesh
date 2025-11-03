@@ -103,7 +103,7 @@ func TestLabelsCollection_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.collection.With(tt.label, tt.value)
+			result := tt.collection.Add(tt.label, tt.value)
 			if tt.assertions != nil {
 				tt.assertions(t, result)
 			}
@@ -149,7 +149,7 @@ func TestLabelsCollection_WithMany(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.collection.WithMany(tt.labels)
+			result := tt.collection.AddMany(tt.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, result)
 			}
@@ -786,9 +786,9 @@ func TestLabelsCollection_Filter(t *testing.T) {
 func TestLabelsCollection_Chainable(t *testing.T) {
 	t.Run("chaining multiple operations", func(t *testing.T) {
 		lc := NewCollection(nil).
-			With("env", "dev").
-			With("tier", "backend").
-			WithMany(Map{
+			Add("env", "dev").
+			Add("tier", "backend").
+			AddMany(Map{
 				"region": "us-east",
 				"zone":   "1a",
 			}).
@@ -801,10 +801,10 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 		assert.False(t, lc.Has("zone"))
 	})
 
-	t.Run("WithMany called twice merges labels", func(t *testing.T) {
+	t.Run("AddMany called twice merges labels", func(t *testing.T) {
 		lc := NewCollection(nil).
-			WithMany(Map{"k1": "v1", "k2": "v2"}).
-			WithMany(Map{"k3": "v3", "k2": "v2-updated"})
+			AddMany(Map{"k1": "v1", "k2": "v2"}).
+			AddMany(Map{"k3": "v3", "k2": "v2-updated"})
 
 		assert.Equal(t, 3, lc.Len())
 		assert.True(t, lc.ValueIs("k1", "v1"))
@@ -835,7 +835,7 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 			name:       "mutating methods return self without changes when error present",
 			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
 			assertions: func(t *testing.T, lc *Collection) {
-				result := lc.With("test", "value")
+				result := lc.Add("test", "value")
 				assert.True(t, result.HasChainableErr())
 				assert.Equal(t, 0, result.Len())
 			},

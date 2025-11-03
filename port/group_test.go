@@ -142,7 +142,7 @@ func TestGroup_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			groupAfter := tt.group.With(tt.args.ports...)
+			groupAfter := tt.group.Add(tt.args.ports...)
 			if tt.assertions != nil {
 				tt.assertions(t, groupAfter)
 			}

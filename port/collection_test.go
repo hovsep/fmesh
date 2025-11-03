@@ -20,7 +20,7 @@ func (c *Collection) mustAll() Map {
 }
 
 func TestCollection_AllHaveSignals(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
@@ -30,7 +30,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 	}{
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			ports: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			want:  false,
 		},
 		{
@@ -40,7 +40,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 		},
 		{
 			name:  "all set",
-			ports: NewCollection().With(NewGroup("out1", "out2", "out3").mustAll()...).PutSignals(signal.New(77)),
+			ports: NewCollection().Add(NewGroup("out1", "out2", "out3").mustAll()...).PutSignals(signal.New(77)),
 			want:  true,
 		},
 	}
@@ -52,7 +52,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 }
 
 func TestCollection_AnyHasSignals(t *testing.T) {
-	oneEmptyPorts := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
 	oneEmptyPorts.ByName("p2").Clear()
 
 	tests := []struct {
@@ -67,7 +67,7 @@ func TestCollection_AnyHasSignals(t *testing.T) {
 		},
 		{
 			name:  "all empty",
-			ports: NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...),
+			ports: NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...),
 			want:  false,
 		},
 	}
@@ -90,7 +90,7 @@ func TestCollection_ByName(t *testing.T) {
 	}{
 		{
 			name:       "empty port found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				name: "p1",
 			},
@@ -98,7 +98,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "port with signals found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...).PutSignals(signal.New(12)),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).PutSignals(signal.New(12)),
 			args: args{
 				name: "p2",
 			},
@@ -106,7 +106,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "port not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				name: "p3",
 			},
@@ -114,7 +114,7 @@ func TestCollection_ByName(t *testing.T) {
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				name: "p1",
 			},
@@ -141,23 +141,23 @@ func TestCollection_ByNames(t *testing.T) {
 	}{
 		{
 			name:       "single port found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p1"},
 			},
-			want: NewCollection().With(NewOutput("p1")),
+			want: NewCollection().Add(NewOutput("p1")),
 		},
 		{
 			name:       "multiple ports found",
-			collection: NewCollection().With(NewGroup("p1", "p2", "p3", "p4").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2", "p3", "p4").mustAll()...),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			want: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 		},
 		{
 			name:       "single port not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p7"},
 			},
@@ -165,15 +165,15 @@ func TestCollection_ByNames(t *testing.T) {
 		},
 		{
 			name:       "some ports not found",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				names: []string{"p1", "p2", "p3"},
 			},
-			want: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			want: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 		},
 		{
 			name:       "with chain error",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				names: []string{"p1", "p2"},
 			},
@@ -189,7 +189,7 @@ func TestCollection_ByNames(t *testing.T) {
 
 func TestCollection_ForEachClear(t *testing.T) {
 	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
-		ports := NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
+		ports := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
 		ports.ForEach(func(p *Port) {
 			p.Clear()
@@ -231,7 +231,7 @@ func TestCollection_With(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				ports: NewGroup("p3", "p4").mustAll(),
 			},
@@ -243,7 +243,7 @@ func TestCollection_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection = tt.collection.With(tt.args.ports...)
+			tt.collection = tt.collection.Add(tt.args.ports...)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}
@@ -266,7 +266,7 @@ func TestCollection_Flush(t *testing.T) {
 		},
 		{
 			name: "all ports in collection are flushed",
-			collection: NewCollection().With(
+			collection: NewCollection().Add(
 				NewOutput("src").
 					PutSignalGroups(signal.NewGroup(1, 2, 3)).
 					PipeTo(
@@ -320,7 +320,7 @@ func TestCollection_PipeTo(t *testing.T) {
 		},
 		{
 			name: "add pipes to each port in collection",
-			collection: NewCollection().With(
+			collection: NewCollection().Add(
 				NewOutput("p_1"),
 				NewOutput("p_2"),
 				NewOutput("p_3"),
@@ -379,7 +379,7 @@ func TestCollection_WithIndexed(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().With(NewGroup("p1", "p2", "p3").mustAll()...),
+			collection: NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...),
 			args: args{
 				prefix:     "p",
 				startIndex: 4,
@@ -392,7 +392,7 @@ func TestCollection_WithIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collectionAfter := tt.collection.WithIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			collectionAfter := tt.collection.AddIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
 			if tt.assertions != nil {
 				tt.assertions(t, collectionAfter)
 			}
@@ -414,7 +414,7 @@ func TestCollection_Signals(t *testing.T) {
 		{
 			name: "non-empty collection",
 			collection: NewCollection().
-				WithIndexed("p", 1, 3).
+				AddIndexed("p", 1, 3).
 				PutSignals(signal.New(1), signal.New(2), signal.New(3)).
 				PutSignals(signal.New("test")),
 			want: signal.NewGroup(1, 2, 3, "test", 1, 2, 3, "test", 1, 2, 3, "test"),

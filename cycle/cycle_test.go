@@ -30,8 +30,8 @@ func TestCycle_ActivationResults(t *testing.T) {
 		},
 		{
 			name:        "happy path",
-			cycleResult: New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
-			want:        component.NewActivationResultCollection().With(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
+			cycleResult: New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
+			want:        component.NewActivationResultCollection().Add(component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK)),
 		},
 	}
 	for _, tt := range tests {
@@ -54,7 +54,7 @@ func TestCycle_HasActivatedComponents(t *testing.T) {
 		},
 		{
 			name: "has activation results, but no component activated",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -63,7 +63,7 @@ func TestCycle_HasActivatedComponents(t *testing.T) {
 		},
 		{
 			name: "some components did activate",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -91,7 +91,7 @@ func TestCycle_HasErrors(t *testing.T) {
 		},
 		{
 			name: "has activation results, but no one is error",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -100,7 +100,7 @@ func TestCycle_HasErrors(t *testing.T) {
 		},
 		{
 			name: "some components returned errors",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError).WithActivationError(errors.New("some error")),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -128,7 +128,7 @@ func TestCycle_HasPanics(t *testing.T) {
 		},
 		{
 			name: "has activation results, but no one is panic",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -138,7 +138,7 @@ func TestCycle_HasPanics(t *testing.T) {
 		},
 		{
 			name: "some components panicked",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError).WithActivationError(errors.New("some error")),
 				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
@@ -154,7 +154,7 @@ func TestCycle_HasPanics(t *testing.T) {
 	}
 }
 
-func TestCycle_WithActivationResults(t *testing.T) {
+func TestCycle_AddActivationResults(t *testing.T) {
 	type args struct {
 		activationResults []*component.ActivationResult
 	}
@@ -181,14 +181,14 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				},
 			},
-			wantActivationResults: component.NewActivationResultCollection().With(
+			wantActivationResults: component.NewActivationResultCollection().Add(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 			),
 		},
 		{
 			name: "adding to non-empty collection",
-			cycleResult: New().WithActivationResults(
+			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").
 					SetActivated(false).
 					WithActivationCode(component.ActivationCodeNoInput),
@@ -202,7 +202,7 @@ func TestCycle_WithActivationResults(t *testing.T) {
 					component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 				},
 			},
-			wantActivationResults: component.NewActivationResultCollection().With(
+			wantActivationResults: component.NewActivationResultCollection().Add(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
 				component.NewActivationResult("c3").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
@@ -212,20 +212,20 @@ func TestCycle_WithActivationResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantActivationResults, tt.cycleResult.WithActivationResults(tt.args.activationResults...).ActivationResults())
+			assert.Equal(t, tt.wantActivationResults, tt.cycleResult.AddActivationResults(tt.args.activationResults...).ActivationResults())
 		})
 	}
 }
 
 func TestCycle_Chainability(t *testing.T) {
-	t.Run("WithActivationResults called twice adds results", func(t *testing.T) {
+	t.Run("AddActivationResults called twice adds results", func(t *testing.T) {
 		r1 := component.NewActivationResult("c1")
 		r2 := component.NewActivationResult("c2")
 		r3 := component.NewActivationResult("c3")
 
 		c := New().
-			WithActivationResults(r1, r2).
-			WithActivationResults(r3)
+			AddActivationResults(r1, r2).
+			AddActivationResults(r3)
 
 		assert.Equal(t, 3, c.ActivationResults().Len())
 	})
@@ -251,7 +251,7 @@ func TestCycle_Chainability(t *testing.T) {
 
 		c := New().
 			AddActivationResult(r1).
-			WithActivationResults(r2, r3).
+			AddActivationResults(r2, r3).
 			AddActivationResult(r4)
 
 		assert.Equal(t, 4, c.ActivationResults().Len())
@@ -278,12 +278,12 @@ func TestCycle_AllErrorsCombined(t *testing.T) {
 	}{
 		{
 			name:    "no errors",
-			cycle:   New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+			cycle:   New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true)),
 			wantErr: false,
 		},
 		{
 			name: "single error",
-			cycle: New().WithActivationResults(
+			cycle: New().AddActivationResults(
 				component.NewActivationResult("c1").WithActivationError(err1).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
 			),
 			wantErr: true,
@@ -291,7 +291,7 @@ func TestCycle_AllErrorsCombined(t *testing.T) {
 		},
 		{
 			name: "multiple errors",
-			cycle: New().WithActivationResults(
+			cycle: New().AddActivationResults(
 				component.NewActivationResult("c1").WithActivationError(err1).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
 				component.NewActivationResult("c2").WithActivationError(err2).SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError),
 			),
@@ -324,12 +324,12 @@ func TestCycle_AllPanicsCombined(t *testing.T) {
 	}{
 		{
 			name:    "no panics",
-			cycle:   New().WithActivationResults(component.NewActivationResult("c1").SetActivated(true)),
+			cycle:   New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true)),
 			wantErr: false,
 		},
 		{
 			name: "single panic",
-			cycle: New().WithActivationResults(
+			cycle: New().AddActivationResults(
 				component.NewActivationResult("c1").WithActivationError(panic1).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 			),
 			wantErr: true,
@@ -337,7 +337,7 @@ func TestCycle_AllPanicsCombined(t *testing.T) {
 		},
 		{
 			name: "multiple panics",
-			cycle: New().WithActivationResults(
+			cycle: New().AddActivationResults(
 				component.NewActivationResult("c1").WithActivationError(panic1).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 				component.NewActivationResult("c2").WithActivationError(panic2).SetActivated(true).WithActivationCode(component.ActivationCodePanicked),
 			),

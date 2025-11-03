@@ -93,8 +93,8 @@ func (c *Collection) ValueOrDefault(label, defaultValue string) string {
 	return value
 }
 
-// With adds or updates a single label.
-func (c *Collection) With(label, value string) *Collection {
+// Add adds or updates a single label.
+func (c *Collection) Add(label, value string) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -103,13 +103,13 @@ func (c *Collection) With(label, value string) *Collection {
 	return c
 }
 
-// WithMany adds or updates multiple labels.
-func (c *Collection) WithMany(labels Map) *Collection {
+// AddMany adds or updates multiple labels.
+func (c *Collection) AddMany(labels Map) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
 	for label, value := range labels {
-		c.With(label, value)
+		c.Add(label, value)
 	}
 	return c
 }

@@ -32,7 +32,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			})
 
 		c1.OutputByName("res").PipeTo(c2.InputByName("num"))
-		fm := fmesh.New("fm").WithComponents(c1) // Oops, we forgot to add c2
+		fm := fmesh.New("fm").AddComponents(c1) // Oops, we forgot to add c2
 		_, err := fm.Run()
 		require.Error(t, err)
 	})
