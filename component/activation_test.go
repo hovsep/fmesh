@@ -218,7 +218,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "with chain error from input port",
 			getComponent: func() *Component {
 				c := New("c").AddInputs("i1").AddOutputs("o1")
-				c.Inputs().With(port.New("p").WithChainableErr(errors.New("some error")))
+				c.Inputs().With(port.NewInput("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c").
@@ -229,7 +229,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "with chain error from output port",
 			getComponent: func() *Component {
 				c := New("c").AddInputs("i1").AddOutputs("o1")
-				c.Outputs().With(port.New("p").WithChainableErr(errors.New("some error")))
+				c.Outputs().With(port.NewOutput("p").WithChainableErr(errors.New("some error")))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c").

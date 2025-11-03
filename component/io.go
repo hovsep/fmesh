@@ -1,8 +1,14 @@
 package component
 
-import "github.com/hovsep/fmesh/port"
+import (
+	"fmt"
 
-// withInputPorts sets input ports collection and ensures all ports have input direction.
+	"github.com/hovsep/fmesh/port"
+)
+
+// withInputPorts sets input ports collection.
+// For framework-created ports (via NewGroup), direction is set here.
+// For user-created ports (via AttachInputPorts), direction is validated separately.
 func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -10,15 +16,13 @@ func (c *Component) withInputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
-	// Set direction on all ports to input
-	collection.ForEach(func(p *port.Port) {
-		p.SetDirection(port.DirectionIn)
-	})
 	c.inputPorts = collection.WithParentComponent(c)
 	return c
 }
 
-// withOutputPorts sets output ports collection and ensures all ports have output direction.
+// withOutputPorts sets output ports collection.
+// For framework-created ports (via NewGroup), direction is set here.
+// For user-created ports (via AttachOutputPorts), direction is validated separately.
 func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -26,10 +30,6 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	if collection.HasChainableErr() {
 		return c.WithChainableErr(collection.ChainableErr())
 	}
-	// Set direction on all ports to output
-	collection.ForEach(func(p *port.Port) {
-		p.SetDirection(port.DirectionOut)
-	})
 	c.outputPorts = collection.WithParentComponent(c)
 	return c
 }
@@ -47,10 +47,9 @@ func (c *Component) AddInputs(portNames ...string) *Component {
 		return c
 	}
 
-	ports, err := port.NewGroup(portNames...).All()
-	if err != nil {
-		c.WithChainableErr(err)
-		return New("").WithChainableErr(c.ChainableErr())
+	ports := make([]*port.Port, len(portNames))
+	for i, name := range portNames {
+		ports[i] = port.NewInput(name)
 	}
 
 	return c.withInputPorts(c.Inputs().With(ports...))
@@ -60,17 +59,27 @@ func (c *Component) AddInputs(portNames ...string) *Component {
 // Use this when you need to set descriptions, labels, or other port configuration.
 // Can be mixed with AddInputs for flexibility.
 //
+// Important: Ports must be created with port.NewInput(). Ports with wrong direction will cause an error.
+//
 // Example:
 //
 //	c := component.New("processor").
 //	    AttachInputPorts(
-//	        port.New("request").
+//	        port.NewInput("request").
 //	            WithDescription("HTTP request data").
 //	            AddLabel("content-type", "json"),
 //	    )
 func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
 	if c.HasChainableErr() {
 		return c
+	}
+
+	// Validate that all ports are actually input ports
+	for _, p := range ports {
+		if !p.IsInput() {
+			c.WithChainableErr(fmt.Errorf("AttachInputPorts: port '%s' is not an input port (use port.NewInput): %w", p.Name(), port.ErrWrongPortDirection))
+			return New("").WithChainableErr(c.ChainableErr())
+		}
 	}
 
 	return c.withInputPorts(c.Inputs().With(ports...))
@@ -89,11 +98,11 @@ func (c *Component) AddOutputs(portNames ...string) *Component {
 		return c
 	}
 
-	ports, err := port.NewGroup(portNames...).All()
-	if err != nil {
-		c.WithChainableErr(err)
-		return New("").WithChainableErr(c.ChainableErr())
+	ports := make([]*port.Port, len(portNames))
+	for i, name := range portNames {
+		ports[i] = port.NewOutput(name)
 	}
+
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
@@ -101,20 +110,30 @@ func (c *Component) AddOutputs(portNames ...string) *Component {
 // Use this when you need to set descriptions, labels, or other port configuration.
 // Can be mixed with AddOutputs for flexibility.
 //
+// Important: Ports must be created with port.NewOutput(). Ports with wrong direction will cause an error.
+//
 // Example:
 //
 //	c := component.New("processor").
 //	    AttachOutputPorts(
-//	        port.New("response").
+//	        port.NewOutput("response").
 //	            WithDescription("HTTP response data").
 //	            AddLabel("status", "success"),
-//	        port.New("error").
+//	        port.NewOutput("error").
 //	            WithDescription("Error details").
 //	            AddLabel("status", "error"),
 //	    )
 func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
 	if c.HasChainableErr() {
 		return c
+	}
+
+	// Validate that all ports are actually output ports
+	for _, p := range ports {
+		if !p.IsOutput() {
+			c.WithChainableErr(fmt.Errorf("AttachOutputPorts: port '%s' is not an output port (use port.NewOutput): %w", p.Name(), port.ErrWrongPortDirection))
+			return New("").WithChainableErr(c.ChainableErr())
+		}
 	}
 
 	return c.withOutputPorts(c.Outputs().With(ports...))
@@ -140,22 +159,42 @@ func (c *Component) WithOutputPorts(ports ...*port.Port) *Component {
 	return c.AttachOutputPorts(ports...)
 }
 
-// WithInputsIndexed creates multiple prefixed ports.
+// WithInputsIndexed creates multiple prefixed input ports.
 func (c *Component) WithInputsIndexed(prefix string, startIndex, endIndex int) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
 
-	return c.withInputPorts(c.Inputs().WithIndexed(prefix, startIndex, endIndex))
+	if startIndex > endIndex {
+		c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
+		return New("").WithChainableErr(c.ChainableErr())
+	}
+
+	ports := make([]*port.Port, 0, endIndex-startIndex+1)
+	for i := startIndex; i <= endIndex; i++ {
+		ports = append(ports, port.NewInput(fmt.Sprintf("%s%d", prefix, i)))
+	}
+
+	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
-// WithOutputsIndexed creates multiple prefixed ports.
+// WithOutputsIndexed creates multiple prefixed output ports.
 func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
 
-	return c.withOutputPorts(c.Outputs().WithIndexed(prefix, startIndex, endIndex))
+	if startIndex > endIndex {
+		c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
+		return New("").WithChainableErr(c.ChainableErr())
+	}
+
+	ports := make([]*port.Port, 0, endIndex-startIndex+1)
+	for i := startIndex; i <= endIndex; i++ {
+		ports = append(ports, port.NewOutput(fmt.Sprintf("%s%d", prefix, i)))
+	}
+
+	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
 // Inputs returns the component's input ports collection.

@@ -267,12 +267,12 @@ func TestCollection_Flush(t *testing.T) {
 		{
 			name: "all ports in collection are flushed",
 			collection: NewCollection().With(
-				New("src").
-					SetDirection(DirectionOut).
+				NewOutput("src").
 					PutSignalGroups(signal.NewGroup(1, 2, 3)).
-					PipeTo(New("dst1").
-						SetDirection(DirectionIn), New("dst2").
-						SetDirection(DirectionIn)),
+					PipeTo(
+						NewInput("dst1"),
+						NewInput("dst2"),
+					),
 			),
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 1, collection.Len())
@@ -319,12 +319,20 @@ func TestCollection_PipeTo(t *testing.T) {
 			},
 		},
 		{
-			name:       "add pipes to each port in collection",
-			collection: NewCollection().With(NewIndexedGroup("p", 1, 3).WithPortDirection(DirectionOut).mustAll()...),
+			name: "add pipes to each port in collection",
+			collection: NewCollection().With(
+				NewOutput("p_1"),
+				NewOutput("p_2"),
+				NewOutput("p_3"),
+			),
 			args: args{
-				destPorts: NewIndexedGroup("dest", 1, 5).
-					WithPortDirection(DirectionIn).
-					mustAll(),
+				destPorts: Ports{
+					NewInput("dest_1"),
+					NewInput("dest_2"),
+					NewInput("dest_3"),
+					NewInput("dest_4"),
+					NewInput("dest_5"),
+				},
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 3, collection.Len())

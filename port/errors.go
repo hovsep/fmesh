@@ -13,6 +13,8 @@ var (
 	ErrNilPort = errors.New("port is nil")
 	// ErrInvalidPipeDirection is returned when a pipe has an invalid direction.
 	ErrInvalidPipeDirection = errors.New("pipe must go from output to input")
+	// ErrWrongPortDirection is returned when a port has the wrong direction for the operation.
+	ErrWrongPortDirection = errors.New("port has wrong direction")
 	// ErrNoPortsInGroup is returned when a group has no ports.
 	ErrNoPortsInGroup = errors.New("no ports in group")
 	// ErrNoPortsInCollection is returned when a collection has no ports.

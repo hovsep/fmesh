@@ -30,24 +30,52 @@ type Port struct {
 	parentComponent ParentComponent
 }
 
-// New creates a new port with the specified name.
+// NewInput creates a new input port with the specified name.
 // Use this for advanced port creation when you need to set descriptions or labels.
-// For simple port creation, use component.AddInputs() or component.AddOutputs() instead.
+// For simple port creation, use component.AddInputs() instead.
 //
 // Example:
 //
-//	configPort := port.New("config").
+//	configPort := port.NewInput("config").
 //	    WithDescription("Configuration parameters").
 //	    AddLabel("required", "true").
 //	    AddLabel("format", "json")
-func New(name string) *Port {
+func NewInput(name string) *Port {
 	return &Port{
 		name:         name,
+		direction:    DirectionIn,
 		labels:       labels.NewCollection(nil),
 		chainableErr: nil,
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
 	}
+}
+
+// NewOutput creates a new output port with the specified name.
+// Use this for advanced port creation when you need to set descriptions or labels.
+// For simple port creation, use component.AddOutputs() instead.
+//
+// Example:
+//
+//	resultPort := port.NewOutput("result").
+//	    WithDescription("Processed result data").
+//	    AddLabel("format", "json")
+func NewOutput(name string) *Port {
+	return &Port{
+		name:         name,
+		direction:    DirectionOut,
+		labels:       labels.NewCollection(nil),
+		chainableErr: nil,
+		pipes:        NewGroup(),
+		signals:      signal.NewGroup(),
+	}
+}
+
+// New creates a new port with the specified name.
+// Deprecated: Use NewInput() or NewOutput() instead to make direction explicit.
+// This constructor creates a port with DirectionOut (output) by default.
+func New(name string) *Port {
+	return NewOutput(name)
 }
 
 // Name returns the port's name.
@@ -73,13 +101,6 @@ func (p *Port) IsInput() bool {
 // IsOutput returns true if the port is an output port.
 func (p *Port) IsOutput() bool {
 	return p.direction == DirectionOut
-}
-
-// SetDirection sets the port's direction. This is a framework-internal method.
-// Users should not call this directly - use component.AddInputs() / AddOutputs() or AttachInputPorts() / AttachOutputPorts() instead.
-func (p *Port) SetDirection(direction Direction) *Port {
-	p.direction = direction
-	return p
 }
 
 // Labels returns the port's labels collection.
