@@ -26,32 +26,32 @@ func Test_Fan(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				fm := fmesh.New("fan-out").WithComponents(
 					component.New("producer").
-						WithInputs("start").
-						WithOutputs("o1").
+						AddInputs("start").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							this.OutputByName("o1").PutSignals(signal.New(time.Now()))
 							return nil
 						}),
 
 					component.New("consumer1").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
 					component.New("consumer2").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 
 					component.New("consumer3").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							// Bypass received signal to output
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
@@ -92,31 +92,31 @@ func Test_Fan(t *testing.T) {
 			name: "fan-in (3 pipes coming into 1 destination port)",
 			setupFM: func() *fmesh.FMesh {
 				producer1 := component.New("producer1").
-					WithInputs("start").
-					WithOutputs("o1").
+					AddInputs("start").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
 				producer2 := component.New("producer2").
-					WithInputs("start").
-					WithOutputs("o1").
+					AddInputs("start").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 
 				producer3 := component.New("producer3").
-					WithInputs("start").
-					WithOutputs("o1").
+					AddInputs("start").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 						return nil
 					})
 				consumer := component.New("consumer").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						// Bypass
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))

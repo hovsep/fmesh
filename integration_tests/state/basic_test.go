@@ -25,8 +25,8 @@ func Test_State(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				producer := component.New("producer").
 					WithDescription("produces some signals").
-					WithInputs("demand_rate").
-					WithOutputs("signal_out").
+					AddInputs("demand_rate").
+					AddOutputs("signal_out").
 					WithActivationFunc(func(this *component.Component) error {
 						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
@@ -39,8 +39,8 @@ func Test_State(t *testing.T) {
 
 				counter := component.New("stateful_counter").
 					WithDescription("counts all observed signals and bypasses them down the stream").
-					WithInputs("bypass_in").
-					WithOutputs("bypass_out").
+					AddInputs("bypass_in").
+					AddOutputs("bypass_out").
 					WithInitialState(func(state component.State) {
 						state.Set("observed_signals_count", 0)
 					}).
@@ -61,8 +61,8 @@ func Test_State(t *testing.T) {
 
 				consumer := component.New("consumer").
 					WithDescription("consumes signals").
-					WithInputs("signal_in", "start").
-					WithOutputs("consumed_signals", "demand_rate").
+					AddInputs("signal_in", "start").
+					AddOutputs("consumed_signals", "demand_rate").
 					WithInitialState(func(state component.State) {
 						// Simulate uneven demand
 						state.Set("demand_shape", []int{3, 70, 22, 1350})

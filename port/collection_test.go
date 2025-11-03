@@ -94,7 +94,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: New("p1"),
+			want: NewOutput("p1"),
 		},
 		{
 			name:       "port with signals found",
@@ -102,7 +102,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p2",
 			},
-			want: New("p2").PutSignals(signal.New(12)),
+			want: NewOutput("p2").PutSignals(signal.New(12)),
 		},
 		{
 			name:       "port not found",
@@ -110,7 +110,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: New("").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
+			want: NewOutput("").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
 		},
 		{
 			name:       "with chain error",
@@ -118,7 +118,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: New("").WithChainableErr(errors.New("some error")),
+			want: NewOutput("").WithChainableErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {
@@ -145,7 +145,7 @@ func TestCollection_ByNames(t *testing.T) {
 			args: args{
 				names: []string{"p1"},
 			},
-			want: NewCollection().With(New("p1")),
+			want: NewCollection().With(NewOutput("p1")),
 		},
 		{
 			name:       "multiple ports found",

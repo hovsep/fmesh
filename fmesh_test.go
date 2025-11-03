@@ -234,8 +234,8 @@ func TestFMesh_Run(t *testing.T) {
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component simply puts a constant on o1").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							this.OutputByName("o1").PutSignals(signal.New(77))
 							return nil
@@ -261,7 +261,7 @@ func TestFMesh_Run(t *testing.T) {
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just returns an unexpected error").
-						WithInputs("i1").
+						AddInputs("i1").
 						WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
 						})),
@@ -287,30 +287,30 @@ func TestFMesh_Run(t *testing.T) {
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							this.OutputByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
 					component.New("c2").
 						WithDescription("This component receives a number from c1 and passes it to c4").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
 					component.New("c3").
 						WithDescription("This component returns an error, but the mesh is configured to ignore errors").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
 						}),
 					component.New("c4").
 						WithDescription("This component receives a number from c2 and panics").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							panic("no way")
 						}),
@@ -384,31 +384,31 @@ func TestFMesh_Run(t *testing.T) {
 				WithComponents(
 					component.New("c1").
 						WithDescription("This component just sends a number to c2").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							this.OutputByName("o1").PutSignals(signal.New(10))
 							return nil
 						}),
 					component.New("c2").
 						WithDescription("This component receives a number from c1 and passes it to c4").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						}),
 					component.New("c3").
 						WithDescription("This component returns an error, but the mesh is configured to ignore errors").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
 						}),
 					component.New("c4").
 						WithDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 
@@ -418,8 +418,8 @@ func TestFMesh_Run(t *testing.T) {
 						}),
 					component.New("c5").
 						WithDescription("This component receives a number from c4").
-						WithInputs("i1").
-						WithOutputs("o1").
+						AddInputs("i1").
+						AddOutputs("o1").
 						WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 						}),
@@ -599,15 +599,15 @@ func TestFMesh_runCycle(t *testing.T) {
 			fm: New("test").WithComponents(
 				component.New("c1").
 					WithDescription("").
-					WithInputs("i1").
+					AddInputs("i1").
 					WithActivationFunc(func(this *component.Component) error {
 						// No output
 						return nil
 					}),
 				component.New("c2").
 					WithDescription("").
-					WithInputs("i1").
-					WithOutputs("o1", "o2").
+					AddInputs("i1").
+					AddOutputs("o1", "o2").
 					WithActivationFunc(func(this *component.Component) error {
 						// Sets output
 						this.OutputByName("o1").PutSignals(signal.New(1))
@@ -621,7 +621,7 @@ func TestFMesh_runCycle(t *testing.T) {
 					}),
 				component.New("c3").
 					WithDescription("").
-					WithInputs("i1").
+					AddInputs("i1").
 					WithActivationFunc(func(this *component.Component) error {
 						// No output
 						return nil

@@ -83,8 +83,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component with activation func, but no inputs",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
@@ -98,7 +98,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "activated with error",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
+					AddInputs("i1").
 					WithActivationFunc(func(this *Component) error {
 						return errors.New("test error")
 					})
@@ -115,8 +115,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "activated without error",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					})
@@ -132,8 +132,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component panicked with error",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						panic(errors.New("oh shrimps"))
 					})
@@ -150,8 +150,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component panicked with string",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						panic("oh shrimps")
 					})
@@ -168,8 +168,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component is waiting for inputs",
 			getComponent: func() *Component {
 				c1 := New("c1").
-					WithInputs("i1", "i2").
-					WithOutputs("o1").
+					AddInputs("i1", "i2").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return NewErrWaitForInputs(false)
@@ -193,8 +193,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component is waiting for inputs and wants to keep them",
 			getComponent: func() *Component {
 				c1 := New("c1").
-					WithInputs("i1", "i2").
-					WithOutputs("o1").
+					AddInputs("i1", "i2").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return NewErrWaitForInputs(true)
@@ -240,8 +240,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "component not activated, logger must be empty",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
-					WithOutputs("o1").
+					AddInputs("i1").
+					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						this.Logger().Println("This must not be logged, as component must not activate")
 						return nil
@@ -260,7 +260,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			name: "activated with error, with logging",
 			getComponent: func() *Component {
 				c := New("c1").
-					WithInputs("i1").
+					AddInputs("i1").
 					WithActivationFunc(func(this *Component) error {
 						this.logger.Println("This line must be logged")
 						return errors.New("test error")

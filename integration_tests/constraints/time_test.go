@@ -23,8 +23,8 @@ func Test_TimeConstraint(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				ticker := component.New("ticker").
 					WithDescription("simple clock ticking for 10 seconds").
-					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
-					WithOutputs("tick_out").        // Next moment in discrete time (future)
+					AddInputs("tick_in", "start"). // Given moment in discrete time (presence)
+					AddOutputs("tick_out").        // Next moment in discrete time (future)
 					WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
@@ -63,8 +63,8 @@ func Test_TimeConstraint(t *testing.T) {
 			setupFM: func() *fmesh.FMesh {
 				ticker := component.New("ticker").
 					WithDescription("simple clock ticking for 3 seconds").
-					WithInputs("tick_in", "start"). // Given moment in discrete time (presence)
-					WithOutputs("tick_out").        // Next moment in discrete time (future)
+					AddInputs("tick_in", "start"). // Given moment in discrete time (presence)
+					AddOutputs("tick_out").        // Next moment in discrete time (future)
 					WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 

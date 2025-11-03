@@ -17,8 +17,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 			WithDescription("main processor").
 			AddLabel("env", "prod").
 			AddLabel("tier", "backend").
-			WithInputs("in1", "in2").
-			WithOutputs("out1", "out2").
+			AddInputs("in1", "in2").
+			AddOutputs("out1", "out2").
 			SetLabels(labels.Map{"reset": "true"}). // Reset all labels
 			AddLabel("final", "label")
 
@@ -67,8 +67,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 				"debug":    "true",
 				"trace-id": "abc123",
 			}).
-			WithInputs("tasks").
-			WithOutputs("results").
+			AddInputs("tasks").
+			AddOutputs("results").
 			WithoutLabels("debug", "trace-id") // Clean up temporary labels
 
 		assert.Equal(t, 2, c.Labels().Len(), "should have only permanent labels")
@@ -133,8 +133,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 				"env":  "dev",
 				"team": "platform",
 			}).
-			WithInputs("request").
-			WithOutputs("response", "errors").
+			AddInputs("request").
+			AddOutputs("response", "errors").
 			AddLabels(labels.Map{ // Add debug labels
 				"debug":    "true",
 				"verbose":  "true",

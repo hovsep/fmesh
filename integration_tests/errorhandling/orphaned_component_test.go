@@ -13,8 +13,8 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 	t.Run("orphaned component", func(t *testing.T) {
 		c1 := component.New("c1").
 			WithDescription("adds 2 to the input").
-			WithInputs("num").
-			WithOutputs("res").
+			AddInputs("num").
+			AddOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrNil()
 				this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
@@ -23,8 +23,8 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 
 		c2 := component.New("c2").
 			WithDescription("multiplies by 3").
-			WithInputs("num").
-			WithOutputs("res").
+			AddInputs("num").
+			AddOutputs("res").
 			WithActivationFunc(func(this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 				this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))

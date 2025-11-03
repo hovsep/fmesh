@@ -41,8 +41,8 @@ func TestNewGroup(t *testing.T) {
 			},
 			want: &Group{
 				chainableErr: nil,
-				ports: Ports{New("p1"),
-					New("p2")},
+				ports: Ports{NewOutput("p1"),
+					NewOutput("p2")},
 			},
 		},
 	}

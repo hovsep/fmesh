@@ -37,8 +37,8 @@ func Test_LabelTransformation(t *testing.T) {
 	t.Run("add namespace prefix to labels", func(t *testing.T) {
 		// Scenario: You want to namespace all labels to avoid conflicts
 		c := component.New("processor").
-			WithInputs("in").
-			WithOutputs("out").
+			AddInputs("in").
+			AddOutputs("out").
 			SetLabels(labels.Map{
 				"version": "1.0",
 				"type":    "transformer",
@@ -90,8 +90,8 @@ func Test_LabelTransformation(t *testing.T) {
 	t.Run("transform labels in mesh processing", func(t *testing.T) {
 		// Scenario: Process signals and normalize their labels during mesh execution
 		normalizer := component.New("normalizer").
-			WithInputs("in").
-			WithOutputs("out").
+			AddInputs("in").
+			AddOutputs("out").
 			WithActivationFunc(func(this *component.Component) error {
 				inPort := this.InputByName("in")
 				outPort := this.OutputByName("out")

@@ -22,15 +22,7 @@ type Component struct {
 	parentMesh   ParentMesh
 }
 
-// New creates a new component with the specified name.
-// This is the starting point for building any component in your F-Mesh.
-//
-// Example:
-//
-//	processor := component.New("data-processor").
-//	    WithDescription("Processes incoming data").
-//	    AddInputs("data", "config").
-//	    AddOutputs("result")
+// New creates a new component.
 func New(name string) *Component {
 	return &Component{
 		name:         name,
@@ -53,13 +45,7 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// WithDescription sets a human-readable description for the component.
-// Use this to document what your component does. Helpful for debugging and documentation.
-//
-// Example:
-//
-//	c := component.New("validator").
-//	    WithDescription("Validates user input against business rules")
+// WithDescription sets the component description and returns the component for chaining.
 func (c *Component) WithDescription(description string) *Component {
 	if c.HasChainableErr() {
 		return c

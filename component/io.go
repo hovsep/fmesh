@@ -34,14 +34,7 @@ func (c *Component) withOutputPorts(collection *port.Collection) *Component {
 	return c
 }
 
-// AddInputs creates and adds input ports by name (simple API).
-// Use this when you only need to specify port names.
-// For ports with descriptions, labels, or other configuration, use AttachInputPorts.
-//
-// Example:
-//
-//	c := component.New("processor").
-//	    AddInputs("data", "config", "metadata")
+// AddInputs creates input ports by name.
 func (c *Component) AddInputs(portNames ...string) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -55,20 +48,7 @@ func (c *Component) AddInputs(portNames ...string) *Component {
 	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
-// AttachInputPorts attaches pre-configured input port instances (advanced API).
-// Use this when you need to set descriptions, labels, or other port configuration.
-// Can be mixed with AddInputs for flexibility.
-//
-// Important: Ports must be created with port.NewInput(). Ports with wrong direction will cause an error.
-//
-// Example:
-//
-//	c := component.New("processor").
-//	    AttachInputPorts(
-//	        port.NewInput("request").
-//	            WithDescription("HTTP request data").
-//	            AddLabel("content-type", "json"),
-//	    )
+// AttachInputPorts attaches pre-configured input ports (must be created with port.NewInput).
 func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -85,14 +65,7 @@ func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
 	return c.withInputPorts(c.Inputs().With(ports...))
 }
 
-// AddOutputs creates and adds output ports by name (simple API).
-// Use this when you only need to specify port names.
-// For ports with descriptions, labels, or other configuration, use AttachOutputPorts.
-//
-// Example:
-//
-//	c := component.New("processor").
-//	    AddOutputs("result", "error", "logs")
+// AddOutputs creates output ports by name.
 func (c *Component) AddOutputs(portNames ...string) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -106,23 +79,7 @@ func (c *Component) AddOutputs(portNames ...string) *Component {
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
-// AttachOutputPorts attaches pre-configured output port instances (advanced API).
-// Use this when you need to set descriptions, labels, or other port configuration.
-// Can be mixed with AddOutputs for flexibility.
-//
-// Important: Ports must be created with port.NewOutput(). Ports with wrong direction will cause an error.
-//
-// Example:
-//
-//	c := component.New("processor").
-//	    AttachOutputPorts(
-//	        port.NewOutput("response").
-//	            WithDescription("HTTP response data").
-//	            AddLabel("status", "success"),
-//	        port.NewOutput("error").
-//	            WithDescription("Error details").
-//	            AddLabel("status", "error"),
-//	    )
+// AttachOutputPorts attaches pre-configured output ports (must be created with port.NewOutput).
 func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -137,26 +94,6 @@ func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
 	}
 
 	return c.withOutputPorts(c.Outputs().With(ports...))
-}
-
-// WithInputs is deprecated. Use AddInputs instead.
-func (c *Component) WithInputs(portNames ...string) *Component {
-	return c.AddInputs(portNames...)
-}
-
-// WithInputPorts is deprecated. Use AttachInputPorts instead.
-func (c *Component) WithInputPorts(ports ...*port.Port) *Component {
-	return c.AttachInputPorts(ports...)
-}
-
-// WithOutputs is deprecated. Use AddOutputs instead.
-func (c *Component) WithOutputs(portNames ...string) *Component {
-	return c.AddOutputs(portNames...)
-}
-
-// WithOutputPorts is deprecated. Use AttachOutputPorts instead.
-func (c *Component) WithOutputPorts(ports ...*port.Port) *Component {
-	return c.AttachOutputPorts(ports...)
 }
 
 // WithInputsIndexed creates multiple prefixed input ports.
@@ -197,14 +134,7 @@ func (c *Component) WithOutputsIndexed(prefix string, startIndex, endIndex int) 
 	return c.withOutputPorts(c.Outputs().With(ports...))
 }
 
-// Inputs returns the component's input ports collection.
-// Use this to access multiple ports or perform collection operations like filtering.
-//
-// Example (in activation function):
-//
-//	if !this.Inputs().AllHaveSignals() {
-//	    return nil // Wait for all inputs
-//	}
+// Inputs returns the component's input ports.
 func (c *Component) Inputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
@@ -213,14 +143,7 @@ func (c *Component) Inputs() *port.Collection {
 	return c.inputPorts
 }
 
-// Outputs returns the component's output ports collection.
-// Use this to access multiple output ports or perform collection operations.
-//
-// Example (in activation function):
-//
-//	this.Outputs().ForEach(func(p *port.Port) {
-//	    p.Clear() // Clear all outputs
-//	})
+// Outputs returns the component's output ports.
 func (c *Component) Outputs() *port.Collection {
 	if c.HasChainableErr() {
 		return port.NewCollection().WithChainableErr(c.ChainableErr())
@@ -229,40 +152,28 @@ func (c *Component) Outputs() *port.Collection {
 	return c.outputPorts
 }
 
-// OutputByName retrieves an output port by its name.
-// This is the most common way to write data from your component.
-//
-// Example (in activation function):
-//
-//	result := processData(input)
-//	this.OutputByName("result").PutSignals(signal.New(result))
+// OutputByName returns an output port by name.
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.New("").WithChainableErr(c.ChainableErr())
+		return port.NewOutput("").WithChainableErr(c.ChainableErr())
 	}
 	outputPort := c.Outputs().ByName(name)
 	if outputPort.HasChainableErr() {
 		c.WithChainableErr(outputPort.ChainableErr())
-		return port.New("").WithChainableErr(c.ChainableErr())
+		return port.NewOutput("").WithChainableErr(c.ChainableErr())
 	}
 	return outputPort
 }
 
-// InputByName retrieves an input port by its name.
-// This is the most common way to read data in your component's activation function.
-//
-// Example (in activation function):
-//
-//	data := this.InputByName("data").Signals().FirstPayloadOrDefault("").(string)
-//	config := this.InputByName("config").Signals().FirstPayloadOrNil()
+// InputByName returns an input port by name.
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.New("").WithChainableErr(c.ChainableErr())
+		return port.NewInput("").WithChainableErr(c.ChainableErr())
 	}
 	inputPort := c.Inputs().ByName(name)
 	if inputPort.HasChainableErr() {
 		c.WithChainableErr(inputPort.ChainableErr())
-		return port.New("").WithChainableErr(c.ChainableErr())
+		return port.NewInput("").WithChainableErr(c.ChainableErr())
 	}
 	return inputPort
 }
