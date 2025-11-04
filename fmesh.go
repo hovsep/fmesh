@@ -26,6 +26,7 @@ type FMesh struct {
 	components   *component.Collection
 	runtimeInfo  *RuntimeInfo
 	config       *Config
+	hooks        *Hooks
 }
 
 // New creates a new F-Mesh with default configuration.
@@ -40,6 +41,7 @@ func New(name string) *FMesh {
 			Duration: 0,
 		},
 		config: defaultConfig,
+		hooks:  NewHooks(),
 	}
 }
 
@@ -102,9 +104,21 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 	return fm
 }
 
+// SetupHooks configures hooks for the mesh using a closure.
+// All hook registration happens inside the provided function.
+func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
+	if fm.HasChainableErr() {
+		return fm
+	}
+	configure(fm.hooks)
+	return fm
+}
+
 // runCycle runs one activation cycle (tries to activate ready components).
 func (fm *FMesh) runCycle() {
 	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
+
+	fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle})
 
 	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
@@ -160,6 +174,8 @@ func (fm *FMesh) runCycle() {
 			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
 		})
 	}
+
+	fm.hooks.cycleEnd.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle})
 
 	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 }
@@ -250,7 +266,10 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	defer func() {
 		fm.runtimeInfo.StoppedAt = time.Now()
 		fm.runtimeInfo.Duration = time.Since(fm.runtimeInfo.StartedAt)
+		fm.hooks.afterRun.Trigger(fm)
 	}()
+
+	fm.hooks.beforeRun.Trigger(fm)
 
 	if fm.HasChainableErr() {
 		return fm.runtimeInfo, fm.ChainableErr()
