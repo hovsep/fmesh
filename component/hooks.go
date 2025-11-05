@@ -9,7 +9,6 @@ type ActivationContext struct {
 }
 
 // Hooks is a registry of all hook types for Component.
-// All hooks are stored in typed groups and executed in insertion order.
 type Hooks struct {
 	beforeActivation   *hook.Group[*Component]
 	onSuccess          *hook.Group[*ActivationContext]
@@ -19,7 +18,7 @@ type Hooks struct {
 	afterActivation    *hook.Group[*ActivationContext]
 }
 
-// NewHooks creates a new hooks registry with empty hook groups.
+// NewHooks creates a new hooks registry.
 func NewHooks() *Hooks {
 	return &Hooks{
 		beforeActivation:   hook.NewGroup[*Component](),
@@ -31,22 +30,22 @@ func NewHooks() *Hooks {
 	}
 }
 
-// BeforeActivation registers a hook to be called before the activation function runs.
+// BeforeActivation registers a hook called before activation.
 func (h *Hooks) BeforeActivation(fn func(*Component)) {
 	h.beforeActivation.Add(fn)
 }
 
-// OnSuccess registers a hook to be called when activation succeeds.
+// OnSuccess registers a hook called when activation succeeds.
 func (h *Hooks) OnSuccess(fn func(*ActivationContext)) {
 	h.onSuccess.Add(fn)
 }
 
-// OnError registers a hook to be called when activation returns an error.
+// OnError registers a hook called when activation returns an error.
 func (h *Hooks) OnError(fn func(*ActivationContext)) {
 	h.onError.Add(fn)
 }
 
-// OnPanic registers a hook to be called when activation panics.
+// OnPanic registers a hook called when activation panics.
 func (h *Hooks) OnPanic(fn func(*ActivationContext)) {
 	h.onPanic.Add(fn)
 }
