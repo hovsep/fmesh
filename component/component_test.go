@@ -64,6 +64,7 @@ func TestComponent_WithDescription(t *testing.T) {
 				outputPorts:  port.NewCollection(),
 				f:            nil,
 				state:        NewState(),
+				hooks:        NewHooks(),
 			},
 		},
 	}
