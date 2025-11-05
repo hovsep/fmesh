@@ -28,6 +28,7 @@ type Port struct {
 	signals         *signal.Group
 	pipes           *Group // Outbound pipes
 	parentComponent ParentComponent
+	hooks           *Hooks
 }
 
 // NewInput creates a new input port.
@@ -39,6 +40,7 @@ func NewInput(name string) *Port {
 		chainableErr: nil,
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
+		hooks:        NewHooks(),
 	}
 }
 
@@ -51,6 +53,7 @@ func NewOutput(name string) *Port {
 		chainableErr: nil,
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
+		hooks:        NewHooks(),
 	}
 }
 
@@ -182,7 +185,16 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withSignals(p.Signals().Add(signals...))
+
+	result := p.withSignals(p.Signals().Add(signals...))
+
+	// Trigger OnSignalsAdded hook
+	p.hooks.onSignalsAdded.Trigger(&PutContext{
+		Port:         p,
+		SignalsAdded: signals,
+	})
+
+	return result
 }
 
 // PutSignalGroups adds all signals from signal groups and returns the port for chaining.
@@ -210,7 +222,17 @@ func (p *Port) Clear() *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	return p.withSignals(signal.NewGroup())
+
+	signalsCleared := p.Signals().Len()
+	result := p.withSignals(signal.NewGroup())
+
+	// Trigger OnClear hook
+	p.hooks.onClear.Trigger(&ClearContext{
+		Port:           p,
+		SignalsCleared: signalsCleared,
+	})
+
+	return result
 }
 
 // Flush pushes signals to pipes and clears the port (output ports only).
@@ -269,6 +291,18 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 			return NewOutput("").WithChainableErr(p.ChainableErr())
 		}
 		p.pipes = p.pipes.Add(destPort)
+
+		// Trigger OnOutboundPipe hook on source port (this port)
+		p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
+			SourcePort:      p,
+			DestinationPort: destPort,
+		})
+
+		// Trigger OnInboundPipe hook on destination port
+		destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
+			DestinationPort: destPort,
+			SourcePort:      p,
+		})
 	}
 	return p
 }
@@ -375,5 +409,14 @@ func (p *Port) ParentComponent() ParentComponent {
 // WithParentComponent sets the parent component.
 func (p *Port) WithParentComponent(parentComponent ParentComponent) *Port {
 	p.parentComponent = parentComponent
+	return p
+}
+
+// SetupHooks configures port hooks using a closure and returns the port for chaining.
+func (p *Port) SetupHooks(configure func(*Hooks)) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+	configure(p.hooks)
 	return p
 }
