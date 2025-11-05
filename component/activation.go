@@ -3,6 +3,8 @@ package component
 import (
 	"errors"
 	"fmt"
+
+	"github.com/hovsep/fmesh/hook"
 )
 
 // WithActivationFunc sets the activation function and returns the component for chaining.
@@ -25,7 +27,7 @@ func (c *Component) hasActivationFunction() bool {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met.
-func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
+func (c *Component) MaybeActivate() *ActivationResult {
 	c.propagateChainErrors()
 
 	if c.HasChainableErr() {
@@ -33,62 +35,55 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 	}
 
 	if !c.hasActivationFunction() {
-		// Activation function is not set (maybe useful while the mesh is under development)
 		return c.newActivationResultNoFunction()
 	}
 
 	if !c.Inputs().AnyHasSignals() {
-		// No inputs set, stop here
 		return c.newActivationResultNoInput()
 	}
 
-	// Component will activate - trigger before hook
+	return c.activate()
+}
+
+// activate executes the activation function and manages hooks.
+func (c *Component) activate() (result *ActivationResult) {
 	c.hooks.beforeActivation.Trigger(c)
 
-	// Panic recovery with hook support
 	defer func() {
 		if r := recover(); r != nil {
-			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
-
-			// Trigger panic hook
-			ctx := &ActivationContext{
-				Component: c,
-				Result:    activationResult,
-			}
-			c.hooks.onPanic.Trigger(ctx)
-			c.hooks.afterActivation.Trigger(ctx)
+			result = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
+			c.triggerHooksForResult(result, c.hooks.onPanic)
+			c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result})
 		}
 	}()
 
-	// Invoke the activation func
 	err := c.f(c)
+	result = c.buildResultAndTriggerHook(err)
+	c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result})
 
-	// Build activation result and trigger outcome-specific hook
+	return result
+}
+
+// buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
+func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 	if errors.Is(err, errWaitingForInputs) {
-		activationResult = c.newActivationResultWaitingForInputs(err)
-		c.hooks.onWaitingForInputs.Trigger(&ActivationContext{
-			Component: c,
-			Result:    activationResult,
-		})
-	} else if err != nil {
-		activationResult = c.newActivationResultReturnedError(err)
-		c.hooks.onError.Trigger(&ActivationContext{
-			Component: c,
-			Result:    activationResult,
-		})
-	} else {
-		activationResult = c.newActivationResultOK()
-		c.hooks.onSuccess.Trigger(&ActivationContext{
-			Component: c,
-			Result:    activationResult,
-		})
+		result := c.newActivationResultWaitingForInputs(err)
+		c.triggerHooksForResult(result, c.hooks.onWaitingForInputs)
+		return result
 	}
 
-	// Always trigger after hook
-	c.hooks.afterActivation.Trigger(&ActivationContext{
-		Component: c,
-		Result:    activationResult,
-	})
+	if err != nil {
+		result := c.newActivationResultReturnedError(err)
+		c.triggerHooksForResult(result, c.hooks.onError)
+		return result
+	}
 
-	return activationResult
+	result := c.newActivationResultOK()
+	c.triggerHooksForResult(result, c.hooks.onSuccess)
+	return result
+}
+
+// triggerHooksForResult triggers the outcome-specific hook with the activation context.
+func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
+	hookGroup.Trigger(&ActivationContext{Component: c, Result: result})
 }
