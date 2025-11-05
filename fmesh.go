@@ -10,14 +10,6 @@ import (
 	"github.com/hovsep/fmesh/cycle"
 )
 
-// RuntimeInfo contains information about the runtime of the f-mesh.
-type RuntimeInfo struct {
-	Cycles    *cycle.Group
-	StartedAt time.Time
-	StoppedAt time.Time
-	Duration  time.Duration
-}
-
 // FMesh is the functional mesh.
 type FMesh struct {
 	name         string
