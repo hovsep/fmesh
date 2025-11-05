@@ -1,6 +1,23 @@
 package fmesh
 
-import "github.com/hovsep/fmesh/hook"
+import (
+	"github.com/hovsep/fmesh/cycle"
+	"github.com/hovsep/fmesh/hook"
+)
+
+// CycleContext provides context for cycle-level hooks.
+type CycleContext struct {
+	FMesh *FMesh
+	Cycle *cycle.Cycle
+}
+
+// Hooks is a registry of all hook types for FMesh.
+type Hooks struct {
+	beforeRun  *hook.Group[*FMesh]
+	afterRun   *hook.Group[*FMesh]
+	cycleBegin *hook.Group[*CycleContext]
+	cycleEnd   *hook.Group[*CycleContext]
+}
 
 // NewHooks creates a new hooks registry with empty hook groups.
 func NewHooks() *Hooks {
