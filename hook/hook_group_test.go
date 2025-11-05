@@ -1,4 +1,4 @@
-package fmesh
+package hook
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 
 func TestHookGroup_ChainableAPI(t *testing.T) {
 	t.Run("Add returns self for chaining", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 
 		result := hg.Add(func(i int) {}).Add(func(i int) {}).Add(func(i int) {})
 
@@ -19,7 +19,7 @@ func TestHookGroup_ChainableAPI(t *testing.T) {
 	})
 
 	t.Run("Add stops on chainable error", func(t *testing.T) {
-		hg := NewHookGroup[int]().WithChainableErr(errors.New("test error"))
+		hg := NewGroup[int]().WithChainableErr(errors.New("test error"))
 
 		hg.Add(func(i int) {})
 
@@ -29,7 +29,7 @@ func TestHookGroup_ChainableAPI(t *testing.T) {
 
 	t.Run("Trigger skips execution on chainable error", func(t *testing.T) {
 		executed := false
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {
 			executed = true
 		})
@@ -42,7 +42,7 @@ func TestHookGroup_ChainableAPI(t *testing.T) {
 	})
 
 	t.Run("WithChainableErr returns self", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		testErr := errors.New("test error")
 
 		result := hg.WithChainableErr(testErr)
@@ -52,7 +52,7 @@ func TestHookGroup_ChainableAPI(t *testing.T) {
 	})
 
 	t.Run("ChainableErr returns nil by default", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 
 		assert.False(t, hg.HasChainableErr())
 		assert.NoError(t, hg.ChainableErr())
@@ -62,7 +62,7 @@ func TestHookGroup_ChainableAPI(t *testing.T) {
 func TestHookGroup_BasicFunctionality(t *testing.T) {
 	t.Run("Add and Trigger hooks in order", func(t *testing.T) {
 		var log []int
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 
 		hg.Add(func(i int) { log = append(log, i*1) })
 		hg.Add(func(i int) { log = append(log, i*2) })
@@ -74,14 +74,14 @@ func TestHookGroup_BasicFunctionality(t *testing.T) {
 	})
 
 	t.Run("IsEmpty returns true for new group", func(t *testing.T) {
-		hg := NewHookGroup[string]()
+		hg := NewGroup[string]()
 
 		assert.True(t, hg.IsEmpty())
 		assert.Equal(t, 0, hg.Len())
 	})
 
 	t.Run("IsEmpty returns false after adding hooks", func(t *testing.T) {
-		hg := NewHookGroup[string]()
+		hg := NewGroup[string]()
 		hg.Add(func(s string) {})
 
 		assert.False(t, hg.IsEmpty())
@@ -94,7 +94,7 @@ func TestHookGroup_BasicFunctionality(t *testing.T) {
 		}
 
 		var captured int
-		hg := NewHookGroup[*TestStruct]()
+		hg := NewGroup[*TestStruct]()
 		hg.Add(func(ts *TestStruct) {
 			captured = ts.Value
 		})
@@ -107,7 +107,7 @@ func TestHookGroup_BasicFunctionality(t *testing.T) {
 
 func TestHookGroup_EdgeCases(t *testing.T) {
 	t.Run("Trigger with no hooks does nothing", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 
 		// Should not panic
 		hg.Trigger(42)
@@ -116,7 +116,7 @@ func TestHookGroup_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Multiple chainable errors overwrite previous", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		err1 := errors.New("first error")
 		err2 := errors.New("second error")
 
@@ -129,7 +129,7 @@ func TestHookGroup_EdgeCases(t *testing.T) {
 
 func TestHookGroup_AdditionalMethods(t *testing.T) {
 	t.Run("All returns all hooks", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {}).Add(func(i int) {}).Add(func(i int) {})
 
 		hooks, err := hg.All()
@@ -139,7 +139,7 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 	})
 
 	t.Run("All returns error on chainable error", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		testErr := errors.New("test error")
 		hg.WithChainableErr(testErr)
 
@@ -150,7 +150,7 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 	})
 
 	t.Run("Clear removes all hooks", func(t *testing.T) {
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {}).Add(func(i int) {}).Add(func(i int) {})
 
 		result := hg.Clear()
@@ -162,7 +162,7 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 
 	t.Run("Clear is chainable", func(t *testing.T) {
 		executed := false
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {}).Clear().Add(func(i int) {
 			executed = true
 		})
@@ -175,7 +175,7 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 
 	t.Run("ForEach operates on hook functions", func(t *testing.T) {
 		count := 0
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {}).Add(func(i int) {}).Add(func(i int) {})
 
 		result := hg.ForEach(func(hook func(int)) {
@@ -188,7 +188,7 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 
 	t.Run("ForEach skips on chainable error", func(t *testing.T) {
 		count := 0
-		hg := NewHookGroup[int]()
+		hg := NewGroup[int]()
 		hg.Add(func(i int) {}).WithChainableErr(errors.New("test error"))
 
 		hg.ForEach(func(hook func(int)) {

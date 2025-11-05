@@ -20,6 +20,7 @@ type Component struct {
 	logger       *log.Logger
 	state        State
 	parentMesh   ParentMesh
+	hooks        *Hooks
 }
 
 // New creates a new component.
@@ -32,6 +33,7 @@ func New(name string) *Component {
 		inputPorts:   port.NewCollection(),
 		outputPorts:  port.NewCollection(),
 		state:        NewState(),
+		hooks:        NewHooks(),
 	}
 }
 
@@ -195,5 +197,15 @@ func (c *Component) ParentMesh() ParentMesh {
 // WithParentMesh sets parent mesh.
 func (c *Component) WithParentMesh(parentMesh ParentMesh) *Component {
 	c.parentMesh = parentMesh
+	return c
+}
+
+// SetupHooks configures hooks for the component using a closure.
+// All hook registration happens inside the provided function.
+func (c *Component) SetupHooks(configure func(*Hooks)) *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	configure(c.hooks)
 	return c
 }

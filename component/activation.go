@@ -32,12 +32,6 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return NewActivationResult(c.Name()).WithChainableErr(c.ChainableErr())
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
-		}
-	}()
-
 	if !c.hasActivationFunction() {
 		// Activation function is not set (maybe useful while the mesh is under development)
 		return c.newActivationResultNoFunction()
@@ -48,16 +42,53 @@ func (c *Component) MaybeActivate() (activationResult *ActivationResult) {
 		return c.newActivationResultNoInput()
 	}
 
+	// Component will activate - trigger before hook
+	c.hooks.beforeActivation.Trigger(c)
+
+	// Panic recovery with hook support
+	defer func() {
+		if r := recover(); r != nil {
+			activationResult = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
+
+			// Trigger panic hook
+			ctx := &ActivationContext{
+				Component: c,
+				Result:    activationResult,
+			}
+			c.hooks.onPanic.Trigger(ctx)
+			c.hooks.afterActivation.Trigger(ctx)
+		}
+	}()
+
 	// Invoke the activation func
 	err := c.f(c)
 
+	// Build activation result and trigger outcome-specific hook
 	if errors.Is(err, errWaitingForInputs) {
-		return c.newActivationResultWaitingForInputs(err)
+		activationResult = c.newActivationResultWaitingForInputs(err)
+		c.hooks.onWaitingForInputs.Trigger(&ActivationContext{
+			Component: c,
+			Result:    activationResult,
+		})
+	} else if err != nil {
+		activationResult = c.newActivationResultReturnedError(err)
+		c.hooks.onError.Trigger(&ActivationContext{
+			Component: c,
+			Result:    activationResult,
+		})
+	} else {
+		activationResult = c.newActivationResultOK()
+		c.hooks.onSuccess.Trigger(&ActivationContext{
+			Component: c,
+			Result:    activationResult,
+		})
 	}
 
-	if err != nil {
-		return c.newActivationResultReturnedError(err)
-	}
+	// Always trigger after hook
+	c.hooks.afterActivation.Trigger(&ActivationContext{
+		Component: c,
+		Result:    activationResult,
+	})
 
-	return c.newActivationResultOK()
+	return activationResult
 }
