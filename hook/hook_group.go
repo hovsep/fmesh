@@ -1,3 +1,7 @@
+// Package hook provides a generic, type-safe hook system for F-Mesh.
+//
+// Hooks allow extending framework behavior at specific execution points without
+// modifying core logic. All hooks maintain insertion order and support chainable operations.
 package hook
 
 // Group is a generic ordered collection of hooks.
@@ -7,16 +11,12 @@ type Group[T any] struct {
 	chainableErr error
 }
 
-// NewGroup creates a new empty hook group.
+// NewGroup creates a new hook group.
 func NewGroup[T any]() *Group[T] {
-	return &Group[T]{
-		hooks:        make([]func(T), 0),
-		chainableErr: nil,
-	}
+	return &Group[T]{}
 }
 
 // Add appends a hook to the group, maintaining insertion order.
-// Returns the hook group for chaining.
 func (hg *Group[T]) Add(hook func(T)) *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
@@ -25,8 +25,7 @@ func (hg *Group[T]) Add(hook func(T)) *Group[T] {
 	return hg
 }
 
-// All returns all hooks in the group as a slice.
-// Useful for introspection or advanced use cases.
+// All returns all hooks in the group.
 func (hg *Group[T]) All() ([]func(T), error) {
 	if hg.HasChainableErr() {
 		return nil, hg.ChainableErr()
@@ -41,9 +40,8 @@ func (hg *Group[T]) Trigger(arg T) {
 	})
 }
 
-// ForEach applies an action to each hook function and returns the group for chaining.
-// Note: This operates on the hook functions themselves, not their results.
-// Most users should use Trigger() instead.
+// ForEach applies an action to each hook function.
+// Note: Most users should use Trigger() instead.
 func (hg *Group[T]) ForEach(action func(func(T))) *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
@@ -54,8 +52,7 @@ func (hg *Group[T]) ForEach(action func(func(T))) *Group[T] {
 	return hg
 }
 
-// Clear removes all hooks from the group and returns it for chaining.
-// Useful for testing or resetting hook state.
+// Clear removes all hooks from the group.
 func (hg *Group[T]) Clear() *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
@@ -74,18 +71,18 @@ func (hg *Group[T]) IsEmpty() bool {
 	return len(hg.hooks) == 0
 }
 
-// WithChainableErr sets a chainable error and returns the hook group.
+// WithChainableErr sets a chainable error.
 func (hg *Group[T]) WithChainableErr(err error) *Group[T] {
 	hg.chainableErr = err
 	return hg
 }
 
-// HasChainableErr returns true when a chainable error is set.
+// HasChainableErr returns true if a chainable error is set.
 func (hg *Group[T]) HasChainableErr() bool {
 	return hg.chainableErr != nil
 }
 
-// ChainableErr returns the chainable error.
+// ChainableErr returns the current chainable error.
 func (hg *Group[T]) ChainableErr() error {
 	return hg.chainableErr
 }

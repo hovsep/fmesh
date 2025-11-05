@@ -267,3 +267,179 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	assert.Contains(t, componentActivations, "c1")
 	assert.Contains(t, componentActivations, "c2")
 }
+
+func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
+	var executionLog []string
+
+	// Create three components with hooks
+	c1 := component.New("c1").
+		AddInputs("in").
+		AddOutputs("out").
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				executionLog = append(executionLog, "c1:before")
+			})
+			h.OnSuccess(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c1:success")
+			})
+			h.AfterActivation(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c1:after")
+			})
+		}).
+		WithActivationFunc(func(c *component.Component) error {
+			c.OutputByName("out").PutSignals(signal.New(1))
+			return nil
+		})
+
+	c2 := component.New("c2").
+		AddInputs("in").
+		AddOutputs("out").
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				executionLog = append(executionLog, "c2:before")
+			})
+			h.OnSuccess(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c2:success")
+			})
+			h.AfterActivation(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c2:after")
+			})
+		}).
+		WithActivationFunc(func(c *component.Component) error {
+			c.OutputByName("out").PutSignals(signal.New(2))
+			return nil
+		})
+
+	c3 := component.New("c3").
+		AddInputs("in").
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				executionLog = append(executionLog, "c3:before")
+			})
+			h.OnSuccess(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c3:success")
+			})
+			h.AfterActivation(func(ctx *component.ActivationContext) {
+				executionLog = append(executionLog, "c3:after")
+			})
+		}).
+		WithActivationFunc(func(c *component.Component) error {
+			return nil
+		})
+
+	// Wire: c1, c2 -> c3 (both feed into c3)
+	c1.OutputByName("out").PipeTo(c3.InputByName("in"))
+	c2.OutputByName("out").PipeTo(c3.InputByName("in"))
+
+	fm := fmesh.New("test").AddComponents(c1, c2, c3)
+	c1.InputByName("in").PutSignals(signal.New(0))
+	c2.InputByName("in").PutSignals(signal.New(0))
+
+	_, err := fm.Run()
+	require.NoError(t, err)
+
+	// Verify all components activated with proper hook order
+	// c1 and c2 fire in cycle 1, c3 in cycle 2
+	assert.Contains(t, executionLog, "c1:before")
+	assert.Contains(t, executionLog, "c1:success")
+	assert.Contains(t, executionLog, "c1:after")
+	assert.Contains(t, executionLog, "c2:before")
+	assert.Contains(t, executionLog, "c2:success")
+	assert.Contains(t, executionLog, "c2:after")
+	assert.Contains(t, executionLog, "c3:before")
+	assert.Contains(t, executionLog, "c3:success")
+	assert.Contains(t, executionLog, "c3:after")
+
+	// Each component's hooks execute in order: before -> success -> after
+	c1BeforeIdx := indexOf(executionLog, "c1:before")
+	c1SuccessIdx := indexOf(executionLog, "c1:success")
+	c1AfterIdx := indexOf(executionLog, "c1:after")
+	assert.True(t, c1BeforeIdx < c1SuccessIdx && c1SuccessIdx < c1AfterIdx)
+
+	c2BeforeIdx := indexOf(executionLog, "c2:before")
+	c2SuccessIdx := indexOf(executionLog, "c2:success")
+	c2AfterIdx := indexOf(executionLog, "c2:after")
+	assert.True(t, c2BeforeIdx < c2SuccessIdx && c2SuccessIdx < c2AfterIdx)
+}
+
+func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
+	var log []string
+
+	// Multiple SetupHooks calls should accumulate hooks
+	c := component.New("processor").
+		AddInputs("in").
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				log = append(log, "setup1")
+			})
+		}).
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				log = append(log, "setup2")
+			})
+		}).
+		SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) {
+				log = append(log, "setup3")
+			})
+		}).
+		WithActivationFunc(func(c *component.Component) error {
+			return nil
+		})
+
+	c.InputByName("in").PutSignals(signal.New(1))
+	c.MaybeActivate()
+
+	// All hooks from all SetupHooks calls should execute in order
+	assert.Equal(t, []string{"setup1", "setup2", "setup3"}, log)
+}
+
+func BenchmarkComponentHooks_Overhead(b *testing.B) {
+	// Measure overhead of hooks vs no hooks
+	b.Run("WithoutHooks", func(b *testing.B) {
+		c := component.New("processor").
+			AddInputs("in").
+			WithActivationFunc(func(c *component.Component) error {
+				return nil
+			})
+
+		c.InputByName("in").PutSignals(signal.New(1))
+
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			c.MaybeActivate()
+			c.InputByName("in").PutSignals(signal.New(1))
+		}
+	})
+
+	b.Run("WithHooks", func(b *testing.B) {
+		c := component.New("processor").
+			AddInputs("in").
+			SetupHooks(func(h *component.Hooks) {
+				h.BeforeActivation(func(c *component.Component) {})
+				h.OnSuccess(func(ctx *component.ActivationContext) {})
+				h.AfterActivation(func(ctx *component.ActivationContext) {})
+			}).
+			WithActivationFunc(func(c *component.Component) error {
+				return nil
+			})
+
+		c.InputByName("in").PutSignals(signal.New(1))
+
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			c.MaybeActivate()
+			c.InputByName("in").PutSignals(signal.New(1))
+		}
+	})
+}
+
+// Helper function for finding index in slice.
+func indexOf(slice []string, item string) int {
+	for i, v := range slice {
+		if v == item {
+			return i
+		}
+	}
+	return -1
+}

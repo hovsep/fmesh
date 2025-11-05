@@ -195,3 +195,87 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 	assert.Equal(t, actualCycles, endCount, "CycleEnd should fire once per cycle")
 	assert.Equal(t, beginCount, endCount, "Begin and End should fire same number of times")
 }
+
+func TestHooks_RunWithError(t *testing.T) {
+	var beforeRanFired bool
+	var afterRunFired bool
+
+	// Create mesh with chainable error (simulating Run() returning error)
+	fm := fmesh.New("test-mesh").
+		SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeRun(func(fm *fmesh.FMesh) {
+				beforeRanFired = true
+			})
+			h.AfterRun(func(fm *fmesh.FMesh) {
+				afterRunFired = true
+			})
+		}).
+		WithChainableErr(assert.AnError) // Force error
+
+	_, err := fm.Run()
+	require.Error(t, err)
+
+	// AfterRun still fires even on error (like defer)
+	assert.True(t, beforeRanFired)
+	assert.True(t, afterRunFired)
+}
+
+func TestHooks_EmptyMesh(t *testing.T) {
+	var beforeRunFired bool
+	var afterRunFired bool
+
+	// Create mesh with no components - this will error
+	fm := fmesh.New("empty-mesh").
+		SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeRun(func(fm *fmesh.FMesh) {
+				beforeRunFired = true
+			})
+			h.AfterRun(func(fm *fmesh.FMesh) {
+				afterRunFired = true
+			})
+		})
+
+	_, err := fm.Run()
+	require.Error(t, err) // Empty mesh returns error
+
+	// BeforeRun and AfterRun should still fire (defer behavior)
+	assert.True(t, beforeRunFired)
+	assert.True(t, afterRunFired)
+}
+
+func TestHooks_MultipleSetupCalls(t *testing.T) {
+	var log []string
+
+	c := component.New("test").
+		AddInputs("in").
+		WithActivationFunc(func(c *component.Component) error {
+			return nil
+		})
+
+	// Multiple SetupHooks calls should accumulate hooks
+	fm := fmesh.New("test-mesh").
+		AddComponents(c).
+		SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeRun(func(fm *fmesh.FMesh) {
+				log = append(log, "first-setup")
+			})
+		}).
+		SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeRun(func(fm *fmesh.FMesh) {
+				log = append(log, "second-setup")
+			})
+		}).
+		SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeRun(func(fm *fmesh.FMesh) {
+				log = append(log, "third-setup")
+			})
+		})
+
+	fm.ComponentByName("test").InputByName("in").PutSignals(signal.New(1))
+
+	_, err := fm.Run()
+	require.NoError(t, err)
+
+	// All hooks from all SetupHooks calls should execute in order
+	assert.Equal(t, []string{"first-setup", "second-setup", "third-setup"}, log)
+}
