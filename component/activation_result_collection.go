@@ -1,6 +1,8 @@
 package component
 
-import "sync"
+import (
+	"sync"
+)
 
 // ActivationResultCollection is a collection of activation results.
 // Thread-safe for concurrent access during activation.
