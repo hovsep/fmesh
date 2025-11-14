@@ -53,7 +53,6 @@ func TestPort_Signals(t *testing.T) {
 			assertions: func(t *testing.T, group *signal.Group) {
 				assert.Equal(t, 1, group.Len())
 				assert.Equal(t, 123, group.FirstPayloadOrNil())
-
 			},
 		},
 		{
