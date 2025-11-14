@@ -110,7 +110,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p3",
 			},
-			want: NewOutput("").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
+			want: NewOutput("n/a").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
 		},
 		{
 			name:       "with chain error",
@@ -118,7 +118,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "p1",
 			},
-			want: NewOutput("").WithChainableErr(errors.New("some error")),
+			want: NewOutput("n/a").WithChainableErr(errors.New("some error")),
 		},
 	}
 	for _, tt := range tests {

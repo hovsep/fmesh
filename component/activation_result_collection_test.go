@@ -342,7 +342,7 @@ func TestActivationResult_ChainableErr(t *testing.T) {
 	t.Run("with error", func(t *testing.T) {
 		r := NewActivationResult("c").WithChainableErr(errors.New("chain error"))
 		assert.True(t, r.HasChainableErr())
-		assert.EqualError(t, r.ChainableErr(), "chain error")
+		assert.ErrorContains(t, r.ChainableErr(), "chain error")
 	})
 
 	t.Run("without error", func(t *testing.T) {

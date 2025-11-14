@@ -128,11 +128,11 @@ func (g *Group) IsEmpty() bool {
 // First returns the first port in the group.
 func (g *Group) First() *Port {
 	if g.HasChainableErr() {
-		return NewOutput("").WithChainableErr(g.ChainableErr())
+		return NewOutput("n/a").WithChainableErr(g.ChainableErr())
 	}
 	if g.IsEmpty() {
 		g.WithChainableErr(ErrNoPortsInGroup)
-		return NewOutput("").WithChainableErr(g.ChainableErr())
+		return NewOutput("n/a").WithChainableErr(g.ChainableErr())
 	}
 	return g.ports[0]
 }
