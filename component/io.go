@@ -57,8 +57,7 @@ func (c *Component) AttachInputPorts(ports ...*port.Port) *Component {
 	// Validate that all ports are actually input ports
 	for _, p := range ports {
 		if !p.IsInput() {
-			c.WithChainableErr(fmt.Errorf("AttachInputPorts: port '%s' is not an input port (use port.NewInput): %w", p.Name(), port.ErrWrongPortDirection))
-			return New("").WithChainableErr(c.ChainableErr())
+			return c.WithChainableErr(fmt.Errorf("AttachInputPorts: port '%s' is not an input port (use port.NewInput): %w", p.Name(), port.ErrWrongPortDirection))
 		}
 	}
 
@@ -88,8 +87,7 @@ func (c *Component) AttachOutputPorts(ports ...*port.Port) *Component {
 	// Validate that all ports are actually output ports
 	for _, p := range ports {
 		if !p.IsOutput() {
-			c.WithChainableErr(fmt.Errorf("AttachOutputPorts: port '%s' is not an output port (use port.NewOutput): %w", p.Name(), port.ErrWrongPortDirection))
-			return New("").WithChainableErr(c.ChainableErr())
+			return c.WithChainableErr(fmt.Errorf("AttachOutputPorts: port '%s' is not an output port (use port.NewOutput): %w", p.Name(), port.ErrWrongPortDirection))
 		}
 	}
 
@@ -103,8 +101,7 @@ func (c *Component) AddIndexedInputs(prefix string, startIndex, endIndex int) *C
 	}
 
 	if startIndex > endIndex {
-		c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
-		return New("").WithChainableErr(c.ChainableErr())
+		return c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
 	}
 
 	ports := make([]*port.Port, 0, endIndex-startIndex+1)
@@ -122,8 +119,7 @@ func (c *Component) AddIndexedOutputs(prefix string, startIndex, endIndex int) *
 	}
 
 	if startIndex > endIndex {
-		c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
-		return New("").WithChainableErr(c.ChainableErr())
+		return c.WithChainableErr(port.ErrInvalidRangeForIndexedGroup)
 	}
 
 	ports := make([]*port.Port, 0, endIndex-startIndex+1)
@@ -186,8 +182,7 @@ func (c *Component) FlushOutputs() *Component {
 
 	ports, err := c.Outputs().All()
 	if err != nil {
-		c.WithChainableErr(err)
-		return New("").WithChainableErr(c.ChainableErr())
+		return c.WithChainableErr(err)
 	}
 	for _, out := range ports {
 		out = out.Flush()
