@@ -166,8 +166,7 @@ func (p *Port) withSignals(signalsGroup *signal.Group) *Port {
 	}
 
 	if signalsGroup.HasChainableErr() {
-		p.WithChainableErr(signalsGroup.ChainableErr())
-		return NewOutput("").WithChainableErr(p.ChainableErr())
+		return p.WithChainableErr(signalsGroup.ChainableErr())
 	}
 	p.signals = signalsGroup
 	return p
@@ -206,12 +205,11 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	for _, group := range signalGroups {
 		signals, err := group.All()
 		if err != nil {
-			p.WithChainableErr(err)
-			return NewOutput("").WithChainableErr(p.ChainableErr())
+			return p.WithChainableErr(err)
 		}
 		p.PutSignals(signals...)
 		if p.HasChainableErr() {
-			return NewOutput("").WithChainableErr(p.ChainableErr())
+			return p
 		}
 	}
 
@@ -243,8 +241,7 @@ func (p *Port) Flush() *Port {
 	}
 
 	if p.IsInput() {
-		p.WithChainableErr(fmt.Errorf("cannot flush input port '%s': only output ports can be flushed", p.Name()))
-		return NewOutput("").WithChainableErr(p.ChainableErr())
+		return p.WithChainableErr(fmt.Errorf("cannot flush input port '%s': only output ports can be flushed", p.Name()))
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
@@ -255,16 +252,14 @@ func (p *Port) Flush() *Port {
 
 	pipes, err := p.pipes.All()
 	if err != nil {
-		p.WithChainableErr(err)
-		return NewOutput("").WithChainableErr(p.ChainableErr())
+		return p.WithChainableErr(err)
 	}
 
 	for _, outboundPort := range pipes {
 		// Fan-Out
 		err = ForwardSignals(p, outboundPort)
 		if err != nil {
-			p.WithChainableErr(err)
-			return NewOutput("").WithChainableErr(p.ChainableErr())
+			return p.WithChainableErr(err)
 		}
 	}
 	return p.Clear()
@@ -288,8 +283,7 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
-			p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
-			return NewOutput("").WithChainableErr(p.ChainableErr())
+			return p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
 		}
 		p.pipes = p.pipes.Add(destPort)
 
