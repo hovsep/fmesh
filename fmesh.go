@@ -347,8 +347,15 @@ func (fm *FMesh) mustStop() (bool, error) {
 }
 
 // WithChainableErr returns f-mesh with an error.
+// The error is automatically joined with the mesh's name as context.
 func (fm *FMesh) WithChainableErr(err error) *FMesh {
-	fm.chainableErr = err
+	if err == nil {
+		fm.chainableErr = nil
+		return fm
+	}
+
+	contextErr := fmt.Errorf("error in fmesh '%s'", fm.name)
+	fm.chainableErr = errors.Join(contextErr, err)
 	return fm
 }
 

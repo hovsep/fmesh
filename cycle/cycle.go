@@ -2,6 +2,7 @@ package cycle
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hovsep/fmesh/component"
 )
@@ -91,8 +92,15 @@ func (c *Cycle) WithNumber(number int) *Cycle {
 }
 
 // WithChainableErr sets a chainable error and returns the cycle.
+// The error is automatically joined with the cycle's number as context.
 func (c *Cycle) WithChainableErr(err error) *Cycle {
-	c.chainableErr = err
+	if err == nil {
+		c.chainableErr = nil
+		return c
+	}
+
+	contextErr := fmt.Errorf("error in cycle #%d", c.number)
+	c.chainableErr = errors.Join(contextErr, err)
 	return c
 }
 
