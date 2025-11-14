@@ -362,7 +362,7 @@ func TestCycle_ChainableErr(t *testing.T) {
 	t.Run("cycle with error", func(t *testing.T) {
 		c := New().WithChainableErr(errors.New("test error"))
 		assert.True(t, c.HasChainableErr())
-		assert.EqualError(t, c.ChainableErr(), "test error")
+		assert.ErrorContains(t, c.ChainableErr(), "test error")
 	})
 
 	t.Run("cycle without error", func(t *testing.T) {

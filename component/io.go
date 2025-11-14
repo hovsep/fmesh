@@ -151,12 +151,12 @@ func (c *Component) Outputs() *port.Collection {
 // OutputByName returns an output port by name.
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.NewOutput("").WithChainableErr(c.ChainableErr())
+		return port.NewOutput("n/a").WithChainableErr(c.ChainableErr())
 	}
 	outputPort := c.Outputs().ByName(name)
 	if outputPort.HasChainableErr() {
 		c.WithChainableErr(outputPort.ChainableErr())
-		return port.NewOutput("").WithChainableErr(c.ChainableErr())
+		return outputPort.WithChainableErr(c.ChainableErr())
 	}
 	return outputPort
 }
@@ -164,12 +164,12 @@ func (c *Component) OutputByName(name string) *port.Port {
 // InputByName returns an input port by name.
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.NewInput("").WithChainableErr(c.ChainableErr())
+		return port.NewInput("n/a").WithChainableErr(c.ChainableErr())
 	}
 	inputPort := c.Inputs().ByName(name)
 	if inputPort.HasChainableErr() {
 		c.WithChainableErr(inputPort.ChainableErr())
-		return port.NewInput("").WithChainableErr(c.ChainableErr())
+		return inputPort.WithChainableErr(c.ChainableErr())
 	}
 	return inputPort
 }

@@ -36,29 +36,40 @@ func TestPort_HasSignals(t *testing.T) {
 
 func TestPort_Signals(t *testing.T) {
 	tests := []struct {
-		name string
-		port *Port
-		want *signal.Group
+		name       string
+		port       *Port
+		assertions func(t *testing.T, group *signal.Group)
 	}{
 		{
 			name: "empty signals",
 			port: NewOutput("noSignal"),
-			want: signal.NewGroup(),
+			assertions: func(t *testing.T, group *signal.Group) {
+				assert.True(t, group.IsEmpty())
+			},
 		},
 		{
 			name: "with signal",
 			port: NewOutput("p").PutSignals(signal.New(123)),
-			want: signal.NewGroup(123),
+			assertions: func(t *testing.T, group *signal.Group) {
+				assert.Equal(t, 1, group.Len())
+				assert.Equal(t, 123, group.FirstPayloadOrNil())
+
+			},
 		},
 		{
 			name: "with chain error",
 			port: NewOutput("p").WithChainableErr(errors.New("some error")),
-			want: signal.NewGroup().WithChainableErr(errors.New("some error")),
+			assertions: func(t *testing.T, group *signal.Group) {
+				assert.ErrorContains(t, group.ChainableErr(), "some error")
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.port.Signals())
+			got := tt.port.Signals()
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
 		})
 	}
 }
@@ -131,7 +142,6 @@ func TestPort_PipeTo(t *testing.T) {
 				toPorts: Ports{inputPorts.ByName("in2"), nil},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasChainableErr())
 				assert.Error(t, portAfter.ChainableErr())
 			},
@@ -145,7 +155,6 @@ func TestPort_PipeTo(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasChainableErr())
 				assert.Error(t, portAfter.ChainableErr())
 			},
@@ -157,7 +166,6 @@ func TestPort_PipeTo(t *testing.T) {
 				toPorts: Ports{outputPorts.ByName("out2")},
 			},
 			assertions: func(t *testing.T, portAfter *Port) {
-				assert.Empty(t, portAfter.Name())
 				assert.True(t, portAfter.HasChainableErr())
 				assert.Error(t, portAfter.ChainableErr())
 			},

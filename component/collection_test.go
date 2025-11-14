@@ -31,7 +31,7 @@ func TestCollection_ByName(t *testing.T) {
 			args: args{
 				name: "c3",
 			},
-			want: New("").WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
+			want: New("n/a").WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
 		},
 	}
 	for _, tt := range tests {
