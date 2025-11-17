@@ -6,8 +6,9 @@ package hook
 
 // Group is a generic ordered collection of hooks.
 // It maintains insertion order and supports triggering all hooks in sequence.
+// Hooks return errors for fail-fast behavior.
 type Group[T any] struct {
-	hooks        []func(T)
+	hooks        []func(T) error
 	chainableErr error
 }
 
@@ -17,7 +18,7 @@ func NewGroup[T any]() *Group[T] {
 }
 
 // Add appends a hook to the group, maintaining insertion order.
-func (hg *Group[T]) Add(hook func(T)) *Group[T] {
+func (hg *Group[T]) Add(hook func(T) error) *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
 	}
@@ -26,7 +27,7 @@ func (hg *Group[T]) Add(hook func(T)) *Group[T] {
 }
 
 // All returns all hooks in the group.
-func (hg *Group[T]) All() ([]func(T), error) {
+func (hg *Group[T]) All() ([]func(T) error, error) {
 	if hg.HasChainableErr() {
 		return nil, hg.ChainableErr()
 	}
@@ -34,15 +35,22 @@ func (hg *Group[T]) All() ([]func(T), error) {
 }
 
 // Trigger executes all hooks in order with the provided argument.
-func (hg *Group[T]) Trigger(arg T) {
-	hg.ForEach(func(hook func(T)) {
-		hook(arg)
-	})
+// Returns the first error encountered (fail-fast).
+func (hg *Group[T]) Trigger(arg T) error {
+	if hg.HasChainableErr() {
+		return hg.ChainableErr()
+	}
+	for _, hook := range hg.hooks {
+		if err := hook(arg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ForEach applies an action to each hook function.
 // Note: Most users should use Trigger() instead.
-func (hg *Group[T]) ForEach(action func(func(T))) *Group[T] {
+func (hg *Group[T]) ForEach(action func(func(T) error)) *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
 	}
@@ -57,7 +65,7 @@ func (hg *Group[T]) Clear() *Group[T] {
 	if hg.HasChainableErr() {
 		return hg
 	}
-	hg.hooks = make([]func(T), 0)
+	hg.hooks = make([]func(T) error, 0)
 	return hg
 }
 

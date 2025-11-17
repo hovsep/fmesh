@@ -1,12 +1,12 @@
 package hooks
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPortHooks_OnSignalsAdded(t *testing.T) {
@@ -16,10 +16,11 @@ func TestPortHooks_OnSignalsAdded(t *testing.T) {
 
 	p := port.NewInput("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				hookFired = true
 				portName = ctx.Port.Name()
 				signalsAdded = len(ctx.SignalsAdded)
+				return nil
 			})
 		})
 
@@ -37,9 +38,10 @@ func TestPortHooks_OnSignalsAdded_MultipleCalls(t *testing.T) {
 
 	p := port.NewOutput("result").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				callCount++
 				totalSignalsHistory = append(totalSignalsHistory, ctx.Port.Signals().Len())
+				return nil
 			})
 		})
 
@@ -57,9 +59,10 @@ func TestPortHooks_OnClear(t *testing.T) {
 
 	p := port.NewInput("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnClear(func(ctx *port.ClearContext) {
+			h.OnClear(func(ctx *port.ClearContext) error {
 				clearFired = true
 				signalsCleared = ctx.SignalsCleared
+				return nil
 			})
 		})
 
@@ -77,9 +80,10 @@ func TestPortHooks_OnClear_EmptyPort(t *testing.T) {
 
 	p := port.NewInput("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnClear(func(ctx *port.ClearContext) {
+			h.OnClear(func(ctx *port.ClearContext) error {
 				clearFired = true
 				signalsCleared = ctx.SignalsCleared
+				return nil
 			})
 		})
 
@@ -96,10 +100,11 @@ func TestPortHooks_OnOutboundPipe(t *testing.T) {
 
 	outPort := port.NewOutput("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) {
+			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundFired = true
 				sourceName = ctx.SourcePort.Name()
 				destName = ctx.DestinationPort.Name()
+				return nil
 			})
 		})
 
@@ -121,10 +126,11 @@ func TestPortHooks_OnInboundPipe(t *testing.T) {
 
 	inPort := port.NewInput("in").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnInboundPipe(func(ctx *port.InboundPipeContext) {
+			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
 				inboundFired = true
 				sourceName = ctx.SourcePort.Name()
 				destName = ctx.DestinationPort.Name()
+				return nil
 			})
 		})
 
@@ -141,15 +147,17 @@ func TestPortHooks_OnOutboundAndInbound_BothFire(t *testing.T) {
 
 	outPort := port.NewOutput("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) {
+			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundFired = true
+				return nil
 			})
 		})
 
 	inPort := port.NewInput("in").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnInboundPipe(func(ctx *port.InboundPipeContext) {
+			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
 				inboundFired = true
+				return nil
 			})
 		})
 
@@ -165,9 +173,10 @@ func TestPortHooks_OnOutboundPipe_MultipleDest(t *testing.T) {
 
 	outPort := port.NewOutput("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) {
+			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundCount++
 				destNames = append(destNames, ctx.DestinationPort.Name())
+				return nil
 			})
 		})
 
@@ -186,17 +195,21 @@ func TestPortHooks_MultipleHooksPerType(t *testing.T) {
 
 	p := port.NewInput("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				log = append(log, "put1")
+				return nil
 			})
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				log = append(log, "put2")
+				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) {
+			h.OnClear(func(ctx *port.ClearContext) error {
 				log = append(log, "clear1")
+				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) {
+			h.OnClear(func(ctx *port.ClearContext) error {
 				log = append(log, "clear2")
+				return nil
 			})
 		})
 
@@ -212,7 +225,7 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 
 	p := port.NewInput("sensor").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				portName = ctx.Port.Name()
 				// Access actual signal data
 				for _, sig := range ctx.SignalsAdded {
@@ -223,6 +236,7 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 						}
 					}
 				}
+				return nil
 			})
 		})
 
@@ -244,15 +258,17 @@ func TestPortHooks_PracticalVolumeMonitoring(t *testing.T) {
 
 	p := port.NewOutput("stream").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				metrics.TotalPuts++
 				metrics.TotalSignalsAdded += len(ctx.SignalsAdded)
 				if len(ctx.SignalsAdded) > metrics.MaxSignalsAtOnce {
 					metrics.MaxSignalsAtOnce = len(ctx.SignalsAdded)
 				}
+				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) {
+			h.OnClear(func(ctx *port.ClearContext) error {
 				metrics.TotalClears++
+				return nil
 			})
 		})
 
@@ -280,19 +296,21 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 
 	out1 := port.NewOutput("out1").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) {
+			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
 				destName := ctx.DestinationPort.Name()
 				topology.Connections[srcName] = append(topology.Connections[srcName], destName)
+				return nil
 			})
 		})
 
 	out2 := port.NewOutput("out2").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) {
+			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
 				destName := ctx.DestinationPort.Name()
 				topology.Connections[srcName] = append(topology.Connections[srcName], destName)
+				return nil
 			})
 		})
 
@@ -310,58 +328,33 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 
 func TestPortHooks_PracticalDataValidation(t *testing.T) {
 	// Practical example: Validate incoming data
-	type ValidationResult struct {
-		Valid   bool
-		Reason  string
-		Signals int
-	}
-	var result ValidationResult
-
 	p := port.NewInput("validated").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.PutContext) {
+			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				// Validate: must receive exactly 3 signals
 				if len(ctx.SignalsAdded) != 3 {
-					result = ValidationResult{
-						Valid:   false,
-						Reason:  "Expected 3 signals",
-						Signals: len(ctx.SignalsAdded),
-					}
-					return
+					return errors.New("expected 3 signals")
 				}
 
 				// Validate: all payloads must be positive integers
 				for _, sig := range ctx.SignalsAdded {
 					payload, err := sig.Payload()
 					if err != nil {
-						result = ValidationResult{
-							Valid:   false,
-							Reason:  "Payload error",
-							Signals: len(ctx.SignalsAdded),
-						}
-						return
+						return errors.New("payload error")
 					}
 					if val, ok := payload.(int); !ok || val <= 0 {
-						result = ValidationResult{
-							Valid:   false,
-							Reason:  "Invalid payload",
-							Signals: len(ctx.SignalsAdded),
-						}
-						return
+						return errors.New("invalid payload")
 					}
 				}
 
-				result = ValidationResult{
-					Valid:   true,
-					Reason:  "OK",
-					Signals: len(ctx.SignalsAdded),
-				}
+				return nil
 			})
 		})
 
 	p.PutSignals(signal.New(10), signal.New(20), signal.New(30))
+	assert.False(t, p.HasChainableErr())
 
-	require.True(t, result.Valid)
-	assert.Equal(t, "OK", result.Reason)
-	assert.Equal(t, 3, result.Signals)
+	p.PutSignals(signal.New(900))
+	assert.True(t, p.HasChainableErr())
+	assert.ErrorContains(t, p.ChainableErr(), "expected 3 signals")
 }

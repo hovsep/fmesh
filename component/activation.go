@@ -47,7 +47,11 @@ func (c *Component) MaybeActivate() *ActivationResult {
 
 // activate executes the activation function and manages hooks.
 func (c *Component) activate() (result *ActivationResult) {
-	c.hooks.beforeActivation.Trigger(c)
+	if err := c.hooks.beforeActivation.Trigger(c); err != nil {
+		result = NewActivationResult(c.Name()).WithChainableErr(fmt.Errorf("beforeActivation hook failed: %w", err))
+		c.triggerAfterActivation(result)
+		return result
+	}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -85,10 +89,24 @@ func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 
 // triggerHooksForResult triggers the outcome-specific hook with the activation context.
 func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
-	hookGroup.Trigger(&ActivationContext{Component: c, Result: result})
+	if err := hookGroup.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
+		// Hook error takes precedence, wrap the activation result error if any
+		if result.ActivationError() != nil {
+			result.WithActivationError(fmt.Errorf("%w (hook also failed: %w)", result.ActivationError(), err))
+		} else {
+			result.WithActivationError(fmt.Errorf("activation hook failed: %w", err))
+		}
+	}
 }
 
 // triggerAfterActivation triggers the AfterActivation hook.
 func (c *Component) triggerAfterActivation(result *ActivationResult) {
-	c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result})
+	if err := c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
+		// AfterActivation hook error is always appended to result
+		if result.ActivationError() != nil {
+			result.WithActivationError(fmt.Errorf("%w (afterActivation hook failed: %w)", result.ActivationError(), err))
+		} else {
+			result.WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
+		}
+	}
 }

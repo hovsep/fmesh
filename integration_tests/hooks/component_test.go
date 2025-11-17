@@ -25,13 +25,14 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 	c := component.New("validator").
 		AddInputs("data").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnError(func(ctx *component.ActivationContext) {
+			h.OnError(func(ctx *component.ActivationContext) error {
 				// Access the error and log it with component context
 				errorLog = ErrorLog{
 					ComponentName: ctx.Component.Name(),
 					ErrorMessage:  ctx.Result.ActivationError().Error(),
 					ErrorType:     "validation_error",
 				}
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -61,14 +62,15 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 		AddInputs("x", "y").
 		AddOutputs("result").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				// Access and validate output signals
 				resultPort := ctx.Component.OutputByName("result")
 				if resultPort.Signals().Len() == 1 {
-					val := resultPort.Signals().First().PayloadOrDefault(0).(int)
+					val := resultPort.Signals().FirstPayloadOrDefault(0).(int)
 					outputValue = val
 					outputIsValid = val >= 0 && val <= 100 // Valid range check
 				}
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -105,25 +107,29 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("success", "failure").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				metrics.SuccessCount++
 				// Track output signal counts
 				ctx.Component.Outputs().ForEach(func(p *port.Port) {
 					metrics.OutputSignalCounts[p.Name()] = p.Signals().Len()
 				})
+				return nil
 			})
 
-			h.OnError(func(ctx *component.ActivationContext) {
+			h.OnError(func(ctx *component.ActivationContext) error {
 				metrics.ErrorCount++
 				metrics.LastError = ctx.Result.ActivationError()
+				return nil
 			})
 
-			h.OnPanic(func(ctx *component.ActivationContext) {
+			h.OnPanic(func(ctx *component.ActivationContext) error {
 				metrics.PanicCount++
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				metrics.TotalActivations++
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -160,7 +166,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 		AddInputs("raw").
 		AddOutputs("enriched").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				// Access output and create enriched version with metadata
 				ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) {
 					enriched := map[string]interface{}{
@@ -171,6 +177,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 					}
 					enrichedOutput = append(enrichedOutput, enriched)
 				})
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -201,19 +208,21 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnError(func(ctx *component.ActivationContext) {
+			h.OnError(func(ctx *component.ActivationContext) error {
 				recoveryAttempted = true
 				// In a real scenario, you might log, alert, or trigger retry logic
 				// Note: Can't modify output in hook, but can trigger side effects
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				// Check if error occurred and no output was produced
 				if ctx.Result.IsError() &&
 					ctx.Component.OutputByName("out").Signals().IsEmpty() {
-					// Could trigger fallback mechanism, send to dead letter queue, etc.
+					// Could trigger fallback mechanism, send to dead letter queue, etc
 					fallbackValueProvided = true
 				}
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -247,21 +256,23 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 		AddInputs("numbers").
 		AddOutputs("sum").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				// Capture input state
 				trace.InputCount = c.InputByName("numbers").Signals().Len()
 				c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) {
 					trace.InputValues = append(trace.InputValues, s.PayloadOrDefault(0).(int))
 				})
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				// Capture output state
 				trace.OutputCount = ctx.Component.OutputByName("sum").Signals().Len()
 				if trace.OutputCount > 0 {
 					trace.OutputSum = ctx.Component.OutputByName("sum").
 						Signals().First().PayloadOrDefault(0).(int)
 				}
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
