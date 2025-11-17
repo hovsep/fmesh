@@ -189,10 +189,12 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	result := p.withSignals(p.Signals().Add(signals...))
 
 	// Trigger OnSignalsAdded hook
-	p.hooks.onSignalsAdded.Trigger(&PutContext{
+	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: signals,
-	})
+	}); err != nil {
+		return result.WithChainableErr(fmt.Errorf("onSignalsAdded hook failed: %w", err))
+	}
 
 	return result
 }
@@ -223,15 +225,19 @@ func (p *Port) Clear() *Port {
 	}
 
 	signalsCleared := p.Signals().Len()
-	result := p.withSignals(signal.NewGroup())
+	p.withSignals(signal.NewGroup())
 
 	// Trigger OnClear hook
-	p.hooks.onClear.Trigger(&ClearContext{
+	err := p.hooks.onClear.Trigger(&ClearContext{
 		Port:           p,
 		SignalsCleared: signalsCleared,
 	})
 
-	return result
+	if err != nil {
+		return p.WithChainableErr(fmt.Errorf("onClear hook failed: %w", err))
+	}
+
+	return p
 }
 
 // Flush pushes signals to pipes and clears the port (output ports only).
@@ -288,16 +294,24 @@ func (p *Port) PipeTo(destPorts ...*Port) *Port {
 		p.pipes = p.pipes.Add(destPort)
 
 		// Trigger OnOutboundPipe hook on source port (this port)
-		p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
+		err := p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
 			SourcePort:      p,
 			DestinationPort: destPort,
 		})
 
+		if err != nil {
+			return p.WithChainableErr(fmt.Errorf("onOutboundPipe hook failed: %w", err))
+		}
+
 		// Trigger OnInboundPipe hook on destination port
-		destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
+		err = destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
 			DestinationPort: destPort,
 			SourcePort:      p,
 		})
+
+		if err != nil {
+			return p.WithChainableErr(fmt.Errorf("onInboundPipe hook failed: %w", err))
+		}
 	}
 	return p
 }

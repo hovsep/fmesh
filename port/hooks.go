@@ -5,8 +5,8 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// PutContext provides context when signals are added to a port.
-type PutContext struct {
+// SignalsAddedContext provides context when signals are added to a port.
+type SignalsAddedContext struct {
 	Port         *Port
 	SignalsAdded []*signal.Signal
 }
@@ -31,7 +31,7 @@ type OutboundPipeContext struct {
 
 // Hooks is a registry of all hook types for Port.
 type Hooks struct {
-	onSignalsAdded *hook.Group[*PutContext]
+	onSignalsAdded *hook.Group[*SignalsAddedContext]
 	onClear        *hook.Group[*ClearContext]
 	onInboundPipe  *hook.Group[*InboundPipeContext]
 	onOutboundPipe *hook.Group[*OutboundPipeContext]
@@ -40,7 +40,7 @@ type Hooks struct {
 // NewHooks creates a new hooks registry.
 func NewHooks() *Hooks {
 	return &Hooks{
-		onSignalsAdded: hook.NewGroup[*PutContext](),
+		onSignalsAdded: hook.NewGroup[*SignalsAddedContext](),
 		onClear:        hook.NewGroup[*ClearContext](),
 		onInboundPipe:  hook.NewGroup[*InboundPipeContext](),
 		onOutboundPipe: hook.NewGroup[*OutboundPipeContext](),
@@ -48,21 +48,29 @@ func NewHooks() *Hooks {
 }
 
 // OnSignalsAdded registers a hook called when signals are added to the port.
-func (h *Hooks) OnSignalsAdded(fn func(*PutContext)) {
+// Returns the Hooks registry for method chaining.
+func (h *Hooks) OnSignalsAdded(fn func(*SignalsAddedContext) error) *Hooks {
 	h.onSignalsAdded.Add(fn)
+	return h
 }
 
 // OnClear registers a hook called when signals are cleared from the port.
-func (h *Hooks) OnClear(fn func(*ClearContext)) {
+// Returns the Hooks registry for method chaining.
+func (h *Hooks) OnClear(fn func(*ClearContext) error) *Hooks {
 	h.onClear.Add(fn)
+	return h
 }
 
 // OnInboundPipe registers a hook called when a pipe is created TO this port.
-func (h *Hooks) OnInboundPipe(fn func(*InboundPipeContext)) {
+// Returns the Hooks registry for method chaining.
+func (h *Hooks) OnInboundPipe(fn func(*InboundPipeContext) error) *Hooks {
 	h.onInboundPipe.Add(fn)
+	return h
 }
 
 // OnOutboundPipe registers a hook called when this port creates a pipe.
-func (h *Hooks) OnOutboundPipe(fn func(*OutboundPipeContext)) {
+// Returns the Hooks registry for method chaining.
+func (h *Hooks) OnOutboundPipe(fn func(*OutboundPipeContext) error) *Hooks {
 	h.onOutboundPipe.Add(fn)
+	return h
 }

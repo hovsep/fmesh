@@ -110,7 +110,12 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 func (fm *FMesh) runCycle() {
 	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
-	fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle})
+	if err := fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, fmt.Errorf("cycleBegin hook failed: %w", err)))
+		fm.WithChainableErr(newCycle.ChainableErr())
+		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		return
+	}
 
 	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
@@ -167,7 +172,10 @@ func (fm *FMesh) runCycle() {
 		})
 	}
 
-	fm.hooks.cycleEnd.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle})
+	if err := fm.hooks.cycleEnd.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, fmt.Errorf("cycleEnd hook failed: %w", err)))
+		fm.WithChainableErr(newCycle.ChainableErr())
+	}
 
 	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 }
@@ -258,10 +266,17 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	defer func() {
 		fm.runtimeInfo.StoppedAt = time.Now()
 		fm.runtimeInfo.Duration = time.Since(fm.runtimeInfo.StartedAt)
-		fm.hooks.afterRun.Trigger(fm)
+		if err := fm.hooks.afterRun.Trigger(fm); err != nil {
+			// Don't overwrite existing chainable error
+			if !fm.HasChainableErr() {
+				fm.WithChainableErr(fmt.Errorf("afterRun hook failed: %w", err))
+			}
+		}
 	}()
 
-	fm.hooks.beforeRun.Trigger(fm)
+	if err := fm.hooks.beforeRun.Trigger(fm); err != nil {
+		return fm.runtimeInfo, fmt.Errorf("beforeRun hook failed: %w", err)
+	}
 
 	if fm.HasChainableErr() {
 		return fm.runtimeInfo, fm.ChainableErr()

@@ -18,16 +18,19 @@ func TestComponentHooks_AllTypes(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				executionLog = append(executionLog, "before")
+				return nil
 			})
 
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "success")
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "after")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -51,14 +54,16 @@ func TestComponentHooks_OnError(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnError(func(ctx *component.ActivationContext) {
+			h.OnError(func(ctx *component.ActivationContext) error {
 				errorCaught = true
 				assert.Equal(t, component.ActivationCodeReturnedError, ctx.Result.Code())
-				assert.Error(t, ctx.Result.ActivationError())
+				require.Error(t, ctx.Result.ActivationError())
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				afterFired = true
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -81,14 +86,16 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnPanic(func(ctx *component.ActivationContext) {
+			h.OnPanic(func(ctx *component.ActivationContext) error {
 				panicCaught = true
 				assert.Equal(t, component.ActivationCodePanicked, ctx.Result.Code())
-				assert.Error(t, ctx.Result.ActivationError())
+				require.Error(t, ctx.Result.ActivationError())
+				return nil
 			})
 
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				afterFired = true
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -110,9 +117,10 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("data", "config").
 		SetupHooks(func(h *component.Hooks) {
-			h.OnWaitingForInputs(func(ctx *component.ActivationContext) {
+			h.OnWaitingForInputs(func(ctx *component.ActivationContext) error {
 				waitingCaught = true
 				assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -137,17 +145,21 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				log = append(log, "before1")
+				return nil
 			})
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				log = append(log, "before2")
+				return nil
 			})
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				log = append(log, "success1")
+				return nil
 			})
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				log = append(log, "success2")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -166,8 +178,9 @@ func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				beforeFired = true
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -188,8 +201,9 @@ func TestComponentHooks_NoHooksOnNoFunction(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				beforeFired = true
+				return nil
 			})
 		})
 	// No activation function
@@ -210,10 +224,11 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				componentName = ctx.Component.Name()
 				activationCode = ctx.Result.Code()
 				assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -235,8 +250,9 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				componentActivations = append(componentActivations, c.Name())
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -247,8 +263,9 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	c2 := component.New("c2").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				componentActivations = append(componentActivations, c.Name())
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -276,14 +293,17 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				executionLog = append(executionLog, "c1:before")
+				return nil
 			})
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c1:success")
+				return nil
 			})
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c1:after")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -295,14 +315,17 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				executionLog = append(executionLog, "c2:before")
+				return nil
 			})
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c2:success")
+				return nil
 			})
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c2:after")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -313,14 +336,17 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	c3 := component.New("c3").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				executionLog = append(executionLog, "c3:before")
+				return nil
 			})
-			h.OnSuccess(func(ctx *component.ActivationContext) {
+			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c3:success")
+				return nil
 			})
-			h.AfterActivation(func(ctx *component.ActivationContext) {
+			h.AfterActivation(func(ctx *component.ActivationContext) error {
 				executionLog = append(executionLog, "c3:after")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -369,18 +395,21 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 	c := component.New("processor").
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				log = append(log, "setup1")
+				return nil
 			})
 		}).
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				log = append(log, "setup2")
+				return nil
 			})
 		}).
 		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) {
+			h.BeforeActivation(func(c *component.Component) error {
 				log = append(log, "setup3")
+				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
@@ -416,9 +445,9 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 		c := component.New("processor").
 			AddInputs("in").
 			SetupHooks(func(h *component.Hooks) {
-				h.BeforeActivation(func(c *component.Component) {})
-				h.OnSuccess(func(ctx *component.ActivationContext) {})
-				h.AfterActivation(func(ctx *component.ActivationContext) {})
+				h.BeforeActivation(func(c *component.Component) error { return nil })
+				h.OnSuccess(func(ctx *component.ActivationContext) error { return nil })
+				h.AfterActivation(func(ctx *component.ActivationContext) error { return nil })
 			}).
 			WithActivationFunc(func(c *component.Component) error {
 				return nil

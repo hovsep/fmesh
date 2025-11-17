@@ -25,20 +25,24 @@ func TestHooks_AllTypes(t *testing.T) {
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				executionLog = append(executionLog, "beforeRun")
+				return nil
 			})
 
-			h.AfterRun(func(fm *fmesh.FMesh) {
+			h.AfterRun(func(fm *fmesh.FMesh) error {
 				executionLog = append(executionLog, "afterRun")
+				return nil
 			})
 
-			h.CycleBegin(func(ctx *fmesh.CycleContext) {
+			h.CycleBegin(func(ctx *fmesh.CycleContext) error {
 				executionLog = append(executionLog, "cycleBegin")
+				return nil
 			})
 
-			h.CycleEnd(func(ctx *fmesh.CycleContext) {
+			h.CycleEnd(func(ctx *fmesh.CycleContext) error {
 				executionLog = append(executionLog, "cycleEnd")
+				return nil
 			})
 		})
 
@@ -74,8 +78,9 @@ func TestHooks_CycleContext(t *testing.T) {
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.CycleBegin(func(ctx *fmesh.CycleContext) {
+			h.CycleBegin(func(ctx *fmesh.CycleContext) error {
 				cycleNumbers = append(cycleNumbers, ctx.Cycle.Number())
+				return nil
 			})
 		})
 
@@ -105,16 +110,19 @@ func TestHooks_MultipleHooksPerType(t *testing.T) {
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "first")
+				return nil
 			})
 
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "second")
+				return nil
 			})
 
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "third")
+				return nil
 			})
 		})
 
@@ -141,11 +149,12 @@ func TestHooks_ContextAccess(t *testing.T) {
 	fm := fmesh.New("my-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.CycleEnd(func(ctx *fmesh.CycleContext) {
+			h.CycleEnd(func(ctx *fmesh.CycleContext) error {
 				// Access both FMesh and Cycle through context
 				meshName = ctx.FMesh.Name()
 				cycleNumber = ctx.Cycle.Number()
 				activationCount = ctx.Cycle.ActivationResults().Len()
+				return nil
 			})
 		})
 
@@ -174,11 +183,13 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.CycleBegin(func(ctx *fmesh.CycleContext) {
+			h.CycleBegin(func(ctx *fmesh.CycleContext) error {
 				beginCount++
+				return nil
 			})
-			h.CycleEnd(func(ctx *fmesh.CycleContext) {
+			h.CycleEnd(func(ctx *fmesh.CycleContext) error {
 				endCount++
+				return nil
 			})
 		})
 
@@ -203,11 +214,13 @@ func TestHooks_RunWithError(t *testing.T) {
 	// Create mesh with chainable error (simulating Run() returning error)
 	fm := fmesh.New("test-mesh").
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				beforeRanFired = true
+				return nil
 			})
-			h.AfterRun(func(fm *fmesh.FMesh) {
+			h.AfterRun(func(fm *fmesh.FMesh) error {
 				afterRunFired = true
+				return nil
 			})
 		}).
 		WithChainableErr(assert.AnError) // Force error
@@ -227,11 +240,13 @@ func TestHooks_EmptyMesh(t *testing.T) {
 	// Create mesh with no components - this will error
 	fm := fmesh.New("empty-mesh").
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				beforeRunFired = true
+				return nil
 			})
-			h.AfterRun(func(fm *fmesh.FMesh) {
+			h.AfterRun(func(fm *fmesh.FMesh) error {
 				afterRunFired = true
+				return nil
 			})
 		})
 
@@ -256,18 +271,21 @@ func TestHooks_MultipleSetupCalls(t *testing.T) {
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "first-setup")
+				return nil
 			})
 		}).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "second-setup")
+				return nil
 			})
 		}).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) {
+			h.BeforeRun(func(fm *fmesh.FMesh) error {
 				log = append(log, "third-setup")
+				return nil
 			})
 		})
 
