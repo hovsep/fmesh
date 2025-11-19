@@ -2,6 +2,7 @@ package labels
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -965,6 +966,66 @@ func TestLabelsCollection_HasAnyFrom(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.a.HasAnyFrom(tt.b)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLabelsCollection_CountMatch(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection *Collection
+		pred       LabelPredicate
+		want       int
+	}{
+		{
+			name:       "empty collection → 0",
+			collection: NewCollection(nil),
+			pred:       func(_, _ string) bool { return true },
+			want:       0,
+		},
+		{
+			name: "match none",
+			collection: NewCollection(Map{
+				"a": "1",
+				"b": "2",
+			}),
+			pred: func(_, v string) bool { return v == "zzz" },
+			want: 0,
+		},
+		{
+			name: "match some",
+			collection: NewCollection(Map{
+				"a": "1",
+				"b": "2",
+				"c": "2",
+			}),
+			pred: func(_, v string) bool { return v == "2" },
+			want: 2,
+		},
+		{
+			name: "match all",
+			collection: NewCollection(Map{
+				"a": "x",
+				"b": "y",
+			}),
+			pred: func(_, _ string) bool { return true },
+			want: 2,
+		},
+		{
+			name: "chainable error → 0",
+			collection: NewCollection(Map{
+				"a": "1",
+				"b": "2",
+			}).WithChainableErr(fmt.Errorf("err")),
+			pred: func(_, _ string) bool { return true },
+			want: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.collection.CountMatch(tt.pred)
 			assert.Equal(t, tt.want, got)
 		})
 	}
