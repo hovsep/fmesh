@@ -258,16 +258,13 @@ func (c *Collection) HasAllFrom(other *Collection) bool {
 		return false
 	}
 
-	if len(other.labels) > len(c.labels) {
+	if other.Len() > c.Len() {
 		return false
 	}
 
-	for label := range other.labels {
-		if !c.Has(label) {
-			return false
-		}
-	}
-	return true
+	return other.AllMatch(func(label, _ string) bool {
+		return c.Has(label)
+	})
 }
 
 // HasAnyFrom returns true if the current collection contains at least one
@@ -282,12 +279,9 @@ func (c *Collection) HasAnyFrom(other *Collection) bool {
 		return false
 	}
 
-	for label := range other.labels {
-		if c.Has(label) {
-			return true
-		}
-	}
-	return false
+	return other.AnyMatch(func(label, _ string) bool {
+		return c.Has(label)
+	})
 }
 
 // ChainableErr returns the chainable error.
