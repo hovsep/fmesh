@@ -1017,7 +1017,7 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 			collection: NewCollection(Map{
 				"a": "1",
 				"b": "2",
-			}).WithChainableErr(fmt.Errorf("err")),
+			}).WithChainableErr(errors.New("err")),
 			pred: func(_, _ string) bool { return true },
 			want: 0,
 		},
