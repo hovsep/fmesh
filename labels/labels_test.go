@@ -2,7 +2,6 @@ package labels
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
