@@ -275,7 +275,7 @@ func (c *Collection) HasAnyFrom(other *Collection) bool {
 		return false
 	}
 
-	if len(other.labels) == 0 || len(c.labels) == 0 {
+	if other.IsEmpty() || c.IsEmpty() {
 		return false
 	}
 
