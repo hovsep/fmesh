@@ -29,7 +29,7 @@ func New(name string) *Component {
 	return &Component{
 		name:         name,
 		description:  "",
-		labels:       labels.NewCollection(nil),
+		labels:       labels.NewCollection(),
 		chainableErr: nil,
 		inputPorts:   port.NewCollection(),
 		outputPorts:  port.NewCollection(),
@@ -61,7 +61,7 @@ func (c *Component) WithDescription(description string) *Component {
 // Labels returns the component's labels collection.
 func (c *Component) Labels() *labels.Collection {
 	if c.HasChainableErr() {
-		return labels.NewCollection(nil).WithChainableErr(c.ChainableErr())
+		return labels.NewCollection().WithChainableErr(c.ChainableErr())
 	}
 	return c.labels
 }

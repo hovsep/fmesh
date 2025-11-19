@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 			want: &Signal{
 				payload:      []any{nil},
 				chainableErr: nil,
-				labels:       labels.NewCollection(nil),
+				labels:       labels.NewCollection(),
 			},
 		},
 		{
@@ -37,7 +37,7 @@ func TestNew(t *testing.T) {
 			want: &Signal{
 				payload:      []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
 				chainableErr: nil,
-				labels:       labels.NewCollection(nil),
+				labels:       labels.NewCollection(),
 			},
 		},
 	}

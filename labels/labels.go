@@ -11,13 +11,10 @@ type Collection struct {
 }
 
 // NewCollection creates an initialized collection.
-func NewCollection(labels Map) *Collection {
-	if labels == nil {
-		labels = make(Map)
-	}
+func NewCollection() *Collection {
 	return &Collection{
 		chainableErr: nil,
-		labels:       labels,
+		labels:       make(Map),
 	}
 }
 
@@ -215,28 +212,28 @@ func (c *Collection) ForEach(action func(label, value string)) *Collection {
 // Filter returns a new collection with labels that pass the predicate.
 func (c *Collection) Filter(pred LabelPredicate) *Collection {
 	if c.HasChainableErr() {
-		return NewCollection(nil).WithChainableErr(c.ChainableErr())
+		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
-	filtered := make(Map)
+	filtered := NewCollection()
 	for k, v := range c.labels {
 		if pred(k, v) {
-			filtered[k] = v
+			filtered.Add(k, v)
 		}
 	}
-	return NewCollection(filtered)
+	return filtered
 }
 
 // Map transforms labels and returns a new collection.
 func (c *Collection) Map(mapper LabelMapper) *Collection {
 	if c.HasChainableErr() {
-		return NewCollection(nil).WithChainableErr(c.ChainableErr())
+		return NewCollection().WithChainableErr(c.ChainableErr())
 	}
-	transformed := make(Map)
+	transformed := NewCollection()
 	for k, v := range c.labels {
 		newK, newV := mapper(k, v)
-		transformed[newK] = newV
+		transformed.Add(newK, newV)
 	}
-	return NewCollection(transformed)
+	return transformed
 }
 
 // WithChainableErr sets a chainable error and returns the collection.

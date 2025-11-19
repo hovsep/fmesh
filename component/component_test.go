@@ -58,7 +58,7 @@ func TestComponent_WithDescription(t *testing.T) {
 			want: &Component{
 				name:         "c1",
 				description:  "descr",
-				labels:       labels.NewCollection(nil),
+				labels:       labels.NewCollection(),
 				chainableErr: nil,
 				inputPorts:   port.NewCollection(),
 				outputPorts:  port.NewCollection(),
