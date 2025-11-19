@@ -250,6 +250,46 @@ func (c *Collection) HasChainableErr() bool {
 	return c.chainableErr != nil
 }
 
+// HasAllFrom returns true if the current collection contains all labels
+// present in the other collection (ignoring values). Returns false if either
+// collection has a chainable error.
+func (c *Collection) HasAllFrom(other *Collection) bool {
+	if c.HasChainableErr() || other.HasChainableErr() {
+		return false
+	}
+
+	if len(other.labels) > len(c.labels) {
+		return false
+	}
+
+	for label := range other.labels {
+		if !c.Has(label) {
+			return false
+		}
+	}
+	return true
+}
+
+// HasAnyFrom returns true if the current collection contains at least one
+// label present in the other collection (ignoring values). Returns false if
+// either collection has a chainable error.
+func (c *Collection) HasAnyFrom(other *Collection) bool {
+	if c.HasChainableErr() || other.HasChainableErr() {
+		return false
+	}
+
+	if len(other.labels) == 0 || len(c.labels) == 0 {
+		return false
+	}
+
+	for label := range other.labels {
+		if c.Has(label) {
+			return true
+		}
+	}
+	return false
+}
+
 // ChainableErr returns the chainable error.
 func (c *Collection) ChainableErr() error {
 	return c.chainableErr

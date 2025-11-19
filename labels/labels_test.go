@@ -863,3 +863,109 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 		})
 	}
 }
+
+func TestLabelsCollection_HasAllFrom(t *testing.T) {
+	tests := []struct {
+		name string
+		a    *Collection
+		b    *Collection
+		want bool
+	}{
+		{
+			name: "both empty → true",
+			a:    NewCollection(nil),
+			b:    NewCollection(nil),
+			want: true,
+		},
+		{
+			name: "a empty, b non-empty → false",
+			a:    NewCollection(nil),
+			b:    NewCollection(Map{"x": "1"}),
+			want: false,
+		},
+		{
+			name: "b empty → true",
+			a:    NewCollection(Map{"x": "1"}),
+			b:    NewCollection(nil),
+			want: true,
+		},
+		{
+			name: "a contains all labels from b",
+			a:    NewCollection(Map{"x": "1", "y": "2"}),
+			b:    NewCollection(Map{"x": "ignored"}),
+			want: true,
+		},
+		{
+			name: "a missing some labels from b",
+			a:    NewCollection(Map{"x": "1"}),
+			b:    NewCollection(Map{"x": "1", "y": "2"}),
+			want: false,
+		},
+		{
+			name: "len optimization: b larger than a → false",
+			a:    NewCollection(Map{"x": "1"}),
+			b:    NewCollection(Map{"x": "1", "y": "2", "z": "3"}),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.a.HasAllFrom(tt.b)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLabelsCollection_HasAnyFrom(t *testing.T) {
+	tests := []struct {
+		name string
+		a    *Collection
+		b    *Collection
+		want bool
+	}{
+		{
+			name: "both empty → false",
+			a:    NewCollection(nil),
+			b:    NewCollection(nil),
+			want: false,
+		},
+		{
+			name: "a empty → false",
+			a:    NewCollection(nil),
+			b:    NewCollection(Map{"x": "1"}),
+			want: false,
+		},
+		{
+			name: "b empty → false",
+			a:    NewCollection(Map{"x": "1"}),
+			b:    NewCollection(nil),
+			want: false,
+		},
+		{
+			name: "at least one label matches",
+			a:    NewCollection(Map{"x": "1", "y": "2"}),
+			b:    NewCollection(Map{"y": "ignored"}),
+			want: true,
+		},
+		{
+			name: "no labels match",
+			a:    NewCollection(Map{"x": "1"}),
+			b:    NewCollection(Map{"y": "2"}),
+			want: false,
+		},
+		{
+			name: "multiple labels, still one match",
+			a:    NewCollection(Map{"l1": "v1", "l2": "v2", "l3": "v3"}),
+			b:    NewCollection(Map{"l10": "v", "l2": "v"}),
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.a.HasAnyFrom(tt.b)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
