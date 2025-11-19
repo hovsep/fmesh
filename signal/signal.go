@@ -13,7 +13,7 @@ type Signal struct {
 
 // New creates a new signal with the given payload.
 // Signals carry data between components through ports.
-// The payload can be any type (string, int, struct, etc.).
+// The payload can be any type (string, int, struct, slice, nil, etc.).
 //
 // Example (in activation function):
 //
@@ -21,12 +21,12 @@ type Signal struct {
 //	this.OutputByName("count").PutSignals(signal.New(42))
 //
 //	// Send a complex value
-//	result := map[string]interface{}{"status": "ok", "data": items}
-//	this.OutputByName("result").PutSignals(signal.New(result))
+//	payload := map[string]interface{}{"status": "ok", "data": items}
+//	this.OutputByName("result").PutSignals(signal.New(payload))
 func New(payload any) *Signal {
 	return &Signal{
 		chainableErr: nil,
-		labels:       labels.NewCollection(nil),
+		labels:       labels.NewCollection(),
 		payload:      []any{payload},
 	}
 }
@@ -34,7 +34,7 @@ func New(payload any) *Signal {
 // Labels returns the signal's labels collection.
 func (s *Signal) Labels() *labels.Collection {
 	if s.HasChainableErr() {
-		return labels.NewCollection(nil).WithChainableErr(s.ChainableErr())
+		return labels.NewCollection().WithChainableErr(s.ChainableErr())
 	}
 	return s.labels
 }

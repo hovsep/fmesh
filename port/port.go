@@ -37,7 +37,7 @@ func NewInput(name string) *Port {
 	return &Port{
 		name:         name,
 		direction:    DirectionIn,
-		labels:       labels.NewCollection(nil),
+		labels:       labels.NewCollection(),
 		chainableErr: nil,
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
@@ -50,7 +50,7 @@ func NewOutput(name string) *Port {
 	return &Port{
 		name:         name,
 		direction:    DirectionOut,
-		labels:       labels.NewCollection(nil),
+		labels:       labels.NewCollection(),
 		chainableErr: nil,
 		pipes:        NewGroup(),
 		signals:      signal.NewGroup(),
@@ -86,7 +86,7 @@ func (p *Port) IsOutput() bool {
 // Labels returns the port's labels collection.
 func (p *Port) Labels() *labels.Collection {
 	if p.HasChainableErr() {
-		return labels.NewCollection(nil).WithChainableErr(p.ChainableErr())
+		return labels.NewCollection().WithChainableErr(p.ChainableErr())
 	}
 	return p.labels
 }

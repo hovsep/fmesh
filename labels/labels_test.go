@@ -12,41 +12,20 @@ import (
 func TestLabelsCollection_New(t *testing.T) {
 	tests := []struct {
 		name       string
-		labels     Map
 		assertions func(t *testing.T, lc *Collection)
 	}{
 		{
-			name:   "nil map creates empty collection",
-			labels: nil,
+			name: "empty collection",
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.NotNil(t, lc)
 				assert.Equal(t, 0, lc.Len())
 				assert.False(t, lc.HasChainableErr())
 			},
 		},
-		{
-			name:   "empty map",
-			labels: Map{},
-			assertions: func(t *testing.T, lc *Collection) {
-				assert.Equal(t, 0, lc.Len())
-			},
-		},
-		{
-			name: "with labels",
-			labels: Map{
-				"label1": "value1",
-				"label2": "value2",
-			},
-			assertions: func(t *testing.T, lc *Collection) {
-				assert.Equal(t, 2, lc.Len())
-				assert.True(t, lc.Has("label1"))
-				assert.True(t, lc.Has("label2"))
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewCollection(tt.labels)
+			got := NewCollection()
 			if tt.assertions != nil {
 				tt.assertions(t, got)
 			}
@@ -54,7 +33,7 @@ func TestLabelsCollection_New(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_With(t *testing.T) {
+func TestLabelsCollection_Add(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -64,7 +43,7 @@ func TestLabelsCollection_With(t *testing.T) {
 	}{
 		{
 			name:       "adding to empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			label:      "l1",
 			value:      "v1",
 			assertions: func(t *testing.T, result *Collection) {
@@ -75,12 +54,10 @@ func TestLabelsCollection_With(t *testing.T) {
 			},
 		},
 		{
-			name: "adding to non-empty collection",
-			collection: NewCollection(Map{
-				"l1": "v1",
-			}),
-			label: "l2",
-			value: "v2",
+			name:       "adding to non-empty collection",
+			collection: NewCollection().Add("l1", "v1"),
+			label:      "l2",
+			value:      "v2",
 			assertions: func(t *testing.T, result *Collection) {
 				assert.Equal(t, 2, result.Len())
 				assert.True(t, result.Has("l1"))
@@ -89,7 +66,7 @@ func TestLabelsCollection_With(t *testing.T) {
 		},
 		{
 			name: "overwriting existing label",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -120,7 +97,7 @@ func TestLabelsCollection_WithMany(t *testing.T) {
 	}{
 		{
 			name:       "adding to empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			labels: Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -131,7 +108,7 @@ func TestLabelsCollection_WithMany(t *testing.T) {
 		},
 		{
 			name: "adding to non-empty collection with overwrite",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -166,7 +143,7 @@ func TestLabelsCollection_Without(t *testing.T) {
 	}{
 		{
 			name: "label found and deleted",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -179,7 +156,7 @@ func TestLabelsCollection_Without(t *testing.T) {
 		},
 		{
 			name: "label not found is no-op",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -190,7 +167,7 @@ func TestLabelsCollection_Without(t *testing.T) {
 		},
 		{
 			name: "delete multiple labels",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -223,13 +200,13 @@ func TestLabelsCollection_Has(t *testing.T) {
 	}{
 		{
 			name:       "empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			label:      "l1",
 			want:       false,
 		},
 		{
 			name: "label exists",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -238,7 +215,7 @@ func TestLabelsCollection_Has(t *testing.T) {
 		},
 		{
 			name: "label does not exist",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -262,13 +239,13 @@ func TestLabelsCollection_HasAll(t *testing.T) {
 	}{
 		{
 			name:       "empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			labels:     []string{"l1"},
 			want:       false,
 		},
 		{
 			name: "has all labels",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -278,7 +255,7 @@ func TestLabelsCollection_HasAll(t *testing.T) {
 		},
 		{
 			name: "missing some labels",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -288,7 +265,7 @@ func TestLabelsCollection_HasAll(t *testing.T) {
 		},
 		{
 			name: "empty labels list returns true",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 			}),
 			labels: []string{},
@@ -311,13 +288,13 @@ func TestLabelsCollection_HasAny(t *testing.T) {
 	}{
 		{
 			name:       "empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			labels:     []string{"l1"},
 			want:       false,
 		},
 		{
 			name: "has at least one label",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -327,7 +304,7 @@ func TestLabelsCollection_HasAny(t *testing.T) {
 		},
 		{
 			name: "has none of the labels",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -337,7 +314,7 @@ func TestLabelsCollection_HasAny(t *testing.T) {
 		},
 		{
 			name: "empty labels list returns false",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 			}),
 			labels: []string{},
@@ -361,14 +338,14 @@ func TestLabelsCollection_Value(t *testing.T) {
 	}{
 		{
 			name:       "label not found in empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			label:      "l1",
 			want:       "",
 			wantErr:    true,
 		},
 		{
 			name: "label found",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -378,7 +355,7 @@ func TestLabelsCollection_Value(t *testing.T) {
 		},
 		{
 			name: "label not found in non-empty collection",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -412,14 +389,14 @@ func TestLabelsCollection_ValueOrDefault(t *testing.T) {
 	}{
 		{
 			name:         "label not found returns default",
-			collection:   NewCollection(nil),
+			collection:   NewCollection(),
 			label:        "l1",
 			defaultValue: "default",
 			want:         "default",
 		},
 		{
 			name: "label found returns actual value",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 			}),
 			label:        "l1",
@@ -445,14 +422,14 @@ func TestLabelsCollection_ValueIs(t *testing.T) {
 	}{
 		{
 			name:       "empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			label:      "l1",
 			value:      "v1",
 			want:       false,
 		},
 		{
 			name: "label exists with matching value",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -462,7 +439,7 @@ func TestLabelsCollection_ValueIs(t *testing.T) {
 		},
 		{
 			name: "label exists with different value",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -472,7 +449,7 @@ func TestLabelsCollection_ValueIs(t *testing.T) {
 		},
 		{
 			name: "label does not exist",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 			}),
 			label: "l2",
@@ -496,13 +473,13 @@ func TestLabelsCollection_AllMatch(t *testing.T) {
 	}{
 		{
 			name:       "empty collection returns true (vacuous truth)",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			predicate:  func(k, v string) bool { return false },
 			want:       true,
 		},
 		{
 			name: "all labels satisfy predicate",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -512,7 +489,7 @@ func TestLabelsCollection_AllMatch(t *testing.T) {
 		},
 		{
 			name: "not all labels satisfy predicate",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1":  "v1",
 				"l2":  "v2",
 				"xyz": "v3",
@@ -522,7 +499,7 @@ func TestLabelsCollection_AllMatch(t *testing.T) {
 		},
 		{
 			name: "all values non-empty",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -531,7 +508,7 @@ func TestLabelsCollection_AllMatch(t *testing.T) {
 		},
 		{
 			name: "some values empty",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "",
 			}),
@@ -555,13 +532,13 @@ func TestLabelsCollection_AnyMatch(t *testing.T) {
 	}{
 		{
 			name:       "empty collection returns false",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			predicate:  func(k, v string) bool { return true },
 			want:       false,
 		},
 		{
 			name: "at least one label satisfies predicate",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1":  "v1",
 				"l2":  "v2",
 				"xyz": "v3",
@@ -571,7 +548,7 @@ func TestLabelsCollection_AnyMatch(t *testing.T) {
 		},
 		{
 			name: "no labels satisfy predicate",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -581,7 +558,7 @@ func TestLabelsCollection_AnyMatch(t *testing.T) {
 		},
 		{
 			name: "at least one value matches condition",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"env":  "production",
 				"tier": "frontend",
 			}),
@@ -604,12 +581,12 @@ func TestLabelsCollection_Len(t *testing.T) {
 	}{
 		{
 			name:       "empty collection",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			want:       0,
 		},
 		{
 			name: "collection with labels",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 				"l3": "v3",
@@ -633,7 +610,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 	}{
 		{
 			name:       "empty collection returns empty",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			mapper:     func(k, v string) (string, string) { return strings.ToUpper(k), strings.ToUpper(v) },
 			assertions: func(t *testing.T, result *Collection) {
 				assert.Equal(t, 0, result.Len())
@@ -641,7 +618,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 		},
 		{
 			name: "transform keys to uppercase",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"env":  "production",
 				"tier": "backend",
 			}),
@@ -656,7 +633,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 		},
 		{
 			name: "transform values to uppercase",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"env":  "production",
 				"tier": "backend",
 			}),
@@ -669,7 +646,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 		},
 		{
 			name: "add prefix to keys",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"region": "us-east",
 				"zone":   "1a",
 			}),
@@ -683,7 +660,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 		},
 		{
 			name: "transform both keys and values",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"env":  "dev",
 				"tier": "frontend",
 			}),
@@ -698,7 +675,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 		},
 		{
 			name:       "with chainable error returns error collection",
-			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
+			collection: NewCollection().WithChainableErr(errors.New("test error")),
 			mapper:     func(k, v string) (string, string) { return k, v },
 			assertions: func(t *testing.T, result *Collection) {
 				assert.True(t, result.HasChainableErr())
@@ -725,7 +702,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 	}{
 		{
 			name:       "empty collection returns empty",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			predicate:  func(k, v string) bool { return true },
 			assertions: func(t *testing.T, result *Collection) {
 				assert.Equal(t, 0, result.Len())
@@ -733,7 +710,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 		},
 		{
 			name: "filter by key prefix",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"app.env":    "production",
 				"app.tier":   "backend",
 				"system.cpu": "high",
@@ -748,7 +725,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 		},
 		{
 			name: "filter by value",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"env1": "production",
 				"env2": "dev",
 				"env3": "production",
@@ -763,7 +740,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 		},
 		{
 			name: "no matches returns empty collection",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"l1": "v1",
 				"l2": "v2",
 			}),
@@ -785,7 +762,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 
 func TestLabelsCollection_Chainable(t *testing.T) {
 	t.Run("chaining multiple operations", func(t *testing.T) {
-		lc := NewCollection(nil).
+		lc := NewCollection().
 			Add("env", "dev").
 			Add("tier", "backend").
 			AddMany(Map{
@@ -802,7 +779,7 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 	})
 
 	t.Run("AddMany called twice merges labels", func(t *testing.T) {
-		lc := NewCollection(nil).
+		lc := NewCollection().
 			AddMany(Map{"k1": "v1", "k2": "v2"}).
 			AddMany(Map{"k3": "v3", "k2": "v2-updated"})
 
@@ -813,7 +790,7 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 	})
 
 	t.Run("Without called twice removes both sets", func(t *testing.T) {
-		lc := NewCollection(Map{"k1": "v1", "k2": "v2", "k3": "v3", "k4": "v4"}).
+		lc := NewCollection().AddMany(Map{"k1": "v1", "k2": "v2", "k3": "v3", "k4": "v4"}).
 			Without("k1", "k2").
 			Without("k3")
 
@@ -833,7 +810,7 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 	}{
 		{
 			name:       "mutating methods return self without changes when error present",
-			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
+			collection: NewCollection().WithChainableErr(errors.New("test error")),
 			assertions: func(t *testing.T, lc *Collection) {
 				result := lc.Add("test", "value")
 				assert.True(t, result.HasChainableErr())
@@ -842,7 +819,7 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 		},
 		{
 			name:       "query methods return safe defaults when error present",
-			collection: NewCollection(nil).WithChainableErr(errors.New("test error")),
+			collection: NewCollection().WithChainableErr(errors.New("test error")),
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.False(t, lc.Has("test"))
 				assert.Equal(t, 0, lc.Len())
@@ -873,38 +850,38 @@ func TestLabelsCollection_HasAllFrom(t *testing.T) {
 	}{
 		{
 			name: "both empty → true",
-			a:    NewCollection(nil),
-			b:    NewCollection(nil),
+			a:    NewCollection(),
+			b:    NewCollection(),
 			want: true,
 		},
 		{
 			name: "a empty, b non-empty → false",
-			a:    NewCollection(nil),
-			b:    NewCollection(Map{"x": "1"}),
+			a:    NewCollection(),
+			b:    NewCollection().AddMany(Map{"x": "1"}),
 			want: false,
 		},
 		{
 			name: "b empty → true",
-			a:    NewCollection(Map{"x": "1"}),
-			b:    NewCollection(nil),
+			a:    NewCollection().AddMany(Map{"x": "1"}),
+			b:    NewCollection(),
 			want: true,
 		},
 		{
 			name: "a contains all labels from b",
-			a:    NewCollection(Map{"x": "1", "y": "2"}),
-			b:    NewCollection(Map{"x": "ignored"}),
+			a:    NewCollection().AddMany(Map{"x": "1", "y": "2"}),
+			b:    NewCollection().AddMany(Map{"x": "ignored"}),
 			want: true,
 		},
 		{
 			name: "a missing some labels from b",
-			a:    NewCollection(Map{"x": "1"}),
-			b:    NewCollection(Map{"x": "1", "y": "2"}),
+			a:    NewCollection().AddMany(Map{"x": "1"}),
+			b:    NewCollection().AddMany(Map{"x": "1", "y": "2"}),
 			want: false,
 		},
 		{
 			name: "len optimization: b larger than a → false",
-			a:    NewCollection(Map{"x": "1"}),
-			b:    NewCollection(Map{"x": "1", "y": "2", "z": "3"}),
+			a:    NewCollection().AddMany(Map{"x": "1"}),
+			b:    NewCollection().AddMany(Map{"x": "1", "y": "2", "z": "3"}),
 			want: false,
 		},
 	}
@@ -926,38 +903,38 @@ func TestLabelsCollection_HasAnyFrom(t *testing.T) {
 	}{
 		{
 			name: "both empty → false",
-			a:    NewCollection(nil),
-			b:    NewCollection(nil),
+			a:    NewCollection(),
+			b:    NewCollection(),
 			want: false,
 		},
 		{
 			name: "a empty → false",
-			a:    NewCollection(nil),
-			b:    NewCollection(Map{"x": "1"}),
+			a:    NewCollection(),
+			b:    NewCollection().AddMany(Map{"x": "1"}),
 			want: false,
 		},
 		{
 			name: "b empty → false",
-			a:    NewCollection(Map{"x": "1"}),
-			b:    NewCollection(nil),
+			a:    NewCollection().AddMany(Map{"x": "1"}),
+			b:    NewCollection(),
 			want: false,
 		},
 		{
 			name: "at least one label matches",
-			a:    NewCollection(Map{"x": "1", "y": "2"}),
-			b:    NewCollection(Map{"y": "ignored"}),
+			a:    NewCollection().AddMany(Map{"x": "1", "y": "2"}),
+			b:    NewCollection().AddMany(Map{"y": "ignored"}),
 			want: true,
 		},
 		{
 			name: "no labels match",
-			a:    NewCollection(Map{"x": "1"}),
-			b:    NewCollection(Map{"y": "2"}),
+			a:    NewCollection().AddMany(Map{"x": "1"}),
+			b:    NewCollection().AddMany(Map{"y": "2"}),
 			want: false,
 		},
 		{
 			name: "multiple labels, still one match",
-			a:    NewCollection(Map{"l1": "v1", "l2": "v2", "l3": "v3"}),
-			b:    NewCollection(Map{"l10": "v", "l2": "v"}),
+			a:    NewCollection().AddMany(Map{"l1": "v1", "l2": "v2", "l3": "v3"}),
+			b:    NewCollection().AddMany(Map{"l10": "v", "l2": "v"}),
 			want: true,
 		},
 	}
@@ -979,13 +956,13 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 	}{
 		{
 			name:       "empty collection → 0",
-			collection: NewCollection(nil),
+			collection: NewCollection(),
 			pred:       func(_, _ string) bool { return true },
 			want:       0,
 		},
 		{
 			name: "match none",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"a": "1",
 				"b": "2",
 			}),
@@ -994,7 +971,7 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 		},
 		{
 			name: "match some",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"a": "1",
 				"b": "2",
 				"c": "2",
@@ -1004,7 +981,7 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 		},
 		{
 			name: "match all",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"a": "x",
 				"b": "y",
 			}),
@@ -1013,7 +990,7 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 		},
 		{
 			name: "chainable error → 0",
-			collection: NewCollection(Map{
+			collection: NewCollection().AddMany(Map{
 				"a": "1",
 				"b": "2",
 			}).WithChainableErr(errors.New("err")),
