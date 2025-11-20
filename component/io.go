@@ -198,8 +198,8 @@ func (c *Component) ClearInputs() *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.Inputs().ForEach(func(p *port.Port) {
-		p.Clear()
+	c.Inputs().ForEach(func(p *port.Port) error {
+		return p.Clear().ChainableErr()
 	})
 	return c
 }

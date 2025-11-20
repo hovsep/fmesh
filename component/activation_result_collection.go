@@ -196,14 +196,17 @@ func (c *ActivationResultCollection) CountMatch(predicate ActivationResultPredic
 }
 
 // ForEach applies the action to each activation result and returns the collection for chaining.
-func (c *ActivationResultCollection) ForEach(action func(*ActivationResult)) *ActivationResultCollection {
+func (c *ActivationResultCollection) ForEach(action func(*ActivationResult) error) *ActivationResultCollection {
 	if c.HasChainableErr() {
 		return c
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	for _, result := range c.activationResults {
-		action(result)
+		if err := action(result); err != nil {
+			c.chainableErr = err
+			return c
+		}
 	}
 	return c
 }

@@ -191,8 +191,8 @@ func TestCollection_ForEachClear(t *testing.T) {
 	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
 		ports := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
 		assert.True(t, ports.AllHaveSignals())
-		ports.ForEach(func(p *Port) {
-			p.Clear()
+		ports.ForEach(func(p *Port) error {
+			return p.Clear().ChainableErr()
 		})
 		assert.False(t, ports.AnyHasSignals())
 	})

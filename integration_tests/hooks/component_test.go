@@ -110,8 +110,9 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				metrics.SuccessCount++
 				// Track output signal counts
-				ctx.Component.Outputs().ForEach(func(p *port.Port) {
+				ctx.Component.Outputs().ForEach(func(p *port.Port) error {
 					metrics.OutputSignalCounts[p.Name()] = p.Signals().Len()
+					return nil
 				})
 				return nil
 			})
@@ -168,7 +169,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 		SetupHooks(func(h *component.Hooks) {
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				// Access output and create enriched version with metadata
-				ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) {
+				ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
 					enriched := map[string]interface{}{
 						"value":         s.PayloadOrDefault(nil),
 						"component":     ctx.Component.Name(),
@@ -176,15 +177,16 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 						"activation_ok": ctx.Result.Code() == component.ActivationCodeOK,
 					}
 					enrichedOutput = append(enrichedOutput, enriched)
+					return nil
 				})
 				return nil
 			})
 		}).
 		WithActivationFunc(func(c *component.Component) error {
 			// Process and output data
-			c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) {
+			c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
 				processed := s.PayloadOrDefault(0).(int) * 10
-				c.OutputByName("enriched").PutSignals(signal.New(processed))
+				return c.OutputByName("enriched").PutSignals(signal.New(processed)).ChainableErr()
 			})
 			return nil
 		})
@@ -259,8 +261,9 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 			h.BeforeActivation(func(c *component.Component) error {
 				// Capture input state
 				trace.InputCount = c.InputByName("numbers").Signals().Len()
-				c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) {
+				c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
 					trace.InputValues = append(trace.InputValues, s.PayloadOrDefault(0).(int))
+					return nil
 				})
 				return nil
 			})
@@ -277,8 +280,9 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 		}).
 		WithActivationFunc(func(c *component.Component) error {
 			sum := 0
-			c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) {
+			c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
 				sum += s.PayloadOrDefault(0).(int)
+				return nil
 			})
 			c.OutputByName("sum").PutSignals(signal.New(sum))
 			return nil

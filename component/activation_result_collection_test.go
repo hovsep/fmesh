@@ -217,8 +217,9 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 	t.Run("applies action to all results", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2, r3)
 		count := 0
-		collection.ForEach(func(r *ActivationResult) {
+		collection.ForEach(func(r *ActivationResult) error {
 			count++
+			return nil
 		})
 		assert.Equal(t, 3, count)
 	})
@@ -226,8 +227,9 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 	t.Run("empty collection", func(t *testing.T) {
 		collection := NewActivationResultCollection()
 		count := 0
-		collection.ForEach(func(r *ActivationResult) {
+		collection.ForEach(func(r *ActivationResult) error {
 			count++
+			return nil
 		})
 		assert.Equal(t, 0, count)
 	})

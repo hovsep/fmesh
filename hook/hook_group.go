@@ -18,29 +18,29 @@ func NewGroup[T any]() *Group[T] {
 }
 
 // Add appends a hook to the group, maintaining insertion order.
-func (hg *Group[T]) Add(hook func(T) error) *Group[T] {
-	if hg.HasChainableErr() {
-		return hg
+func (g *Group[T]) Add(hook func(T) error) *Group[T] {
+	if g.HasChainableErr() {
+		return g
 	}
-	hg.hooks = append(hg.hooks, hook)
-	return hg
+	g.hooks = append(g.hooks, hook)
+	return g
 }
 
 // All returns all hooks in the group.
-func (hg *Group[T]) All() ([]func(T) error, error) {
-	if hg.HasChainableErr() {
-		return nil, hg.ChainableErr()
+func (g *Group[T]) All() ([]func(T) error, error) {
+	if g.HasChainableErr() {
+		return nil, g.ChainableErr()
 	}
-	return hg.hooks, nil
+	return g.hooks, nil
 }
 
 // Trigger executes all hooks in order with the provided argument.
 // Returns the first error encountered (fail-fast).
-func (hg *Group[T]) Trigger(arg T) error {
-	if hg.HasChainableErr() {
-		return hg.ChainableErr()
+func (g *Group[T]) Trigger(arg T) error {
+	if g.HasChainableErr() {
+		return g.ChainableErr()
 	}
-	for _, hook := range hg.hooks {
+	for _, hook := range g.hooks {
 		if err := hook(arg); err != nil {
 			return err
 		}
@@ -50,47 +50,50 @@ func (hg *Group[T]) Trigger(arg T) error {
 
 // ForEach applies an action to each hook function.
 // Note: Most users should use Trigger() instead.
-func (hg *Group[T]) ForEach(action func(func(T) error)) *Group[T] {
-	if hg.HasChainableErr() {
-		return hg
+func (g *Group[T]) ForEach(action func(func(T) error) error) *Group[T] {
+	if g.HasChainableErr() {
+		return g
 	}
-	for _, hook := range hg.hooks {
-		action(hook)
+	for _, hook := range g.hooks {
+		if err := action(hook); err != nil {
+			g.chainableErr = err
+			return g
+		}
 	}
-	return hg
+	return g
 }
 
 // Clear removes all hooks from the group.
-func (hg *Group[T]) Clear() *Group[T] {
-	if hg.HasChainableErr() {
-		return hg
+func (g *Group[T]) Clear() *Group[T] {
+	if g.HasChainableErr() {
+		return g
 	}
-	hg.hooks = make([]func(T) error, 0)
-	return hg
+	g.hooks = make([]func(T) error, 0)
+	return g
 }
 
 // Len returns the number of hooks in the group.
-func (hg *Group[T]) Len() int {
-	return len(hg.hooks)
+func (g *Group[T]) Len() int {
+	return len(g.hooks)
 }
 
 // IsEmpty returns true if the group has no hooks.
-func (hg *Group[T]) IsEmpty() bool {
-	return len(hg.hooks) == 0
+func (g *Group[T]) IsEmpty() bool {
+	return len(g.hooks) == 0
 }
 
 // WithChainableErr sets a chainable error.
-func (hg *Group[T]) WithChainableErr(err error) *Group[T] {
-	hg.chainableErr = err
-	return hg
+func (g *Group[T]) WithChainableErr(err error) *Group[T] {
+	g.chainableErr = err
+	return g
 }
 
 // HasChainableErr returns true if a chainable error is set.
-func (hg *Group[T]) HasChainableErr() bool {
-	return hg.chainableErr != nil
+func (g *Group[T]) HasChainableErr() bool {
+	return g.chainableErr != nil
 }
 
 // ChainableErr returns the current chainable error.
-func (hg *Group[T]) ChainableErr() error {
-	return hg.chainableErr
+func (g *Group[T]) ChainableErr() error {
+	return g.chainableErr
 }

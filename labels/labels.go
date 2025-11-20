@@ -199,12 +199,15 @@ func (c *Collection) Clear() *Collection {
 }
 
 // ForEach applies the action to each label and returns the collection for chaining.
-func (c *Collection) ForEach(action func(label, value string)) *Collection {
+func (c *Collection) ForEach(action func(label, value string) error) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
 	for k, v := range c.labels {
-		action(k, v)
+		if err := action(k, v); err != nil {
+			c.chainableErr = err
+			return c
+		}
 	}
 	return c
 }

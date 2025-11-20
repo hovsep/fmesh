@@ -68,12 +68,15 @@ func (g *Group) Without(predicate Predicate) *Group {
 }
 
 // ForEach applies the action to each port and returns the group for chaining.
-func (g *Group) ForEach(action func(*Port)) *Group {
+func (g *Group) ForEach(action func(*Port) error) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
 	for _, p := range g.ports {
-		action(p)
+		if err := action(p); err != nil {
+			g.chainableErr = err
+			return g
+		}
 	}
 	return g
 }
@@ -115,8 +118,8 @@ func (g *Group) Len() int {
 
 // AddLabelsToAll adds labels to each port within the group and returns it.
 func (g *Group) AddLabelsToAll(labelMap labels.Map) *Group {
-	return g.ForEach(func(p *Port) {
-		p.AddLabels(labelMap)
+	return g.ForEach(func(p *Port) error {
+		return p.AddLabels(labelMap).ChainableErr()
 	})
 }
 

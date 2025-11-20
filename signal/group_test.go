@@ -341,8 +341,8 @@ func TestGroup_Signals(t *testing.T) {
 		},
 		{
 			name: "with labeled signals",
-			group: NewGroup(1, nil, 3).ForEach(func(s *Signal) {
-				s.SetLabels(labels.Map{"flavor": "banana"})
+			group: NewGroup(1, nil, 3).ForEach(func(s *Signal) error {
+				return s.SetLabels(labels.Map{"flavor": "banana"}).ChainableErr()
 			}),
 			want: Signals{
 				New(1).SetLabels(labels.Map{

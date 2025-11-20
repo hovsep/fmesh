@@ -250,12 +250,15 @@ func (g *Group) Len() int {
 
 // ForEach applies the action to each signal and returns the group for chaining.
 // This is primarily intended for label manipulation as signals are immutable data.
-func (g *Group) ForEach(action func(*Signal)) *Group {
+func (g *Group) ForEach(action func(*Signal) error) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
 	for _, s := range g.signals {
-		action(s)
+		if err := action(s); err != nil {
+			g.chainableErr = err
+			return g
+		}
 	}
 	return g
 }
