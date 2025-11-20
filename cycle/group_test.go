@@ -134,8 +134,9 @@ func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
 		count := 0
-		group.ForEach(func(c *Cycle) {
+		group.ForEach(func(c *Cycle) error {
 			count++
+			return nil
 		})
 		assert.Equal(t, 3, count)
 	})
@@ -143,8 +144,9 @@ func TestGroup_ForEach(t *testing.T) {
 	t.Run("empty group", func(t *testing.T) {
 		group := NewGroup()
 		count := 0
-		group.ForEach(func(c *Cycle) {
+		group.ForEach(func(c *Cycle) error {
 			count++
+			return nil
 		})
 		assert.Equal(t, 0, count)
 	})

@@ -223,8 +223,9 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 			return nil
 		})
 
-		result := hg.ForEach(func(hook func(int) error) {
+		result := hg.ForEach(func(hook func(int) error) error {
 			count++
+			return nil
 		})
 
 		assert.Equal(t, hg, result) // Returns self
@@ -238,8 +239,9 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 			return nil
 		}).WithChainableErr(errors.New("test error"))
 
-		hg.ForEach(func(hook func(int) error) {
+		hg.ForEach(func(hook func(int) error) error {
 			count++
+			return nil
 		})
 
 		assert.Equal(t, 0, count)

@@ -244,8 +244,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				})
 
 				// Apply operation to all ports (add processing label)
-				inputs.ForEach(func(p *port.Port) {
-					p.AddLabel("checked", "true")
+				inputs.ForEach(func(p *port.Port) error {
+					return p.AddLabel("checked", "true").ChainableErr()
 				})
 
 				highPriorityCount, _ := highPriorityPorts.All()
@@ -270,8 +270,9 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
 		// Verify all ports were labeled
-		c.Inputs().ForEach(func(p *port.Port) {
+		c.Inputs().ForEach(func(p *port.Port) error {
 			assert.True(t, p.Labels().Has("checked"))
+			return nil
 		})
 	})
 }

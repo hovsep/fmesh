@@ -37,12 +37,15 @@ func (g *Group) Without(predicate Predicate) *Group {
 }
 
 // ForEach applies the action to each cycle and returns the group for chaining.
-func (g *Group) ForEach(action func(*Cycle)) *Group {
+func (g *Group) ForEach(action func(*Cycle) error) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
 	for _, c := range g.cycles {
-		action(c)
+		if err := action(c); err != nil {
+			g.chainableErr = err
+			return g
+		}
 	}
 	return g
 }

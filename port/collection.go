@@ -120,12 +120,15 @@ func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 //	this.Inputs().ForEach(func(p *port.Port) {
 //	    p.AddLabel("processed", "true")
 //	})
-func (c *Collection) ForEach(action func(*Port)) *Collection {
+func (c *Collection) ForEach(action func(*Port) error) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
 	for _, p := range c.ports {
-		action(p)
+		if err := action(p); err != nil {
+			c.chainableErr = err
+			return c
+		}
 	}
 	return c
 }
@@ -389,8 +392,8 @@ func (c *Collection) Len() int {
 
 // WithParentComponent adds a parent component to all ports in a collection.
 func (c *Collection) WithParentComponent(component ParentComponent) *Collection {
-	return c.ForEach(func(p *Port) {
-		p.WithParentComponent(component)
+	return c.ForEach(func(p *Port) error {
+		return p.WithParentComponent(component).ChainableErr()
 	})
 }
 

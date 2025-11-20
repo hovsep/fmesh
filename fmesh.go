@@ -167,8 +167,9 @@ func (fm *FMesh) runCycle() {
 	}
 
 	if fm.IsDebug() {
-		newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) {
+		newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
 			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+			return nil
 		})
 	}
 

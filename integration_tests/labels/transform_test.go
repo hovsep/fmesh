@@ -97,18 +97,21 @@ func Test_LabelTransformation(t *testing.T) {
 				outPort := this.OutputByName("out")
 
 				// Process each signal and normalize its labels
-				inPort.Signals().ForEach(func(sig *signal.Signal) {
-					// Normalize label keys to lowercase
+				inPort.Signals().ForEach(func(sig *signal.Signal) error {
+					// Normalize label keys to the lowercase
 					normalizedLabels := sig.Labels().Map(func(k, v string) (string, string) {
 						return strings.ToLower(k), v
 					})
 
-					// Create new signal with normalized labels
+					// Create a new signal with normalized labels
 					labelsMap, err := normalizedLabels.All()
-					if err == nil {
-						newSignal := signal.New(sig.PayloadOrNil()).SetLabels(labelsMap)
-						outPort.PutSignals(newSignal)
+
+					if err != nil {
+						return err
 					}
+
+					newSignal := signal.New(sig.PayloadOrNil()).SetLabels(labelsMap)
+					return outPort.PutSignals(newSignal).ChainableErr()
 				})
 
 				return nil

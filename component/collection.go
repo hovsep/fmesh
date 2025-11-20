@@ -212,12 +212,15 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 }
 
 // ForEach applies the action to each component and returns the collection for chaining.
-func (c *Collection) ForEach(action func(*Component)) *Collection {
+func (c *Collection) ForEach(action func(*Component) error) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
 	for _, comp := range c.components {
-		action(comp)
+		if err := action(comp); err != nil {
+			c.chainableErr = err
+			return c
+		}
 	}
 	return c
 }
