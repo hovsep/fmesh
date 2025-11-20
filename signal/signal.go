@@ -130,14 +130,25 @@ func (s *Signal) Map(m Mapper) *Signal {
 	return m(s)
 }
 
-// MapPayload applies a mapper function to the payload and returns a new signal.
+// MapPayload applies a mapper function to the signal's payload and returns a new signal.
+// The new signal preserves all labels from the original signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
+
 	payload, err := s.Payload()
 	if err != nil {
 		return New(nil).WithChainableErr(err)
 	}
-	return New(mapper(payload))
+
+	// Create new signal with mapped payload
+	newSignal := New(mapper(payload))
+
+	// Copy labels using ForEach
+	s.labels.ForEach(func(label, value string) error {
+		return newSignal.AddLabel(label, value).ChainableErr()
+	})
+
+	return newSignal
 }

@@ -155,11 +155,11 @@ func TestSignal_MapPayload(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			signal: New(1),
+			signal: New(1).AddLabel("foo", "bar"),
 			mapperFunc: func(payload any) any {
 				return payload.(int) * 2
 			},
-			want: New(2),
+			want: New(2).AddLabel("foo", "bar"),
 		},
 		{
 			name:   "with chain error",
@@ -169,10 +169,24 @@ func TestSignal_MapPayload(t *testing.T) {
 			},
 			want: New(1).WithChainableErr(errors.New("some error in chain")),
 		},
+		{
+			name:   "payload nil",
+			signal: New(nil).AddLabel("x", "y"),
+			mapperFunc: func(payload any) any {
+				if payload == nil {
+					return "default"
+				}
+				return payload
+			},
+			want: New("default").AddLabel("x", "y"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.signal.MapPayload(tt.mapperFunc))
+			got := tt.signal.MapPayload(tt.mapperFunc)
+			assert.Equal(t, tt.want.PayloadOrNil(), got.PayloadOrNil())
+			assert.Equal(t, tt.want.Labels(), got.Labels())
+			assert.Equal(t, tt.want.HasChainableErr(), got.HasChainableErr())
 		})
 	}
 }
