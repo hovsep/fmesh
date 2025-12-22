@@ -259,7 +259,12 @@ func (fm *FMesh) clearInputs() {
 
 // Run executes the mesh, activating components until completion or cycle limit.
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
-	// Init runtime info as Run() may be called multiple times
+	// Fail immediately if mesh already has a chainable error (e.g., from the previous run)
+	if fm.HasChainableErr() {
+		return fm.runtimeInfo, fm.ChainableErr()
+	}
+
+	// Init runtime info
 	fm.runtimeInfo = NewRuntimeInfo()
 	fm.runtimeInfo.MarkStarted()
 
@@ -274,11 +279,8 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	}()
 
 	if err := fm.hooks.beforeRun.Trigger(fm); err != nil {
-		return fm.runtimeInfo, fmt.Errorf("beforeRun hook failed: %w", err)
-	}
-
-	if fm.HasChainableErr() {
-		return fm.runtimeInfo, fm.ChainableErr()
+		hookErr := fmt.Errorf("beforeRun hook failed: %w", err)
+		return fm.WithChainableErr(hookErr).runtimeInfo, hookErr
 	}
 
 	validationErr := fm.validate()
@@ -291,6 +293,9 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		fm.runCycle()
 
 		if mustStop, err := fm.mustStop(); mustStop {
+			if err != nil {
+				fm.WithChainableErr(err)
+			}
 			return fm.runtimeInfo, err
 		}
 

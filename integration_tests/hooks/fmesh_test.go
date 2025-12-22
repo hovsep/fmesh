@@ -208,14 +208,14 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 }
 
 func TestHooks_RunWithError(t *testing.T) {
-	var beforeRanFired bool
+	var beforeRunFired bool
 	var afterRunFired bool
 
-	// Create a mesh with chainable error (simulating Run() returning error)
+	// Create a mesh with chainable error (simulating previous failed run)
 	fm := fmesh.New("test-mesh").
 		SetupHooks(func(h *fmesh.Hooks) {
 			h.BeforeRun(func(fm *fmesh.FMesh) error {
-				beforeRanFired = true
+				beforeRunFired = true
 				return nil
 			})
 			h.AfterRun(func(fm *fmesh.FMesh) error {
@@ -223,14 +223,14 @@ func TestHooks_RunWithError(t *testing.T) {
 				return nil
 			})
 		}).
-		WithChainableErr(assert.AnError) // Force error
+		WithChainableErr(assert.AnError) // Simulate previous error
 
 	_, err := fm.Run()
 	require.Error(t, err)
 
-	// AfterRun still fires even on error (like "defer")
-	assert.True(t, beforeRanFired)
-	assert.True(t, afterRunFired)
+	// Run() returns immediately when mesh has chainable error - hooks don't fire
+	assert.False(t, beforeRunFired, "BeforeRun should not fire when mesh has chainable error")
+	assert.False(t, afterRunFired, "AfterRun should not fire when mesh has chainable error")
 }
 
 func TestHooks_EmptyMesh(t *testing.T) {

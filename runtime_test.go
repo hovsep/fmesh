@@ -115,38 +115,28 @@ func Test_MultipleRun(t *testing.T) {
 		t.Logf("Run 2: Producer output port has %d signals after run", producerOutputSignals2)
 	})
 
-	t.Run("error recovery - mesh usable after error in previous run", func(t *testing.T) {
+	t.Run("mesh cannot run again after error", func(t *testing.T) {
 		fm := NewWithConfig("test fm", &Config{
 			ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 			CyclesLimit:           0,
 		}).AddComponents(
 			component.New("faulty").
 				AddInputs("trigger").
-				AddOutputs("out").
-				WithInitialState(func(state component.State) {
-					state.Set("should_fail", true)
-				}).
 				WithActivationFunc(func(this *component.Component) error {
-					shouldFail := this.State().Get("should_fail").(bool)
-					if shouldFail {
-						return errors.New("intentional error")
-					}
-					this.OutputByName("out").PutSignals(signal.New("success"))
-					return nil
+					return errors.New("intentional error")
 				}))
 
 		fm.ComponentByName("faulty").InputByName("trigger").PutSignals(signal.New("go"))
 		runResult1, err := fm.Run()
 		require.Error(t, err, "Run 1 should fail")
 		assert.True(t, runResult1.Cycles.Last().HasActivationErrors())
-
-		fm.ComponentByName("faulty").State().Set("should_fail", false)
+		assert.True(t, fm.HasChainableErr(), "Mesh should have chainable error after failed run")
 
 		fm.ComponentByName("faulty").InputByName("trigger").PutSignals(signal.New("go"))
-		runResult2, err := fm.Run()
-		require.NoError(t, err, "Run 2 should succeed after fixing the error")
-		assert.Equal(t, 2, runResult2.Cycles.Len())
-		assert.False(t, runResult2.Cycles.Last().HasActivationErrors())
+		_, err = fm.Run()
+		require.Error(t, err, "Run 2 should fail immediately - mesh has chainable error")
+		assert.True(t, fm.HasChainableErr(), "Chainable error should persist")
+		assert.ErrorContains(t, err, "error in fmesh")
 	})
 
 	t.Run("different cycle counts per run", func(t *testing.T) {
@@ -233,38 +223,28 @@ func Test_MultipleRun(t *testing.T) {
 		assert.Equal(t, 6, cycleEndCount, "CycleEnd should be called 6 times (2 per run)")
 	})
 
-	t.Run("panic recovery - mesh usable after panic in previous run", func(t *testing.T) {
+	t.Run("mesh cannot run again after panic", func(t *testing.T) {
 		fm := NewWithConfig("test fm", &Config{
 			ErrorHandlingStrategy: StopOnFirstPanic,
 			CyclesLimit:           0,
 		}).AddComponents(
 			component.New("panicky").
 				AddInputs("trigger").
-				AddOutputs("out").
-				WithInitialState(func(state component.State) {
-					state.Set("should_panic", true)
-				}).
 				WithActivationFunc(func(this *component.Component) error {
-					shouldPanic := this.State().Get("should_panic").(bool)
-					if shouldPanic {
-						panic("intentional panic")
-					}
-					this.OutputByName("out").PutSignals(signal.New("success"))
-					return nil
+					panic("intentional panic")
 				}))
 
 		fm.ComponentByName("panicky").InputByName("trigger").PutSignals(signal.New("go"))
 		runResult1, err := fm.Run()
 		require.Error(t, err, "Run 1 should fail with panic")
 		assert.True(t, runResult1.Cycles.Last().HasActivationPanics())
-
-		fm.ComponentByName("panicky").State().Set("should_panic", false)
+		assert.True(t, fm.HasChainableErr(), "Mesh should have chainable error after panic")
 
 		fm.ComponentByName("panicky").InputByName("trigger").PutSignals(signal.New("go"))
-		runResult2, err := fm.Run()
-		require.NoError(t, err, "Run 2 should succeed after fixing the panic")
-		assert.Equal(t, 2, runResult2.Cycles.Len())
-		assert.False(t, runResult2.Cycles.Last().HasActivationPanics())
+		_, err = fm.Run()
+		require.Error(t, err, "Run 2 should fail immediately - mesh has chainable error")
+		assert.True(t, fm.HasChainableErr(), "Chainable error should persist")
+		assert.ErrorContains(t, err, "error in fmesh")
 	})
 
 	t.Run("runtime info duration is per run", func(t *testing.T) {
