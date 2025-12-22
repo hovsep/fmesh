@@ -790,6 +790,185 @@ func TestFMesh_mustStop(t *testing.T) {
 	}
 }
 
+func TestFMesh_validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		getFM   func() *FMesh
+		wantErr string
+	}{
+		{
+			name: "valid mesh",
+			getFM: func() *FMesh {
+				return New("fm").AddComponents(
+					component.New("c1").
+						AddInputs("in").
+						AddOutputs("out"),
+				)
+			},
+			wantErr: "",
+		},
+		{
+			name: "mesh has chainable error",
+			getFM: func() *FMesh {
+				return New("fm").
+					WithChainableErr(errors.New("mesh error")).
+					AddComponents(
+						component.New("c1").
+							AddInputs("in").
+							AddOutputs("out"),
+					)
+			},
+			wantErr: "failed to validate fmesh",
+		},
+		{
+			name: "component has chainable error",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				c := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+				fm.AddComponents(c)
+				// Set error after adding to mesh
+				c.WithChainableErr(errors.New("component error"))
+				return fm
+			},
+			wantErr: "failed to validate component c1",
+		},
+		{
+			name: "component not registered in mesh",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				c := component.New("c1").AddInputs("in").AddOutputs("out")
+				// Add component directly without using AddComponents
+				fm.components = fm.components.Add(c)
+				// Don't set parent mesh - this is invalid
+				return fm
+			},
+			wantErr: "component c1 his not registered in the mesh",
+		},
+		{
+			name: "component has invalid parent mesh",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				otherFm := New("other")
+				c := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out").
+					WithParentMesh(otherFm)
+				fm.components = fm.components.Add(c)
+				return fm
+			},
+			wantErr: "component c1 has invalid parent mesh",
+		},
+		{
+			name: "port has chainable error",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				c := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+				fm.AddComponents(c)
+				// Inject error into port after adding
+				c.OutputByName("out").WithChainableErr(errors.New("port error"))
+				return fm
+			},
+			wantErr: "failed to validate port out in component c1",
+		},
+		{
+			name: "pipe leads to unregistered port",
+			getFM: func() *FMesh {
+				c1 := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+
+				// Create pipe but don't register destination component
+				unregisteredPort := port.NewInput("orphan")
+				c1.OutputByName("out").PipeTo(unregisteredPort)
+
+				return New("fm").AddComponents(c1)
+			},
+			wantErr: "pipe leads to unregistered port orphan in component c1",
+		},
+		{
+			name: "pipe leads to absent component",
+			getFM: func() *FMesh {
+				c1 := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+				c2 := component.New("c2").AddInputs("in")
+
+				// Create pipe to component that won't be added to mesh
+				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
+
+				return New("fm").AddComponents(c1) // Only add c1, not c2
+			},
+			wantErr: "pipe leads to absent component c2",
+		},
+		{
+			name: "pipe leads to unregistered component (no parent mesh)",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				c1 := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+				c2 := component.New("c2").AddInputs("in")
+
+				// Pipe between components
+				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
+
+				// Add c1 properly
+				fm.AddComponents(c1)
+
+				// Add c2 but without setting parent mesh
+				fm.components = fm.components.Add(c2)
+
+				return fm
+			},
+			wantErr: "pipe leads to unregistered component c2",
+		},
+		{
+			name: "pipe leads to component with invalid parent mesh",
+			getFM: func() *FMesh {
+				fm := New("fm")
+				otherFm := New("other")
+				c1 := component.New("c1").
+					AddInputs("in").
+					AddOutputs("out")
+				c2 := component.New("c2").
+					AddInputs("in").
+					WithParentMesh(otherFm) // Wrong parent mesh
+
+				// Pipe between components
+				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
+
+				// Add c1 properly
+				fm.AddComponents(c1)
+
+				// Add c2 but with wrong parent mesh
+				fm.components = fm.components.Add(c2)
+
+				return fm
+			},
+			// Validation iterates components in map order (c1 first), checks c1's pipes, finds c2 has wrong parent
+			wantErr: "pipe leads to port in in component c1 that has invalid parent mesh",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := tt.getFM()
+			err := fm.validate()
+
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	t.Run("beforeRun hook error is stored in chainable error", func(t *testing.T) {
 		fm := New("test fm").
