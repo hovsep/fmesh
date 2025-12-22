@@ -261,7 +261,7 @@ func (fm *FMesh) clearInputs() {
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	// Fail immediately if mesh already has a chainable error (e.g., from the previous run)
 	if fm.HasChainableErr() {
-		return fm.runtimeInfo, fm.ChainableErr()
+		return nil, fm.ChainableErr()
 	}
 
 	// Init runtime info
