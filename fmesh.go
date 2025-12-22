@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -21,19 +20,16 @@ type FMesh struct {
 	hooks        *Hooks
 }
 
-// New creates a new F-Mesh with default configuration.
+// New creates a new F-Mesh with the default configuration.
 func New(name string) *FMesh {
 	return &FMesh{
 		name:         name,
 		description:  "",
 		chainableErr: nil,
 		components:   component.NewCollection(),
-		runtimeInfo: &RuntimeInfo{
-			Cycles:   cycle.NewGroup(),
-			Duration: 0,
-		},
-		config: defaultConfig,
-		hooks:  NewHooks(),
+		runtimeInfo:  NewRuntimeInfo(),
+		config:       defaultConfig,
+		hooks:        NewHooks(),
 	}
 }
 
@@ -263,12 +259,14 @@ func (fm *FMesh) clearInputs() {
 
 // Run executes the mesh, activating components until completion or cycle limit.
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
-	fm.runtimeInfo.StartedAt = time.Now()
+	// Init runtime info as Run() may be called multiple times
+	fm.runtimeInfo = NewRuntimeInfo()
+	fm.runtimeInfo.MarkStarted()
+
 	defer func() {
-		fm.runtimeInfo.StoppedAt = time.Now()
-		fm.runtimeInfo.Duration = time.Since(fm.runtimeInfo.StartedAt)
+		fm.runtimeInfo.MarkStopped()
 		if err := fm.hooks.afterRun.Trigger(fm); err != nil {
-			// Don't overwrite existing chainable error
+			// Don't overwrite the existing chainable error
 			if !fm.HasChainableErr() {
 				fm.WithChainableErr(fmt.Errorf("afterRun hook failed: %w", err))
 			}
@@ -320,7 +318,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 
 	// Check if the time constraint is hit
 	if fm.config.TimeLimit != UnlimitedTime {
-		if time.Since(fm.runtimeInfo.StartedAt) >= fm.config.TimeLimit {
+		if fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
 
 			return true, ErrTimeLimitExceeded

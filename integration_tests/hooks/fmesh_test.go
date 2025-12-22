@@ -14,14 +14,14 @@ func TestHooks_AllTypes(t *testing.T) {
 	// Track hook execution
 	var executionLog []string
 
-	// Create simple component
+	// Create a simple component
 	c := component.New("processor").
 		AddInputs("in").
 		WithActivationFunc(func(c *component.Component) error {
 			return nil
 		})
 
-	// Create mesh with all hook types
+	// Create a mesh with all hook types
 	fm := fmesh.New("test-mesh").
 		AddComponents(c).
 		SetupHooks(func(h *fmesh.Hooks) {
@@ -53,7 +53,7 @@ func TestHooks_AllTypes(t *testing.T) {
 	_, err := fm.Run()
 	require.NoError(t, err)
 
-	// Verify exact execution order: beforeRun -> cycles -> afterRun
+	// Verify the exact execution order: beforeRun -> cycles -> afterRun
 	// Cycle hooks fire twice: once for processing, once for completion
 	assert.Equal(t, []string{
 		"beforeRun",
@@ -68,7 +68,7 @@ func TestHooks_AllTypes(t *testing.T) {
 func TestHooks_CycleContext(t *testing.T) {
 	cycleNumbers := []int{}
 
-	// Create simple component
+	// Create a simple component
 	c := component.New("processor").
 		AddInputs("in").
 		WithActivationFunc(func(c *component.Component) error {
@@ -211,7 +211,7 @@ func TestHooks_RunWithError(t *testing.T) {
 	var beforeRanFired bool
 	var afterRunFired bool
 
-	// Create mesh with chainable error (simulating Run() returning error)
+	// Create a mesh with chainable error (simulating Run() returning error)
 	fm := fmesh.New("test-mesh").
 		SetupHooks(func(h *fmesh.Hooks) {
 			h.BeforeRun(func(fm *fmesh.FMesh) error {
@@ -228,7 +228,7 @@ func TestHooks_RunWithError(t *testing.T) {
 	_, err := fm.Run()
 	require.Error(t, err)
 
-	// AfterRun still fires even on error (like defer)
+	// AfterRun still fires even on error (like "defer")
 	assert.True(t, beforeRanFired)
 	assert.True(t, afterRunFired)
 }

@@ -54,8 +54,8 @@ func Test_TimeConstraint(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
 				require.Error(t, err)
-				assert.GreaterOrEqual(t, runResult.Duration, 2*time.Second)
-				assert.LessOrEqual(t, runResult.Duration, 3*time.Second)
+				assert.GreaterOrEqual(t, runResult.Duration(), 2*time.Second)
+				assert.LessOrEqual(t, runResult.Duration(), 3*time.Second)
 			},
 		},
 		{
@@ -94,8 +94,8 @@ func Test_TimeConstraint(t *testing.T) {
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
 				require.NoError(t, err)
-				assert.Greater(t, runResult.Duration, 3*time.Second)
-				assert.LessOrEqual(t, runResult.Duration, 4*time.Second)
+				assert.Greater(t, runResult.Duration(), 3*time.Second)
+				assert.LessOrEqual(t, runResult.Duration(), 4*time.Second)
 			},
 		},
 	}
