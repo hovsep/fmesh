@@ -650,6 +650,7 @@ func TestFMesh_runCycle(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(tt.fm)
 			}
+			tt.fm.runtimeInfo.MarkStarted()
 			tt.fm.runCycle()
 			gotCycleResult := tt.fm.runtimeInfo.Cycles.Last()
 			if tt.wantError {
