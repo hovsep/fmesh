@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -770,4 +771,135 @@ func TestFMesh_mustStop(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
+	t.Run("beforeRun hook error is stored in chainable error", func(t *testing.T) {
+		fm := New("test fm").
+			SetupHooks(func(h *Hooks) {
+				h.BeforeRun(func(fm *FMesh) error {
+					return errors.New("beforeRun hook failed")
+				})
+			}).
+			AddComponents(
+				component.New("simple").
+					AddInputs("in").
+					WithActivationFunc(func(this *component.Component) error {
+						return nil
+					}))
+
+		fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		assert.Contains(t, err.Error(), "beforeRun hook failed")
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		assert.ErrorContains(t, fm.ChainableErr(), "beforeRun hook failed")
+	})
+
+	t.Run("cycle limit error is stored in chainable error", func(t *testing.T) {
+		fm := NewWithConfig("test fm", &Config{
+			CyclesLimit:           2,
+			ErrorHandlingStrategy: IgnoreAll,
+		}).AddComponents(
+			component.New("looper").
+				AddInputs("in").
+				AddOutputs("out").
+				WithActivationFunc(func(this *component.Component) error {
+					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+				}))
+
+		fm.ComponentByName("looper").OutputByName("out").
+			PipeTo(fm.ComponentByName("looper").InputByName("in"))
+
+		fm.ComponentByName("looper").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		require.ErrorIs(t, err, ErrReachedMaxAllowedCycles)
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		assert.ErrorIs(t, fm.ChainableErr(), ErrReachedMaxAllowedCycles)
+	})
+
+	t.Run("time limit error is stored in chainable error", func(t *testing.T) {
+		fm := NewWithConfig("test fm", &Config{
+			TimeLimit:             10 * time.Millisecond,
+			ErrorHandlingStrategy: IgnoreAll,
+		}).AddComponents(
+			component.New("sleeper").
+				AddInputs("in").
+				AddOutputs("out").
+				WithActivationFunc(func(this *component.Component) error {
+					time.Sleep(50 * time.Millisecond)
+					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+				}))
+
+		fm.ComponentByName("sleeper").OutputByName("out").
+			PipeTo(fm.ComponentByName("sleeper").InputByName("in"))
+
+		fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		require.ErrorIs(t, err, ErrTimeLimitExceeded)
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		assert.ErrorIs(t, fm.ChainableErr(), ErrTimeLimitExceeded)
+	})
+
+	t.Run("component error is stored in chainable error", func(t *testing.T) {
+		fm := NewWithConfig("test fm", &Config{
+			ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+		}).AddComponents(
+			component.New("faulty").
+				AddInputs("in").
+				WithActivationFunc(func(this *component.Component) error {
+					return errors.New("component failed")
+				}))
+
+		fm.ComponentByName("faulty").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		assert.ErrorIs(t, fm.ChainableErr(), ErrHitAnErrorOrPanic)
+	})
+
+	t.Run("component panic is stored in chainable error", func(t *testing.T) {
+		fm := NewWithConfig("test fm", &Config{
+			ErrorHandlingStrategy: StopOnFirstPanic,
+		}).AddComponents(
+			component.New("panicky").
+				AddInputs("in").
+				WithActivationFunc(func(this *component.Component) error {
+					panic("component panicked")
+				}))
+
+		fm.ComponentByName("panicky").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		require.ErrorIs(t, err, ErrHitAPanic)
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		assert.ErrorIs(t, fm.ChainableErr(), ErrHitAPanic)
+	})
+
+	t.Run("unsupported error handling strategy is stored in chainable error", func(t *testing.T) {
+		fm := NewWithConfig("test fm", &Config{
+			ErrorHandlingStrategy: 999,
+		}).AddComponents(
+			component.New("simple").
+				AddInputs("in").
+				WithActivationFunc(func(this *component.Component) error {
+					return nil
+				}))
+
+		fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1))
+		_, err := fm.Run()
+
+		require.Error(t, err, "Run should return error")
+		require.ErrorIs(t, err, ErrUnsupportedErrorHandlingStrategy)
+		assert.True(t, fm.HasChainableErr(), "Error should be stored in chainable error")
+		require.ErrorIs(t, fm.ChainableErr(), ErrUnsupportedErrorHandlingStrategy)
+	})
 }
