@@ -293,7 +293,9 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		fm.runCycle()
 
 		if mustStop, err := fm.mustStop(); mustStop {
-			if err != nil {
+			// Store error if it's not already stored (e.g., cycle limit, time limit errors)
+			// If mustStop returns chainable error, it's already stored
+			if err != nil && !fm.HasChainableErr() {
 				fm.WithChainableErr(err)
 			}
 			return fm.runtimeInfo, err
@@ -309,7 +311,7 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
 func (fm *FMesh) mustStop() (bool, error) {
 	if fm.HasChainableErr() {
-		return false, nil
+		return true, fm.ChainableErr()
 	}
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()

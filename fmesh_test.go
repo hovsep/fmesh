@@ -757,6 +757,23 @@ func TestFMesh_mustStop(t *testing.T) {
 			want:    true,
 			wantErr: ErrHitAPanic,
 		},
+		{
+			name: "mesh has chainable error (e.g., from runCycle)",
+			getFMesh: func() *FMesh {
+				fm := New("fm")
+				c := cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").
+						SetActivated(true).
+						WithActivationCode(component.ActivationCodeOK),
+				).WithNumber(5)
+				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
+				// Simulate error set during runCycle or drainComponents
+				fm.WithChainableErr(errors.New("some error during execution"))
+				return fm
+			},
+			want:    true,
+			wantErr: errors.New("some error during execution"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
