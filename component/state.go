@@ -60,3 +60,46 @@ func (s State) Set(key string, value any) {
 func (s State) Delete(key string) {
 	delete(s, key)
 }
+
+// GetTyped retrieves the value associated with the given key from the state
+// and asserts it to type T.
+func GetTyped[T any](s State, key string) T {
+	val, exists := s[key]
+	if !exists {
+		panic("state key not found: " + key)
+	}
+	typed, ok := val.(T)
+	if !ok {
+		panic("state key has wrong type: " + key)
+	}
+	return typed
+}
+
+// SetIfAbsent sets the value for the given key only if the key does not already exist.
+// Returns true if the value was set, false if the key was already present.
+func (s State) SetIfAbsent(key string, value any) bool {
+	if _, exists := s[key]; exists {
+		return false
+	}
+	s[key] = value
+	return true
+}
+
+// Upsert applies the given function to the value associated with the key,
+// replacing it with the result.
+// Creates a new key if not exists.
+func (s State) Upsert(key string, fn func(old any) any) {
+	s[key] = fn(s[key])
+}
+
+// Update applies the given function to the value associated with the key
+// only if the key exists in the state.
+// Returns true if the key existed and the function was applied, false otherwise.
+func (s State) Update(key string, fn func(old any) any) bool {
+	old, exists := s[key]
+	if !exists {
+		return false
+	}
+	s[key] = fn(old)
+	return true
+}
