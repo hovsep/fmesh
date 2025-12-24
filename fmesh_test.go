@@ -897,7 +897,7 @@ func TestFMesh_validate(t *testing.T) {
 					AddOutputs("out")
 				c2 := component.New("c2").AddInputs("in")
 
-				// Create pipe to component that won't be added to mesh
+				// Create a pipe to a component that won't be added to mesh
 				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
 
 				return New("fm").AddComponents(c1) // Only add c1, not c2
@@ -905,6 +905,7 @@ func TestFMesh_validate(t *testing.T) {
 			wantErr: "pipe leads to absent component c2",
 		},
 		{
+			// This test case is flaky because of undeterministic map iteration in .validate()
 			name: "pipe leads to unregistered component (no parent mesh)",
 			getFM: func() *FMesh {
 				fm := New("fm")
