@@ -406,7 +406,7 @@ func (fm *FMesh) validate() error {
 		}
 
 		if c.ParentMesh() == nil {
-			return fmt.Errorf("component %s his not registered in the mesh", c.Name())
+			return fmt.Errorf("component %s is not registered in the mesh", c.Name())
 		}
 
 		if c.ParentMesh() != fm {
