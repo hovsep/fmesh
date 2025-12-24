@@ -844,7 +844,7 @@ func TestFMesh_validate(t *testing.T) {
 				// Don't set parent mesh - this is invalid
 				return fm
 			},
-			wantErr: "component c1 his not registered in the mesh",
+			wantErr: "component c1 is not registered in the mesh",
 		},
 		{
 			name: "component has invalid parent mesh",
