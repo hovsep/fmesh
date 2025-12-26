@@ -85,16 +85,28 @@ func Test_MultipleRun(t *testing.T) {
 					}),
 				component.New("consumer").
 					AddInputs("in").
-					AddOutputs("out").
+					AddOutputs("piped_out", "unpiped_out").
 					WithActivationFunc(func(this *component.Component) error {
 						count := this.InputByName("in").Signals().Len()
-						this.OutputByName("out").PutSignals(signal.New(count))
+						this.OutputByName("piped_out").PutSignals(signal.New(count))
+						this.OutputByName("unpiped_out").PutSignals(signal.New(count))
+						return nil
+					}),
+				component.New("final").
+					AddInputs("in").
+					AddOutputs("result").
+					WithActivationFunc(func(this *component.Component) error {
+						count := this.InputByName("in").Signals().Len()
+						this.OutputByName("result").PutSignals(signal.New(count))
 						return nil
 					}))
 
 		fm.ComponentByName("producer").OutputByName("out").
 			PipeTo(fm.ComponentByName("consumer").InputByName("in"))
+		fm.ComponentByName("consumer").OutputByName("piped_out").
+			PipeTo(fm.ComponentByName("final").InputByName("in"))
 
+		// Run 1
 		fm.ComponentByName("producer").InputByName("trigger").PutSignals(signal.New("go"))
 		runResult1, err := fm.Run()
 		require.NoError(t, err)
@@ -103,16 +115,31 @@ func Test_MultipleRun(t *testing.T) {
 		producerOutputSignals := fm.ComponentByName("producer").OutputByName("out").Signals().Len()
 		t.Logf("Run 1: Producer output port has %d signals after run", producerOutputSignals)
 
+		consumerUnpipedSignals1 := fm.ComponentByName("consumer").OutputByName("unpiped_out").Signals().Len()
+		assert.Equal(t, 1, consumerUnpipedSignals1, "Run 1: Consumer unpiped output should have 1 signal")
+
+		finalResultSignals1 := fm.ComponentByName("final").OutputByName("result").Signals().Len()
+		assert.Equal(t, 1, finalResultSignals1, "Run 1: Final component should have 1 signal")
+
+		// Run 2
 		fm.ComponentByName("producer").InputByName("trigger").PutSignals(signal.New("go"))
 		runResult2, err := fm.Run()
 		require.NoError(t, err)
 		require.NoError(t, runResult2.Cycles.ChainableErr())
 
-		count := fm.ComponentByName("consumer").OutputByName("out").Signals().FirstPayloadOrDefault(0).(int)
-		assert.Equal(t, 1, count, "Consumer should receive 1 signal per run, not accumulated signals from previous runs")
+		// Check that final component received exactly 1 signal in Run 2 (not accumulated from Run 1)
+		count := fm.ComponentByName("final").OutputByName("result").Signals().FirstPayloadOrDefault(0).(int)
+		assert.Equal(t, 1, count, "Final component should receive 1 signal per run, not accumulated signals from previous runs")
 
 		producerOutputSignals2 := fm.ComponentByName("producer").OutputByName("out").Signals().Len()
 		t.Logf("Run 2: Producer output port has %d signals after run", producerOutputSignals2)
+
+		// Critical: Unpiped output should be cleared at start of Run 2, so it should only have 1 signal from this run
+		consumerUnpipedSignals2 := fm.ComponentByName("consumer").OutputByName("unpiped_out").Signals().Len()
+		assert.Equal(t, 1, consumerUnpipedSignals2, "Run 2: Consumer unpiped output should have 1 signal (not accumulated from Run 1)")
+
+		finalResultSignals2 := fm.ComponentByName("final").OutputByName("result").Signals().Len()
+		assert.Equal(t, 1, finalResultSignals2, "Run 2: Final component should have 1 signal (not accumulated from Run 1)")
 	})
 
 	t.Run("mesh cannot run again after error", func(t *testing.T) {

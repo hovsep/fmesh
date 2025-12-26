@@ -204,6 +204,17 @@ func (c *Component) ClearInputs() *Component {
 	return c
 }
 
+// ClearOutputs clears all output ports.
+func (c *Component) ClearOutputs() *Component {
+	if c.HasChainableErr() {
+		return c
+	}
+	c.Outputs().ForEach(func(p *port.Port) error {
+		return p.Clear().ChainableErr()
+	})
+	return c
+}
+
 // LoopbackPipe creates a pipe between ports of the component.
 func (c *Component) LoopbackPipe(out, in string) {
 	c.OutputByName(out).PipeTo(c.InputByName(in))
