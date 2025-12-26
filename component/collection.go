@@ -44,6 +44,11 @@ func (c *Collection) Add(components ...*Component) *Collection {
 	}
 
 	for _, component := range components {
+		if c.AnyMatch(func(existingComponent *Component) bool {
+			return existingComponent.Name() == component.Name()
+		}) {
+			return c.WithChainableErr(fmt.Errorf("component with name '%s' already exists", component.Name()))
+		}
 		c.components[component.Name()] = component
 
 		if component.HasChainableErr() {

@@ -83,8 +83,15 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 			c = c.WithLogger(fm.Logger())
 		}
 		fm.components = fm.components.Add(c.WithParentMesh(fm))
+
+		// Propagate error from component
 		if c.HasChainableErr() {
 			return fm.WithChainableErr(c.ChainableErr())
+		}
+
+		// Propagate error from component's collection
+		if fm.components.HasChainableErr() {
+			return fm.WithChainableErr(fm.components.ChainableErr())
 		}
 	}
 
