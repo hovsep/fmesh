@@ -161,22 +161,19 @@ func TestFMesh_AddComponents(t *testing.T) {
 			},
 		},
 		{
-			name: "components with duplicating name are collapsed",
+			name: "adding components with same names leads to error",
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.New("c1").WithDescription("descr1"),
-					component.New("c2").WithDescription("descr2"),
-					component.New("c2").WithDescription("new descr for c2"), // This will overwrite the previous one
-					component.New("c4").WithDescription("descr4"),
+					component.New("c1"),
+					component.New("c1"),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, 3, fm.Components().Len())
-				assert.NotNil(t, fm.Components().ByName("c1"))
-				assert.NotNil(t, fm.Components().ByName("c2"))
-				assert.NotNil(t, fm.Components().ByName("c4"))
-				assert.Equal(t, "new descr for c2", fm.Components().ByName("c2").Description())
+				assert.Equal(t, 0, fm.Components().Len())
+				require.Error(t, fm.ChainableErr())
+				require.Contains(t, fm.ChainableErr().Error(), "component with name 'c1' already exists")
+				assert.True(t, fm.HasChainableErr())
 			},
 		},
 

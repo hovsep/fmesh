@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCollection_ByName(t *testing.T) {
@@ -41,7 +42,7 @@ func TestCollection_ByName(t *testing.T) {
 	}
 }
 
-func TestCollection_With(t *testing.T) {
+func TestCollection_Add(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -67,6 +68,17 @@ func TestCollection_With(t *testing.T) {
 				assert.Equal(t, "existing", collection.ByName("existing").Name())
 				assert.Equal(t, "c1", collection.ByName("c1").Name())
 				assert.Equal(t, "c2", collection.ByName("c2").Name())
+			},
+		},
+		{
+			name:       "adding 2 components with the same name",
+			collection: NewCollection().Add(New("existing")),
+			components: []*Component{New("existing")},
+			assertions: func(t *testing.T, collection *Collection) {
+				require.Error(t, collection.ChainableErr())
+				require.ErrorContains(t, collection.ChainableErr(), "component with name 'existing' already exists")
+				assert.True(t, collection.HasChainableErr())
+				assert.Equal(t, 0, collection.Len())
 			},
 		},
 	}
