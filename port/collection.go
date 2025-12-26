@@ -133,16 +133,7 @@ func (c *Collection) ForEach(action func(*Port) error) *Collection {
 	return c
 }
 
-// Clear removes all ports from the collection.
-func (c *Collection) Clear() *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-	c.ports = make(Map)
-	return c
-}
-
-// Flush flushes all ports in collection.
+// Flush flushes all ports in a collection.
 func (c *Collection) Flush() *Collection {
 	if c.HasChainableErr() {
 		return NewCollection().WithChainableErr(c.ChainableErr())
@@ -158,7 +149,7 @@ func (c *Collection) Flush() *Collection {
 	return c
 }
 
-// PipeTo creates pipes from each port in collection to given destination ports.
+// PipeTo creates pipes from each port in a collection to given destination ports.
 func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
 	for _, p := range c.ports {
 		p = p.PipeTo(destPorts...)
@@ -171,7 +162,7 @@ func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
 	return c
 }
 
-// Add adds ports to collection and returns it.
+// Add adds ports to a collection and returns it.
 func (c *Collection) Add(ports ...*Port) *Collection {
 	if c.HasChainableErr() {
 		return c
@@ -281,28 +272,6 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 		}
 	}
 	return false
-}
-
-// CountMatch returns the number of ports that match the given predicate.
-// Use this to count ports with specific characteristics.
-//
-// Example (in activation function):
-//
-//	readyCount := this.Inputs().CountMatch(func(p *port.Port) bool {
-//	    return p.HasSignals()
-//	})
-//	this.Logger().Printf("%d inputs ready out of %d", readyCount, this.Inputs().Len())
-func (c *Collection) CountMatch(predicate Predicate) int {
-	if c.HasChainableErr() {
-		return 0
-	}
-	count := 0
-	for _, port := range c.ports {
-		if predicate(port) {
-			count++
-		}
-	}
-	return count
 }
 
 // FindAny returns any arbitrary port that matches the predicate.

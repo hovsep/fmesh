@@ -230,9 +230,9 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				inputs := this.Inputs()
 
 				// Count ports with signals
-				portsWithSignals := inputs.CountMatch(func(p *port.Port) bool {
+				portsWithSignals := inputs.Filter(func(p *port.Port) bool {
 					return p.HasSignals()
-				})
+				}).Len()
 
 				// Find high priority ports
 				highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
