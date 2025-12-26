@@ -264,6 +264,18 @@ func (fm *FMesh) clearInputs() {
 	}
 }
 
+func (fm *FMesh) cleanUpPreviousRun() {
+	// Clear all output ports to prevent signal accumulation between runs
+	fm.Components().ForEach(func(c *component.Component) error {
+		c.ClearOutputs()
+		return nil
+	})
+
+	// Init runtime info
+	fm.runtimeInfo = NewRuntimeInfo()
+	fm.runtimeInfo.MarkStarted()
+}
+
 // Run executes the mesh, activating components until completion or cycle limit.
 func (fm *FMesh) Run() (*RuntimeInfo, error) {
 	// Fail immediately if mesh already has a chainable error (e.g., from the previous run)
@@ -271,9 +283,7 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		return nil, fm.ChainableErr()
 	}
 
-	// Init runtime info
-	fm.runtimeInfo = NewRuntimeInfo()
-	fm.runtimeInfo.MarkStarted()
+	fm.cleanUpPreviousRun()
 
 	defer func() {
 		fm.runtimeInfo.MarkStopped()
