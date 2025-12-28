@@ -374,7 +374,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 				return c
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
-				destPort := componentAfterFlush.OutputByName("o1").Pipes().FirstOrNil()
+				destPort := componentAfterFlush.OutputByName("o1").Pipes().First()
 				allPayloads, err := destPort.Signals().AllPayloads()
 				require.NoError(t, err)
 				assert.Contains(t, allPayloads, 777)
@@ -387,15 +387,15 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "with chain error",
 			getComponent: func() *Component {
-				sink := port.NewInput("sink")
 				c := New("c").AddOutputs("o1").WithChainableErr(errors.New("some error"))
-				// The lines below are ignored as the error immediately propagates up to the component level
-				c.Outputs().ByName("o1").PipeTo(sink)
-				c.Outputs().ByName("o1").PutSignals(signal.New("signal from component with chain error"))
+				// Component has error, so OutputByName returns nil - operations are no-ops
 				return c
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
-				assert.False(t, componentAfterFlush.OutputByName("o1").HasPipes())
+				// Component still has error
+				assert.True(t, componentAfterFlush.HasChainableErr())
+				// OutputByName returns nil because component has error
+				assert.Nil(t, componentAfterFlush.OutputByName("o1"))
 			},
 		},
 	}

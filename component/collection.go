@@ -22,16 +22,16 @@ func NewCollection() *Collection {
 }
 
 // ByName returns a component by its name.
-// Returns a component with error if not found (does not poison the collection).
+// Returns nil if not found or if the collection has an error.
 func (c *Collection) ByName(name string) *Component {
 	if c.HasChainableErr() {
-		return New("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 
 	component, ok := c.components[name]
 
 	if !ok {
-		return New("n/a").WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, name))
+		return nil
 	}
 
 	return component
@@ -102,20 +102,20 @@ func (c *Collection) IsEmpty() bool {
 }
 
 // Any returns any arbitrary component from the collection.
-// Returns a component with error if collection is empty (does not poison the collection).
+// Returns nil if the collection is empty or has an error.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) Any() *Component {
 	if c.HasChainableErr() {
-		return New("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	if c.IsEmpty() {
-		return New("n/a").WithChainableErr(ErrNoComponentsInCollection)
+		return nil
 	}
 	// Get arbitrary component from map (order not guaranteed)
 	for _, comp := range c.components {
 		return comp
 	}
-	return New("n/a").WithChainableErr(errUnexpectedErrorGettingComponent)
+	return nil
 }
 
 // All returns all components as a map.
@@ -167,18 +167,18 @@ func (c *Collection) CountMatch(predicate Predicate) int {
 }
 
 // FindAny returns any arbitrary component that matches the predicate.
-// Returns a component with error if no match found (does not poison the collection).
+// Returns nil if no match found or if the collection has an error.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Component {
 	if c.HasChainableErr() {
-		return New("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	for _, comp := range c.components {
 		if predicate(comp) {
 			return comp
 		}
 	}
-	return New("n/a").WithChainableErr(ErrNoComponentMatchesPredicate)
+	return nil
 }
 
 // Filter returns a new collection with components that match the predicate.

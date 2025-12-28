@@ -32,17 +32,17 @@ func Test_Signal(t *testing.T) {
 			},
 		},
 		{
-			name: "error propagated from group to signal",
+			name: "First on empty group returns nil",
 			test: func(t *testing.T) {
 				emptyGroup := signal.NewGroup()
 
 				sig := emptyGroup.First()
-				assert.True(t, sig.HasChainableErr())
-				require.Error(t, sig.ChainableErr())
+				assert.Nil(t, sig)
 
-				_, err := sig.Payload()
+				// FirstPayload returns the appropriate error
+				_, err := emptyGroup.FirstPayload()
 				require.Error(t, err)
-				require.EqualError(t, err, signal.ErrNoSignalsInGroup.Error())
+				require.ErrorIs(t, err, signal.ErrNoSignalsInGroup)
 			},
 		},
 	}
@@ -94,11 +94,14 @@ func Test_FMesh(t *testing.T) {
 						WithChainableErr(errors.New("some error in component")),
 				)
 
-				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))
-				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
-
-				_, err := fm.Run()
+				// Mesh has error propagated from component, so it's unusable
 				assert.True(t, fm.HasChainableErr())
+
+				// ComponentByName returns nil because mesh has error
+				assert.Nil(t, fm.ComponentByName("c1"))
+
+				// Mesh run fails with the propagated error
+				_, err := fm.Run()
 				require.Error(t, err)
 				require.ErrorContains(t, err, "some error in component")
 			},
@@ -118,19 +121,15 @@ func Test_FMesh(t *testing.T) {
 						}),
 				)
 
-				// Looking up a non-existent port returns a port with error,
-				// but does NOT poison the component or mesh (query error, not config error)
+				// Looking up a non-existent port returns nil
 				badPort := fm.Components().ByName("c1").InputByName("num777")
-				assert.True(t, badPort.HasChainableErr())
-				require.ErrorContains(t, badPort.ChainableErr(), "port not found")
-				require.ErrorContains(t, badPort.ChainableErr(), "port name: num777")
+				assert.Nil(t, badPort)
 
 				// Component and mesh remain unpoisoned
-				assert.False(t, fm.Components().ByName("c1").HasChainableErr())
+				c1 := fm.Components().ByName("c1")
+				require.NotNil(t, c1)
+				assert.False(t, c1.HasChainableErr())
 				assert.False(t, fm.HasChainableErr())
-
-				// PutSignals on the bad port does nothing useful but also doesn't panic
-				badPort.PutSignals(signal.New(10))
 
 				// Valid port operations work as expected
 				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))

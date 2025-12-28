@@ -159,7 +159,10 @@ func Test_MultipleRun(t *testing.T) {
 		assert.True(t, runResult1.Cycles.Last().HasActivationErrors())
 		assert.True(t, fm.HasChainableErr(), "Mesh should have chainable error after failed run")
 
-		fm.ComponentByName("faulty").InputByName("trigger").PutSignals(signal.New("go"))
+		// After mesh has error, ComponentByName returns nil - mesh is unusable
+		assert.Nil(t, fm.ComponentByName("faulty"))
+
+		// Trying to run again should fail immediately
 		_, err = fm.Run()
 		require.Error(t, err, "Run 2 should fail immediately - mesh has chainable error")
 		assert.True(t, fm.HasChainableErr(), "Chainable error should persist")
@@ -267,7 +270,10 @@ func Test_MultipleRun(t *testing.T) {
 		assert.True(t, runResult1.Cycles.Last().HasActivationPanics())
 		assert.True(t, fm.HasChainableErr(), "Mesh should have chainable error after panic")
 
-		fm.ComponentByName("panicky").InputByName("trigger").PutSignals(signal.New("go"))
+		// After mesh has error, ComponentByName returns nil - mesh is unusable
+		assert.Nil(t, fm.ComponentByName("panicky"))
+
+		// Trying to run again should fail immediately
 		_, err = fm.Run()
 		require.Error(t, err, "Run 2 should fail immediately - mesh has chainable error")
 		assert.True(t, fm.HasChainableErr(), "Chainable error should persist")

@@ -163,10 +163,10 @@ func TestGroup_Last(t *testing.T) {
 		assert.Equal(t, 3, last.Number())
 	})
 
-	t.Run("last from empty group returns error", func(t *testing.T) {
+	t.Run("last from empty group returns nil", func(t *testing.T) {
 		group := NewGroup()
 		last := group.Last()
-		assert.True(t, last.HasChainableErr())
+		assert.Nil(t, last)
 	})
 }
 
@@ -180,10 +180,10 @@ func TestGroup_First(t *testing.T) {
 		assert.Equal(t, 1, first.Number())
 	})
 
-	t.Run("first from empty group returns error", func(t *testing.T) {
+	t.Run("first from empty group returns nil", func(t *testing.T) {
 		group := NewGroup()
 		first := group.First()
-		assert.True(t, first.HasChainableErr())
+		assert.Nil(t, first)
 	})
 }
 
@@ -365,10 +365,10 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		// Query first on empty group
 		result := group.First()
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But group should NOT be poisoned
+		// Group should NOT be poisoned
 		assert.False(t, group.HasChainableErr())
 
 		// Group should still be usable for adding
@@ -378,7 +378,7 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 
 		// Now First should work
 		first := group.First()
-		assert.False(t, first.HasChainableErr())
+		require.NotNil(t, first)
 		assert.Equal(t, 42, first.Number())
 	})
 }

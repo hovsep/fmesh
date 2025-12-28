@@ -947,8 +947,10 @@ func TestFMesh_validate(t *testing.T) {
 
 				return fm
 			},
-			// Validation iterates components in map order (c1 first), checks c1's pipes, finds c2 has wrong parent
-			wantErr: "pipe leads to port in in component c1 that has invalid parent mesh",
+			// Flaky: Map iteration order determines which error is returned first
+			// Either "component c2 has invalid parent mesh" (c2 checked first)
+			// or "pipe leads to port in in component c1 that has invalid parent mesh" (c1's pipe checked first)
+			wantErr: "invalid parent mesh",
 		},
 	}
 

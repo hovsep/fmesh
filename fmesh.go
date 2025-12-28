@@ -459,8 +459,8 @@ func (fm *FMesh) validate() error {
 				}
 
 				destComponent := fm.components.ByName(pipe.ParentComponent().Name())
-				if destComponent.HasChainableErr() {
-					return fmt.Errorf("pipe leads to absent component %s: %w", pipe.ParentComponent().Name(), destComponent.ChainableErr())
+				if destComponent == nil {
+					return fmt.Errorf("pipe leads to absent component %s", pipe.ParentComponent().Name())
 				}
 
 				if destComponent.ParentMesh() == nil {

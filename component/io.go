@@ -149,19 +149,19 @@ func (c *Component) Outputs() *port.Collection {
 }
 
 // OutputByName returns an output port by name.
-// Returns a port with error if not found (does not poison the component).
+// Returns nil if not found or if the component has an error.
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	return c.Outputs().ByName(name)
 }
 
 // InputByName returns an input port by name.
-// Returns a port with error if not found (does not poison the component).
+// Returns nil if not found or if the component has an error.
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasChainableErr() {
-		return port.NewInput("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	return c.Inputs().ByName(name)
 }

@@ -1,7 +1,6 @@
 package component
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,12 +26,12 @@ func TestCollection_ByName(t *testing.T) {
 			want: New("c2"),
 		},
 		{
-			name:       "component not found",
+			name:       "component not found returns nil",
 			components: NewCollection().Add(New("c1"), New("c2")),
 			args: args{
 				name: "c3",
 			},
-			want: New("n/a").WithChainableErr(fmt.Errorf("%w, component name: %s", errNotFound, "c3")),
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -247,17 +246,16 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		// Query for non-existent component
 		result := collection.ByName("nonexistent")
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorContains(t, result.ChainableErr(), "not found")
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 		assert.Equal(t, 2, collection.Len())
 
 		// Collection should still be usable
 		c1 := collection.ByName("c1")
-		assert.False(t, c1.HasChainableErr())
+		require.NotNil(t, c1)
 		assert.Equal(t, "c1", c1.Name())
 	})
 
@@ -267,11 +265,10 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		// Query any on empty collection
 		result := collection.Any()
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoComponentsInCollection)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 
 		// Collection should still be usable for adding
@@ -287,11 +284,10 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 			return c.Name() == "nonexistent"
 		})
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoComponentMatchesPredicate)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 		assert.Equal(t, 2, collection.Len())
 
@@ -299,7 +295,7 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		found := collection.FindAny(func(c *Component) bool {
 			return c.Name() == "c1"
 		})
-		assert.False(t, found.HasChainableErr())
+		require.NotNil(t, found)
 		assert.Equal(t, "c1", found.Name())
 	})
 }
