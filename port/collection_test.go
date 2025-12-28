@@ -612,6 +612,54 @@ func TestCollection_Len(t *testing.T) {
 	})
 }
 
+func TestCollection_IterationOperationsDoNotPoisonCollection(t *testing.T) {
+	t.Run("PutSignals on port with error does not poison collection", func(t *testing.T) {
+		// Note: Add DOES propagate errors (broken input = invalid state)
+		// So we need to set up differently - add first, then break the port
+		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
+		// Manually break one port after adding
+		p1 := collection.ByName("p1")
+		p1.WithChainableErr(assert.AnError)
+
+		// PutSignals should NOT poison the collection
+		result := collection.PutSignals(signal.New(42))
+
+		// Collection is still healthy
+		assert.False(t, result.HasChainableErr())
+		assert.Equal(t, 2, result.Len())
+
+		// But the individual port still has its error
+		assert.True(t, collection.ByName("p1").HasChainableErr())
+	})
+
+	t.Run("Flush does not poison collection when port has error", func(t *testing.T) {
+		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
+		// Break one port after adding
+		collection.ByName("p1").WithChainableErr(assert.AnError)
+
+		// Flush should NOT poison the collection
+		result := collection.Flush()
+
+		// Collection is still healthy
+		assert.False(t, result.HasChainableErr())
+		assert.Equal(t, 2, result.Len())
+	})
+
+	t.Run("PipeTo does not poison collection when port has error", func(t *testing.T) {
+		dest := NewInput("dest")
+		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
+		// Break one port after adding
+		collection.ByName("p1").WithChainableErr(assert.AnError)
+
+		// PipeTo should NOT poison the collection
+		result := collection.PipeTo(dest)
+
+		// Collection is still healthy
+		assert.False(t, result.HasChainableErr())
+		assert.Equal(t, 2, result.Len())
+	})
+}
+
 func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
