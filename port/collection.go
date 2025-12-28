@@ -151,6 +151,10 @@ func (c *Collection) Flush() *Collection {
 
 // PipeTo creates pipes from each port in a collection to given destination ports.
 func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
+	if c.HasChainableErr() {
+		return c
+	}
+
 	for _, p := range c.ports {
 		p = p.PipeTo(destPorts...)
 
@@ -274,6 +278,20 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
+// CountMatch returns the number of ports that match the predicate.
+func (c *Collection) CountMatch(predicate Predicate) int {
+	if c.HasChainableErr() {
+		return 0
+	}
+	count := 0
+	for _, port := range c.ports {
+		if predicate(port) {
+			count++
+		}
+	}
+	return count
+}
+
 // FindAny returns any arbitrary port that matches the predicate.
 // Returns nil if no match found or if the collection has an error.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
@@ -355,7 +373,11 @@ func (c *Collection) ChainableErr() error {
 }
 
 // Len returns the number of ports in a collection.
+// Returns 0 if the collection has a chainable error.
 func (c *Collection) Len() int {
+	if c.HasChainableErr() {
+		return 0
+	}
 	return len(c.ports)
 }
 

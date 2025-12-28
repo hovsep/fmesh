@@ -591,6 +591,166 @@ func TestGroup_MapPayloads(t *testing.T) {
 	}
 }
 
+func TestGroup_Without(t *testing.T) {
+	t.Run("removes matching signals", func(t *testing.T) {
+		group := NewGroup(1, 2, 3, 4, 5)
+		result := group.Without(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0 // remove even numbers
+		})
+		assert.Equal(t, 3, result.Len()) // 1, 3, 5 remain
+	})
+
+	t.Run("returns same group when has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		result := group.Without(func(s *Signal) bool {
+			return true
+		})
+		assert.True(t, result.HasChainableErr())
+	})
+}
+
+func TestGroup_AllMatch(t *testing.T) {
+	t.Run("returns true when all match", func(t *testing.T) {
+		group := NewGroup(2, 4, 6)
+		result := group.AllMatch(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		assert.True(t, result)
+	})
+
+	t.Run("returns false when not all match", func(t *testing.T) {
+		group := NewGroup(2, 3, 4)
+		result := group.AllMatch(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("returns false for empty group", func(t *testing.T) {
+		group := NewGroup()
+		result := group.AllMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("returns false when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2).WithChainableErr(assert.AnError)
+		result := group.AllMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.False(t, result)
+	})
+}
+
+func TestGroup_AnyMatch(t *testing.T) {
+	t.Run("returns true when at least one matches", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		result := group.AnyMatch(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int) == 2
+		})
+		assert.True(t, result)
+	})
+
+	t.Run("returns false when none match", func(t *testing.T) {
+		group := NewGroup(1, 3, 5)
+		result := group.AnyMatch(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("returns false for empty group", func(t *testing.T) {
+		group := NewGroup()
+		result := group.AnyMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("returns false when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2).WithChainableErr(assert.AnError)
+		result := group.AnyMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.False(t, result)
+	})
+}
+
+func TestGroup_CountMatch(t *testing.T) {
+	t.Run("counts matching signals", func(t *testing.T) {
+		group := NewGroup(1, 2, 3, 4, 5)
+		count := group.CountMatch(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		assert.Equal(t, 2, count) // 2 and 4
+	})
+
+	t.Run("returns 0 for empty group", func(t *testing.T) {
+		group := NewGroup()
+		count := group.CountMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("returns 0 when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		count := group.CountMatch(func(s *Signal) bool {
+			return true
+		})
+		assert.Equal(t, 0, count)
+	})
+}
+
+func TestGroup_ForEach(t *testing.T) {
+	t.Run("applies action to each signal", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		count := 0
+		group.ForEach(func(s *Signal) error {
+			count++
+			return nil
+		})
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		result := group.ForEach(func(s *Signal) error {
+			return assert.AnError
+		})
+		assert.True(t, result.HasChainableErr())
+	})
+
+	t.Run("skips when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		visited := false
+		group.ForEach(func(s *Signal) error {
+			visited = true
+			return nil
+		})
+		assert.False(t, visited)
+	})
+}
+
+func TestGroup_Len(t *testing.T) {
+	t.Run("returns count of signals", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		assert.Equal(t, 3, group.Len())
+	})
+
+	t.Run("returns 0 when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		assert.Equal(t, 0, group.Len())
+	})
+}
+
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 	t.Run("First does not poison group when empty", func(t *testing.T) {
 		group := NewGroup()

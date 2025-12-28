@@ -239,6 +239,193 @@ func TestCollection_Filter(t *testing.T) {
 	}
 }
 
+func TestCollection_Any(t *testing.T) {
+	t.Run("returns component from non-empty collection", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"))
+		result := collection.Any()
+		require.NotNil(t, result)
+		assert.Equal(t, "c1", result.Name())
+	})
+
+	t.Run("returns nil from empty collection", func(t *testing.T) {
+		collection := NewCollection()
+		result := collection.Any()
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns nil when collection has error", func(t *testing.T) {
+		collection := NewCollection().WithChainableErr(assert.AnError)
+		result := collection.Any()
+		assert.Nil(t, result)
+	})
+}
+
+func TestCollection_FindAny(t *testing.T) {
+	t.Run("finds matching component", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"), New("target"))
+		result := collection.FindAny(func(c *Component) bool {
+			return c.Name() == "target"
+		})
+		require.NotNil(t, result)
+		assert.Equal(t, "target", result.Name())
+	})
+
+	t.Run("returns nil when no match", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"))
+		result := collection.FindAny(func(c *Component) bool {
+			return c.Name() == "nonexistent"
+		})
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns nil when collection has error", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
+		result := collection.FindAny(func(c *Component) bool {
+			return true
+		})
+		assert.Nil(t, result)
+	})
+}
+
+func TestCollection_CountMatch(t *testing.T) {
+	t.Run("counts matching components", func(t *testing.T) {
+		collection := NewCollection().Add(New("a1"), New("a2"), New("b1"))
+		count := collection.CountMatch(func(c *Component) bool {
+			return c.Name()[0] == 'a'
+		})
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("returns 0 for empty collection", func(t *testing.T) {
+		collection := NewCollection()
+		count := collection.CountMatch(func(c *Component) bool {
+			return true
+		})
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("returns 0 when collection has error", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
+		count := collection.CountMatch(func(c *Component) bool {
+			return true
+		})
+		assert.Equal(t, 0, count)
+	})
+}
+
+func TestCollection_Map(t *testing.T) {
+	t.Run("transforms components", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"))
+		mapped := collection.Map(func(c *Component) *Component {
+			return New("mapped_" + c.Name())
+		})
+		assert.Equal(t, 2, mapped.Len())
+		assert.NotNil(t, mapped.ByName("mapped_c1"))
+		assert.NotNil(t, mapped.ByName("mapped_c2"))
+	})
+
+	t.Run("filters out nil results", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
+		mapped := collection.Map(func(c *Component) *Component {
+			if c.Name() == "c2" {
+				return nil
+			}
+			return c
+		})
+		assert.Equal(t, 2, mapped.Len())
+	})
+
+	t.Run("propagates error from source collection", func(t *testing.T) {
+		collection := NewCollection().WithChainableErr(assert.AnError)
+		mapped := collection.Map(func(c *Component) *Component {
+			return c
+		})
+		assert.True(t, mapped.HasChainableErr())
+	})
+}
+
+func TestCollection_ForEach(t *testing.T) {
+	t.Run("applies action to each component", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"))
+		visited := make([]string, 0)
+		collection.ForEach(func(c *Component) error {
+			visited = append(visited, c.Name())
+			return nil
+		})
+		assert.Len(t, visited, 2)
+	})
+
+	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
+		result := collection.ForEach(func(c *Component) error {
+			return assert.AnError
+		})
+		assert.True(t, result.HasChainableErr())
+	})
+
+	t.Run("skips when collection has error", func(t *testing.T) {
+		collection := NewCollection().WithChainableErr(assert.AnError)
+		visited := false
+		collection.ForEach(func(c *Component) error {
+			visited = true
+			return nil
+		})
+		assert.False(t, visited)
+	})
+}
+
+func TestCollection_Clear(t *testing.T) {
+	t.Run("removes all components", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"))
+		result := collection.Clear()
+		assert.Equal(t, 0, result.Len())
+		assert.True(t, result.IsEmpty())
+	})
+
+	t.Run("skips when collection has error", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
+		result := collection.Clear()
+		assert.True(t, result.HasChainableErr())
+	})
+}
+
+func TestCollection_Without(t *testing.T) {
+	t.Run("removes specified components", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
+		result := collection.Without("c1", "c3")
+		assert.Equal(t, 1, result.Len())
+		assert.NotNil(t, result.ByName("c2"))
+		assert.Nil(t, result.ByName("c1"))
+	})
+
+	t.Run("handles non-existent names gracefully", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"))
+		result := collection.Without("nonexistent")
+		assert.Equal(t, 1, result.Len())
+	})
+
+	t.Run("skips when collection has error", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
+		result := collection.Without("c1")
+		assert.True(t, result.HasChainableErr())
+	})
+}
+
+func TestCollection_All(t *testing.T) {
+	t.Run("returns all components", func(t *testing.T) {
+		collection := NewCollection().Add(New("c1"), New("c2"))
+		all, err := collection.All()
+		require.NoError(t, err)
+		assert.Len(t, all, 2)
+	})
+
+	t.Run("returns error when collection has error", func(t *testing.T) {
+		collection := NewCollection().WithChainableErr(assert.AnError)
+		_, err := collection.All()
+		require.Error(t, err)
+	})
+}
+
 func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
 		collection := NewCollection().Add(New("c1"), New("c2"))
