@@ -50,6 +50,9 @@ func (g *Group) Add(ports ...*Port) *Group {
 	newPorts := make(Ports, len(g.ports)+len(ports))
 	copy(newPorts, g.ports)
 	for i, port := range ports {
+		if port.HasChainableErr() {
+			return g.WithChainableErr(port.ChainableErr())
+		}
 		newPorts[len(g.ports)+i] = port
 	}
 

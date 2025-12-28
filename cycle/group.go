@@ -16,6 +16,9 @@ func NewGroup() *Group {
 }
 
 // Add adds cycles to the group and returns it.
+// Note: Unlike other collections, cycle errors are NOT propagated to the group
+// because cycles represent historical execution records - users need to access
+// cycles that had errors to understand what happened.
 func (g *Group) Add(cycles ...*Cycle) *Group {
 	if g.HasChainableErr() {
 		return g
