@@ -91,16 +91,15 @@ func (c *Collection) AllHaveSignals() bool {
 }
 
 // PutSignals adds signals to every port in the collection.
+// Individual port errors do not poison the collection - check each port if needed.
 func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
+		return c
 	}
 
 	for _, p := range c.ports {
 		p.PutSignals(signals...)
-		if p.HasChainableErr() {
-			return c.WithChainableErr(p.ChainableErr())
-		}
+		// Individual port errors stay with the port, don't propagate to collection
 	}
 
 	return c
@@ -134,33 +133,29 @@ func (c *Collection) ForEach(action func(*Port) error) *Collection {
 }
 
 // Flush flushes all ports in a collection.
+// Individual port errors do not poison the collection - check each port if needed.
 func (c *Collection) Flush() *Collection {
 	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
+		return c
 	}
 
 	for _, p := range c.ports {
-		p = p.Flush()
-
-		if p.HasChainableErr() {
-			return c.WithChainableErr(p.ChainableErr())
-		}
+		p.Flush()
+		// Individual port errors stay with the port, don't propagate to collection
 	}
 	return c
 }
 
 // PipeTo creates pipes from each port in a collection to given destination ports.
+// Individual port errors do not poison the collection - check each port if needed.
 func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
 
 	for _, p := range c.ports {
-		p = p.PipeTo(destPorts...)
-
-		if p.HasChainableErr() {
-			return c.WithChainableErr(p.ChainableErr())
-		}
+		p.PipeTo(destPorts...)
+		// Individual port errors stay with the port, don't propagate to collection
 	}
 
 	return c
@@ -210,6 +205,8 @@ func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) *Collec
 }
 
 // Signals returns all signals of all ports in the collection.
+// If any port has an error, the returned group will have that error,
+// but the collection itself is not poisoned.
 func (c *Collection) Signals() *signal.Group {
 	if c.HasChainableErr() {
 		return signal.NewGroup().WithChainableErr(c.ChainableErr())
@@ -219,8 +216,8 @@ func (c *Collection) Signals() *signal.Group {
 	for _, p := range c.ports {
 		signals, err := p.Signals().All()
 		if err != nil {
-			c.WithChainableErr(err)
-			return signal.NewGroup().WithChainableErr(c.ChainableErr())
+			// Return a group with error, but don't poison the collection
+			return signal.NewGroup().WithChainableErr(err)
 		}
 		group = group.Add(signals...)
 	}
