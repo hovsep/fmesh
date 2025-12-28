@@ -243,6 +243,7 @@ func (g *Group) ChainableErr() error {
 }
 
 // Len returns the number of signals in the group.
+// Returns 0 if the group has a chainable error.
 // Use this to check how many signals are available or to iterate.
 //
 // Example (in activation function):
@@ -250,6 +251,9 @@ func (g *Group) ChainableErr() error {
 //	signalCount := this.InputByName("batch").Signals().Len()
 //	this.Logger().Printf("Processing %d items", signalCount)
 func (g *Group) Len() int {
+	if g.HasChainableErr() {
+		return 0
+	}
 	return len(g.signals)
 }
 

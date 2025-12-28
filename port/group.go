@@ -112,7 +112,11 @@ func (g *Group) ChainableErr() error {
 }
 
 // Len returns the number of ports in a group.
+// Returns 0 if the group has a chainable error.
 func (g *Group) Len() int {
+	if g.HasChainableErr() {
+		return 0
+	}
 	return len(g.ports)
 }
 

@@ -73,7 +73,11 @@ func (g *Group[T]) Clear() *Group[T] {
 }
 
 // Len returns the number of hooks in the group.
+// Returns 0 if the group has a chainable error.
 func (g *Group[T]) Len() int {
+	if g.HasChainableErr() {
+		return 0
+	}
 	return len(g.hooks)
 }
 

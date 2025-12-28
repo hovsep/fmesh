@@ -17,6 +17,9 @@ func NewGroup() *Group {
 
 // Add adds cycles to the group and returns it.
 func (g *Group) Add(cycles ...*Cycle) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
 	newCycles := make(Cycles, len(g.cycles)+len(cycles))
 	copy(newCycles, g.cycles)
 	for i, c := range cycles {
@@ -57,7 +60,11 @@ func (g *Group) withCycles(cycles Cycles) *Group {
 }
 
 // Len returns number of cycles in group.
+// Returns 0 if the group has a chainable error.
 func (g *Group) Len() int {
+	if g.HasChainableErr() {
+		return 0
+	}
 	return len(g.cycles)
 }
 
