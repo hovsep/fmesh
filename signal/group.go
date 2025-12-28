@@ -20,14 +20,14 @@ func NewGroup(payloads ...any) *Group {
 }
 
 // First returns the first signal in the group.
+// Returns a signal with error if group is empty (does not poison the group).
 func (g *Group) First() *Signal {
 	if g.HasChainableErr() {
 		return New(nil).WithChainableErr(g.ChainableErr())
 	}
 
 	if g.IsEmpty() {
-		g.WithChainableErr(ErrNoSignalsInGroup)
-		return New(nil).WithChainableErr(g.ChainableErr())
+		return New(nil).WithChainableErr(ErrNoSignalsInGroup)
 	}
 
 	return g.signals[0]

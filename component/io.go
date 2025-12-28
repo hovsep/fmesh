@@ -149,29 +149,21 @@ func (c *Component) Outputs() *port.Collection {
 }
 
 // OutputByName returns an output port by name.
+// Returns a port with error if not found (does not poison the component).
 func (c *Component) OutputByName(name string) *port.Port {
 	if c.HasChainableErr() {
 		return port.NewOutput("n/a").WithChainableErr(c.ChainableErr())
 	}
-	outputPort := c.Outputs().ByName(name)
-	if outputPort.HasChainableErr() {
-		c.WithChainableErr(outputPort.ChainableErr())
-		return outputPort.WithChainableErr(c.ChainableErr())
-	}
-	return outputPort
+	return c.Outputs().ByName(name)
 }
 
 // InputByName returns an input port by name.
+// Returns a port with error if not found (does not poison the component).
 func (c *Component) InputByName(name string) *port.Port {
 	if c.HasChainableErr() {
 		return port.NewInput("n/a").WithChainableErr(c.ChainableErr())
 	}
-	inputPort := c.Inputs().ByName(name)
-	if inputPort.HasChainableErr() {
-		c.WithChainableErr(inputPort.ChainableErr())
-		return inputPort.WithChainableErr(c.ChainableErr())
-	}
-	return inputPort
+	return c.Inputs().ByName(name)
 }
 
 // FlushOutputs pushed signals out of the component outputs to pipes and clears outputs.

@@ -104,7 +104,7 @@ func Test_FMesh(t *testing.T) {
 			},
 		},
 		{
-			name: "error propagated from port",
+			name: "port lookup error does not poison component or mesh",
 			test: func(t *testing.T) {
 				fm := fmesh.New("test").AddComponents(
 					component.New("c1").
@@ -118,16 +118,28 @@ func Test_FMesh(t *testing.T) {
 						}),
 				)
 
-				// Trying to search port by wrong name must lead to error which will bubble up at f-mesh level
-				fm.Components().ByName("c1").InputByName("num777").PutSignals(signal.New(10))
+				// Looking up a non-existent port returns a port with error,
+				// but does NOT poison the component or mesh (query error, not config error)
+				badPort := fm.Components().ByName("c1").InputByName("num777")
+				assert.True(t, badPort.HasChainableErr())
+				require.ErrorContains(t, badPort.ChainableErr(), "port not found")
+				require.ErrorContains(t, badPort.ChainableErr(), "port name: num777")
+
+				// Component and mesh remain unpoisoned
+				assert.False(t, fm.Components().ByName("c1").HasChainableErr())
+				assert.False(t, fm.HasChainableErr())
+
+				// PutSignals on the bad port does nothing useful but also doesn't panic
+				badPort.PutSignals(signal.New(10))
+
+				// Valid port operations work as expected
+				fm.Components().ByName("c1").InputByName("num1").PutSignals(signal.New(10))
 				fm.Components().ByName("c1").InputByName("num2").PutSignals(signal.New(5))
 
+				// Mesh runs successfully
 				_, err := fm.Run()
-				assert.True(t, fm.HasChainableErr())
-				require.Error(t, err)
-				require.ErrorContains(t, err, "failed to validate component c1")
-				require.ErrorContains(t, err, "port not found")
-				require.ErrorContains(t, err, "port name: num777")
+				assert.False(t, fm.HasChainableErr())
+				require.NoError(t, err)
 			},
 		},
 		{
