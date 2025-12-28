@@ -26,6 +26,7 @@ func NewCollection() *Collection {
 }
 
 // ByName retrieves a specific port from the collection by its name.
+// Returns a port with error if not found (does not poison the collection).
 // Commonly used to access individual ports from input/output collections.
 //
 // Example (in activation function):
@@ -37,8 +38,7 @@ func (c *Collection) ByName(name string) *Port {
 	}
 	port, ok := c.ports[name]
 	if !ok {
-		c.WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
-		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return NewOutput("n/a").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
 	}
 	return port
 }
@@ -232,14 +232,14 @@ func (c *Collection) All() (Map, error) {
 }
 
 // Any returns any arbitrary port from the collection.
+// Returns a port with error if collection is empty (does not poison the collection).
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) Any() *Port {
 	if c.HasChainableErr() {
 		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
 	}
 	if c.IsEmpty() {
-		c.WithChainableErr(ErrNoPortsInCollection)
-		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return NewOutput("n/a").WithChainableErr(ErrNoPortsInCollection)
 	}
 	// Get arbitrary port from map (order not guaranteed)
 	for _, port := range c.ports {
@@ -275,6 +275,7 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 }
 
 // FindAny returns any arbitrary port that matches the predicate.
+// Returns a port with error if no match found (does not poison the collection).
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Port {
 	if c.HasChainableErr() {
@@ -285,8 +286,7 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 			return port
 		}
 	}
-	c.WithChainableErr(ErrNoPortMatchesPredicate)
-	return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+	return NewOutput("n/a").WithChainableErr(ErrNoPortMatchesPredicate)
 }
 
 // Filter returns a new collection containing only ports that match the predicate.

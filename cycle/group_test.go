@@ -357,3 +357,28 @@ func TestGroup_ChainableErr(t *testing.T) {
 		assert.NoError(t, group.ChainableErr())
 	})
 }
+
+func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
+	t.Run("First does not poison group when empty", func(t *testing.T) {
+		group := NewGroup()
+
+		// Query first on empty group
+		result := group.First()
+
+		// Result should have error
+		assert.True(t, result.HasChainableErr())
+
+		// But group should NOT be poisoned
+		assert.False(t, group.HasChainableErr())
+
+		// Group should still be usable for adding
+		group = group.Add(New().WithNumber(42))
+		assert.Equal(t, 1, group.Len())
+		assert.False(t, group.HasChainableErr())
+
+		// Now First should work
+		first := group.First()
+		assert.False(t, first.HasChainableErr())
+		assert.Equal(t, 42, first.Number())
+	})
+}

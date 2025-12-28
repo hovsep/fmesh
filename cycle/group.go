@@ -92,13 +92,13 @@ func (g *Group) IsEmpty() bool {
 }
 
 // First returns the first cycle in the group.
+// Returns a cycle with error if group is empty (does not poison the group).
 func (g *Group) First() *Cycle {
 	if g.HasChainableErr() {
 		return New().WithChainableErr(g.ChainableErr())
 	}
 	if g.IsEmpty() {
-		g.WithChainableErr(errNoCyclesInGroup)
-		return New().WithChainableErr(g.ChainableErr())
+		return New().WithChainableErr(errNoCyclesInGroup)
 	}
 	return g.cycles[0]
 }

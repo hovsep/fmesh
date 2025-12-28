@@ -426,3 +426,67 @@ func TestCollection_Signals(t *testing.T) {
 		})
 	}
 }
+
+func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
+	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
+		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
+
+		// Query for non-existent port
+		result := collection.ByName("nonexistent")
+
+		// Result should have error
+		assert.True(t, result.HasChainableErr())
+		require.ErrorContains(t, result.ChainableErr(), "port not found")
+
+		// But collection should NOT be poisoned
+		assert.False(t, collection.HasChainableErr())
+		assert.Equal(t, 2, collection.Len())
+
+		// Collection should still be usable
+		p1 := collection.ByName("p1")
+		assert.False(t, p1.HasChainableErr())
+		assert.Equal(t, "p1", p1.Name())
+	})
+
+	t.Run("Any does not poison collection when empty", func(t *testing.T) {
+		collection := NewCollection()
+
+		// Query any on empty collection
+		result := collection.Any()
+
+		// Result should have error
+		assert.True(t, result.HasChainableErr())
+		require.ErrorIs(t, result.ChainableErr(), ErrNoPortsInCollection)
+
+		// But collection should NOT be poisoned
+		assert.False(t, collection.HasChainableErr())
+
+		// Collection should still be usable for adding
+		collection.Add(NewOutput("p1"))
+		assert.Equal(t, 1, collection.Len())
+	})
+
+	t.Run("FindAny does not poison collection when no match", func(t *testing.T) {
+		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
+
+		// Query with predicate that matches nothing
+		result := collection.FindAny(func(p *Port) bool {
+			return p.Name() == "nonexistent"
+		})
+
+		// Result should have error
+		assert.True(t, result.HasChainableErr())
+		require.ErrorIs(t, result.ChainableErr(), ErrNoPortMatchesPredicate)
+
+		// But collection should NOT be poisoned
+		assert.False(t, collection.HasChainableErr())
+		assert.Equal(t, 2, collection.Len())
+
+		// Subsequent FindAny should work
+		found := collection.FindAny(func(p *Port) bool {
+			return p.Name() == "p1"
+		})
+		assert.False(t, found.HasChainableErr())
+		assert.Equal(t, "p1", found.Name())
+	})
+}
