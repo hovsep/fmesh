@@ -279,39 +279,26 @@ func TestGroup_WithPayloads(t *testing.T) {
 }
 
 func TestGroup_First(t *testing.T) {
-	tests := []struct {
-		name  string
-		group *Group
-		want  *Signal
-	}{
-		{
-			name:  "empty group",
-			group: NewGroup(),
-			want:  New(nil).WithChainableErr(errors.New("group has no signals")),
-		},
-		{
-			name:  "happy path",
-			group: NewGroup(3, 5, 7),
-			want:  New(3),
-		},
-		{
-			name:  "with error in chain",
-			group: NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
-			want:  New(nil).WithChainableErr(errors.New("some error in chain")),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.First()
-			if tt.want.HasChainableErr() {
-				assert.True(t, got.HasChainableErr())
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.Equal(t, tt.want, tt.group.First())
-			}
-		})
-	}
+	t.Run("empty group returns nil", func(t *testing.T) {
+		group := NewGroup()
+		got := group.First()
+		assert.Nil(t, got)
+	})
+
+	t.Run("happy path", func(t *testing.T) {
+		group := NewGroup(3, 5, 7)
+		got := group.First()
+		require.NotNil(t, got)
+		payload, err := got.Payload()
+		require.NoError(t, err)
+		assert.Equal(t, 3, payload)
+	})
+
+	t.Run("with error in chain returns nil", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain"))
+		got := group.First()
+		assert.Nil(t, got)
+	})
 }
 
 func TestGroup_Signals(t *testing.T) {
@@ -611,11 +598,10 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		// Query first on empty group
 		result := group.First()
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoSignalsInGroup)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But group should NOT be poisoned
+		// Group should NOT be poisoned
 		assert.False(t, group.HasChainableErr())
 
 		// Group should still be usable for adding
@@ -625,7 +611,7 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 
 		// Now First should work
 		first := group.First()
-		assert.False(t, first.HasChainableErr())
+		require.NotNil(t, first)
 		payload, err := first.Payload()
 		require.NoError(t, err)
 		assert.Equal(t, 42, payload)

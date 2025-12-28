@@ -2,7 +2,6 @@ package port
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -105,20 +104,20 @@ func TestCollection_ByName(t *testing.T) {
 			want: NewOutput("p2").PutSignals(signal.New(12)),
 		},
 		{
-			name:       "port not found",
+			name:       "port not found returns nil",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
 			args: args{
 				name: "p3",
 			},
-			want: NewOutput("n/a").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, "p3")),
+			want: nil,
 		},
 		{
-			name:       "with chain error",
+			name:       "with chain error returns nil",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
 			args: args{
 				name: "p1",
 			},
-			want: NewOutput("n/a").WithChainableErr(errors.New("some error")),
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -434,17 +433,16 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		// Query for non-existent port
 		result := collection.ByName("nonexistent")
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorContains(t, result.ChainableErr(), "port not found")
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 		assert.Equal(t, 2, collection.Len())
 
 		// Collection should still be usable
 		p1 := collection.ByName("p1")
-		assert.False(t, p1.HasChainableErr())
+		require.NotNil(t, p1)
 		assert.Equal(t, "p1", p1.Name())
 	})
 
@@ -454,11 +452,10 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		// Query any on empty collection
 		result := collection.Any()
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoPortsInCollection)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 
 		// Collection should still be usable for adding
@@ -474,11 +471,10 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 			return p.Name() == "nonexistent"
 		})
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoPortMatchesPredicate)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But collection should NOT be poisoned
+		// Collection should NOT be poisoned
 		assert.False(t, collection.HasChainableErr())
 		assert.Equal(t, 2, collection.Len())
 
@@ -486,7 +482,7 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		found := collection.FindAny(func(p *Port) bool {
 			return p.Name() == "p1"
 		})
-		assert.False(t, found.HasChainableErr())
+		require.NotNil(t, found)
 		assert.Equal(t, "p1", found.Name())
 	})
 }

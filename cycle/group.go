@@ -62,9 +62,13 @@ func (g *Group) Len() int {
 }
 
 // Last returns the most recent cycle added to the group.
+// Returns nil if the group is empty or has an error.
 func (g *Group) Last() *Cycle {
+	if g.HasChainableErr() {
+		return nil
+	}
 	if g.IsEmpty() {
-		return New().WithChainableErr(errNoCyclesInGroup)
+		return nil
 	}
 
 	return g.cycles[g.Len()-1]
@@ -92,13 +96,13 @@ func (g *Group) IsEmpty() bool {
 }
 
 // First returns the first cycle in the group.
-// Returns a cycle with error if group is empty (does not poison the group).
+// Returns nil if the group is empty or has an error.
 func (g *Group) First() *Cycle {
 	if g.HasChainableErr() {
-		return New().WithChainableErr(g.ChainableErr())
+		return nil
 	}
 	if g.IsEmpty() {
-		return New().WithChainableErr(errNoCyclesInGroup)
+		return nil
 	}
 	return g.cycles[0]
 }

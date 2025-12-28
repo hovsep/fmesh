@@ -20,14 +20,14 @@ func NewGroup(payloads ...any) *Group {
 }
 
 // First returns the first signal in the group.
-// Returns a signal with error if group is empty (does not poison the group).
+// Returns nil if the group is empty or has an error.
 func (g *Group) First() *Signal {
 	if g.HasChainableErr() {
-		return New(nil).WithChainableErr(g.ChainableErr())
+		return nil
 	}
 
 	if g.IsEmpty() {
-		return New(nil).WithChainableErr(ErrNoSignalsInGroup)
+		return nil
 	}
 
 	return g.signals[0]
@@ -91,7 +91,12 @@ func (g *Group) FirstPayload() (any, error) {
 		return nil, g.ChainableErr()
 	}
 
-	return g.First().Payload()
+	first := g.First()
+	if first == nil {
+		return nil, ErrNoSignalsInGroup
+	}
+
+	return first.Payload()
 }
 
 // FirstPayloadOrDefault returns the payload of the first signal or a default value.
@@ -308,14 +313,6 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	}
 
 	return NewGroup().withSignals(mappedSignals)
-}
-
-// FirstOrNil returns the first signal or nil.
-func (g *Group) FirstOrNil() *Signal {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return nil
-	}
-	return g.signals[0]
 }
 
 // CountMatch returns the number of signals that match the predicate.

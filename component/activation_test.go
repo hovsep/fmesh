@@ -22,10 +22,12 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: New("c1"),
+			component: New("c1").AddOutputs("out1"),
 			args: args{
 				f: func(this *Component) error {
-					this.OutputByName("out1").PutSignals(signal.New(23))
+					if out := this.OutputByName("out1"); out != nil {
+						out.PutSignals(signal.New(23))
+					}
 					return nil
 				},
 			},

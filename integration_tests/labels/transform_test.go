@@ -135,7 +135,7 @@ func Test_LabelTransformation(t *testing.T) {
 		outSignals := fm.ComponentByName("normalizer").OutputByName("out").Signals()
 		assert.Equal(t, 1, outSignals.Len())
 
-		firstSignal := outSignals.FirstOrNil()
+		firstSignal := outSignals.First()
 		require.NotNil(t, firstSignal)
 
 		assert.True(t, firstSignal.Labels().Has("env"))

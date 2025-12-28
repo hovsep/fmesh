@@ -158,11 +158,10 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		// Query first on empty group
 		result := group.First()
 
-		// Result should have error
-		assert.True(t, result.HasChainableErr())
-		require.ErrorIs(t, result.ChainableErr(), ErrNoPortsInGroup)
+		// Result should be nil
+		assert.Nil(t, result)
 
-		// But group should NOT be poisoned
+		// Group should NOT be poisoned
 		assert.False(t, group.HasChainableErr())
 
 		// Group should still be usable for adding
@@ -172,7 +171,7 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 
 		// Now First should work
 		first := group.First()
-		assert.False(t, first.HasChainableErr())
+		require.NotNil(t, first)
 		assert.Equal(t, "p1", first.Name())
 	})
 }

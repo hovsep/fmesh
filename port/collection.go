@@ -1,8 +1,6 @@
 package port
 
 import (
-	"fmt"
-
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -26,19 +24,21 @@ func NewCollection() *Collection {
 }
 
 // ByName retrieves a specific port from the collection by its name.
-// Returns a port with error if not found (does not poison the collection).
+// Returns nil if not found or if the collection has an error.
 // Commonly used to access individual ports from input/output collections.
 //
 // Example (in activation function):
 //
-//	data := this.Inputs().ByName("primary").Signals().FirstPayloadOrDefault("")
+//	if port := this.Inputs().ByName("primary"); port != nil {
+//	    data := port.Signals().FirstPayloadOrDefault("")
+//	}
 func (c *Collection) ByName(name string) *Port {
 	if c.HasChainableErr() {
-		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	port, ok := c.ports[name]
 	if !ok {
-		return NewOutput("n/a").WithChainableErr(fmt.Errorf("%w, port name: %s", ErrPortNotFoundInCollection, name))
+		return nil
 	}
 	return port
 }
@@ -232,20 +232,20 @@ func (c *Collection) All() (Map, error) {
 }
 
 // Any returns any arbitrary port from the collection.
-// Returns a port with error if collection is empty (does not poison the collection).
+// Returns nil if the collection is empty or has an error.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) Any() *Port {
 	if c.HasChainableErr() {
-		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	if c.IsEmpty() {
-		return NewOutput("n/a").WithChainableErr(ErrNoPortsInCollection)
+		return nil
 	}
 	// Get arbitrary port from map (order not guaranteed)
 	for _, port := range c.ports {
 		return port
 	}
-	return NewOutput("n/a").WithChainableErr(errUnexpectedErrorGettingPort)
+	return nil
 }
 
 // AllMatch returns true if all ports match the predicate.
@@ -275,18 +275,18 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 }
 
 // FindAny returns any arbitrary port that matches the predicate.
-// Returns a port with error if no match found (does not poison the collection).
+// Returns nil if no match found or if the collection has an error.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Port {
 	if c.HasChainableErr() {
-		return NewOutput("n/a").WithChainableErr(c.ChainableErr())
+		return nil
 	}
 	for _, port := range c.ports {
 		if predicate(port) {
 			return port
 		}
 	}
-	return NewOutput("n/a").WithChainableErr(ErrNoPortMatchesPredicate)
+	return nil
 }
 
 // Filter returns a new collection containing only ports that match the predicate.
