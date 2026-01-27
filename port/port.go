@@ -12,10 +12,11 @@ import (
 type Direction int
 
 const (
-	// DirectionIn is the direction for input ports.
-	DirectionIn Direction = iota
 	// DirectionOut is the direction for output ports.
-	DirectionOut
+	// It's the zero value to maintain backward compatibility.
+	DirectionOut Direction = iota
+	// DirectionIn is the direction for input ports.
+	DirectionIn
 )
 
 // String returns the string representation of the direction.
