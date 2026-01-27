@@ -9,15 +9,26 @@ import (
 )
 
 // Direction represents the direction of a port (input or output).
-// It's a boolean type where true = input, false = output.
-type Direction bool
+type Direction int
 
 const (
 	// DirectionIn is the direction for input ports.
-	DirectionIn Direction = true
+	DirectionIn Direction = iota
 	// DirectionOut is the direction for output ports.
-	DirectionOut Direction = false
+	DirectionOut
 )
+
+// String returns the string representation of the direction.
+func (d Direction) String() string {
+	switch d {
+	case DirectionIn:
+		return "in"
+	case DirectionOut:
+		return "out"
+	default:
+		return "unknown"
+	}
+}
 
 // Port defines a connectivity point of a component.
 type Port struct {
