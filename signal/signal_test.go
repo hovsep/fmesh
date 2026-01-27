@@ -39,7 +39,7 @@ func TestNew(t *testing.T) {
 			require.NotNil(t, sig)
 			require.NotNil(t, sig.Labels())
 			assert.False(t, sig.HasChainableErr())
-			
+
 			payload, err := sig.Payload()
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedPayload, payload)
