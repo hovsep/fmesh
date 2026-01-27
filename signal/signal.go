@@ -8,7 +8,7 @@ import (
 type Signal struct {
 	chainableErr error
 	labels       *labels.Collection
-	payload      []any // Slice is used in order to support nil payload
+	payload      any
 }
 
 // New creates a new signal with the given payload.
@@ -27,7 +27,7 @@ func New(payload any) *Signal {
 	return &Signal{
 		chainableErr: nil,
 		labels:       labels.NewCollection(),
-		payload:      []any{payload},
+		payload:      payload,
 	}
 }
 
@@ -89,7 +89,7 @@ func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {
 		return nil, s.ChainableErr()
 	}
-	return s.payload[0], nil
+	return s.payload, nil
 }
 
 // PayloadOrNil returns payload or nil in case of error.

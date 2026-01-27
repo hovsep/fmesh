@@ -14,36 +14,35 @@ func TestNew(t *testing.T) {
 		payload any
 	}
 	tests := []struct {
-		name string
-		args args
-		want *Signal
+		name            string
+		args            args
+		expectedPayload any
 	}{
 		{
 			name: "nil payload is valid",
 			args: args{
 				payload: nil,
 			},
-			want: &Signal{
-				payload:      []any{nil},
-				chainableErr: nil,
-				labels:       labels.NewCollection(),
-			},
+			expectedPayload: nil,
 		},
 		{
 			name: "with payload",
 			args: args{
 				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
-			want: &Signal{
-				payload:      []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				chainableErr: nil,
-				labels:       labels.NewCollection(),
-			},
+			expectedPayload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, New(tt.args.payload))
+			sig := New(tt.args.payload)
+			require.NotNil(t, sig)
+			require.NotNil(t, sig.Labels())
+			assert.False(t, sig.HasChainableErr())
+
+			payload, err := sig.Payload()
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedPayload, payload)
 		})
 	}
 }
