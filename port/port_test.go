@@ -278,6 +278,74 @@ func TestPort_PutSignals(t *testing.T) {
 	}
 }
 
+func TestPort_PutPayloads(t *testing.T) {
+	tests := []struct {
+		name       string
+		port       *Port
+		payloads   []any
+		assertions func(t *testing.T, portAfter *Port)
+	}{
+		{
+			name: "single payload to empty port",
+			port: NewOutput("emptyPort"),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11), portAfter.Signals())
+			},
+			payloads: []any{11},
+		},
+		{
+			name: "multiple signals to empty port",
+			port: NewOutput("p"),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
+			},
+			payloads: []any{11, 12},
+		},
+		{
+			name: "single signal to port with single signal",
+			port: NewOutput("p").PutSignals(signal.New(11)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
+			},
+			payloads: []any{12},
+		},
+		{
+			name: "single signal to port with multiple signals",
+			port: NewOutput("p").PutSignalGroups(signal.NewGroup(11, 12)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
+			},
+			payloads: []any{13},
+		},
+		{
+			name: "multiple signals to port with multiple signals",
+			port: NewOutput("p").PutSignalGroups(signal.NewGroup(55, 66)),
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
+			},
+			payloads: []any{13, 14},
+		},
+
+		{
+			name:     "with chain error",
+			port:     NewOutput("p").WithChainableErr(errors.New("some error in port")),
+			payloads: []any{123},
+			assertions: func(t *testing.T, portAfter *Port) {
+				assert.True(t, portAfter.HasChainableErr())
+				assert.Zero(t, portAfter.Signals().Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			portAfter := tt.port.PutPayloads(tt.payloads...)
+			if tt.assertions != nil {
+				tt.assertions(t, portAfter)
+			}
+		})
+	}
+}
+
 func TestNewPort(t *testing.T) {
 	type args struct {
 		name string

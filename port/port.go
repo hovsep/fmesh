@@ -199,6 +199,27 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	return result
 }
 
+// PutPayloads creates signals from given payloads and returns the port for chaining.
+func (p *Port) PutPayloads(payloads ...any) *Port {
+	if p.HasChainableErr() {
+		return p
+	}
+
+	newSignals, _ := signal.NewGroup(payloads...).All()
+
+	result := p.withSignals(p.Signals().Add(newSignals...))
+
+	// Trigger OnSignalsAdded hook
+	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
+		Port:         p,
+		SignalsAdded: newSignals,
+	}); err != nil {
+		return result.WithChainableErr(fmt.Errorf("onSignalsAdded hook failed: %w", err))
+	}
+
+	return result
+}
+
 // PutSignalGroups adds all signals from signal groups and returns the port for chaining.
 func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasChainableErr() {
