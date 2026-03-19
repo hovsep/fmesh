@@ -105,7 +105,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("signal filtering and relabeling", func(t *testing.T) {
 		// Signal with metadata that gets filtered and relabeled
-		s := signal.New(map[string]interface{}{"data": "value"}).
+		s := signal.New(map[string]any{"data": "value"}).
 			AddLabels(labels.Map{
 				"source":    "api",
 				"priority":  "low",

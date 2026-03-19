@@ -1,5 +1,7 @@
 package signal
 
+import "slices"
+
 // Group represents a list of signals.
 type Group struct {
 	chainableErr error
@@ -48,13 +50,7 @@ func (g *Group) AnyMatch(p Predicate) bool {
 		return false
 	}
 
-	for _, sig := range g.signals {
-		if p(sig) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(g.signals, p)
 }
 
 // AllMatch returns true if all signals match the predicate.

@@ -1,5 +1,7 @@
 package cycle
 
+import "slices"
+
 // Group contains multiple activation cycles.
 type Group struct {
 	chainableErr error
@@ -143,12 +145,7 @@ func (g *Group) AnyMatch(predicate Predicate) bool {
 	if g.HasChainableErr() {
 		return false
 	}
-	for _, cyc := range g.cycles {
-		if predicate(cyc) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(g.cycles, predicate)
 }
 
 // CountMatch returns the number of cycles that match the predicate.

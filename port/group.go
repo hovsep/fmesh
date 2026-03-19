@@ -2,6 +2,7 @@ package port
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hovsep/fmesh/labels"
 )
@@ -165,12 +166,7 @@ func (g *Group) AnyMatch(predicate Predicate) bool {
 	if g.HasChainableErr() {
 		return false
 	}
-	for _, port := range g.ports {
-		if predicate(port) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(g.ports, predicate)
 }
 
 // CountMatch returns the number of ports that match the predicate.

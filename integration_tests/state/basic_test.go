@@ -31,7 +31,7 @@ func Test_State(t *testing.T) {
 						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
 
-						for i := 0; i < demandRate; i++ {
+						for range demandRate {
 							this.OutputByName("signal_out").PutSignals(signal.New(rand.Int()))
 						}
 						return nil

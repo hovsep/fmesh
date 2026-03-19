@@ -2,6 +2,7 @@ package labels
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Collection provides safe access to labels with error handling.
@@ -150,12 +151,7 @@ func (c *Collection) HasAny(labels ...string) bool {
 	if c.HasChainableErr() {
 		return false
 	}
-	for _, label := range labels {
-		if c.Has(label) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(labels, c.Has)
 }
 
 // ValueIs returns true when a collection has given label with a given value.
