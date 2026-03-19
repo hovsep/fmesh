@@ -20,14 +20,9 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test ./... -coverprofile=coverage.txt
+        run: go test ./...
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.0
-
-      - name: Upload results to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
