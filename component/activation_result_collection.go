@@ -221,3 +221,35 @@ func (c *ActivationResultCollection) Clear() *ActivationResultCollection {
 	c.activationResults = make(map[string]*ActivationResult)
 	return c
 }
+
+// FindAny returns any arbitrary activation result that matches the predicate.
+// Returns nil if no match found or if the collection has an error.
+// Note: Map iteration order is not guaranteed, so this may return different items on each call.
+func (c *ActivationResultCollection) FindAny(predicate ActivationResultPredicate) *ActivationResult {
+	if c.HasChainableErr() {
+		return nil
+	}
+	for _, ar := range c.activationResults {
+		if predicate(ar) {
+			return ar
+		}
+	}
+	return nil
+}
+
+// Filter returns a new collection with activation results that match the predicate.
+func (c *ActivationResultCollection) Filter(predicate ActivationResultPredicate) *ActivationResultCollection {
+	if c.HasChainableErr() {
+		return NewActivationResultCollection().WithChainableErr(c.ChainableErr())
+	}
+	filtered := NewActivationResultCollection()
+	for _, ar := range c.activationResults {
+		if predicate(ar) {
+			filtered = filtered.Add(ar)
+			if filtered.HasChainableErr() {
+				return filtered
+			}
+		}
+	}
+	return filtered
+}
