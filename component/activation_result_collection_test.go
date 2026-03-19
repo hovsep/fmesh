@@ -353,3 +353,62 @@ func TestActivationResult_ChainableErr(t *testing.T) {
 		assert.NoError(t, r.ChainableErr())
 	})
 }
+
+func TestActivationResultCollection_FindAny(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+
+	t.Run("one found", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.Equal(t, "c1", result.ComponentName())
+	})
+
+	t.Run("none match", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return r.ComponentName() == "c3"
+		})
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty collection returns nil", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return true
+		})
+		assert.Nil(t, result)
+	})
+}
+
+func TestActivationResultCollection_Filter(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+
+	t.Run("one found", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.False(t, result.IsEmpty())
+		assert.Equal(t, 1, result.Len())
+	})
+
+	t.Run("none match", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return r.ComponentName() == "c3"
+		})
+		assert.True(t, result.IsEmpty())
+	})
+
+	t.Run("empty collection returns empty collection", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return true
+		})
+		assert.True(t, result.IsEmpty())
+	})
+}
