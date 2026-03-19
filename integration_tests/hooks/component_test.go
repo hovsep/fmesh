@@ -161,7 +161,7 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 
 func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 	// Practical example: Transform or enrich output data in hooks
-	var enrichedOutput []map[string]interface{}
+	var enrichedOutput []map[string]any
 
 	c := component.New("enricher").
 		AddInputs("raw").
@@ -170,7 +170,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
 				// Access output and create enriched version with metadata
 				ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
-					enriched := map[string]interface{}{
+					enriched := map[string]any{
 						"value":         s.PayloadOrDefault(nil),
 						"component":     ctx.Component.Name(),
 						"timestamp":     "2024-01-01", // In real code, use time.Now()

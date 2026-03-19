@@ -24,7 +24,7 @@ func Test_MultipleRun(t *testing.T) {
 					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
 				}))
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			fm.ComponentByName("bypass").InputByName("in").PutSignals(signal.New(i))
 			runResult, err := fm.Run()
 			require.NoError(t, err)
