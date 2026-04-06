@@ -46,7 +46,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					AddOutputs("o1").
 					WithActivationFunc(func(this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return component.NewErrWaitForInputs(true)
+							return component.NewErrWaitForInputs(component.KeepAllInputs)
 						}
 
 						inputNum1 := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
