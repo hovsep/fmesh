@@ -336,13 +336,13 @@ func TestFMesh_Run(t *testing.T) {
 							count++
 
 							if count%2 != 0 {
-								this.OutputByName("num1").PutSignals(signal.New(count))
+								this.OutputByName("num1").PutPayloads(count)
 							} else {
-								this.OutputByName("num2").PutSignals(signal.New(count))
+								this.OutputByName("num2").PutPayloads(count)
 							}
 							// Stop recursion after 4 activations (2 odd + 2 even = 2 balanced pairs for c2)
 							if count < 4 {
-								this.OutputByName("loop_out").PutSignals(signal.New(count))
+								this.OutputByName("loop_out").PutPayloads(count)
 							}
 							return nil
 						}),
@@ -356,7 +356,7 @@ func TestFMesh_Run(t *testing.T) {
 							}
 							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
 							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
-							this.OutputByName("result").PutSignals(signal.New(a * b))
+							this.OutputByName("result").PutPayloads(a * b)
 							return nil
 						}),
 				),
@@ -368,12 +368,6 @@ func TestFMesh_Run(t *testing.T) {
 				c1.OutputByName("num2").PipeTo(c2.InputByName("in2"))
 				c1.InputByName("trigger").PutSignals(signal.New("start"))
 			},
-			// Cycle 1: c1(OK), c2(NoInput)
-			// Cycle 2: c1(OK), c2(WaitingForInputsKeep) — c2 has in1=1, waits for in2
-			// Cycle 3: c1(OK), c2(OK)                  — c2 has in1=1+in2=2, computes 1×2=2
-			// Cycle 4: c1(OK), c2(WaitingForInputsKeep) — c2 has in1=3, waits for in2
-			// Cycle 5: c1(NoInput), c2(OK)              — c2 has in1=3+in2=4, computes 3×4=12
-			// Cycle 6: c1(NoInput), c2(NoInput)         — nothing left, mesh stops naturally
 			wantCycles: cycle.NewGroup().Add(
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
