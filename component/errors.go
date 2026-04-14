@@ -11,7 +11,7 @@ import (
 // For now we only have two variants, so sentinel errors are sufficient.
 // If more behaviors are introduced, consider switching to a typed error.
 var (
-	// ErrWaitingForInputs is returned when you want the component to wait for some inputs and skip (default behaviour) all input signals received in the current activation cycle.
+	// ErrWaitingForInputs is returned when you want the component to wait for some inputs and skip (default `behavior`) all input signals received in the current activation cycle.
 	ErrWaitingForInputs = errors.New("component is waiting for some inputs")
 
 	// ErrWaitingForInputsKeep is returned when you want the component to wait for some inputs and keep all input signals received in the current activation cycle.
