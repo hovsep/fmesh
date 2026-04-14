@@ -176,7 +176,6 @@ func TestFMesh_AddComponents(t *testing.T) {
 				assert.True(t, fm.HasChainableErr())
 			},
 		},
-
 		{
 			name: "components inherit logger from fmesh when custom one is not set",
 			fm:   New("fm1"),
@@ -196,6 +195,21 @@ func TestFMesh_AddComponents(t *testing.T) {
 
 				assert.Equal(t, "c2: custom ", fm.ComponentByName("c2").Logger().Prefix())
 				assert.Equal(t, io.Discard, fm.ComponentByName("c2").Logger().Writer())
+			},
+		},
+		{
+			name: "adding invalid component",
+			fm:   New("fm1"),
+			args: args{
+				components: []*component.Component{
+					component.New("c1").WithDescription("No AF"),
+				},
+			},
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, 0, fm.Components().Len())
+				require.Error(t, fm.ChainableErr())
+				require.Contains(t, fm.ChainableErr().Error(), "failed to add component: c1 reason: activation function is not set")
+				assert.True(t, fm.HasChainableErr())
 			},
 		},
 	}
@@ -1076,7 +1090,7 @@ func TestFMesh_validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFM()
-			err := fm.validate()
+			err := fm.preRunValidate()
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)

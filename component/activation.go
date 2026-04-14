@@ -17,25 +17,12 @@ func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	return c
 }
 
-// hasActivationFunction checks when the activation function is set.
-func (c *Component) hasActivationFunction() bool {
-	if c.HasChainableErr() {
-		return false
-	}
-
-	return c.f != nil
-}
-
 // MaybeActivate tries to run the activation function if all required conditions are met.
 func (c *Component) MaybeActivate() *ActivationResult {
 	c.propagateChainErrors()
 
 	if c.HasChainableErr() {
 		return NewActivationResult(c.Name()).WithChainableErr(c.ChainableErr())
-	}
-
-	if !c.hasActivationFunction() {
-		return c.newActivationResultNoFunction()
 	}
 
 	if !c.Inputs().AnyHasSignals() {

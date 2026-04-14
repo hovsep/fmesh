@@ -34,7 +34,6 @@ func TestComponent_AddInputs(t *testing.T) {
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
 				assert.Zero(t, component.labels.Len())
-				assert.True(t, component.hasActivationFunction())
 			},
 		},
 		{
@@ -49,7 +48,6 @@ func TestComponent_AddInputs(t *testing.T) {
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
 				assert.Zero(t, component.labels.Len())
-				assert.False(t, component.hasActivationFunction())
 			},
 		},
 	}
@@ -87,7 +85,6 @@ func TestComponent_AddOutputs(t *testing.T) {
 				assert.Zero(t, component.Inputs().Len())
 				assert.Empty(t, component.Description())
 				assert.Zero(t, component.labels.Len())
-				assert.True(t, component.hasActivationFunction())
 			},
 		},
 		{
@@ -102,7 +99,6 @@ func TestComponent_AddOutputs(t *testing.T) {
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
 				assert.Zero(t, component.labels.Len())
-				assert.False(t, component.hasActivationFunction())
 			},
 		},
 	}

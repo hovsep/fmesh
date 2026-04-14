@@ -7,6 +7,7 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
+	"github.com/hovsep/fmesh/port"
 )
 
 // FMesh is the functional mesh.
@@ -77,11 +78,22 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 		return fm
 	}
 
+	// Propagate error from component collection
+	if fm.components.HasChainableErr() {
+		return fm.WithChainableErr(fm.components.ChainableErr())
+	}
+
 	for _, c := range components {
+		validationErr := c.ValidateBeforeAddingToMesh()
+		if validationErr != nil {
+			return fm.WithChainableErr(fmt.Errorf("failed to add component: %s reason: %w", c.Name(), validationErr))
+		}
+
 		// Inherit logger from fm if the component does not have its own
 		if c.Logger() == nil {
 			c = c.WithLogger(fm.Logger())
 		}
+
 		fm.components = fm.components.Add(c.WithParentMesh(fm))
 
 		// Propagate error from component
@@ -89,10 +101,6 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 			return fm.WithChainableErr(c.ChainableErr())
 		}
 
-		// Propagate error from component's collection
-		if fm.components.HasChainableErr() {
-			return fm.WithChainableErr(fm.components.ChainableErr())
-		}
 	}
 
 	fm.LogDebug(fmt.Sprintf("%d components added to mesh", fm.Components().Len()))
@@ -300,7 +308,7 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		return fm.WithChainableErr(hookErr).runtimeInfo, hookErr
 	}
 
-	validationErr := fm.validate()
+	validationErr := fm.preRunValidate()
 
 	if validationErr != nil {
 		return fm.WithChainableErr(validationErr).runtimeInfo, validationErr
@@ -407,72 +415,64 @@ func (fm *FMesh) ChainableErr() error {
 	return fm.chainableErr
 }
 
-func (fm *FMesh) validate() error {
+// preRunValidate does pre-run checks.
+func (fm *FMesh) preRunValidate() error {
 	if fm.HasChainableErr() {
 		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
 	}
 
-	components, err := fm.Components().All()
-	if err != nil {
-		return fmt.Errorf("failed to get components: %w", err)
-	}
-
-	for _, c := range components {
-		if c.HasChainableErr() {
-			return fmt.Errorf("failed to validate component %s: %w", c.Name(), c.ChainableErr())
-		}
-
-		if c.ParentMesh() == nil {
-			return fmt.Errorf("component %s is not registered in the mesh", c.Name())
+	return fm.Components().ForEach(func(c *component.Component) error {
+		componentValidationErr := c.ValidateBeforeActivating()
+		if componentValidationErr != nil {
+			return fmt.Errorf("invalid component: %s: %w", c.Name(), componentValidationErr)
 		}
 
 		if c.ParentMesh() != fm {
 			return fmt.Errorf("component %s has invalid parent mesh", c.Name())
 		}
 
-		outputs, err := c.Outputs().All()
-		if err != nil {
-			return fmt.Errorf("failed to get outputs for component %s: %w", c.Name(), err)
-		}
+		portsValidationErr := c.Outputs().ForEach(func(p *port.Port) error {
 
-		for _, p := range outputs {
-			if p.HasChainableErr() {
-				return fmt.Errorf("failed to validate port %s in component %s: %w", p.Name(), c.Name(), p.ChainableErr())
-			}
-
-			if p.ParentComponent() == nil {
-				return fmt.Errorf("port %s in component %s has not parent component set", p.Name(), c.Name())
+			portValidationErr := p.ValidateBeforeActivation()
+			if portValidationErr != nil {
+				return fmt.Errorf("invalid port %s in component %s: %w", p.Name(), c.Name(), portValidationErr)
 			}
 
 			if p.ParentComponent() != c {
 				return fmt.Errorf("port %s in component %s has invalid parent component", p.Name(), c.Name())
 			}
 
-			pipes, err := p.Pipes().All()
-			if err != nil {
-				return fmt.Errorf("failed to get pipes for port %s in component %s: %w", p.Name(), c.Name(), err)
-			}
-
-			for _, pipe := range pipes {
-				if pipe.ParentComponent() == nil {
-					return fmt.Errorf("pipe leads to unregistered port %s in component %s", pipe.Name(), c.Name())
+			pipesValidationErr := p.Pipes().ForEach(func(destPort *port.Port) error {
+				destPortValidationErr := destPort.ValidateBeforeActivation()
+				if destPortValidationErr != nil {
+					return fmt.Errorf("invalid pipe from port %s to port %s in component %s: %w", p.Name(), destPort.Name(), destPort.ParentComponent().Name(), destPortValidationErr)
 				}
 
-				destComponent := fm.components.ByName(pipe.ParentComponent().Name())
-				if destComponent == nil {
-					return fmt.Errorf("pipe leads to absent component %s", pipe.ParentComponent().Name())
-				}
+				destComponent := destPort.ParentComponent().(*component.Component)
 
-				if destComponent.ParentMesh() == nil {
-					return fmt.Errorf("pipe leads to unregistered component %s", pipe.ParentComponent().Name())
+				destComponentValidationErr := destComponent.ValidateBeforeActivating()
+				if destComponentValidationErr != nil {
+					return fmt.Errorf("invalid component %s: %w", destComponent.Name(), destComponentValidationErr)
 				}
 
 				if destComponent.ParentMesh() != fm {
-					return fmt.Errorf("pipe leads to port %s in component %s that has invalid parent mesh", pipe.Name(), c.Name())
+					return fmt.Errorf("component %s has invalid parent mesh", destComponent.Name())
 				}
-			}
-		}
-	}
+				return nil
+			}).ChainableErr()
 
-	return nil
+			if pipesValidationErr != nil {
+				return fmt.Errorf("invalid pipes from port %s: %w", p.Name(), pipesValidationErr)
+			}
+
+			return nil
+		}).ChainableErr()
+
+		if portsValidationErr != nil {
+			return fmt.Errorf("invalid ports in component %s: %w", c.Name(), portsValidationErr)
+		}
+
+		return nil
+	}).ChainableErr()
+
 }

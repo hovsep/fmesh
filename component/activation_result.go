@@ -26,8 +26,6 @@ func (a ActivationResultCode) String() string {
 		return "Success"
 	case ActivationCodeNoInput:
 		return "No input"
-	case ActivationCodeNoFunction:
-		return "No activation function"
 	case ActivationCodeReturnedError:
 		return "Finished with error"
 	case ActivationCodePanicked:
@@ -50,9 +48,6 @@ const (
 
 	// ActivationCodeNoInput - component is not activated because it has no input set.
 	ActivationCodeNoInput
-
-	// ActivationCodeNoFunction - component activation function is not set, so we can not activate it.
-	ActivationCodeNoFunction
 
 	// ActivationCodeReturnedError - component is activated but returned an error.
 	ActivationCodeReturnedError
@@ -141,13 +136,6 @@ func (c *Component) newActivationResultNoInput() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
 		WithActivationCode(ActivationCodeNoInput)
-}
-
-// newActivationResultNoFunction builds a specific activation result.
-func (c *Component) newActivationResultNoFunction() *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(false).
-		WithActivationCode(ActivationCodeNoFunction)
 }
 
 // newActivationResultReturnedError builds a specific activation result.

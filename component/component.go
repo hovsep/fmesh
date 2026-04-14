@@ -25,6 +25,7 @@ type Component struct {
 }
 
 // New creates a new component.
+// @TODO: maybe we need to start validating the name and returning error.
 func New(name string) *Component {
 	return &Component{
 		name:         name,
@@ -216,4 +217,30 @@ func (c *Component) SetupHooks(configure func(*Hooks)) *Component {
 	}
 	configure(c.hooks)
 	return c
+}
+
+// ValidateBeforeAddingToMesh checks if the component is good to be added into mesh.
+func (c *Component) ValidateBeforeAddingToMesh() error {
+	if c.HasChainableErr() {
+		return c.ChainableErr()
+	}
+
+	if c.f == nil {
+		return errors.New("activation function is not set")
+	}
+
+	return nil
+}
+
+// ValidateBeforeActivating checks if the component is good to be activated.
+func (c *Component) ValidateBeforeActivating() error {
+	if c.HasChainableErr() {
+		return c.ChainableErr()
+	}
+
+	if c.ParentMesh() == nil {
+		return errors.New("parent mesh is not set")
+	}
+
+	return nil
 }
