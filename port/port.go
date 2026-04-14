@@ -416,15 +416,8 @@ func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
 }
 
 // WithChainableErr sets a chainable error and returns the port.
-// The error is automatically joined with the port's name as context.
 func (p *Port) WithChainableErr(err error) *Port {
-	if err == nil {
-		p.chainableErr = nil
-		return p
-	}
-
-	contextErr := fmt.Errorf("error in port '%s'", p.Name())
-	p.chainableErr = errors.Join(contextErr, err)
+	p.chainableErr = fmt.Errorf("error in port '%s' : %w", p.Name(), err)
 	return p
 }
 

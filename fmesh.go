@@ -78,11 +78,6 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 		return fm
 	}
 
-	// Propagate error from component collection
-	if fm.components.HasChainableErr() {
-		return fm.WithChainableErr(fm.components.ChainableErr())
-	}
-
 	for _, c := range components {
 		validationErr := c.ValidateBeforeAddingToMesh()
 		if validationErr != nil {
@@ -101,6 +96,10 @@ func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
 			return fm.WithChainableErr(c.ChainableErr())
 		}
 
+		// Propagate error from component collection
+		if fm.components.HasChainableErr() {
+			return fm.WithChainableErr(fm.components.ChainableErr())
+		}
 	}
 
 	fm.LogDebug(fmt.Sprintf("%d components added to mesh", fm.Components().Len()))
@@ -308,7 +307,7 @@ func (fm *FMesh) Run() (*RuntimeInfo, error) {
 		return fm.WithChainableErr(hookErr).runtimeInfo, hookErr
 	}
 
-	validationErr := fm.preRunValidate()
+	validationErr := fm.validateBeforeRun()
 
 	if validationErr != nil {
 		return fm.WithChainableErr(validationErr).runtimeInfo, validationErr
@@ -393,15 +392,8 @@ func (fm *FMesh) mustStop() (bool, error) {
 }
 
 // WithChainableErr returns f-mesh with an error.
-// The error is automatically joined with the mesh's name as context.
 func (fm *FMesh) WithChainableErr(err error) *FMesh {
-	if err == nil {
-		fm.chainableErr = nil
-		return fm
-	}
-
-	contextErr := fmt.Errorf("error in fmesh '%s'", fm.name)
-	fm.chainableErr = errors.Join(contextErr, err)
+	fm.chainableErr = fmt.Errorf("error in fmesh '%s' : %w", fm.name, err)
 	return fm
 }
 
@@ -415,8 +407,8 @@ func (fm *FMesh) ChainableErr() error {
 	return fm.chainableErr
 }
 
-// preRunValidate does pre-run checks.
-func (fm *FMesh) preRunValidate() error {
+// validateBeforeRun does pre-run checks.
+func (fm *FMesh) validateBeforeRun() error {
 	if fm.HasChainableErr() {
 		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
 	}
@@ -432,10 +424,9 @@ func (fm *FMesh) preRunValidate() error {
 		}
 
 		portsValidationErr := c.Outputs().ForEach(func(p *port.Port) error {
-
 			portValidationErr := p.ValidateBeforeActivation()
 			if portValidationErr != nil {
-				return fmt.Errorf("invalid port %s in component %s: %w", p.Name(), c.Name(), portValidationErr)
+				return portValidationErr
 			}
 
 			if p.ParentComponent() != c {
@@ -474,5 +465,4 @@ func (fm *FMesh) preRunValidate() error {
 
 		return nil
 	}).ChainableErr()
-
 }
