@@ -5,26 +5,15 @@ import (
 	"fmt"
 )
 
-const (
-	// KeepAllInputs means all input ports must hold their signals till the next activation cycle.
-	KeepAllInputs = true
-	// SkipAllInputs means all input ports must be cleared before the next activation cycle (default behavior).
-	SkipAllInputs = false
-)
-
+// These are control-flow signals, not actual failures.
+// They instruct the scheduler how to proceed with the current component.
+//
+// For now we only have two variants, so sentinel errors are sufficient.
+// If more behaviors are introduced, consider switching to a typed error.
 var (
-	errWaitingForInputs     = errors.New("component is waiting for some inputs")
-	errWaitingForInputsKeep = fmt.Errorf("%w: do not clear input ports", errWaitingForInputs)
-)
+	// ErrWaitingForInputs is returned when you want the component to wait for some inputs and skip (default behaviour) all input signals received in the current activation cycle.
+	ErrWaitingForInputs = errors.New("component is waiting for some inputs")
 
-// NewErrWaitForInputs returns the respective error.
-func NewErrWaitForInputs(keepInputs bool) error {
-	switch keepInputs {
-	case KeepAllInputs:
-		return errWaitingForInputsKeep
-	case SkipAllInputs:
-		fallthrough
-	default:
-		return errWaitingForInputs
-	}
-}
+	// ErrWaitingForInputsKeep is returned when you want the component to wait for some inputs and keep all input signals received in the current activation cycle.
+	ErrWaitingForInputsKeep = fmt.Errorf("%w: do not clear input ports", ErrWaitingForInputs)
+)
