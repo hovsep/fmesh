@@ -150,15 +150,8 @@ func (c *Component) propagateChainErrors() {
 }
 
 // WithChainableErr sets a chainable error and returns the component.
-// The error is automatically joined with the component's name as context.
 func (c *Component) WithChainableErr(err error) *Component {
-	if err == nil {
-		c.chainableErr = nil
-		return c
-	}
-
-	contextErr := fmt.Errorf("error in component '%s'", c.Name())
-	c.chainableErr = errors.Join(contextErr, err)
+	c.chainableErr = fmt.Errorf("error in component '%s' : %w", c.Name(), err)
 	return c
 }
 

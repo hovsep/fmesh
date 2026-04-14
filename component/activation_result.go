@@ -177,15 +177,8 @@ func WantsToKeepInputs(activationResult *ActivationResult) bool {
 }
 
 // WithChainableErr sets a chainable error and returns the activation result.
-// The error is automatically joined with the component name as context.
 func (ar *ActivationResult) WithChainableErr(err error) *ActivationResult {
-	if err == nil {
-		ar.chainableErr = nil
-		return ar
-	}
-
-	contextErr := fmt.Errorf("error in activation result for component '%s'", ar.componentName)
-	ar.chainableErr = errors.Join(contextErr, err)
+	ar.chainableErr = fmt.Errorf("error in activation result for component '%s' : %w", ar.componentName, err)
 	return ar
 }
 

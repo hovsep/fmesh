@@ -92,15 +92,8 @@ func (c *Cycle) WithNumber(number int) *Cycle {
 }
 
 // WithChainableErr sets a chainable error and returns the cycle.
-// The error is automatically joined with the cycle's number as context.
 func (c *Cycle) WithChainableErr(err error) *Cycle {
-	if err == nil {
-		c.chainableErr = nil
-		return c
-	}
-
-	contextErr := fmt.Errorf("error in cycle #%d", c.number)
-	c.chainableErr = errors.Join(contextErr, err)
+	c.chainableErr = fmt.Errorf("error in cycle #%d : %w", c.number, err)
 	return c
 }
 
