@@ -278,6 +278,131 @@ func TestFMesh_Run(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "ErrWaitingForInputs does not stop mesh with StopOnFirstErrorOrPanic strategy",
+			fm: NewWithConfig("fm", &Config{
+				ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+			}).
+				AddComponents(
+					component.New("c1").
+						WithDescription("This component waits until it gets signals on both inputs").
+						AddInputs("i1", "i2").
+						AddOutputs("o1").
+						WithActivationFunc(func(this *component.Component) error {
+							if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
+								return component.ErrWaitingForInputs
+							}
+							this.OutputByName("o1").PutSignals(signal.New("done"))
+							return nil
+						}),
+				),
+			initFM: func(fm *FMesh) {
+				// Only feed i1 first; c1 will wait for i2
+				fm.Components().ByName("c1").InputByName("i1").PutSignals(signal.New("first"))
+			},
+			wantCycles: cycle.NewGroup().Add(
+				cycle.New().
+					AddActivationResults(
+						component.NewActivationResult("c1").
+							SetActivated(true).
+							WithActivationCode(component.ActivationCodeWaitingForInputsClear).
+							WithActivationError(component.ErrWaitingForInputs),
+					),
+				// Mesh stops naturally in the next cycle because nothing is activated
+				cycle.New().
+					AddActivationResults(
+						component.NewActivationResult("c1").
+							SetActivated(false).
+							WithActivationCode(component.ActivationCodeNoInput),
+					),
+			),
+			wantErr: false,
+		},
+		{
+			// c1 loops back into itself 4 times (counts 1-4), sending odd counts to c2.in1
+			// and even counts to c2.in2. c2 uses ErrWaitingForInputsKeep until it has both
+			// inputs, then multiplies them. Two pairs (1×2, 3×4) are produced and the mesh
+			// stops naturally — proving ErrWaitingForInputsKeep never triggers StopOnFirstErrorOrPanic.
+			name: "ErrWaitingForInputsKeep does not stop mesh with StopOnFirstErrorOrPanic strategy",
+			fm: NewWithConfig("fm", &Config{
+				ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+			}).
+				AddComponents(
+					component.New("c1").
+						WithDescription("Loops back into itself, routing odd counts to num1 and even counts to num2").
+						AddInputs("trigger", "loop_in").
+						AddOutputs("loop_out", "num1", "num2").
+						WithActivationFunc(func(this *component.Component) error {
+							count := this.InputByName("loop_in").Signals().FirstPayloadOrDefault(0).(int)
+							count++
+
+							if count%2 != 0 {
+								this.OutputByName("num1").PutSignals(signal.New(count))
+							} else {
+								this.OutputByName("num2").PutSignals(signal.New(count))
+							}
+							// Stop recursion after 4 activations (2 odd + 2 even = 2 balanced pairs for c2)
+							if count < 4 {
+								this.OutputByName("loop_out").PutSignals(signal.New(count))
+							}
+							return nil
+						}),
+					component.New("c2").
+						WithDescription("Waits for both inputs (keeping signals) then multiplies them").
+						AddInputs("in1", "in2").
+						AddOutputs("result").
+						WithActivationFunc(func(this *component.Component) error {
+							if !this.Inputs().ByNames("in1", "in2").AllHaveSignals() {
+								return component.ErrWaitingForInputsKeep
+							}
+							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
+							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
+							this.OutputByName("result").PutSignals(signal.New(a * b))
+							return nil
+						}),
+				),
+			initFM: func(fm *FMesh) {
+				c1 := fm.Components().ByName("c1")
+				c2 := fm.Components().ByName("c2")
+				c1.OutputByName("loop_out").PipeTo(c1.InputByName("loop_in"))
+				c1.OutputByName("num1").PipeTo(c2.InputByName("in1"))
+				c1.OutputByName("num2").PipeTo(c2.InputByName("in2"))
+				c1.InputByName("trigger").PutSignals(signal.New("start"))
+			},
+			// Cycle 1: c1(OK), c2(NoInput)
+			// Cycle 2: c1(OK), c2(WaitingForInputsKeep) — c2 has in1=1, waits for in2
+			// Cycle 3: c1(OK), c2(OK)                  — c2 has in1=1+in2=2, computes 1×2=2
+			// Cycle 4: c1(OK), c2(WaitingForInputsKeep) — c2 has in1=3, waits for in2
+			// Cycle 5: c1(NoInput), c2(OK)              — c2 has in1=3+in2=4, computes 3×4=12
+			// Cycle 6: c1(NoInput), c2(NoInput)         — nothing left, mesh stops naturally
+			wantCycles: cycle.NewGroup().Add(
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				),
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+				),
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				),
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+				),
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+				),
+				cycle.New().AddActivationResults(
+					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				),
+			),
+			wantErr: false,
+		},
+		{
 			name: "stop on first panic on cycle 3",
 			fm: NewWithConfig("fm", &Config{
 				ErrorHandlingStrategy: StopOnFirstPanic,

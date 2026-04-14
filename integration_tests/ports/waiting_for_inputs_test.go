@@ -56,7 +56,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						return nil
 					})
 
-				// This chain consist of 3 components: d1->d2->d3
+				// This chain consists of 3 components: d1->d2->d3
 				d1.OutputByName("o1").PipeTo(d2.InputByName("i1"))
 				d2.OutputByName("o1").PipeTo(d3.InputByName("i1"))
 
