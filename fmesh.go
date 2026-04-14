@@ -436,7 +436,7 @@ func (fm *FMesh) validateBeforeRun() error {
 			pipesValidationErr := p.Pipes().ForEach(func(destPort *port.Port) error {
 				destPortValidationErr := destPort.ValidateBeforeActivation()
 				if destPortValidationErr != nil {
-					return fmt.Errorf("invalid pipe from port %s to port %s in component %s: %w", p.Name(), destPort.Name(), destPort.ParentComponent().Name(), destPortValidationErr)
+					return destPortValidationErr
 				}
 
 				destComponent := destPort.ParentComponent().(*component.Component)
