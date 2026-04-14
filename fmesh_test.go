@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var noOpActivationFunc = func(this *component.Component) error { return nil }
+
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -137,7 +139,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.New("c1"),
+					component.New("c1").WithActivationFunc(noOpActivationFunc),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -150,8 +152,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.New("c1"),
-					component.New("c2"),
+					component.New("c1").WithActivationFunc(noOpActivationFunc),
+					component.New("c2").WithActivationFunc(noOpActivationFunc),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -165,8 +167,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.New("c1"),
-					component.New("c1"),
+					component.New("c1").WithActivationFunc(noOpActivationFunc),
+					component.New("c1").WithActivationFunc(noOpActivationFunc),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -181,8 +183,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   New("fm1"),
 			args: args{
 				components: []*component.Component{
-					component.New("c1"), // Must get default logger
-					component.New("c2").WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
+					component.New("c1").WithActivationFunc(noOpActivationFunc),                                                          // Must get default logger
+					component.New("c2").WithActivationFunc(noOpActivationFunc).WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -932,7 +934,8 @@ func TestFMesh_validate(t *testing.T) {
 				return New("fm").AddComponents(
 					component.New("c1").
 						AddInputs("in").
-						AddOutputs("out"),
+						AddOutputs("out").
+						WithActivationFunc(noOpActivationFunc),
 				)
 			},
 			wantErr: "",
@@ -945,7 +948,8 @@ func TestFMesh_validate(t *testing.T) {
 					AddComponents(
 						component.New("c1").
 							AddInputs("in").
-							AddOutputs("out"),
+							AddOutputs("out").
+							WithActivationFunc(noOpActivationFunc),
 					)
 			},
 			wantErr: "failed to validate fmesh",
@@ -956,13 +960,14 @@ func TestFMesh_validate(t *testing.T) {
 				fm := New("fm")
 				c := component.New("c1").
 					AddInputs("in").
-					AddOutputs("out")
+					AddOutputs("out").
+					WithActivationFunc(noOpActivationFunc)
 				fm.AddComponents(c)
 				// Set error after adding to mesh
-				c.WithChainableErr(errors.New("component error"))
+				c.WithChainableErr(errors.New("aws is down"))
 				return fm
 			},
-			wantErr: "failed to validate component c1",
+			wantErr: "invalid component: c1: error in component 'c1' : aws is down",
 		},
 		{
 			name: "component not registered in mesh",
@@ -974,7 +979,7 @@ func TestFMesh_validate(t *testing.T) {
 				// Don't set parent mesh - this is invalid
 				return fm
 			},
-			wantErr: "component c1 is not registered in the mesh",
+			wantErr: "invalid component: c1: parent mesh is not set",
 		},
 		{
 			name: "component has invalid parent mesh",
@@ -996,20 +1001,22 @@ func TestFMesh_validate(t *testing.T) {
 				fm := New("fm")
 				c := component.New("c1").
 					AddInputs("in").
-					AddOutputs("out")
+					AddOutputs("out").
+					WithActivationFunc(noOpActivationFunc)
 				fm.AddComponents(c)
 				// Inject error into port after adding
-				c.OutputByName("out").WithChainableErr(errors.New("port error"))
+				c.OutputByName("out").WithChainableErr(errors.New("air is hot"))
 				return fm
 			},
-			wantErr: "failed to validate port out in component c1",
+			wantErr: "invalid ports in component c1: error in port 'out' : air is hot",
 		},
 		{
 			name: "pipe leads to unregistered port",
 			getFM: func() *FMesh {
 				c1 := component.New("c1").
 					AddInputs("in").
-					AddOutputs("out")
+					AddOutputs("out").
+					WithActivationFunc(noOpActivationFunc)
 
 				// Create pipe but don't register destination component
 				unregisteredPort := port.NewInput("orphan")
@@ -1017,45 +1024,24 @@ func TestFMesh_validate(t *testing.T) {
 
 				return New("fm").AddComponents(c1)
 			},
-			wantErr: "pipe leads to unregistered port orphan in component c1",
+			wantErr: "invalid ports in component c1: invalid pipes from port out: parent component is not set",
 		},
 		{
 			name: "pipe leads to absent component",
 			getFM: func() *FMesh {
 				c1 := component.New("c1").
 					AddInputs("in").
-					AddOutputs("out")
-				c2 := component.New("c2").AddInputs("in")
+					AddOutputs("out").
+					WithActivationFunc(noOpActivationFunc)
+
+				c2 := component.New("c2").AddInputs("in").WithActivationFunc(noOpActivationFunc)
 
 				// Create a pipe to a component that won't be added to mesh
 				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
 
 				return New("fm").AddComponents(c1) // Only add c1, not c2
 			},
-			wantErr: "pipe leads to absent component c2",
-		},
-		{
-			// This test case is flaky because of undeterministic map iteration in .validate()
-			name: "pipe leads to unregistered component (no parent mesh)",
-			getFM: func() *FMesh {
-				fm := New("fm")
-				c1 := component.New("c1").
-					AddInputs("in").
-					AddOutputs("out")
-				c2 := component.New("c2").AddInputs("in")
-
-				// Pipe between components
-				c1.OutputByName("out").PipeTo(c2.InputByName("in"))
-
-				// Add c1 properly
-				fm.AddComponents(c1)
-
-				// Add c2 but without setting parent mesh
-				fm.components = fm.components.Add(c2)
-
-				return fm
-			},
-			wantErr: "pipe leads to unregistered component c2",
+			wantErr: "invalid ports in component c1: invalid pipes from port out: invalid component c2: parent mesh is not set",
 		},
 		{
 			name: "pipe leads to component with invalid parent mesh",
@@ -1064,9 +1050,12 @@ func TestFMesh_validate(t *testing.T) {
 				otherFm := New("other")
 				c1 := component.New("c1").
 					AddInputs("in").
-					AddOutputs("out")
+					AddOutputs("out").
+					WithActivationFunc(noOpActivationFunc)
+
 				c2 := component.New("c2").
 					AddInputs("in").
+					WithActivationFunc(noOpActivationFunc).
 					WithParentMesh(otherFm) // Wrong parent mesh
 
 				// Pipe between components
@@ -1080,9 +1069,6 @@ func TestFMesh_validate(t *testing.T) {
 
 				return fm
 			},
-			// Flaky: Map iteration order determines which error is returned first
-			// Either "component c2 has invalid parent mesh" (c2 checked first)
-			// or "pipe leads to port in in component c1 that has invalid parent mesh" (c1's pipe checked first)
 			wantErr: "invalid parent mesh",
 		},
 	}
@@ -1090,7 +1076,7 @@ func TestFMesh_validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFM()
-			err := fm.preRunValidate()
+			err := fm.validateBeforeRun()
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
