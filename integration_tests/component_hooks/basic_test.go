@@ -195,27 +195,6 @@ func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 	assert.False(t, beforeFired, "Hooks should not fire when component doesn't activate")
 }
 
-func TestComponentHooks_NoHooksOnNoFunction(t *testing.T) {
-	var beforeFired bool
-
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				beforeFired = true
-				return nil
-			})
-		})
-	// No activation function
-
-	c.InputByName("in").PutSignals(signal.New(1))
-	result := c.MaybeActivate()
-
-	require.False(t, result.Activated())
-	require.Equal(t, component.ActivationCodeNoFunction, result.Code())
-	assert.False(t, beforeFired, "Hooks should not fire when component has no activation function")
-}
-
 func TestComponentHooks_ContextAccess(t *testing.T) {
 	var componentName string
 	var activationCode component.ActivationResultCode

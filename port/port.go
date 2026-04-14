@@ -457,3 +457,16 @@ func (p *Port) SetupHooks(configure func(*Hooks)) *Port {
 	configure(p.hooks)
 	return p
 }
+
+// ValidateBeforeActivation checks if the port is valid before parent component activation.
+func (p *Port) ValidateBeforeActivation() error {
+	if p.HasChainableErr() {
+		return p.ChainableErr()
+	}
+
+	if p.ParentComponent() == nil {
+		return errors.New("parent component is not set")
+	}
+
+	return nil
+}

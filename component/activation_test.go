@@ -64,24 +64,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		loggerAssertions     func(t *testing.T, output []byte)
 	}{
 		{
-			name: "component with no activation function and no inputs",
-			getComponent: func() *Component {
-				return New("c1")
-			},
-			wantActivationResult: NewActivationResult("c1").SetActivated(false).WithActivationCode(ActivationCodeNoFunction),
-		},
-		{
-			name: "component with inputs set, but no activation func",
-			getComponent: func() *Component {
-				c := New("c1").AddInputs("i1")
-				c.InputByName("i1").PutSignals(signal.New(123))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				WithActivationCode(ActivationCodeNoFunction),
-		},
-		{
 			name: "component with activation func, but no inputs",
 			getComponent: func() *Component {
 				c := New("c1").

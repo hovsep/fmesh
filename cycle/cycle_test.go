@@ -56,8 +56,7 @@ func TestCycle_HasActivatedComponents(t *testing.T) {
 			name: "has activation results, but no component activated",
 			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
-				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 			),
 			want: false,
 		},
@@ -93,8 +92,7 @@ func TestCycle_HasErrors(t *testing.T) {
 			name: "has activation results, but no one is error",
 			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
-				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
 			),
 			want: false,
 		},
@@ -130,9 +128,7 @@ func TestCycle_HasPanics(t *testing.T) {
 			name: "has activation results, but no one is panic",
 			cycleResult: New().AddActivationResults(
 				component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoFunction),
-				component.NewActivationResult("c3").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-				component.NewActivationResult("c4").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError).WithActivationError(errors.New("some error")),
+				component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeReturnedError).WithActivationError(errors.New("some error")),
 			),
 			want: false,
 		},
