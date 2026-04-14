@@ -126,7 +126,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 		WithActivationFunc(func(c *component.Component) error {
 			// Wait for config input
 			if !c.InputByName("config").Signals().AnyMatch(func(s *signal.Signal) bool { return true }) {
-				return component.NewErrWaitForInputs(component.SkipAllInputs)
+				return component.ErrWaitingForInputs
 			}
 			return nil
 		})

@@ -174,7 +174,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(SkipAllInputs)
+							return ErrWaitingForInputs
 						}
 						return nil
 					})
@@ -188,7 +188,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				componentName:   "c1",
 				activated:       true,
 				code:            ActivationCodeWaitingForInputsClear,
-				activationError: NewErrWaitForInputs(SkipAllInputs),
+				activationError: ErrWaitingForInputs,
 			},
 		},
 		{
@@ -199,7 +199,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 					AddOutputs("o1").
 					WithActivationFunc(func(this *Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return NewErrWaitForInputs(KeepAllInputs)
+							return ErrWaitingForInputsKeep
 						}
 						return nil
 					})
@@ -213,7 +213,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				componentName:   "c1",
 				activated:       true,
 				code:            ActivationCodeWaitingForInputsKeep,
-				activationError: NewErrWaitForInputs(KeepAllInputs),
+				activationError: ErrWaitingForInputsKeep,
 			},
 		},
 		{

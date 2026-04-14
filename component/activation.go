@@ -70,7 +70,7 @@ func (c *Component) activate() (result *ActivationResult) {
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
 func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
-	if errors.Is(err, errWaitingForInputs) {
+	if errors.Is(err, ErrWaitingForInputs) {
 		result := c.newActivationResultWaitingForInputs(err)
 		c.triggerHooksForResult(result, c.hooks.onWaitingForInputs)
 		return result

@@ -42,28 +42,28 @@ func (a ActivationResultCode) String() string {
 }
 
 const (
-	// ActivationCodeUndefined : used for error handling as zero instance.
+	// ActivationCodeUndefined - used for error handling as zero instance.
 	ActivationCodeUndefined ActivationResultCode = iota
 
-	// ActivationCodeOK : component is activated and did not return any errors.
+	// ActivationCodeOK - component is activated and did not return any errors.
 	ActivationCodeOK
 
-	// ActivationCodeNoInput : component is not activated because it has no input set.
+	// ActivationCodeNoInput - component is not activated because it has no input set.
 	ActivationCodeNoInput
 
-	// ActivationCodeNoFunction : component activation function is not set, so we can not activate it.
+	// ActivationCodeNoFunction - component activation function is not set, so we can not activate it.
 	ActivationCodeNoFunction
 
-	// ActivationCodeReturnedError : component is activated, but returned an error.
+	// ActivationCodeReturnedError - component is activated but returned an error.
 	ActivationCodeReturnedError
 
-	// ActivationCodePanicked : component is activated, but panicked.
+	// ActivationCodePanicked - component is activated, but panicked.
 	ActivationCodePanicked
 
-	// ActivationCodeWaitingForInputsClear : component waits for specific inputs, but all input signals in current activation cycle may be cleared (default behavior).
+	// ActivationCodeWaitingForInputsClear - the component waits for specific inputs, but all input signals in the current activation cycle may be cleared (default behavior).
 	ActivationCodeWaitingForInputsClear
 
-	// ActivationCodeWaitingForInputsKeep : component waits for specific inputs, but wants to keep current input signals for the next cycle.
+	// ActivationCodeWaitingForInputsKeep - the component waits for signals on specific input ports and wants to keep current input signals for the next cycle.
 	ActivationCodeWaitingForInputsKeep
 )
 
@@ -168,7 +168,7 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 
 func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
 	activationCode := ActivationCodeWaitingForInputsClear
-	if errors.Is(err, errWaitingForInputsKeep) {
+	if errors.Is(err, ErrWaitingForInputsKeep) {
 		activationCode = ActivationCodeWaitingForInputsKeep
 	}
 	return NewActivationResult(c.Name()).
