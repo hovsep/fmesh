@@ -268,6 +268,22 @@ func (g *Group) ForEach(action func(*Signal) error) *Group {
 	return g
 }
 
+// ForEachIf applies the action only to signals that match the predicate.
+func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	for _, s := range g.signals {
+		if predicate(s) {
+			if err := action(s); err != nil {
+				g.chainableErr = err
+				return g
+			}
+		}
+	}
+	return g
+}
+
 // Filter returns a new group with signals that pass the filter.
 func (g *Group) Filter(p Predicate) *Group {
 	if g.HasChainableErr() {

@@ -893,6 +893,63 @@ func TestGroup_ForEach(t *testing.T) {
 	})
 }
 
+func TestGroup_ForEachIf(t *testing.T) {
+	t.Run("applies action only to matching signals", func(t *testing.T) {
+		group := NewGroup(1, 2, 3, 4)
+		count := 0
+		group.ForEachIf(
+			func(s *Signal) bool {
+				payload, _ := s.Payload()
+				return payload.(int)%2 == 0
+			},
+			func(s *Signal) error {
+				count++
+				return nil
+			},
+		)
+		assert.Equal(t, 2, count) // 2 and 4
+	})
+
+	t.Run("applies action to all when predicate always true", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		count := 0
+		group.ForEachIf(
+			func(s *Signal) bool { return true },
+			func(s *Signal) error { count++; return nil },
+		)
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("applies action to none when predicate always false", func(t *testing.T) {
+		group := NewGroup(1, 2, 3)
+		count := 0
+		group.ForEachIf(
+			func(s *Signal) bool { return false },
+			func(s *Signal) error { count++; return nil },
+		)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+		group := NewGroup(2, 4, 6)
+		result := group.ForEachIf(
+			func(s *Signal) bool { return true },
+			func(s *Signal) error { return assert.AnError },
+		)
+		assert.True(t, result.HasChainableErr())
+	})
+
+	t.Run("skips when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		visited := false
+		group.ForEachIf(
+			func(s *Signal) bool { return true },
+			func(s *Signal) error { visited = true; return nil },
+		)
+		assert.False(t, visited)
+	})
+}
+
 func TestGroup_Len(t *testing.T) {
 	t.Run("returns count of signals", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)

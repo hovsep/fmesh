@@ -58,6 +58,22 @@ func (g *Group) ForEach(action func(*Cycle) error) *Group {
 	return g
 }
 
+// ForEachIf applies the action only to cycles that match the predicate.
+func (g *Group) ForEachIf(predicate Predicate, action func(*Cycle) error) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	for _, c := range g.cycles {
+		if predicate(c) {
+			if err := action(c); err != nil {
+				g.chainableErr = err
+				return g
+			}
+		}
+	}
+	return g
+}
+
 // withCycles sets cycles.
 func (g *Group) withCycles(cycles Cycles) *Group {
 	g.cycles = cycles
