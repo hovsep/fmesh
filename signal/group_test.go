@@ -616,6 +616,80 @@ func TestGroup_MapIf(t *testing.T) {
 	}
 }
 
+func TestGroup_MapPayloadsIf(t *testing.T) {
+	type args struct {
+		predicate  Predicate
+		mapperFunc PayloadMapper
+	}
+	tests := []struct {
+		name  string
+		group *Group
+		args  args
+		want  *Group
+	}{
+		{
+			name:  "empty group",
+			group: NewGroup(),
+			args: args{
+				predicate:  func(s *Signal) bool { return true },
+				mapperFunc: func(p any) any { return p.(int) * 2 },
+			},
+			want: NewGroup(),
+		},
+		{
+			name:  "predicate matches all - all payloads mapped",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				predicate:  func(s *Signal) bool { return true },
+				mapperFunc: func(p any) any { return p.(int) * 10 },
+			},
+			want: NewGroup(10, 20, 30),
+		},
+		{
+			name:  "predicate matches none - no payloads changed",
+			group: NewGroup(1, 2, 3),
+			args: args{
+				predicate:  func(s *Signal) bool { return false },
+				mapperFunc: func(p any) any { return -1 },
+			},
+			want: NewGroup(1, 2, 3),
+		},
+		{
+			name:  "predicate matches some - only matching payloads mapped",
+			group: NewGroup(1, 2, 3, 4),
+			args: args{
+				predicate: func(s *Signal) bool {
+					payload, _ := s.Payload()
+					return payload.(int)%2 == 0
+				},
+				mapperFunc: func(p any) any { return p.(int) * 100 },
+			},
+			want: NewGroup(1, 200, 3, 400),
+		},
+		{
+			name:  "with error in chain",
+			group: NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
+			args: args{
+				predicate:  func(s *Signal) bool { return true },
+				mapperFunc: func(p any) any { return p },
+			},
+			want: NewGroup().WithChainableErr(errors.New("some error in chain")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.group.MapPayloadsIf(tt.args.predicate, tt.args.mapperFunc)
+			if tt.want.HasChainableErr() {
+				assert.Error(t, got.ChainableErr())
+				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
+			} else {
+				assert.NoError(t, got.ChainableErr())
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
 func TestGroup_MapPayloads(t *testing.T) {
 	type args struct {
 		mapperFunc PayloadMapper

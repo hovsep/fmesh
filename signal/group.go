@@ -316,6 +316,22 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	return NewGroup().withSignals(mapped)
 }
 
+// MapPayloadsIf is like MapPayloads but only applies the mapper to signals that match the predicate.
+func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	mapped := make(Signals, len(g.signals))
+	for i, s := range g.signals {
+		if predicate(s) {
+			mapped[i] = s.MapPayload(mapper)
+		} else {
+			mapped[i] = s
+		}
+	}
+	return NewGroup().withSignals(mapped)
+}
+
 // MapPayloads returns a new group with payloads transformed by the mapper function.
 func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	if g.HasChainableErr() {
