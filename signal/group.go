@@ -185,8 +185,7 @@ func (g *Group) Add(signals ...*Signal) *Group {
 // Without removes signals matching the predicate and returns a new group.
 func (g *Group) Without(predicate Predicate) *Group {
 	if g.HasChainableErr() {
-		// Do nothing but propagate the error
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 	// Keep signals that DON'T match the predicate
 	return g.Filter(func(s *Signal) bool {
@@ -300,8 +299,7 @@ func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) *Grou
 // Filter returns a new group with signals that pass the filter.
 func (g *Group) Filter(p Predicate) *Group {
 	if g.HasChainableErr() {
-		// Do nothing but propagate the error
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 
 	filteredSignals := make(Signals, 0)
@@ -317,8 +315,7 @@ func (g *Group) Filter(p Predicate) *Group {
 // Map returns a new group with signals transformed by the mapper function.
 func (g *Group) Map(m Mapper) *Group {
 	if g.HasChainableErr() {
-		// Do nothing but propagate the error
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 
 	mappedSignals := make(Signals, 0)
@@ -332,7 +329,7 @@ func (g *Group) Map(m Mapper) *Group {
 // MapIf is like Map but only applies the mapper function to signals that match the predicate.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	if g.HasChainableErr() {
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 	mapped := make(Signals, len(g.signals))
 	for i, s := range g.signals {
@@ -348,7 +345,7 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 // MapPayloadsIf is like MapPayloads but only applies the mapper to signals that match the predicate.
 func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group {
 	if g.HasChainableErr() {
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 	mapped := make(Signals, len(g.signals))
 	for i, s := range g.signals {
@@ -364,8 +361,7 @@ func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group 
 // MapPayloads returns a new group with payloads transformed by the mapper function.
 func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	if g.HasChainableErr() {
-		// Do nothing but propagate the error
-		return g
+		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 
 	mappedSignals := make(Signals, 0)
