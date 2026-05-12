@@ -85,6 +85,22 @@ func (g *Group) ForEach(action func(*Port) error) *Group {
 	return g
 }
 
+// ForEachIf applies the action only to ports that match the predicate.
+func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	for _, p := range g.ports {
+		if predicate(p) {
+			if err := action(p); err != nil {
+				g.chainableErr = err
+				return g
+			}
+		}
+	}
+	return g
+}
+
 // withPorts sets ports.
 func (g *Group) withPorts(ports Ports) *Group {
 	g.ports = ports

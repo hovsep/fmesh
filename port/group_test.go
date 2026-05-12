@@ -1,6 +1,7 @@
 package port
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -195,6 +196,57 @@ func TestGroup_ForEach(t *testing.T) {
 			visited = true
 			return nil
 		})
+		assert.False(t, visited)
+	})
+}
+
+func TestGroup_ForEachIf(t *testing.T) {
+	t.Run("applies action only to matching ports", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "special1", "special2")
+		count := 0
+		group.ForEachIf(
+			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
+			func(p *Port) error { count++; return nil },
+		)
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("applies action to all when predicate always true", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		count := 0
+		group.ForEachIf(
+			func(p *Port) bool { return true },
+			func(p *Port) error { count++; return nil },
+		)
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("applies action to none when predicate always false", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		count := 0
+		group.ForEachIf(
+			func(p *Port) bool { return false },
+			func(p *Port) error { count++; return nil },
+		)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		result := group.ForEachIf(
+			func(p *Port) bool { return true },
+			func(p *Port) error { return assert.AnError },
+		)
+		assert.True(t, result.HasChainableErr())
+	})
+
+	t.Run("skips when group has error", func(t *testing.T) {
+		group := NewGroup("p1").WithChainableErr(assert.AnError)
+		visited := false
+		group.ForEachIf(
+			func(p *Port) bool { return true },
+			func(p *Port) error { visited = true; return nil },
+		)
 		assert.False(t, visited)
 	})
 }

@@ -152,6 +152,62 @@ func TestGroup_ForEach(t *testing.T) {
 	})
 }
 
+func TestGroup_ForEachIf(t *testing.T) {
+	c1 := New().WithNumber(1)
+	c2 := New().WithNumber(2)
+	c3 := New().WithNumber(3)
+	c4 := New().WithNumber(4)
+
+	t.Run("applies action only to matching cycles", func(t *testing.T) {
+		group := NewGroup().Add(c1, c2, c3, c4)
+		count := 0
+		group.ForEachIf(
+			func(c *Cycle) bool { return c.Number()%2 == 0 },
+			func(c *Cycle) error { count++; return nil },
+		)
+		assert.Equal(t, 2, count) // c2 and c4
+	})
+
+	t.Run("applies action to all when predicate always true", func(t *testing.T) {
+		group := NewGroup().Add(c1, c2, c3)
+		count := 0
+		group.ForEachIf(
+			func(c *Cycle) bool { return true },
+			func(c *Cycle) error { count++; return nil },
+		)
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("applies action to none when predicate always false", func(t *testing.T) {
+		group := NewGroup().Add(c1, c2, c3)
+		count := 0
+		group.ForEachIf(
+			func(c *Cycle) bool { return false },
+			func(c *Cycle) error { count++; return nil },
+		)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+		group := NewGroup().Add(c1, c2, c3)
+		result := group.ForEachIf(
+			func(c *Cycle) bool { return true },
+			func(c *Cycle) error { return assert.AnError },
+		)
+		assert.True(t, result.HasChainableErr())
+	})
+
+	t.Run("skips when group has error", func(t *testing.T) {
+		group := NewGroup().Add(c1).WithChainableErr(assert.AnError)
+		visited := false
+		group.ForEachIf(
+			func(c *Cycle) bool { return true },
+			func(c *Cycle) error { visited = true; return nil },
+		)
+		assert.False(t, visited)
+	})
+}
+
 func TestGroup_Last(t *testing.T) {
 	c1 := New().WithNumber(1)
 	c2 := New().WithNumber(2)
