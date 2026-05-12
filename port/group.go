@@ -3,8 +3,6 @@ package port
 import (
 	"fmt"
 	"slices"
-
-	"github.com/hovsep/fmesh/labels"
 )
 
 // Group represents a list of ports.
@@ -138,13 +136,6 @@ func (g *Group) Len() int {
 		return 0
 	}
 	return len(g.ports)
-}
-
-// AddLabelsToAll adds labels to each port within the group and returns it.
-func (g *Group) AddLabelsToAll(labelMap labels.Map) *Group {
-	return g.ForEach(func(p *Port) error {
-		return p.AddLabels(labelMap).ChainableErr()
-	})
 }
 
 // IsEmpty returns true when there are no ports in the group.
