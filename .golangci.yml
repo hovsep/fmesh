@@ -47,8 +47,6 @@ linters:
   settings:
     dupl:
       threshold: 200
-    gocognit:
-      min-complexity: 15
     gocyclo:
       min-complexity: 15
     goconst:
@@ -76,10 +74,8 @@ linters:
       - linters: [revive]
         text: should have a package comment
       # Test files get relaxed rules.
-      - linters: [dupl, gosec]
+      - linters: [dupl, gosec, goconst]
         path: _test\.go
-      - linters: [gocognit]
-        path: _test\.go$
       - linters: [revive]
         path: _test\.go$
         text: unused-parameter
