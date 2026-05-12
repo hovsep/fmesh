@@ -2,40 +2,61 @@ version: "2"
 linters:
   default: none
   enable:
-    - dupl
-    - gochecknoinits
-    - gocritic
-    - gocyclo
-    - gosec
+    # --- correctness ---
+    - errcheck
+    - errorlint
     - govet
     - ineffassign
+    - makezero
+    - nilerr
+    - nilnil
+    - staticcheck
+    - unused
+    - durationcheck
+    - asasalint
+    - copyloopvar
+    - reassign
+    # --- complexity ---
+    - gocyclo
+    # --- style ---
+    - dupl
+    - goconst
+    - gocritic
+    - godot
     - misspell
     - nakedret
-    - prealloc
+    - nolintlint
     - revive
-    - staticcheck
     - unconvert
     - unparam
-    - unused
-    - testifylint
-    - errcheck
-    - goconst
-    - errorlint
-    - nilerr
     - whitespace
-    - godot
-    - nolintlint
-    - makezero
+    - dupword
+    - recvcheck
+    # --- security ---
+    - gosec
+    # --- performance ---
     - perfsprint
+    - prealloc
+    - mirror
+    # --- best practices ---
+    - gochecknoinits
+    - testifylint
+    - usestdlibvars
+    - intrange
+    - modernize
   settings:
+    dupl:
+      threshold: 200
+    gocognit:
+      min-complexity: 15
+    gocyclo:
+      min-complexity: 15
     goconst:
       min-len: 3
       min-occurrences: 3
     gocritic:
       disabled-checks:
         - wrapperFunc
-        - hugeParam
-        - rangeValCopy
         - singleCaseSwitch
         - ifElseChain
       enabled-tags:
@@ -49,22 +70,21 @@ linters:
   exclusions:
     generated: lax
     rules:
-      - linters:
-          - staticcheck
+      # Package-level doc comments are not required on every file.
+      - linters: [staticcheck]
         text: at least one file in a package should have a package comment
-      - linters:
-          - revive
+      - linters: [revive]
         text: should have a package comment
-      - linters:
-          - dupl
-          - gosec
+      # Test files get relaxed rules.
+      - linters: [dupl, gosec]
         path: _test\.go
-      - linters:
-          - revive
-          - unparam
-          - unused
+      - linters: [gocognit]
+        path: _test\.go$
+      - linters: [revive]
         path: _test\.go$
         text: unused-parameter
+      - linters: [unparam, unused]
+        path: _test\.go$
     paths:
       - vendor
       - third_party$
