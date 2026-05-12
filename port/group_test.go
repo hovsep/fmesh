@@ -409,6 +409,37 @@ func TestGroup_First(t *testing.T) {
 	})
 }
 
+func TestGroup_Find(t *testing.T) {
+	t.Run("returns first matching port", func(t *testing.T) {
+		group := NewGroup("p1", "special", "p2")
+		got := group.Find(func(p *Port) bool {
+			return strings.HasPrefix(p.Name(), "special")
+		})
+		require.NotNil(t, got)
+		assert.Equal(t, "special", got.Name())
+	})
+
+	t.Run("returns nil when no port matches", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		got := group.Find(func(p *Port) bool {
+			return strings.HasPrefix(p.Name(), "x")
+		})
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil for empty group", func(t *testing.T) {
+		group := NewGroup()
+		got := group.Find(func(p *Port) bool { return true })
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil when group has error", func(t *testing.T) {
+		group := NewGroup("p1").WithChainableErr(assert.AnError)
+		got := group.Find(func(p *Port) bool { return true })
+		assert.Nil(t, got)
+	})
+}
+
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 	t.Run("First does not poison group when empty", func(t *testing.T) {
 		group := NewGroup()

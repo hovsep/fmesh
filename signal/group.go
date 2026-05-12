@@ -40,6 +40,19 @@ func (g *Group) IsEmpty() bool {
 	return g.Len() == 0
 }
 
+// Find returns the first signal matching the predicate, or nil if none match.
+func (g *Group) Find(predicate Predicate) *Signal {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return nil
+	}
+	for _, s := range g.signals {
+		if predicate(s) {
+			return s
+		}
+	}
+	return nil
+}
+
 // AnyMatch returns true if at least one signal matches the predicate.
 func (g *Group) AnyMatch(p Predicate) bool {
 	if g.HasChainableErr() {

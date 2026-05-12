@@ -123,6 +123,19 @@ func (g *Group) IsEmpty() bool {
 	return g.Len() == 0
 }
 
+// Find returns the first cycle matching the predicate, or nil if none match.
+func (g *Group) Find(predicate Predicate) *Cycle {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return nil
+	}
+	for _, c := range g.cycles {
+		if predicate(c) {
+			return c
+		}
+	}
+	return nil
+}
+
 // First returns the first cycle in the group.
 // Returns nil if the group is empty or has an error.
 func (g *Group) First() *Cycle {

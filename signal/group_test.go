@@ -301,6 +301,41 @@ func TestGroup_First(t *testing.T) {
 	})
 }
 
+func TestGroup_Find(t *testing.T) {
+	t.Run("returns first matching signal", func(t *testing.T) {
+		group := NewGroup(1, 2, 3, 4)
+		got := group.Find(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		require.NotNil(t, got)
+		payload, err := got.Payload()
+		require.NoError(t, err)
+		assert.Equal(t, 2, payload) // first even, not all evens
+	})
+
+	t.Run("returns nil when no signal matches", func(t *testing.T) {
+		group := NewGroup(1, 3, 5)
+		got := group.Find(func(s *Signal) bool {
+			payload, _ := s.Payload()
+			return payload.(int)%2 == 0
+		})
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil for empty group", func(t *testing.T) {
+		group := NewGroup()
+		got := group.Find(func(s *Signal) bool { return true })
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil when group has error", func(t *testing.T) {
+		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
+		got := group.Find(func(s *Signal) bool { return true })
+		assert.Nil(t, got)
+	})
+}
+
 func TestGroup_Signals(t *testing.T) {
 	tests := []struct {
 		name            string

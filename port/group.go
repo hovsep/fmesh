@@ -143,6 +143,19 @@ func (g *Group) IsEmpty() bool {
 	return g.Len() == 0
 }
 
+// Find returns the first port matching the predicate, or nil if none match.
+func (g *Group) Find(predicate Predicate) *Port {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return nil
+	}
+	for _, p := range g.ports {
+		if predicate(p) {
+			return p
+		}
+	}
+	return nil
+}
+
 // First returns the first port in the group.
 // Returns nil if the group is empty or has an error.
 func (g *Group) First() *Port {

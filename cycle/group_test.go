@@ -243,6 +243,38 @@ func TestGroup_First(t *testing.T) {
 	})
 }
 
+func TestGroup_Find(t *testing.T) {
+	c1 := New().WithNumber(1)
+	c2 := New().WithNumber(2)
+	c3 := New().WithNumber(3)
+	c4 := New().WithNumber(4)
+
+	t.Run("returns first matching cycle", func(t *testing.T) {
+		group := NewGroup().Add(c1, c2, c3, c4)
+		got := group.Find(func(c *Cycle) bool { return c.Number()%2 == 0 })
+		require.NotNil(t, got)
+		assert.Equal(t, 2, got.Number()) // first even, not all evens
+	})
+
+	t.Run("returns nil when no cycle matches", func(t *testing.T) {
+		group := NewGroup().Add(c1, c3)
+		got := group.Find(func(c *Cycle) bool { return c.Number()%2 == 0 })
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil for empty group", func(t *testing.T) {
+		group := NewGroup()
+		got := group.Find(func(c *Cycle) bool { return true })
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns nil when group has error", func(t *testing.T) {
+		group := NewGroup().Add(c1).WithChainableErr(assert.AnError)
+		got := group.Find(func(c *Cycle) bool { return true })
+		assert.Nil(t, got)
+	})
+}
+
 func TestGroup_All(t *testing.T) {
 	c1 := New().WithNumber(1)
 	c2 := New().WithNumber(2)
