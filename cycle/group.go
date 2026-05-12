@@ -208,6 +208,32 @@ func (g *Group) Filter(predicate Predicate) *Group {
 	return filtered
 }
 
+// MapIf is like Map but only applies the mapper to cycles that match the predicate.
+// Non-matching cycles are kept as-is. Nil mapper results are dropped.
+func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
+	if g.HasChainableErr() {
+		return NewGroup().WithChainableErr(g.ChainableErr())
+	}
+	mapped := NewGroup()
+	for _, c := range g.cycles {
+		if predicate(c) {
+			transformedCyc := mapper(c)
+			if transformedCyc != nil {
+				mapped = mapped.Add(transformedCyc)
+				if mapped.HasChainableErr() {
+					return mapped
+				}
+			}
+		} else {
+			mapped = mapped.Add(c)
+			if mapped.HasChainableErr() {
+				return mapped
+			}
+		}
+	}
+	return mapped
+}
+
 // Map returns a new group with cycles transformed by the mapper function.
 func (g *Group) Map(mapper Mapper) *Group {
 	if g.HasChainableErr() {

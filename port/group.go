@@ -220,6 +220,32 @@ func (g *Group) Filter(predicate Predicate) *Group {
 	return filtered
 }
 
+// MapIf is like Map but only applies the mapper to ports that match the predicate.
+// Non-matching ports are kept as-is. Nil mapper results are dropped.
+func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
+	if g.HasChainableErr() {
+		return NewGroup().WithChainableErr(g.ChainableErr())
+	}
+	mapped := NewGroup()
+	for _, p := range g.ports {
+		if predicate(p) {
+			transformedPort := mapper(p)
+			if transformedPort != nil {
+				mapped = mapped.Add(transformedPort)
+				if mapped.HasChainableErr() {
+					return mapped
+				}
+			}
+		} else {
+			mapped = mapped.Add(p)
+			if mapped.HasChainableErr() {
+				return mapped
+			}
+		}
+	}
+	return mapped
+}
+
 // Map returns a new group with ports transformed by the mapper function.
 func (g *Group) Map(mapper Mapper) *Group {
 	if g.HasChainableErr() {
