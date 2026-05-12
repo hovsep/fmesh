@@ -347,6 +347,56 @@ func TestGroup_Filter(t *testing.T) {
 	})
 }
 
+func TestGroup_MapIf(t *testing.T) {
+	t.Run("maps only matching ports", func(t *testing.T) {
+		group := NewGroup("p1", "special", "p2")
+		mapped := group.MapIf(
+			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
+			func(p *Port) *Port { return NewOutput("mapped_" + p.Name()) },
+		)
+		assert.Equal(t, 3, mapped.Len())
+		assert.Equal(t, "mapped_special", mapped.Find(func(p *Port) bool {
+			return strings.HasPrefix(p.Name(), "mapped_")
+		}).Name())
+	})
+
+	t.Run("predicate matches none - all ports kept as-is", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		mapped := group.MapIf(
+			func(p *Port) bool { return false },
+			func(p *Port) *Port { return NewOutput("x") },
+		)
+		assert.Equal(t, 3, mapped.Len())
+	})
+
+	t.Run("predicate matches all - all ports mapped", func(t *testing.T) {
+		group := NewGroup("p1", "p2")
+		mapped := group.MapIf(
+			func(p *Port) bool { return true },
+			func(p *Port) *Port { return NewOutput("mapped_" + p.Name()) },
+		)
+		assert.Equal(t, 2, mapped.Len())
+	})
+
+	t.Run("nil mapper result drops the port", func(t *testing.T) {
+		group := NewGroup("p1", "p2", "p3")
+		mapped := group.MapIf(
+			func(p *Port) bool { return p.Name() == "p2" },
+			func(p *Port) *Port { return nil },
+		)
+		assert.Equal(t, 2, mapped.Len()) // p2 dropped, p1 and p3 kept
+	})
+
+	t.Run("propagates error from source group", func(t *testing.T) {
+		group := NewGroup("p1").WithChainableErr(assert.AnError)
+		mapped := group.MapIf(
+			func(p *Port) bool { return true },
+			func(p *Port) *Port { return p },
+		)
+		assert.True(t, mapped.HasChainableErr())
+	})
+}
+
 func TestGroup_Map(t *testing.T) {
 	t.Run("transforms ports", func(t *testing.T) {
 		group := NewGroup("p1", "p2")

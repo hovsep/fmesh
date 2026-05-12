@@ -397,6 +397,58 @@ func TestGroup_Filter(t *testing.T) {
 	})
 }
 
+func TestGroup_MapIf(t *testing.T) {
+	t.Run("maps only matching cycles", func(t *testing.T) {
+		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3), New().WithNumber(4))
+		mapped := group.MapIf(
+			func(c *Cycle) bool { return c.Number()%2 == 0 },
+			func(c *Cycle) *Cycle { return c.WithNumber(c.Number() * 100) },
+		)
+		assert.Equal(t, 4, mapped.Len())
+		assert.Equal(t, 1, mapped.First().Number()) // odd unchanged
+		assert.NotNil(t, mapped.Find(func(c *Cycle) bool { return c.Number() == 200 }))
+		assert.NotNil(t, mapped.Find(func(c *Cycle) bool { return c.Number() == 400 }))
+	})
+
+	t.Run("predicate matches none - all cycles kept as-is", func(t *testing.T) {
+		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3))
+		mapped := group.MapIf(
+			func(c *Cycle) bool { return false },
+			func(c *Cycle) *Cycle { return c.WithNumber(-1) },
+		)
+		assert.Equal(t, 3, mapped.Len())
+		assert.Equal(t, 1, mapped.First().Number())
+	})
+
+	t.Run("predicate matches all - all cycles mapped", func(t *testing.T) {
+		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2))
+		mapped := group.MapIf(
+			func(c *Cycle) bool { return true },
+			func(c *Cycle) *Cycle { return c.WithNumber(c.Number() * 10) },
+		)
+		assert.Equal(t, 2, mapped.Len())
+		assert.Equal(t, 10, mapped.First().Number())
+	})
+
+	t.Run("nil mapper result drops the cycle", func(t *testing.T) {
+		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3))
+		mapped := group.MapIf(
+			func(c *Cycle) bool { return c.Number() == 2 },
+			func(c *Cycle) *Cycle { return nil },
+		)
+		assert.Equal(t, 2, mapped.Len()) // c2 dropped, c1 and c3 kept
+	})
+
+	t.Run("propagates error from source group", func(t *testing.T) {
+		group := NewGroup().Add(New().WithNumber(1)).WithChainableErr(assert.AnError)
+		mapped := group.MapIf(
+			func(c *Cycle) bool { return true },
+			func(c *Cycle) *Cycle { return c },
+		)
+		assert.True(t, mapped.HasChainableErr())
+	})
+}
+
 func TestGroup_Map(t *testing.T) {
 	c1 := New().WithNumber(1)
 	c2 := New().WithNumber(2)
