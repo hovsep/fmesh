@@ -689,7 +689,7 @@ func TestFMesh_Run(t *testing.T) {
 			gotCycles, err := got.Cycles.All()
 			require.NoError(t, err)
 
-			for i := 0; i < got.Cycles.Len(); i++ {
+			for i := range got.Cycles.Len() {
 				wantCycle := wantCycles[i]
 				gotCycle := gotCycles[i]
 				assert.Equal(t, wantCycle.ActivationResults().Len(), gotCycle.ActivationResults().Len(), "ActivationResultCollection len mismatch")

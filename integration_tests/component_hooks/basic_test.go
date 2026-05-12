@@ -414,7 +414,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 		c.InputByName("in").PutSignals(signal.New(1))
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			c.MaybeActivate()
 			c.InputByName("in").PutSignals(signal.New(1))
 		}
@@ -435,7 +435,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 		c.InputByName("in").PutSignals(signal.New(1))
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			c.MaybeActivate()
 			c.InputByName("in").PutSignals(signal.New(1))
 		}
