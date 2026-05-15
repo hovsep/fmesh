@@ -2,6 +2,7 @@ package componenthooks
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/hovsep/fmesh"
@@ -223,14 +224,14 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 }
 
 func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
-	var componentActivations []string
+	var log hookLog
 
 	c1 := component.New("c1").
 		AddInputs("in").
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
 			h.BeforeActivation(func(c *component.Component) error {
-				componentActivations = append(componentActivations, c.Name())
+				log.add(c.Name())
 				return nil
 			})
 		}).
@@ -243,7 +244,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
 			h.BeforeActivation(func(c *component.Component) error {
-				componentActivations = append(componentActivations, c.Name())
+				log.add(c.Name())
 				return nil
 			})
 		}).
@@ -260,12 +261,13 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	require.NoError(t, err)
 
 	// Both components should have activated
+	componentActivations := log.snapshot()
 	assert.Contains(t, componentActivations, "c1")
 	assert.Contains(t, componentActivations, "c2")
 }
 
 func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
-	var executionLog []string
+	var log hookLog
 
 	// Create three components with hooks
 	c1 := component.New("c1").
@@ -273,15 +275,15 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
 			h.BeforeActivation(func(c *component.Component) error {
-				executionLog = append(executionLog, "c1:before")
+				log.add("c1:before")
 				return nil
 			})
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c1:success")
+				log.add("c1:success")
 				return nil
 			})
 			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c1:after")
+				log.add("c1:after")
 				return nil
 			})
 		}).
@@ -295,15 +297,15 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		AddOutputs("out").
 		SetupHooks(func(h *component.Hooks) {
 			h.BeforeActivation(func(c *component.Component) error {
-				executionLog = append(executionLog, "c2:before")
+				log.add("c2:before")
 				return nil
 			})
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c2:success")
+				log.add("c2:success")
 				return nil
 			})
 			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c2:after")
+				log.add("c2:after")
 				return nil
 			})
 		}).
@@ -316,15 +318,15 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		AddInputs("in").
 		SetupHooks(func(h *component.Hooks) {
 			h.BeforeActivation(func(c *component.Component) error {
-				executionLog = append(executionLog, "c3:before")
+				log.add("c3:before")
 				return nil
 			})
 			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c3:success")
+				log.add("c3:success")
 				return nil
 			})
 			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "c3:after")
+				log.add("c3:after")
 				return nil
 			})
 		}).
@@ -342,6 +344,8 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 
 	_, err := fm.Run()
 	require.NoError(t, err)
+
+	executionLog := log.snapshot()
 
 	// Verify all components activated with proper hook order
 	// c1 and c2 fire in cycle 1, c3 in cycle 2
@@ -440,6 +444,26 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 			c.InputByName("in").PutSignals(signal.New(1))
 		}
 	})
+}
+
+// hookLog collects hook events from parallel component activations safely.
+type hookLog struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (l *hookLog) add(s string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lines = append(l.lines, s)
+}
+
+func (l *hookLog) snapshot() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := make([]string, len(l.lines))
+	copy(out, l.lines)
+	return out
 }
 
 // Helper function for finding index in slice.
