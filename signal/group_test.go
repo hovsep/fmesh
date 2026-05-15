@@ -132,7 +132,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 		},
 		{
 			name:            "with error in signal",
-			group:           NewGroup().withSignals(Signals{New(33).WithChainableErr(errors.New("some error in signal"))}),
+			group:           newGroupFromSignals(Signals{New(33).WithChainableErr(errors.New("some error in signal"))}),
 			want:            nil,
 			wantErrorString: "some error in signal",
 		},
@@ -363,8 +363,8 @@ func TestGroup_Signals(t *testing.T) {
 		},
 		{
 			name: "with labeled signals",
-			group: NewGroup(1, nil, 3).ForEach(func(s *Signal) error {
-				return s.SetLabels(labels.Map{"flavor": "banana"}).ChainableErr()
+			group: NewGroup(1, nil, 3).Map(func(s *Signal) *Signal {
+				return s.SetLabels(labels.Map{"flavor": "banana"})
 			}),
 			want: Signals{
 				New(1).SetLabels(labels.Map{
