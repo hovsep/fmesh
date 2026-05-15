@@ -2,6 +2,7 @@ package labels
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 )
 
@@ -19,12 +20,13 @@ func NewCollection() *Collection {
 	}
 }
 
-// All returns all labels as a map.
+// All returns all labels as a map (a defensive copy; mutating the returned map
+// does not change the collection).
 func (c *Collection) All() (Map, error) {
 	if c.HasChainableErr() {
 		return nil, c.ChainableErr()
 	}
-	return c.labels, nil
+	return maps.Clone(c.labels), nil
 }
 
 // AllMatch returns true if all labels in the collection satisfy the predicate.

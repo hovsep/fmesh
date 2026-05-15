@@ -1,28 +1,44 @@
 package signal
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/hovsep/fmesh/labels"
 )
 
 // Signal is a wrapper around the data flowing between components.
+// Mutating-style methods return a new *Signal; receivers are never modified.
 type Signal struct {
 	chainableErr error
 	labels       *labels.Collection
 	payload      []any // Slice is used in order to support nil payload
 }
 
+// cloneLabels returns an independent labels.Collection with the same entries.
+func cloneLabels(c *labels.Collection) *labels.Collection {
+	if c == nil {
+		return labels.NewCollection()
+	}
+	if c.HasChainableErr() {
+		return labels.NewCollection().WithChainableErr(c.ChainableErr())
+	}
+	return c.Filter(func(string, string) bool { return true })
+}
+
+// cloneSignal returns a deep copy suitable for aliasing-free group operations.
+func cloneSignal(s *Signal) *Signal {
+	if s == nil {
+		return nil
+	}
+	return &Signal{
+		chainableErr: s.chainableErr,
+		labels:       cloneLabels(s.labels),
+		payload:      slices.Clone(s.payload),
+	}
+}
+
 // New creates a new signal with the given payload.
-// Signals carry data between components through ports.
-// The payload can be any type (string, int, struct, slice, nil, etc.).
-//
-// Example (in activation function):
-//
-//	// Send a simple value
-//	this.OutputByName("count").PutSignals(signal.New(42))
-//
-//	// Send a complex value
-//	payload := map[string]interface{}{"status": "ok", "data": items}
-//	this.OutputByName("result").PutSignals(signal.New(payload))
 func New(payload any) *Signal {
 	return &Signal{
 		chainableErr: nil,
@@ -31,57 +47,70 @@ func New(payload any) *Signal {
 	}
 }
 
-// Labels returns the signal's labels collection.
+// Labels returns a defensive copy of the signal's labels collection.
 func (s *Signal) Labels() *labels.Collection {
 	if s.HasChainableErr() {
 		return labels.NewCollection().WithChainableErr(s.ChainableErr())
 	}
-	return s.labels
+	return cloneLabels(s.labels)
 }
 
-// SetLabels replaces all labels and returns the signal for chaining.
+// SetLabels replaces all labels and returns a new signal.
 func (s *Signal) SetLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.Clear().AddMany(labelMap)
-	return s
+	next := s.cloneForMutation()
+	next.labels = labels.NewCollection().AddMany(maps.Clone(labelMap))
+	return next
 }
 
-// AddLabels adds or updates labels and returns the signal for chaining.
+// AddLabels adds or updates labels and returns a new signal.
 func (s *Signal) AddLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.AddMany(labelMap)
-	return s
+	next := s.cloneForMutation()
+	next.labels = next.labels.AddMany(maps.Clone(labelMap))
+	return next
 }
 
-// AddLabel adds or updates a single label and returns the signal for chaining.
+// AddLabel adds or updates a single label and returns a new signal.
 func (s *Signal) AddLabel(name, value string) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.Add(name, value)
-	return s
+	next := s.cloneForMutation()
+	next.labels = next.labels.Add(name, value)
+	return next
 }
 
-// ClearLabels removes all labels and returns the signal for chaining.
+// ClearLabels removes all labels and returns a new signal.
 func (s *Signal) ClearLabels() *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.Clear()
-	return s
+	next := s.cloneForMutation()
+	next.labels = labels.NewCollection()
+	return next
 }
 
-// WithoutLabels removes specific labels and returns the signal for chaining.
+// WithoutLabels removes specific labels and returns a new signal.
 func (s *Signal) WithoutLabels(names ...string) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	s.labels.Without(names...)
-	return s
+	next := s.cloneForMutation()
+	next.labels = next.labels.Without(names...)
+	return next
+}
+
+func (s *Signal) cloneForMutation() *Signal {
+	return &Signal{
+		chainableErr: s.chainableErr,
+		labels:       cloneLabels(s.labels),
+		payload:      slices.Clone(s.payload),
+	}
 }
 
 // Payload returns the signal's payload.
@@ -106,10 +135,13 @@ func (s *Signal) PayloadOrDefault(defaultPayload any) any {
 	return payload
 }
 
-// WithChainableErr sets a chainable error and returns the signal.
+// WithChainableErr sets a chainable error and returns a new signal.
 func (s *Signal) WithChainableErr(err error) *Signal {
-	s.chainableErr = err
-	return s
+	return &Signal{
+		chainableErr: err,
+		labels:       cloneLabels(s.labels),
+		payload:      slices.Clone(s.payload),
+	}
 }
 
 // HasChainableErr returns true when a chainable error is set.
@@ -142,13 +174,7 @@ func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 		return New(nil).WithChainableErr(err)
 	}
 
-	// Create new signal with mapped payload
-	newSignal := New(mapper(payload))
-
-	// Copy labels using ForEach
-	s.labels.ForEach(func(label, value string) error {
-		return newSignal.AddLabel(label, value).ChainableErr()
-	})
-
-	return newSignal
+	out := New(mapper(payload))
+	out.labels = cloneLabels(s.labels)
+	return out
 }
