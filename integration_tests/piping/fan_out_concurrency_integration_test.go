@@ -95,18 +95,18 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 
 				switch mode {
 				case 0:
-					for i := 0; i < stressIters; i++ {
+					for i := range stressIters {
 						_ = shared.MapPayload(func(p any) any {
 							_ = i
 							return p
 						})
 					}
 				case 1:
-					for i := 0; i < stressIters; i++ {
+					for i := range stressIters {
 						shared.AddLabel(fmt.Sprintf("w1_%d", i), "v")
 					}
 				default:
-					for i := 0; i < stressIters; i++ {
+					for i := range stressIters {
 						shared.AddLabel(fmt.Sprintf("w2_%d", i), "v")
 					}
 				}
