@@ -14,11 +14,11 @@ import (
 
 func TestSignal_immutable_builder_operations(t *testing.T) {
 	t.Run("AddLabel_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(42).AddLabel("a", "1")
+		orig := New(42).WithLabel("a", "1")
 		require.Equal(t, 1, orig.Labels().Len())
 		require.True(t, orig.Labels().ValueIs("a", "1"))
 
-		next := orig.AddLabel("b", "2")
+		next := orig.WithLabel("b", "2")
 		require.NotNil(t, next)
 
 		assert.Equal(t, 1, orig.Labels().Len(), "receiver must keep prior labels only")
@@ -30,8 +30,8 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("AddLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).AddLabel("k", "v")
-		next := orig.AddLabels(labels.Map{"x": "y"})
+		orig := New(1).WithLabel("k", "v")
+		next := orig.WithLabels(labels.Map{"x": "y"})
 
 		assert.Equal(t, 1, orig.Labels().Len())
 		assert.True(t, orig.Labels().ValueIs("k", "v"))
@@ -42,8 +42,8 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("SetLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).AddLabel("keep", "old")
-		next := orig.SetLabels(labels.Map{"new": "set"})
+		orig := New(1).WithLabel("keep", "old")
+		next := orig.WithOnlyLabels(labels.Map{"new": "set"})
 
 		assert.True(t, orig.Labels().ValueIs("keep", "old"))
 		assert.False(t, orig.Labels().Has("new"))
@@ -53,8 +53,8 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("ClearLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).AddLabel("a", "1")
-		next := orig.ClearLabels()
+		orig := New(1).WithLabel("a", "1")
+		next := orig.WithNoLabels()
 
 		assert.Equal(t, 1, orig.Labels().Len())
 		assert.True(t, orig.Labels().Has("a"))
@@ -63,7 +63,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("WithoutLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).AddLabels(labels.Map{"a": "1", "b": "2"})
+		orig := New(1).WithLabels(labels.Map{"a": "1", "b": "2"})
 		next := orig.WithoutLabels("b")
 
 		assert.Equal(t, 2, orig.Labels().Len())
@@ -74,7 +74,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("WithChainableErr_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(7).AddLabel("k", "v")
+		orig := New(7).WithLabel("k", "v")
 		sentinel := errors.New("sentinel")
 		next := orig.WithChainableErr(sentinel)
 
@@ -88,7 +88,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 }
 
 func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
-	orig := New(10).AddLabel("trace", "id")
+	orig := New(10).WithLabel("trace", "id")
 	next := orig.MapPayload(func(p any) any { return p.(int) * 2 })
 
 	p0, err := orig.Payload()
@@ -106,12 +106,12 @@ func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
 func TestGroup_Add_does_not_poison_receiver_on_invalid_signal(t *testing.T) {
 	t.Run("nil_signal", func(t *testing.T) {
 		g := NewGroup(1)
-		_ = g.Add(nil)
+		_ = g.With(nil)
 
 		assert.False(t, g.HasChainableErr(), "receiver must not retain Add error")
 		assert.Equal(t, 1, g.Len())
 
-		g2 := g.Add(New(99))
+		g2 := g.With(New(99))
 		assert.False(t, g2.HasChainableErr())
 		assert.Equal(t, 2, g2.Len())
 	})
@@ -119,12 +119,12 @@ func TestGroup_Add_does_not_poison_receiver_on_invalid_signal(t *testing.T) {
 	t.Run("signal_with_chainable_error", func(t *testing.T) {
 		g := NewGroup(1)
 		bad := New(2).WithChainableErr(errors.New("bad signal"))
-		_ = g.Add(bad)
+		_ = g.With(bad)
 
 		assert.False(t, g.HasChainableErr())
 		assert.Equal(t, 1, g.Len())
 
-		g2 := g.Add(New(3))
+		g2 := g.With(New(3))
 		assert.False(t, g2.HasChainableErr())
 		assert.Equal(t, 2, g2.Len())
 	})
@@ -163,10 +163,26 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
 		"MapIf pass-through must use cloned signals, not shared pointers (#203)")
 
-	_ = outSigs[0].AddLabel("x", "y")
+	_ = outSigs[0].WithLabel("x", "y")
 
 	assert.False(t, g.First().Labels().Has("x"),
 		"mutating output group's signal must not change original group's signal (#203)")
+}
+
+func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
+	g := NewGroup(1, 2)
+	identity := func(s *Signal) *Signal { return s }
+	out := g.Map(identity)
+
+	outSigs, err := out.All()
+	require.NoError(t, err)
+	require.Len(t, outSigs, 2)
+	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
+		"Map with identity mapper must clone signals, not share pointers")
+
+	_ = outSigs[0].WithLabel("x", "y")
+	assert.False(t, g.First().Labels().Has("x"),
+		"mutating output group's signal must not change original group's signal")
 }
 
 func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *testing.T) {
@@ -184,7 +200,7 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 	require.Len(t, outSigs, 2)
 	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])))
 
-	_ = outSigs[0].AddLabel("x", "y")
+	_ = outSigs[0].WithLabel("x", "y")
 
 	assert.False(t, g.First().Labels().Has("x"),
 		"mutating output group's signal must not change original group's signal (#203)")

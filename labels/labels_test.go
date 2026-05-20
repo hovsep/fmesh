@@ -10,27 +10,10 @@ import (
 )
 
 func TestLabelsCollection_New(t *testing.T) {
-	tests := []struct {
-		name       string
-		assertions func(t *testing.T, lc *Collection)
-	}{
-		{
-			name: "empty collection",
-			assertions: func(t *testing.T, lc *Collection) {
-				assert.NotNil(t, lc)
-				assert.Equal(t, 0, lc.Len())
-				assert.False(t, lc.HasChainableErr())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NewCollection()
-			if tt.assertions != nil {
-				tt.assertions(t, got)
-			}
-		})
-	}
+	c := NewCollection()
+	assert.NotNil(t, c)
+	assert.Equal(t, 0, c.Len())
+	assert.False(t, c.HasChainableErr())
 }
 
 func TestLabelsCollection_Add(t *testing.T) {
@@ -88,7 +71,7 @@ func TestLabelsCollection_Add(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_WithMany(t *testing.T) {
+func TestLabelsCollection_AddMany(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -134,7 +117,7 @@ func TestLabelsCollection_WithMany(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_Without(t *testing.T) {
+func TestLabelsCollection_Remove(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -183,7 +166,7 @@ func TestLabelsCollection_Without(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.collection.Without(tt.labels...)
+			result := tt.collection.Remove(tt.labels...)
 			if tt.assertions != nil {
 				tt.assertions(t, result)
 			}
@@ -464,7 +447,7 @@ func TestLabelsCollection_ValueIs(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_AllMatch(t *testing.T) {
+func TestLabelsCollection_Every(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -518,12 +501,12 @@ func TestLabelsCollection_AllMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.AllMatch(tt.predicate))
+			assert.Equal(t, tt.want, tt.collection.Every(tt.predicate))
 		})
 	}
 }
 
-func TestLabelsCollection_AnyMatch(t *testing.T) {
+func TestLabelsCollection_Any(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -568,7 +551,7 @@ func TestLabelsCollection_AnyMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.AnyMatch(tt.predicate))
+			assert.Equal(t, tt.want, tt.collection.Any(tt.predicate))
 		})
 	}
 }
@@ -769,7 +752,7 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 				"region": "us-east",
 				"zone":   "1a",
 			}).
-			Without("zone")
+			Remove("zone")
 
 		assert.Equal(t, 3, lc.Len())
 		assert.True(t, lc.Has("env"))
@@ -789,10 +772,10 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 		assert.True(t, lc.ValueIs("k3", "v3"))
 	})
 
-	t.Run("Without called twice removes both sets", func(t *testing.T) {
+	t.Run("Remove called twice removes both sets", func(t *testing.T) {
 		lc := NewCollection().AddMany(Map{"k1": "v1", "k2": "v2", "k3": "v3", "k4": "v4"}).
-			Without("k1", "k2").
-			Without("k3")
+			Remove("k1", "k2").
+			Remove("k3")
 
 		assert.Equal(t, 1, lc.Len())
 		assert.True(t, lc.ValueIs("k4", "v4"))
@@ -823,8 +806,8 @@ func TestLabelsCollection_ErrorHandling(t *testing.T) {
 			assertions: func(t *testing.T, lc *Collection) {
 				assert.False(t, lc.Has("test"))
 				assert.Equal(t, 0, lc.Len())
-				assert.False(t, lc.AllMatch(func(k, v string) bool { return true }))
-				assert.False(t, lc.AnyMatch(func(k, v string) bool { return true }))
+				assert.False(t, lc.Every(func(k, v string) bool { return true }))
+				assert.False(t, lc.Any(func(k, v string) bool { return true }))
 
 				val, err := lc.Value("test")
 				require.Error(t, err)
@@ -947,7 +930,7 @@ func TestLabelsCollection_HasAnyFrom(t *testing.T) {
 	}
 }
 
-func TestLabelsCollection_CountMatch(t *testing.T) {
+func TestLabelsCollection_Count(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -1001,8 +984,105 @@ func TestLabelsCollection_CountMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.collection.CountMatch(tt.pred)
+			got := tt.collection.Count(tt.pred)
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestLabelsCollection_Keys(t *testing.T) {
+	t.Run("returns sorted keys", func(t *testing.T) {
+		c := NewCollection().AddMany(Map{"b": "2", "a": "1", "c": "3"})
+		assert.Equal(t, []string{"a", "b", "c"}, c.Keys())
+	})
+
+	t.Run("empty collection", func(t *testing.T) {
+		assert.Empty(t, NewCollection().Keys())
+	})
+
+	t.Run("chainable error returns nil", func(t *testing.T) {
+		c := NewCollection().WithChainableErr(errors.New("err"))
+		assert.Nil(t, c.Keys())
+	})
+}
+
+func TestLabelsCollection_Values(t *testing.T) {
+	t.Run("returns values sorted by key", func(t *testing.T) {
+		c := NewCollection().AddMany(Map{"b": "beta", "a": "alpha", "c": "gamma"})
+		assert.Equal(t, []string{"alpha", "beta", "gamma"}, c.Values())
+	})
+
+	t.Run("empty collection", func(t *testing.T) {
+		assert.Empty(t, NewCollection().Values())
+	})
+
+	t.Run("chainable error returns nil", func(t *testing.T) {
+		c := NewCollection().WithChainableErr(errors.New("err"))
+		assert.Nil(t, c.Values())
+	})
+}
+
+func TestLabelsCollection_Merge(t *testing.T) {
+	t.Run("merges two collections", func(t *testing.T) {
+		a := NewCollection().AddMany(Map{"x": "1", "y": "2"})
+		b := NewCollection().AddMany(Map{"y": "overridden", "z": "3"})
+		merged := a.Merge(b)
+
+		assert.Equal(t, 3, merged.Len())
+		assert.True(t, merged.ValueIs("x", "1"))
+		assert.True(t, merged.ValueIs("y", "overridden"), "other wins on conflict")
+		assert.True(t, merged.ValueIs("z", "3"))
+	})
+
+	t.Run("neither input is modified", func(t *testing.T) {
+		a := NewCollection().Add("k", "v")
+		b := NewCollection().Add("k", "other")
+		_ = a.Merge(b)
+		assert.True(t, a.ValueIs("k", "v"))
+		assert.True(t, b.ValueIs("k", "other"))
+	})
+
+	t.Run("merge with empty other", func(t *testing.T) {
+		a := NewCollection().Add("k", "v")
+		merged := a.Merge(NewCollection())
+		assert.Equal(t, 1, merged.Len())
+		assert.True(t, merged.ValueIs("k", "v"))
+	})
+
+	t.Run("merge into empty", func(t *testing.T) {
+		b := NewCollection().Add("k", "v")
+		merged := NewCollection().Merge(b)
+		assert.True(t, merged.ValueIs("k", "v"))
+	})
+
+	t.Run("receiver error propagates", func(t *testing.T) {
+		a := NewCollection().WithChainableErr(errors.New("bad"))
+		merged := a.Merge(NewCollection().Add("x", "1"))
+		assert.True(t, merged.HasChainableErr())
+	})
+
+	t.Run("other error propagates", func(t *testing.T) {
+		b := NewCollection().WithChainableErr(errors.New("bad other"))
+		merged := NewCollection().Add("x", "1").Merge(b)
+		assert.True(t, merged.HasChainableErr())
+	})
+}
+
+func TestLabelsCollection_ValueIs_edge_cases(t *testing.T) {
+	t.Run("key exists with empty value", func(t *testing.T) {
+		c := NewCollection().Add("k", "")
+		assert.True(t, c.ValueIs("k", ""))
+		assert.False(t, c.ValueIs("k", "anything"))
+	})
+
+	t.Run("key absent returns false", func(t *testing.T) {
+		c := NewCollection()
+		assert.False(t, c.ValueIs("missing", ""))
+		assert.False(t, c.ValueIs("missing", "val"))
+	})
+
+	t.Run("chainable error returns false", func(t *testing.T) {
+		c := NewCollection().Add("k", "v").WithChainableErr(errors.New("err"))
+		assert.False(t, c.ValueIs("k", "v"))
+	})
 }

@@ -24,7 +24,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 		AddInputs("start").
 		AddOutputs("o1").
 		WithActivationFunc(func(this *component.Component) error {
-			this.OutputByName("o1").PutSignals(signal.New(42).AddLabel("route", "fan"))
+			this.OutputByName("o1").PutSignals(signal.New(42).WithLabel("route", "fan"))
 			return nil
 		})
 
@@ -78,7 +78,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 		AddInputs("start").
 		AddOutputs("o1").
 		WithActivationFunc(func(this *component.Component) error {
-			this.OutputByName("o1").PutSignals(signal.New(1).AddLabel("seed", "x"))
+			this.OutputByName("o1").PutSignals(signal.New(1).WithLabel("seed", "x"))
 			return nil
 		})
 
@@ -103,11 +103,11 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 					}
 				case 1:
 					for i := range stressIters {
-						shared.AddLabel(fmt.Sprintf("w1_%d", i), "v")
+						shared.WithLabel(fmt.Sprintf("w1_%d", i), "v")
 					}
 				default:
 					for i := range stressIters {
-						shared.AddLabel(fmt.Sprintf("w2_%d", i), "v")
+						shared.WithLabel(fmt.Sprintf("w2_%d", i), "v")
 					}
 				}
 				return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))

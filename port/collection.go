@@ -117,7 +117,7 @@ func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
 //
 //	// Add labels to all input ports
 //	this.Inputs().ForEach(func(p *port.Port) {
-//	    p.AddLabel("processed", "true")
+//	    p.WithLabel("processed", "true")
 //	})
 func (c *Collection) ForEach(action func(*Port) error) *Collection {
 	if c.HasChainableErr() {
@@ -219,7 +219,7 @@ func (c *Collection) Signals() *signal.Group {
 			// Return a group with error, but don't poison the collection
 			return signal.NewGroup().WithChainableErr(err)
 		}
-		group = group.Add(signals...)
+		group = group.With(signals...)
 	}
 	return group
 }

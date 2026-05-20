@@ -729,7 +729,7 @@ func TestPort_ClearLabels(t *testing.T) {
 	}
 }
 
-func TestPort_WithoutLabels(t *testing.T) {
+func TestPort_RemoveLabels(t *testing.T) {
 	tests := []struct {
 		name           string
 		port           *Port
@@ -772,7 +772,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 			port:           NewOutput("p1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, port *Port) {
-				result := port.WithoutLabels("k2").AddLabel("k4", "v4")
+				result := port.RemoveLabels("k2").AddLabel("k4", "v4")
 				assert.Equal(t, 2, result.Labels().Len())
 				assert.False(t, result.Labels().Has("k1"))
 				assert.False(t, result.Labels().Has("k2"))
@@ -783,7 +783,7 @@ func TestPort_WithoutLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.WithoutLabels(tt.labelsToRemove...)
+			portAfter := tt.port.RemoveLabels(tt.labelsToRemove...)
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -1039,7 +1039,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				srcPort:  NewOutput("p1").PutSignalGroups(signal.NewGroup(1, 2, 3)),
 				destPort: NewOutput("p2"),
 				mapperFunc: func(signal *signal.Signal) *signal.Signal {
-					return signal.SetLabels(labels.Map{
+					return signal.WithOnlyLabels(labels.Map{
 						"l1": "v1",
 					})
 				},
@@ -1048,9 +1048,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 3, destPortAfter.Signals().Len())
 				assert.Equal(t, 3, srcPortAfter.Signals().Len())
-				assert.True(t, destPortAfter.Signals().AllMatch(func(signal *signal.Signal) bool {
-					return signal.Labels().ValueIs("l1", "v1")
-				}))
+				assert.True(t, destPortAfter.Signals().Every(signal.LabelEquals("l1", "v1")))
 			},
 		},
 		{
@@ -1164,10 +1162,10 @@ func TestPort_Chainability(t *testing.T) {
 		assert.True(t, p.Labels().ValueIs("k3", "v3"))
 	})
 
-	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
+	t.Run("RemoveLabels removes specific labels", func(t *testing.T) {
 		p := NewOutput("p1").
 			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
-			WithoutLabels("k1", "k2").
+			RemoveLabels("k1", "k2").
 			AddLabel("k4", "v4")
 
 		assert.Equal(t, 2, p.Labels().Len())

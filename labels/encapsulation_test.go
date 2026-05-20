@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Contract tests for github.com/hovsep/fmesh#203 (Collection.All must not alias internal map).
+// Contract tests: Collection.All must return a defensive copy of the internal map,
+// not a live reference. The collection itself is mutable by design; this file
+// guards only against callers reaching inside and corrupting internal state.
 
 func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 	c := NewCollection().Add("k", "v")

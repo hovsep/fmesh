@@ -26,7 +26,8 @@ func cloneLabels(c *labels.Collection) *labels.Collection {
 	return c.Filter(func(string, string) bool { return true })
 }
 
-// cloneSignal returns a deep copy suitable for aliasing-free group operations.
+// cloneSignal returns a copy of s with an independent labels collection.
+// Payload is shallow-copied.
 func cloneSignal(s *Signal) *Signal {
 	if s == nil {
 		return nil
@@ -55,42 +56,42 @@ func (s *Signal) Labels() *labels.Collection {
 	return cloneLabels(s.labels)
 }
 
-// SetLabels replaces all labels and returns a new signal.
-func (s *Signal) SetLabels(labelMap labels.Map) *Signal {
+// WithOnlyLabels replaces all labels and returns a new signal.
+func (s *Signal) WithOnlyLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	next := s.cloneForMutation()
+	next := cloneSignal(s)
 	next.labels = labels.NewCollection().AddMany(maps.Clone(labelMap))
 	return next
 }
 
-// AddLabels adds or updates labels and returns a new signal.
-func (s *Signal) AddLabels(labelMap labels.Map) *Signal {
+// WithLabels adds or updates labels and returns a new signal.
+func (s *Signal) WithLabels(labelMap labels.Map) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	next := s.cloneForMutation()
+	next := cloneSignal(s)
 	next.labels = next.labels.AddMany(maps.Clone(labelMap))
 	return next
 }
 
-// AddLabel adds or updates a single label and returns a new signal.
-func (s *Signal) AddLabel(name, value string) *Signal {
+// WithLabel adds or updates a single label and returns a new signal.
+func (s *Signal) WithLabel(name, value string) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	next := s.cloneForMutation()
+	next := cloneSignal(s)
 	next.labels = next.labels.Add(name, value)
 	return next
 }
 
-// ClearLabels removes all labels and returns a new signal.
-func (s *Signal) ClearLabels() *Signal {
+// WithNoLabels removes all labels and returns a new signal.
+func (s *Signal) WithNoLabels() *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	next := s.cloneForMutation()
+	next := cloneSignal(s)
 	next.labels = labels.NewCollection()
 	return next
 }
@@ -100,20 +101,30 @@ func (s *Signal) WithoutLabels(names ...string) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	next := s.cloneForMutation()
-	next.labels = next.labels.Without(names...)
+	next := cloneSignal(s)
+	next.labels = next.labels.Remove(names...)
 	return next
 }
 
-func (s *Signal) cloneForMutation() *Signal {
-	return &Signal{
-		chainableErr: s.chainableErr,
-		labels:       cloneLabels(s.labels),
-		payload:      slices.Clone(s.payload),
+// MapPayload applies a mapper function to the signal's payload and returns a new signal.
+// The new signal preserves all labels from the original signal.
+func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
+	if s.HasChainableErr() {
+		return s
 	}
+
+	payload, err := s.Payload()
+	if err != nil {
+		return New(nil).WithChainableErr(err)
+	}
+
+	out := New(mapper(payload))
+	out.labels = cloneLabels(s.labels)
+	return out
 }
 
-// Payload returns the signal's payload.
+// Payload returns the signal's payload. The value is shallow: if the payload is
+// a pointer, slice, or map, the caller must not mutate it.
 func (s *Signal) Payload() (any, error) {
 	if s.HasChainableErr() {
 		return nil, s.ChainableErr()
@@ -159,22 +170,5 @@ func (s *Signal) Map(m Mapper) *Signal {
 	if s.HasChainableErr() {
 		return s
 	}
-	return m(s)
-}
-
-// MapPayload applies a mapper function to the signal's payload and returns a new signal.
-// The new signal preserves all labels from the original signal.
-func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
-	if s.HasChainableErr() {
-		return s
-	}
-
-	payload, err := s.Payload()
-	if err != nil {
-		return New(nil).WithChainableErr(err)
-	}
-
-	out := New(mapper(payload))
-	out.labels = cloneLabels(s.labels)
-	return out
+	return m(cloneSignal(s))
 }
