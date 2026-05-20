@@ -16,3 +16,9 @@
 - Ask before relaxing any established constraint or convention
 - Ask before introducing new patterns, helpers, or abstractions
 - Match the style of surrounding code exactly
+
+## Comments
+
+- Type and package-level comments state **what the type is**, not how its methods work — method names go stale
+- Do not put usage guidance ("Use X to do Y") or examples in type definition comments; those belong in method godocs or external documentation
+- Method comments should be one line where possible; omit anything already obvious from the signature
