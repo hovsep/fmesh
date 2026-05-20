@@ -1,8 +1,11 @@
 package signal
 
-import "slices"
+import (
+	"reflect"
+	"slices"
+)
 
-// Group represents a list of signals.
+// Group represents an ordered list of signals.
 type Group struct {
 	chainableErr error
 	signals      Signals
@@ -15,7 +18,7 @@ func newGroupFromSignals(signals Signals) *Group {
 	}
 }
 
-// NewGroup creates an empty group.
+// NewGroup creates a new group from the given payloads.
 func NewGroup(payloads ...any) *Group {
 	signals := make(Signals, len(payloads))
 	for i, payload := range payloads {
@@ -24,7 +27,7 @@ func NewGroup(payloads ...any) *Group {
 	return newGroupFromSignals(signals)
 }
 
-// First returns the first signal in the group.
+// First returns the first signal in the group, or nil if empty or errored.
 func (g *Group) First() *Signal {
 	if g.HasChainableErr() {
 		return nil
@@ -33,6 +36,17 @@ func (g *Group) First() *Signal {
 		return nil
 	}
 	return g.signals[0]
+}
+
+// Last returns the last signal in the group, or nil if empty or errored.
+func (g *Group) Last() *Signal {
+	if g.HasChainableErr() {
+		return nil
+	}
+	if g.IsEmpty() {
+		return nil
+	}
+	return g.signals[len(g.signals)-1]
 }
 
 // IsEmpty returns true when there are no signals in the group.
@@ -53,17 +67,18 @@ func (g *Group) Find(predicate Predicate) *Signal {
 	return nil
 }
 
-// AnyMatch returns true if at least one signal matches the predicate.
-func (g *Group) AnyMatch(p Predicate) bool {
+// Any returns true if at least one signal matches the predicate.
+func (g *Group) Any(p Predicate) bool {
 	if g.HasChainableErr() || g.IsEmpty() {
 		return false
 	}
 	return slices.ContainsFunc(g.signals, p)
 }
 
-// AllMatch returns true if all signals match the predicate.
-func (g *Group) AllMatch(p Predicate) bool {
-	if g.HasChainableErr() || g.IsEmpty() {
+// Every returns true if all signals match the predicate.
+// Returns true for an empty group (vacuous truth).
+func (g *Group) Every(p Predicate) bool {
+	if g.HasChainableErr() {
 		return false
 	}
 	for _, sig := range g.signals {
@@ -72,6 +87,56 @@ func (g *Group) AllMatch(p Predicate) bool {
 		}
 	}
 	return true
+}
+
+// Count returns the number of signals that match the predicate.
+func (g *Group) Count(predicate Predicate) int {
+	if g.HasChainableErr() {
+		return 0
+	}
+	n := 0
+	for _, sig := range g.signals {
+		if predicate(sig) {
+			n++
+		}
+	}
+	return n
+}
+
+// Contains returns true if the group contains the exact signal (pointer identity).
+func (g *Group) Contains(s *Signal) bool {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return false
+	}
+	return slices.Contains(g.signals, s)
+}
+
+// ContainsPayload returns true if any signal's payload equals the given value.
+// Panics if the payload type is not comparable; use ContainsPayloadFunc instead.
+func (g *Group) ContainsPayload(payload any) bool {
+	if payload != nil && !reflect.TypeOf(payload).Comparable() {
+		panic("ContainsPayload: payload type is not comparable, use ContainsPayloadFunc instead")
+	}
+	return g.ContainsPayloadFunc(func(p any) bool {
+		return p == payload
+	})
+}
+
+// ContainsPayloadFunc returns true if any signal's payload satisfies eq.
+func (g *Group) ContainsPayloadFunc(eq func(payload any) bool) bool {
+	if g.HasChainableErr() || g.IsEmpty() {
+		return false
+	}
+	for _, sig := range g.signals {
+		p, err := sig.Payload()
+		if err != nil {
+			continue
+		}
+		if eq(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // FirstPayload returns the payload of the first signal with error handling.
@@ -116,8 +181,8 @@ func (g *Group) AllPayloads() ([]any, error) {
 	return all, nil
 }
 
-// Add returns a new group with added signals. The receiver is never modified.
-func (g *Group) Add(signals ...*Signal) *Group {
+// With returns a new group with the given signals appended. The receiver is never modified.
+func (g *Group) With(signals ...*Signal) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
@@ -135,18 +200,8 @@ func (g *Group) Add(signals ...*Signal) *Group {
 	return newGroupFromSignals(newSignals)
 }
 
-// Without removes signals matching the predicate and returns a new group.
-func (g *Group) Without(predicate Predicate) *Group {
-	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
-	}
-	return g.Filter(func(s *Signal) bool {
-		return !predicate(s)
-	})
-}
-
-// AddFromPayloads returns a new group with added signals created from provided payloads.
-func (g *Group) AddFromPayloads(payloads ...any) *Group {
+// WithPayloads returns a new group with signals created from the given payloads appended.
+func (g *Group) WithPayloads(payloads ...any) *Group {
 	if g.HasChainableErr() {
 		return g
 	}
@@ -158,7 +213,23 @@ func (g *Group) AddFromPayloads(payloads ...any) *Group {
 	return newGroupFromSignals(newSignals)
 }
 
-// All returns a copy of all signals in the group.
+// Join returns a new group containing signals from both groups.
+func (g *Group) Join(other *Group) *Group {
+	if g.HasChainableErr() {
+		return g
+	}
+	if other.HasChainableErr() {
+		return NewGroup().WithChainableErr(other.ChainableErr())
+	}
+	newSignals := make(Signals, g.Len()+other.Len())
+	copy(newSignals, g.signals)
+	copy(newSignals[g.Len():], other.signals)
+	return newGroupFromSignals(newSignals)
+}
+
+// All returns a cloned slice of signals. The slice is independent of the group;
+// the *Signal pointers inside are shared, but Signal is copy-on-write so callers
+// cannot corrupt group state through the returned pointers.
 func (g *Group) All() (Signals, error) {
 	if g.HasChainableErr() {
 		return nil, g.ChainableErr()
@@ -221,12 +292,12 @@ func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) *Grou
 	return g
 }
 
-// Filter returns a new group with signals that pass the filter.
+// Filter returns a new group with signals that pass the predicate.
 func (g *Group) Filter(p Predicate) *Group {
 	if g.HasChainableErr() {
 		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
-	filtered := make(Signals, 0)
+	filtered := make(Signals, 0, len(g.signals))
 	for _, s := range g.signals {
 		if p(s) {
 			filtered = append(filtered, s)
@@ -235,35 +306,48 @@ func (g *Group) Filter(p Predicate) *Group {
 	return newGroupFromSignals(filtered)
 }
 
-// Map returns a new group with signals transformed by the mapper function.
+// Map returns a new group with every signal transformed by the mapper.
 func (g *Group) Map(m Mapper) *Group {
 	if g.HasChainableErr() {
 		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 	mapped := make(Signals, 0, len(g.signals))
 	for _, s := range g.signals {
-		mapped = append(mapped, s.Map(m))
+		mapped = append(mapped, m(cloneSignal(s)))
 	}
 	return newGroupFromSignals(mapped)
 }
 
-// MapIf is like Map but only applies the mapper function to signals that match the predicate.
+// MapIf is like Map but applies the mapper only to signals matching the predicate.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	if g.HasChainableErr() {
 		return NewGroup().WithChainableErr(g.ChainableErr())
 	}
 	mapped := make(Signals, len(g.signals))
 	for i, s := range g.signals {
+		clonedSignal := cloneSignal(s)
 		if predicate(s) {
-			mapped[i] = s.Map(mapper)
+			mapped[i] = mapper(clonedSignal)
 		} else {
-			mapped[i] = cloneSignal(s)
+			mapped[i] = clonedSignal
 		}
 	}
 	return newGroupFromSignals(mapped)
 }
 
-// MapPayloadsIf is like MapPayloads but only applies the mapper to signals that match the predicate.
+// MapPayloads returns a new group with every payload transformed by the mapper.
+func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
+	if g.HasChainableErr() {
+		return NewGroup().WithChainableErr(g.ChainableErr())
+	}
+	mapped := make(Signals, 0, len(g.signals))
+	for _, s := range g.signals {
+		mapped = append(mapped, s.MapPayload(mapper))
+	}
+	return newGroupFromSignals(mapped)
+}
+
+// MapPayloadsIf is like MapPayloads but applies the mapper only to signals matching the predicate.
 func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group {
 	if g.HasChainableErr() {
 		return NewGroup().WithChainableErr(g.ChainableErr())
@@ -279,28 +363,30 @@ func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group 
 	return newGroupFromSignals(mapped)
 }
 
-// MapPayloads returns a new group with payloads transformed by the mapper function.
-func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
+// Reduce accumulates all signals into a single signal using the given function.
+func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
 	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
+		return initial
 	}
-	mapped := make(Signals, 0, len(g.signals))
+	acc := initial
 	for _, s := range g.signals {
-		mapped = append(mapped, s.MapPayload(mapper))
+		acc = fn(acc, s)
 	}
-	return newGroupFromSignals(mapped)
+	return acc
 }
 
-// CountMatch returns the number of signals that match the predicate.
-func (g *Group) CountMatch(predicate Predicate) int {
+// ReducePayloads accumulates all signal payloads into a single value using the given function.
+func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 	if g.HasChainableErr() {
-		return 0
+		return initial
 	}
-	n := 0
-	for _, sig := range g.signals {
-		if predicate(sig) {
-			n++
+	acc := initial
+	for _, s := range g.signals {
+		p, err := s.Payload()
+		if err != nil {
+			continue
 		}
+		acc = fn(acc, p)
 	}
-	return n
+	return acc
 }

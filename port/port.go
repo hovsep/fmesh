@@ -8,8 +8,7 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// Direction represents the direction of a port (input or output).
-// It's a boolean type where true = input, false = output.
+// Direction represents the direction of a port.
 type Direction bool
 
 const (
@@ -91,7 +90,7 @@ func (p *Port) Labels() *labels.Collection {
 	return p.labels
 }
 
-// SetLabels replaces all labels and returns the port for chaining.
+// SetLabels replaces all labels.
 func (p *Port) SetLabels(labelMap labels.Map) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -100,7 +99,7 @@ func (p *Port) SetLabels(labelMap labels.Map) *Port {
 	return p
 }
 
-// AddLabels adds or updates labels and returns the port for chaining.
+// AddLabels adds or updates labels.
 func (p *Port) AddLabels(labelMap labels.Map) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -109,7 +108,7 @@ func (p *Port) AddLabels(labelMap labels.Map) *Port {
 	return p
 }
 
-// AddLabel adds or updates a single label and returns the port for chaining.
+// AddLabel adds or updates a single label.
 func (p *Port) AddLabel(name, value string) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -118,7 +117,7 @@ func (p *Port) AddLabel(name, value string) *Port {
 	return p
 }
 
-// ClearLabels removes all labels and returns the port for chaining.
+// ClearLabels removes all labels.
 func (p *Port) ClearLabels() *Port {
 	if p.HasChainableErr() {
 		return p
@@ -127,16 +126,16 @@ func (p *Port) ClearLabels() *Port {
 	return p
 }
 
-// WithoutLabels removes specific labels and returns the port for chaining.
-func (p *Port) WithoutLabels(names ...string) *Port {
+// RemoveLabels removes specific labels.
+func (p *Port) RemoveLabels(names ...string) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
-	p.labels.Without(names...)
+	p.labels.Remove(names...)
 	return p
 }
 
-// WithDescription sets the port description and returns the port for chaining.
+// WithDescription sets the port description.
 func (p *Port) WithDescription(description string) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -180,13 +179,13 @@ func (p *Port) Signals() *signal.Group {
 	return p.signals
 }
 
-// PutSignals adds signals to the port and returns the port for chaining.
+// PutSignals adds signals to the port.
 func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	if p.HasChainableErr() {
 		return p
 	}
 
-	result := p.withSignals(p.Signals().Add(signals...))
+	result := p.withSignals(p.Signals().With(signals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
@@ -199,7 +198,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
 	return result
 }
 
-// PutPayloads creates signals from given payloads and returns the port for chaining.
+// PutPayloads creates signals from given payloads.
 func (p *Port) PutPayloads(payloads ...any) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -207,7 +206,7 @@ func (p *Port) PutPayloads(payloads ...any) *Port {
 
 	newSignals, _ := signal.NewGroup(payloads...).All()
 
-	result := p.withSignals(p.Signals().Add(newSignals...))
+	result := p.withSignals(p.Signals().With(newSignals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
@@ -220,7 +219,7 @@ func (p *Port) PutPayloads(payloads ...any) *Port {
 	return result
 }
 
-// PutSignalGroups adds all signals from signal groups and returns the port for chaining.
+// PutSignalGroups adds all signals from signal groups.
 func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -239,7 +238,7 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
 	return p
 }
 
-// Clear removes all signals and returns the port for chaining.
+// Clear removes all signals.
 func (p *Port) Clear() *Port {
 	if p.HasChainableErr() {
 		return p
@@ -302,7 +301,7 @@ func (p *Port) HasPipes() bool {
 	return !p.Pipes().IsEmpty()
 }
 
-// PipeTo connects this port to destination ports and returns the port for chaining.
+// PipeTo connects this port to destination ports.
 func (p *Port) PipeTo(destPorts ...*Port) *Port {
 	if p.HasChainableErr() {
 		return p
@@ -442,7 +441,7 @@ func (p *Port) WithParentComponent(parentComponent ParentComponent) *Port {
 	return p
 }
 
-// SetupHooks configures port hooks using a closure and returns the port for chaining.
+// SetupHooks configures port hooks using a closure.
 func (p *Port) SetupHooks(configure func(*Hooks)) *Port {
 	if p.HasChainableErr() {
 		return p

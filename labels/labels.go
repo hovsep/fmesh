@@ -6,7 +6,8 @@ import (
 	"slices"
 )
 
-// Collection provides safe access to labels with error handling.
+// Collection is a mutable key-value string store.
+// All write methods modify the receiver in place.
 type Collection struct {
 	chainableErr error
 	labels       Map
@@ -29,8 +30,35 @@ func (c *Collection) All() (Map, error) {
 	return maps.Clone(c.labels), nil
 }
 
-// AllMatch returns true if all labels in the collection satisfy the predicate.
-func (c *Collection) AllMatch(pred LabelPredicate) bool {
+// Keys returns all label names as a sorted slice. The caller owns the returned slice.
+func (c *Collection) Keys() []string {
+	if c.HasChainableErr() {
+		return nil
+	}
+	keys := make([]string, 0, len(c.labels))
+	for k := range c.labels {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// Values returns all label values as a slice sorted by their corresponding key. The caller owns the returned slice.
+func (c *Collection) Values() []string {
+	if c.HasChainableErr() {
+		return nil
+	}
+	keys := c.Keys()
+	values := make([]string, len(keys))
+	for i, k := range keys {
+		values[i] = c.labels[k]
+	}
+	return values
+}
+
+// Every returns true if all labels in the collection satisfy the predicate.
+// Returns true for an empty collection (vacuous truth).
+func (c *Collection) Every(pred LabelPredicate) bool {
 	if c.HasChainableErr() {
 		return false
 	}
@@ -43,8 +71,8 @@ func (c *Collection) AllMatch(pred LabelPredicate) bool {
 	return true
 }
 
-// AnyMatch returns true if any label in the collection satisfies the predicate.
-func (c *Collection) AnyMatch(pred LabelPredicate) bool {
+// Any returns true if any label in the collection satisfies the predicate.
+func (c *Collection) Any(pred LabelPredicate) bool {
 	if c.HasChainableErr() {
 		return false
 	}
@@ -56,8 +84,8 @@ func (c *Collection) AnyMatch(pred LabelPredicate) bool {
 	return false
 }
 
-// CountMatch returns the number of labels that match the predicate.
-func (c *Collection) CountMatch(pred LabelPredicate) int {
+// Count returns the number of labels that match the predicate.
+func (c *Collection) Count(pred LabelPredicate) int {
 	if c.HasChainableErr() {
 		return 0
 	}
@@ -114,8 +142,23 @@ func (c *Collection) AddMany(labels Map) *Collection {
 	return c
 }
 
-// Without removes given labels.
-func (c *Collection) Without(labels ...string) *Collection {
+// Merge returns a new collection containing all labels from both c and other.
+// On key conflict, other's value wins. Neither c nor other is modified.
+func (c *Collection) Merge(other *Collection) *Collection {
+	if c.HasChainableErr() {
+		return NewCollection().WithChainableErr(c.ChainableErr())
+	}
+	if other.HasChainableErr() {
+		return NewCollection().WithChainableErr(other.ChainableErr())
+	}
+	merged := NewCollection()
+	maps.Copy(merged.labels, c.labels)
+	maps.Copy(merged.labels, other.labels)
+	return merged
+}
+
+// Remove deletes given labels.
+func (c *Collection) Remove(labels ...string) *Collection {
 	if c.HasChainableErr() {
 		return c
 	}
@@ -161,17 +204,8 @@ func (c *Collection) ValueIs(label, value string) bool {
 	if c.HasChainableErr() {
 		return false
 	}
-
-	if !c.Has(label) {
-		return false
-	}
-
-	l, err := c.Value(label)
-	if err != nil {
-		return false
-	}
-
-	return l == value
+	v, ok := c.labels[label]
+	return ok && v == value
 }
 
 // Len returns the number of labels.
@@ -248,9 +282,7 @@ func (c *Collection) HasChainableErr() bool {
 	return c.chainableErr != nil
 }
 
-// HasAllFrom returns true if the current collection contains all labels
-// present in the other collection (ignoring values). Returns false if either
-// collection has a chainable error.
+// HasAllFrom returns true if c contains all labels present in other (values ignored).
 func (c *Collection) HasAllFrom(other *Collection) bool {
 	if c.HasChainableErr() || other.HasChainableErr() {
 		return false
@@ -260,14 +292,12 @@ func (c *Collection) HasAllFrom(other *Collection) bool {
 		return false
 	}
 
-	return other.AllMatch(func(label, _ string) bool {
+	return other.Every(func(label, _ string) bool {
 		return c.Has(label)
 	})
 }
 
-// HasAnyFrom returns true if the current collection contains at least one
-// label present in the other collection (ignoring values). Returns false if
-// either collection has a chainable error.
+// HasAnyFrom returns true if c contains at least one label present in other (values ignored).
 func (c *Collection) HasAnyFrom(other *Collection) bool {
 	if c.HasChainableErr() || other.HasChainableErr() {
 		return false
@@ -277,7 +307,7 @@ func (c *Collection) HasAnyFrom(other *Collection) bool {
 		return false
 	}
 
-	return other.AnyMatch(func(label, _ string) bool {
+	return other.Any(func(label, _ string) bool {
 		return c.Has(label)
 	})
 }

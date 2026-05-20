@@ -49,7 +49,7 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// WithDescription sets the component description and returns the component for chaining.
+// WithDescription sets the component description.
 func (c *Component) WithDescription(description string) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -67,7 +67,7 @@ func (c *Component) Labels() *labels.Collection {
 	return c.labels
 }
 
-// SetLabels replaces all labels and returns the component for chaining.
+// SetLabels replaces all labels.
 func (c *Component) SetLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -76,7 +76,7 @@ func (c *Component) SetLabels(labelMap labels.Map) *Component {
 	return c
 }
 
-// AddLabels adds or updates labels and returns the component for chaining.
+// AddLabels adds or updates labels.
 func (c *Component) AddLabels(labelMap labels.Map) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -85,7 +85,7 @@ func (c *Component) AddLabels(labelMap labels.Map) *Component {
 	return c
 }
 
-// AddLabel adds or updates a single label and returns the component for chaining.
+// AddLabel adds or updates a single label.
 func (c *Component) AddLabel(name, value string) *Component {
 	if c.HasChainableErr() {
 		return c
@@ -94,7 +94,7 @@ func (c *Component) AddLabel(name, value string) *Component {
 	return c
 }
 
-// ClearLabels removes all labels and returns the component for chaining.
+// ClearLabels removes all labels.
 func (c *Component) ClearLabels() *Component {
 	if c.HasChainableErr() {
 		return c
@@ -103,12 +103,12 @@ func (c *Component) ClearLabels() *Component {
 	return c
 }
 
-// WithoutLabels removes specific labels and returns the component for chaining.
-func (c *Component) WithoutLabels(names ...string) *Component {
+// RemoveLabels removes specific labels.
+func (c *Component) RemoveLabels(names ...string) *Component {
 	if c.HasChainableErr() {
 		return c
 	}
-	c.labels.Without(names...)
+	c.labels.Remove(names...)
 	return c
 }
 
@@ -180,13 +180,7 @@ func (c *Component) WithLogger(logger *log.Logger) *Component {
 	return c
 }
 
-// Logger returns the component's logger for debugging and monitoring.
-// Use this to log information during component activation.
-//
-// Example (in activation function):
-//
-//	this.Logger().Printf("Processing %d items", count)
-//	this.Logger().Println("Validation completed successfully")
+// Logger returns the component's logger.
 func (c *Component) Logger() *log.Logger {
 	return c.logger
 }

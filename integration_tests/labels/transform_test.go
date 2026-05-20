@@ -16,7 +16,7 @@ import (
 func Test_LabelTransformation(t *testing.T) {
 	t.Run("normalize label keys to uppercase", func(t *testing.T) {
 		// Scenario: You receive signals with mixed-case labels and want to normalize them
-		sig := signal.New(100).SetLabels(labels.Map{
+		sig := signal.New(100).WithOnlyLabels(labels.Map{
 			"env":    "production",
 			"Region": "us-east",
 			"Tier":   "backend",
@@ -56,7 +56,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("add prefix to label values", func(t *testing.T) {
 		// Scenario: You want to mark all label values as coming from a specific source
-		sig := signal.New("data").SetLabels(labels.Map{
+		sig := signal.New("data").WithOnlyLabels(labels.Map{
 			"source": "api",
 			"format": "json",
 		})
@@ -72,7 +72,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("convert labels to debug format", func(t *testing.T) {
 		// Scenario: You want to wrap all label values in brackets for debugging
-		sig := signal.New(42).SetLabels(labels.Map{
+		sig := signal.New(42).WithOnlyLabels(labels.Map{
 			"id":   "123",
 			"name": "test",
 		})
@@ -110,7 +110,7 @@ func Test_LabelTransformation(t *testing.T) {
 						return err
 					}
 
-					newSignal := signal.New(sig.PayloadOrNil()).SetLabels(labelsMap)
+					newSignal := signal.New(sig.PayloadOrNil()).WithOnlyLabels(labelsMap)
 					return outPort.PutSignals(newSignal).ChainableErr()
 				})
 
@@ -121,7 +121,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 		// Input signal with mixed-case labels
 		fm.ComponentByName("normalizer").InputByName("in").PutSignals(
-			signal.New(100).SetLabels(labels.Map{
+			signal.New(100).WithOnlyLabels(labels.Map{
 				"ENV":    "prod",
 				"Region": "us-west",
 				"TIER":   "frontend",
@@ -147,7 +147,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("chain Map with Filter", func(t *testing.T) {
 		// Scenario: Transform labels and then filter them
-		sig := signal.New("data").SetLabels(labels.Map{
+		sig := signal.New("data").WithOnlyLabels(labels.Map{
 			"app.version": "1.0",
 			"app.type":    "service",
 			"sys.cpu":     "high",

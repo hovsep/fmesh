@@ -48,13 +48,13 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("signal with multiple label operations", func(t *testing.T) {
 		s := signal.New("payload").
-			AddLabel("source", "api").
-			AddLabels(labels.Map{"priority": "high", "retry": "true"}).
-			SetLabels(labels.Map{"final": "label"}) // Reset
+			WithLabel("source", "api").
+			WithLabels(labels.Map{"priority": "high", "retry": "true"}).
+			WithOnlyLabels(labels.Map{"final": "label"}) // Reset
 
 		assert.Equal(t, 1, s.Labels().Len())
 		assert.True(t, s.Labels().ValueIs("final", "label"))
-		assert.False(t, s.Labels().Has("source"), "wiped by SetLabels")
+		assert.False(t, s.Labels().Has("source"), "wiped by WithOnlyLabels")
 	})
 
 	t.Run("component with label cleanup", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 			}).
 			AddInputs("tasks").
 			AddOutputs("results").
-			WithoutLabels("debug", "trace-id") // Clean up temporary labels
+			RemoveLabels("debug", "trace-id") // Clean up temporary labels
 
 		assert.Equal(t, 2, c.Labels().Len(), "should have only permanent labels")
 		assert.True(t, c.Labels().Has("env"))
@@ -106,16 +106,16 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("signal filtering and relabeling", func(t *testing.T) {
 		// Signal with metadata that gets filtered and relabeled
 		s := signal.New(map[string]any{"data": "value"}).
-			AddLabels(labels.Map{
+			WithLabels(labels.Map{
 				"source":    "api",
 				"priority":  "low",
 				"timestamp": "2024-01-01",
 				"temp":      "metadata",
 			}).
-			WithoutLabels("temp").        // Remove temporary metadata
-			WithoutLabels("priority").    // Remove old priority
-			AddLabel("priority", "high"). // Set new priority
-			AddLabel("processed", "true")
+			WithoutLabels("temp").         // Remove temporary metadata
+			WithoutLabels("priority").     // Remove old priority
+			WithLabel("priority", "high"). // Set new priority
+			WithLabel("processed", "true")
 
 		assert.Equal(t, 4, s.Labels().Len())
 		assert.False(t, s.Labels().Has("temp"))
@@ -140,9 +140,9 @@ func TestChainability_CrossPackage(t *testing.T) {
 				"verbose":  "true",
 				"trace-id": "xyz789",
 			}).
-			WithoutLabels("debug", "verbose", "trace-id"). // Remove all debug labels
-			AddLabel("env", "prod").                       // Update env to prod
-			AddLabel("deployed", "true")                   // Add deployment marker
+			RemoveLabels("debug", "verbose", "trace-id"). // Remove all debug labels
+			AddLabel("env", "prod").                      // Update env to prod
+			AddLabel("deployed", "true")                  // Add deployment marker
 
 		assert.Equal(t, 3, c.Labels().Len())
 		assert.True(t, c.Labels().ValueIs("env", "prod"), "env updated to prod")
@@ -156,20 +156,20 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("port and signal label coordination", func(t *testing.T) {
 		// Port and signals with coordinated label management
 		s1 := signal.New(1).
-			AddLabels(labels.Map{"priority": "high", "source": "user"}).
+			WithLabels(labels.Map{"priority": "high", "source": "user"}).
 			WithoutLabels("source").
-			AddLabel("source", "validated")
+			WithLabel("source", "validated")
 
 		s2 := signal.New(2).
-			AddLabels(labels.Map{"priority": "low", "source": "batch"}).
-			ClearLabels().
-			AddLabels(labels.Map{"priority": "high", "source": "validated"})
+			WithLabels(labels.Map{"priority": "low", "source": "batch"}).
+			WithNoLabels().
+			WithLabels(labels.Map{"priority": "high", "source": "validated"})
 
 		p := port.NewInput("validated-input").
 			AddLabel("type", "input").
 			PutSignals(s1, s2).
 			AddLabel("count", "2").
-			WithoutLabels("type") // Remove type
+			RemoveLabels("type") // Remove type
 
 		assert.Equal(t, 2, p.Signals().Len())
 		assert.Equal(t, 1, p.Labels().Len())

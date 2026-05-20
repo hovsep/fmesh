@@ -120,11 +120,11 @@ func TestSignal_Map(t *testing.T) {
 			name:   "happy path",
 			signal: New(1),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.SetLabels(labels.Map{
+				return signal.WithOnlyLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
-			want: New(1).SetLabels(labels.Map{
+			want: New(1).WithOnlyLabels(labels.Map{
 				"l1": "v1",
 			}),
 		},
@@ -132,7 +132,7 @@ func TestSignal_Map(t *testing.T) {
 			name:   "with chain error",
 			signal: New(1).WithChainableErr(errors.New("some error in chain")),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.SetLabels(labels.Map{
+				return signal.WithOnlyLabels(labels.Map{
 					"l1": "v1",
 				})
 			},
@@ -141,7 +141,7 @@ func TestSignal_Map(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.mapperFunc(tt.signal))
+			assert.Equal(t, tt.want, tt.signal.Map(tt.mapperFunc))
 		})
 	}
 }
@@ -155,11 +155,11 @@ func TestSignal_MapPayload(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			signal: New(1).AddLabel("foo", "bar"),
+			signal: New(1).WithLabel("foo", "bar"),
 			mapperFunc: func(payload any) any {
 				return payload.(int) * 2
 			},
-			want: New(2).AddLabel("foo", "bar"),
+			want: New(2).WithLabel("foo", "bar"),
 		},
 		{
 			name:   "with chain error",
@@ -171,14 +171,14 @@ func TestSignal_MapPayload(t *testing.T) {
 		},
 		{
 			name:   "payload nil",
-			signal: New(nil).AddLabel("x", "y"),
+			signal: New(nil).WithLabel("x", "y"),
 			mapperFunc: func(payload any) any {
 				if payload == nil {
 					return "default"
 				}
 				return payload
 			},
-			want: New("default").AddLabel("x", "y"),
+			want: New("default").WithLabel("x", "y"),
 		},
 	}
 	for _, tt := range tests {
@@ -191,7 +191,7 @@ func TestSignal_MapPayload(t *testing.T) {
 	}
 }
 
-func TestSignal_SetLabels(t *testing.T) {
+func TestSignal_WithOnlyLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -212,7 +212,7 @@ func TestSignal_SetLabels(t *testing.T) {
 		},
 		{
 			name:   "set labels replaces existing labels",
-			signal: New(123).AddLabels(labels.Map{"old": "value"}),
+			signal: New(123).WithLabels(labels.Map{"old": "value"}),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -226,7 +226,7 @@ func TestSignal_SetLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.SetLabels(tt.labels)
+			signalAfter := tt.signal.WithOnlyLabels(tt.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -234,7 +234,7 @@ func TestSignal_SetLabels(t *testing.T) {
 	}
 }
 
-func TestSignal_AddLabels(t *testing.T) {
+func TestSignal_WithLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -255,7 +255,7 @@ func TestSignal_AddLabels(t *testing.T) {
 		},
 		{
 			name:   "add labels merges with existing",
-			signal: New(123).AddLabels(labels.Map{"existing": "label"}),
+			signal: New(123).WithLabels(labels.Map{"existing": "label"}),
 			labels: labels.Map{
 				"l1": "v1",
 				"l2": "v2",
@@ -267,7 +267,7 @@ func TestSignal_AddLabels(t *testing.T) {
 		},
 		{
 			name:   "add labels updates existing key",
-			signal: New(123).AddLabels(labels.Map{"l1": "old"}),
+			signal: New(123).WithLabels(labels.Map{"l1": "old"}),
 			labels: labels.Map{
 				"l1": "new",
 			},
@@ -279,7 +279,7 @@ func TestSignal_AddLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.AddLabels(tt.labels)
+			signalAfter := tt.signal.WithLabels(tt.labels)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -287,7 +287,7 @@ func TestSignal_AddLabels(t *testing.T) {
 	}
 }
 
-func TestSignal_AddLabel(t *testing.T) {
+func TestSignal_WithLabel(t *testing.T) {
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -307,7 +307,7 @@ func TestSignal_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label merges with existing",
-			signal:     New(123).AddLabel("existing", "label"),
+			signal:     New(123).WithLabel("existing", "label"),
 			labelName:  "priority",
 			labelValue: "high",
 			assertions: func(t *testing.T, signal *Signal) {
@@ -317,7 +317,7 @@ func TestSignal_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label updates existing key",
-			signal:     New(123).AddLabel("priority", "low"),
+			signal:     New(123).WithLabel("priority", "low"),
 			labelName:  "priority",
 			labelValue: "high",
 			assertions: func(t *testing.T, signal *Signal) {
@@ -331,7 +331,7 @@ func TestSignal_AddLabel(t *testing.T) {
 			labelName:  "l1",
 			labelValue: "v1",
 			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.AddLabel("l2", "v2").AddLabel("l3", "v3")
+				result := signal.WithLabel("l2", "v2").WithLabel("l3", "v3")
 				assert.Equal(t, 3, result.Labels().Len())
 				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
 			},
@@ -339,7 +339,7 @@ func TestSignal_AddLabel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.AddLabel(tt.labelName, tt.labelValue)
+			signalAfter := tt.signal.WithLabel(tt.labelName, tt.labelValue)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -347,7 +347,7 @@ func TestSignal_AddLabel(t *testing.T) {
 	}
 }
 
-func TestSignal_ClearLabels(t *testing.T) {
+func TestSignal_WithNoLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -355,7 +355,7 @@ func TestSignal_ClearLabels(t *testing.T) {
 	}{
 		{
 			name:   "clear labels from signal with labels",
-			signal: New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
+			signal: New(123).WithLabels(labels.Map{"k1": "v1", "k2": "v2"}),
 			assertions: func(t *testing.T, signal *Signal) {
 				assert.Equal(t, 0, signal.Labels().Len())
 				assert.False(t, signal.Labels().Has("k1"))
@@ -371,9 +371,9 @@ func TestSignal_ClearLabels(t *testing.T) {
 		},
 		{
 			name:   "chainable",
-			signal: New(123).AddLabels(labels.Map{"k1": "v1"}),
+			signal: New(123).WithLabels(labels.Map{"k1": "v1"}),
 			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.ClearLabels().AddLabel("k2", "v2")
+				result := signal.WithNoLabels().WithLabel("k2", "v2")
 				assert.Equal(t, 1, result.Labels().Len())
 				assert.False(t, result.Labels().Has("k1"))
 				assert.True(t, result.Labels().ValueIs("k2", "v2"))
@@ -382,7 +382,7 @@ func TestSignal_ClearLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.ClearLabels()
+			signalAfter := tt.signal.WithNoLabels()
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -399,7 +399,7 @@ func TestSignal_WithoutLabels(t *testing.T) {
 	}{
 		{
 			name:           "remove single label",
-			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			signal:         New(123).WithLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, signal *Signal) {
 				assert.Equal(t, 2, signal.Labels().Len())
@@ -410,7 +410,7 @@ func TestSignal_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "remove multiple labels",
-			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			signal:         New(123).WithLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1", "k2"},
 			assertions: func(t *testing.T, signal *Signal) {
 				assert.Equal(t, 1, signal.Labels().Len())
@@ -421,7 +421,7 @@ func TestSignal_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "remove non-existent label",
-			signal:         New(123).AddLabels(labels.Map{"k1": "v1"}),
+			signal:         New(123).WithLabels(labels.Map{"k1": "v1"}),
 			labelsToRemove: []string{"k2"},
 			assertions: func(t *testing.T, signal *Signal) {
 				assert.Equal(t, 1, signal.Labels().Len())
@@ -430,10 +430,10 @@ func TestSignal_WithoutLabels(t *testing.T) {
 		},
 		{
 			name:           "chainable",
-			signal:         New(123).AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			signal:         New(123).WithLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.WithoutLabels("k2").AddLabel("k4", "v4")
+				result := signal.WithoutLabels("k2").WithLabel("k4", "v4")
 				assert.Equal(t, 2, result.Labels().Len())
 				assert.False(t, result.Labels().Has("k1"))
 				assert.False(t, result.Labels().Has("k2"))
@@ -453,10 +453,10 @@ func TestSignal_WithoutLabels(t *testing.T) {
 }
 
 func TestSignal_Chainability(t *testing.T) {
-	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
+	t.Run("WithOnlyLabels called twice replaces all labels", func(t *testing.T) {
 		s := New(123).
-			SetLabels(labels.Map{"k1": "v1", "k2": "v2"}).
-			SetLabels(labels.Map{"k3": "v3"})
+			WithOnlyLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			WithOnlyLabels(labels.Map{"k3": "v3"})
 
 		assert.Equal(t, 1, s.Labels().Len())
 		assert.False(t, s.Labels().Has("k1"), "k1 should be replaced")
@@ -464,10 +464,10 @@ func TestSignal_Chainability(t *testing.T) {
 		assert.True(t, s.Labels().ValueIs("k3", "v3"))
 	})
 
-	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
+	t.Run("WithLabels called twice merges labels", func(t *testing.T) {
 		s := New(123).
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
-			AddLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
+			WithLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			WithLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
 
 		assert.Equal(t, 3, s.Labels().Len())
 		assert.True(t, s.Labels().ValueIs("k1", "v1"))
@@ -477,24 +477,24 @@ func TestSignal_Chainability(t *testing.T) {
 
 	t.Run("mixed Set and Add operations", func(t *testing.T) {
 		s := New(123).
-			AddLabel("k1", "v1").
-			AddLabels(labels.Map{"k2": "v2", "k3": "v3"}).
-			SetLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
-			AddLabel("k5", "v5")               // Merges with k4
+			WithLabel("k1", "v1").
+			WithLabels(labels.Map{"k2": "v2", "k3": "v3"}).
+			WithOnlyLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
+			WithLabel("k5", "v5")                   // Merges with k4
 
 		assert.Equal(t, 2, s.Labels().Len())
-		assert.False(t, s.Labels().Has("k1"), "wiped by SetLabels")
-		assert.False(t, s.Labels().Has("k2"), "wiped by SetLabels")
-		assert.False(t, s.Labels().Has("k3"), "wiped by SetLabels")
+		assert.False(t, s.Labels().Has("k1"), "wiped by WithOnlyLabels")
+		assert.False(t, s.Labels().Has("k2"), "wiped by WithOnlyLabels")
+		assert.False(t, s.Labels().Has("k3"), "wiped by WithOnlyLabels")
 		assert.True(t, s.Labels().ValueIs("k4", "v4"))
 		assert.True(t, s.Labels().ValueIs("k5", "v5"))
 	})
 
-	t.Run("ClearLabels removes all labels", func(t *testing.T) {
+	t.Run("WithNoLabels removes all labels", func(t *testing.T) {
 		s := New(123).
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
-			ClearLabels().
-			AddLabel("k3", "v3")
+			WithLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			WithNoLabels().
+			WithLabel("k3", "v3")
 
 		assert.Equal(t, 1, s.Labels().Len())
 		assert.False(t, s.Labels().Has("k1"))
@@ -504,9 +504,9 @@ func TestSignal_Chainability(t *testing.T) {
 
 	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
 		s := New(123).
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			WithLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
 			WithoutLabels("k1", "k2").
-			AddLabel("k4", "v4")
+			WithLabel("k4", "v4")
 
 		assert.Equal(t, 2, s.Labels().Len())
 		assert.False(t, s.Labels().Has("k1"))
@@ -514,4 +514,53 @@ func TestSignal_Chainability(t *testing.T) {
 		assert.True(t, s.Labels().ValueIs("k3", "v3"))
 		assert.True(t, s.Labels().ValueIs("k4", "v4"))
 	})
+}
+
+// TestSignal_NilPayloadInvariant verifies that nil is a valid payload and survives
+// all mutation operations (copy-on-write label changes) unchanged.
+func TestSignal_NilPayloadInvariant(t *testing.T) {
+	tests := []struct {
+		name   string
+		signal *Signal
+	}{
+		{
+			name:   "New(nil)",
+			signal: New(nil),
+		},
+		{
+			name:   "after WithLabel",
+			signal: New(nil).WithLabel("k", "v"),
+		},
+		{
+			name:   "after WithLabels",
+			signal: New(nil).WithLabels(labels.Map{"k": "v"}),
+		},
+		{
+			name:   "after WithOnlyLabels",
+			signal: New(nil).WithOnlyLabels(labels.Map{"k": "v"}),
+		},
+		{
+			name:   "after WithNoLabels",
+			signal: New(nil).WithLabel("k", "v").WithNoLabels(),
+		},
+		{
+			name:   "after WithoutLabels",
+			signal: New(nil).WithLabel("k", "v").WithoutLabels("k"),
+		},
+		{
+			name:   "after MapPayload identity",
+			signal: New(nil).MapPayload(func(p any) any { return p }),
+		},
+		{
+			name:   "after Map",
+			signal: New(nil).Map(func(s *Signal) *Signal { return s.WithLabel("x", "y") }),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload, err := tt.signal.Payload()
+			require.NoError(t, err)
+			assert.Nil(t, payload)
+		})
+	}
 }

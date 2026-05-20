@@ -147,7 +147,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				inputPort.AddLabel("processed", "true")
 
 				// Remove specific labels
-				inputPort.WithoutLabels("version")
+				inputPort.RemoveLabels("version")
 
 				// Update labels
 				inputPort.AddLabels(map[string]string{
