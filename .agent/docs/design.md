@@ -20,7 +20,7 @@
 
 **`labels.Collection` is mutable.** It mutates in place. Do not make it CoW — `port` and `component` depend on mutation.
 
-**Chainable error pattern.** Errors are stored in `chainableErr` instead of returned. If `HasChainableErr()` is true, methods are no-ops and return `self`. Applies to all chainable types.
+**Errors are returned directly.** Methods that can fail return `error` as the last return value. Infallible methods (transformations like `Filter`, `Map`, `With*` on `signal.Signal`) return their type directly for fluency. There is no "poison object" or chainable error field on any type.
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
@@ -30,8 +30,8 @@
 
 ## Package notes
 
-- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`.
-- **`labels`** — `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method. `Every(pred)` on empty = `true` (vacuous truth).
-- **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only.
-- **`component`** — `State` is `map[string]any`, persistent across cycles.
-- **`cycle`** — has its own `AnyMatch`/`AllMatch`/`CountMatch` on its collection type, independent of `signal.Group`.
+- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach` returns `(*Group, error)`.
+- **`labels`** — `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`.
+- **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time.
+- **`component`** — `State` is `map[string]any`, persistent across cycles. Constructors use functional options: `component.New(name, opts...) (*Component, error)`.
+- **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
