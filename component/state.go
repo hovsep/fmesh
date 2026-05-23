@@ -61,9 +61,9 @@ func (s State) Delete(key string) {
 	delete(s, key)
 }
 
-// GetTyped retrieves the value associated with the given key from the state
-// and asserts it to type T.
-func GetTyped[T any](s State, key string) T {
+// MustGetTyped retrieves the value associated with the given key from the state
+// and asserts it to type T. Panics if the key is missing or has the wrong type.
+func MustGetTyped[T any](s State, key string) T {
 	val, exists := s[key]
 	if !exists {
 		panic("state key not found: " + key)

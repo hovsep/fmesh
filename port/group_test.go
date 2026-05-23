@@ -22,35 +22,29 @@ func TestNewGroup(t *testing.T) {
 		names []string
 	}
 	tests := []struct {
-		name string
-		args args
-		want *Group
+		name    string
+		args    args
+		wantLen int
 	}{
 		{
 			name: "empty group",
 			args: args{
 				names: nil,
 			},
-			want: &Group{
-				chainableErr: nil,
-				ports:        Ports{},
-			},
+			wantLen: 0,
 		},
 		{
 			name: "non-empty group",
 			args: args{
 				names: []string{"p1", "p2"},
 			},
-			want: &Group{
-				chainableErr: nil,
-				ports: Ports{NewOutput("p1"),
-					NewOutput("p2")},
-			},
+			wantLen: 2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, NewGroup(tt.args.names...))
+			g := NewGroup(tt.args.names...)
+			assert.Equal(t, tt.wantLen, g.Len())
 		})
 	}
 }
@@ -62,9 +56,10 @@ func TestNewIndexedGroup(t *testing.T) {
 		endIndex   int
 	}
 	tests := []struct {
-		name string
-		args args
-		want *Group
+		name    string
+		args    args
+		wantLen int
+		wantErr bool
 	}{
 		{
 			name: "empty prefix is valid",
@@ -73,7 +68,7 @@ func TestNewIndexedGroup(t *testing.T) {
 				startIndex: 0,
 				endIndex:   3,
 			},
-			want: NewGroup("0", "1", "2", "3"),
+			wantLen: 4,
 		},
 		{
 			name: "with prefix",
@@ -82,7 +77,7 @@ func TestNewIndexedGroup(t *testing.T) {
 				startIndex: 4,
 				endIndex:   5,
 			},
-			want: NewGroup("in_4", "in_5"),
+			wantLen: 2,
 		},
 		{
 			name: "with invalid start index",
@@ -91,12 +86,19 @@ func TestNewIndexedGroup(t *testing.T) {
 				startIndex: 999,
 				endIndex:   5,
 			},
-			want: NewGroup().WithChainableErr(ErrInvalidRangeForIndexedGroup),
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, NewIndexedGroup(tt.args.prefix, tt.args.startIndex, tt.args.endIndex))
+			g, err := NewIndexedGroup(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, g)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantLen, g.Len())
+			}
 		})
 	}
 }
@@ -132,8 +134,12 @@ func TestGroup_With(t *testing.T) {
 			},
 		},
 		{
-			name:  "adding to non-empty group",
-			group: NewIndexedGroup("p", 1, 3),
+			name: "adding to non-empty group",
+			group: func() *Group {
+				g, err := NewIndexedGroup("p", 1, 3)
+				require.NoError(t, err)
+				return g
+			}(),
 			args: args{
 				ports: NewGroup("p4", "p5", "p6").mustAll(),
 			},
@@ -144,9 +150,9 @@ func TestGroup_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			groupAfter := tt.group.Add(tt.args.ports...)
+			tt.group.add(tt.args.ports...)
 			if tt.assertions != nil {
-				tt.assertions(t, groupAfter)
+				tt.assertions(t, tt.group)
 			}
 		})
 	}
@@ -160,43 +166,26 @@ func TestGroup_Without(t *testing.T) {
 		})
 		assert.Equal(t, 1, result.Len())
 	})
-
-	t.Run("propagates error from source group", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		result := group.Without(func(p *Port) bool {
-			return true
-		})
-		assert.True(t, result.HasChainableErr())
-	})
 }
 
 func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to each port", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
 		count := 0
-		group.ForEach(func(p *Port) error {
+		err := group.ForEach(func(p *Port) error {
 			count++
 			return nil
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 3, count)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
-		result := group.ForEach(func(p *Port) error {
+		err := group.ForEach(func(p *Port) error {
 			return assert.AnError
 		})
-		assert.True(t, result.HasChainableErr())
-	})
-
-	t.Run("skips when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		visited := false
-		group.ForEach(func(p *Port) error {
-			visited = true
-			return nil
-		})
-		assert.False(t, visited)
+		assert.Error(t, err)
 	})
 }
 
@@ -204,57 +193,50 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action only to matching ports", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "special1", "special2")
 		count := 0
-		group.ForEachIf(
+		err := group.ForEachIf(
 			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
 			func(p *Port) error { count++; return nil },
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 2, count)
 	})
 
 	t.Run("applies action to all when predicate always true", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
 		count := 0
-		group.ForEachIf(
+		err := group.ForEachIf(
 			func(p *Port) bool { return true },
 			func(p *Port) error { count++; return nil },
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 3, count)
 	})
 
 	t.Run("applies action to none when predicate always false", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
 		count := 0
-		group.ForEachIf(
+		err := group.ForEachIf(
 			func(p *Port) bool { return false },
 			func(p *Port) error { count++; return nil },
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
-		result := group.ForEachIf(
+		err := group.ForEachIf(
 			func(p *Port) bool { return true },
 			func(p *Port) error { return assert.AnError },
 		)
-		assert.True(t, result.HasChainableErr())
-	})
-
-	t.Run("skips when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		visited := false
-		group.ForEachIf(
-			func(p *Port) bool { return true },
-			func(p *Port) error { visited = true; return nil },
-		)
-		assert.False(t, visited)
+		assert.Error(t, err)
 	})
 }
 
 func TestGroup_AllMatch(t *testing.T) {
 	t.Run("returns true when all match", func(t *testing.T) {
 		group := NewGroup("p1", "p2")
-		result := group.AllMatch(func(p *Port) bool {
+		result := group.Every(func(p *Port) bool {
 			return p.Name() != ""
 		})
 		assert.True(t, result)
@@ -262,16 +244,8 @@ func TestGroup_AllMatch(t *testing.T) {
 
 	t.Run("returns false when not all match", func(t *testing.T) {
 		group := NewGroup("p1", "")
-		result := group.AllMatch(func(p *Port) bool {
+		result := group.Every(func(p *Port) bool {
 			return p.Name() != ""
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("returns false when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		result := group.AllMatch(func(p *Port) bool {
-			return true
 		})
 		assert.False(t, result)
 	})
@@ -280,7 +254,7 @@ func TestGroup_AllMatch(t *testing.T) {
 func TestGroup_AnyMatch(t *testing.T) {
 	t.Run("returns true when at least one matches", func(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
-		result := group.AnyMatch(func(p *Port) bool {
+		result := group.Any(func(p *Port) bool {
 			return p.Name() == "p2"
 		})
 		assert.True(t, result)
@@ -288,16 +262,8 @@ func TestGroup_AnyMatch(t *testing.T) {
 
 	t.Run("returns false when none match", func(t *testing.T) {
 		group := NewGroup("p1", "p2")
-		result := group.AnyMatch(func(p *Port) bool {
+		result := group.Any(func(p *Port) bool {
 			return p.Name() == "p3"
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("returns false when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		result := group.AnyMatch(func(p *Port) bool {
-			return true
 		})
 		assert.False(t, result)
 	})
@@ -306,7 +272,7 @@ func TestGroup_AnyMatch(t *testing.T) {
 func TestGroup_CountMatch(t *testing.T) {
 	t.Run("counts matching ports", func(t *testing.T) {
 		group := NewGroup("a1", "a2", "b1")
-		count := group.CountMatch(func(p *Port) bool {
+		count := group.Count(func(p *Port) bool {
 			return p.Name()[0] == 'a'
 		})
 		assert.Equal(t, 2, count)
@@ -314,15 +280,7 @@ func TestGroup_CountMatch(t *testing.T) {
 
 	t.Run("returns 0 for empty group", func(t *testing.T) {
 		group := NewGroup()
-		count := group.CountMatch(func(p *Port) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("returns 0 when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		count := group.CountMatch(func(p *Port) bool {
+		count := group.Count(func(p *Port) bool {
 			return true
 		})
 		assert.Equal(t, 0, count)
@@ -337,14 +295,6 @@ func TestGroup_Filter(t *testing.T) {
 		})
 		assert.Equal(t, 2, filtered.Len())
 	})
-
-	t.Run("propagates error from source group", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		filtered := group.Filter(func(p *Port) bool {
-			return true
-		})
-		assert.True(t, filtered.HasChainableErr())
-	})
 }
 
 func TestGroup_MapIf(t *testing.T) {
@@ -352,7 +302,7 @@ func TestGroup_MapIf(t *testing.T) {
 		group := NewGroup("p1", "special", "p2")
 		mapped := group.MapIf(
 			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
-			func(p *Port) *Port { return NewOutput("mapped_" + p.Name()) },
+			func(p *Port) *Port { return mustOutput("mapped_" + p.Name()) },
 		)
 		assert.Equal(t, 3, mapped.Len())
 		assert.Equal(t, "mapped_special", mapped.Find(func(p *Port) bool {
@@ -364,7 +314,7 @@ func TestGroup_MapIf(t *testing.T) {
 		group := NewGroup("p1", "p2", "p3")
 		mapped := group.MapIf(
 			func(p *Port) bool { return false },
-			func(p *Port) *Port { return NewOutput("x") },
+			func(p *Port) *Port { return mustOutput("x") },
 		)
 		assert.Equal(t, 3, mapped.Len())
 	})
@@ -373,7 +323,7 @@ func TestGroup_MapIf(t *testing.T) {
 		group := NewGroup("p1", "p2")
 		mapped := group.MapIf(
 			func(p *Port) bool { return true },
-			func(p *Port) *Port { return NewOutput("mapped_" + p.Name()) },
+			func(p *Port) *Port { return mustOutput("mapped_" + p.Name()) },
 		)
 		assert.Equal(t, 2, mapped.Len())
 	})
@@ -386,22 +336,13 @@ func TestGroup_MapIf(t *testing.T) {
 		)
 		assert.Equal(t, 2, mapped.Len()) // p2 dropped, p1 and p3 kept
 	})
-
-	t.Run("propagates error from source group", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		mapped := group.MapIf(
-			func(p *Port) bool { return true },
-			func(p *Port) *Port { return p },
-		)
-		assert.True(t, mapped.HasChainableErr())
-	})
 }
 
 func TestGroup_Map(t *testing.T) {
 	t.Run("transforms ports", func(t *testing.T) {
 		group := NewGroup("p1", "p2")
 		mapped := group.Map(func(p *Port) *Port {
-			return NewOutput("mapped_" + p.Name())
+			return mustOutput("mapped_" + p.Name())
 		})
 		assert.Equal(t, 2, mapped.Len())
 	})
@@ -416,14 +357,6 @@ func TestGroup_Map(t *testing.T) {
 		})
 		assert.Equal(t, 2, mapped.Len())
 	})
-
-	t.Run("propagates error from source group", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		mapped := group.Map(func(p *Port) *Port {
-			return p
-		})
-		assert.True(t, mapped.HasChainableErr())
-	})
 }
 
 func TestGroup_Len(t *testing.T) {
@@ -432,8 +365,8 @@ func TestGroup_Len(t *testing.T) {
 		assert.Equal(t, 3, group.Len())
 	})
 
-	t.Run("returns 0 when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
+	t.Run("returns 0 for empty group", func(t *testing.T) {
+		group := NewGroup()
 		assert.Equal(t, 0, group.Len())
 	})
 }
@@ -448,12 +381,6 @@ func TestGroup_First(t *testing.T) {
 
 	t.Run("returns nil for empty group", func(t *testing.T) {
 		group := NewGroup()
-		first := group.First()
-		assert.Nil(t, first)
-	})
-
-	t.Run("returns nil when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
 		first := group.First()
 		assert.Nil(t, first)
 	})
@@ -482,16 +409,10 @@ func TestGroup_Find(t *testing.T) {
 		got := group.Find(func(p *Port) bool { return true })
 		assert.Nil(t, got)
 	})
-
-	t.Run("returns nil when group has error", func(t *testing.T) {
-		group := NewGroup("p1").WithChainableErr(assert.AnError)
-		got := group.Find(func(p *Port) bool { return true })
-		assert.Nil(t, got)
-	})
 }
 
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
-	t.Run("First does not poison group when empty", func(t *testing.T) {
+	t.Run("First does not break group when empty", func(t *testing.T) {
 		group := NewGroup()
 
 		// Query first on empty group
@@ -500,13 +421,9 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		// Result should be nil
 		assert.Nil(t, result)
 
-		// Group should NOT be poisoned
-		assert.False(t, group.HasChainableErr())
-
 		// Group should still be usable for adding
-		group = group.Add(NewOutput("p1"))
+		group.add(mustOutput("p1"))
 		assert.Equal(t, 1, group.Len())
-		assert.False(t, group.HasChainableErr())
 
 		// Now First should work
 		first := group.First()

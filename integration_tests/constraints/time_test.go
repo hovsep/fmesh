@@ -11,6 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 func Test_TimeConstraint(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -21,11 +37,10 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops by time constraint",
 			setupFM: func() *fmesh.FMesh {
-				ticker := component.New("ticker").
-					WithDescription("simple clock ticking for 10 seconds").
-					AddInputs("tick_in", "start"). // Given moment in discrete time (presence)
-					AddOutputs("tick_out").        // Next moment in discrete time (future)
-					WithActivationFunc(func(this *component.Component) error {
+				ticker := mustComponent("ticker",
+					component.WithInputs("tick_in", "start"),
+					component.WithOutputs("tick_out"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 10 {
@@ -36,21 +51,28 @@ func Test_TimeConstraint(t *testing.T) {
 						time.Sleep(1 * time.Second)
 						this.Logger().Println("Tick #", ticksCount)
 
-						this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
-						return nil
-					})
+						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
+					}),
+				).WithDescription("simple clock ticking for 10 seconds")
 
-				ticker.LoopbackPipe("tick_out", "tick_in")
+				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
+					panic(err)
+				}
 
-				return fmesh.NewWithConfig("fm", &fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
 					Debug:     true,
 					TimeLimit: 2 * time.Second,
-				}).
-					WithDescription("this mesh ticks every second for 10 seconds").
-					AddComponents(ticker)
+				}))
+				fm.WithDescription("this mesh ticks every second for 10 seconds")
+				if err := fm.AddComponents(ticker); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
+				if err := fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start")); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
 				require.Error(t, err)
@@ -61,11 +83,10 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops naturally",
 			setupFM: func() *fmesh.FMesh {
-				ticker := component.New("ticker").
-					WithDescription("simple clock ticking for 3 seconds").
-					AddInputs("tick_in", "start"). // Given moment in discrete time (presence)
-					AddOutputs("tick_out").        // Next moment in discrete time (future)
-					WithActivationFunc(func(this *component.Component) error {
+				ticker := mustComponent("ticker",
+					component.WithInputs("tick_in", "start"),
+					component.WithOutputs("tick_out"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 3 {
@@ -76,21 +97,28 @@ func Test_TimeConstraint(t *testing.T) {
 						time.Sleep(1 * time.Second)
 						this.Logger().Println("Tick #", ticksCount)
 
-						this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
-						return nil
-					})
+						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
+					}),
+				).WithDescription("simple clock ticking for 3 seconds")
 
-				ticker.LoopbackPipe("tick_out", "tick_in")
+				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
+					panic(err)
+				}
 
-				return fmesh.NewWithConfig("fm", &fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
 					Debug:     true,
 					TimeLimit: fmesh.UnlimitedTime,
-				}).
-					WithDescription("this mesh ticks every second for 10 seconds").
-					AddComponents(ticker)
+				}))
+				fm.WithDescription("this mesh ticks every second for 10 seconds")
+				if err := fm.AddComponents(ticker); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start"))
+				if err := fm.ComponentByName("ticker").InputByName("start").PutSignals(signal.New("start")); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, runResult *fmesh.RuntimeInfo, err error) {
 				require.NoError(t, err)

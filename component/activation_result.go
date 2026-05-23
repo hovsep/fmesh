@@ -7,7 +7,6 @@ import (
 
 // ActivationResult defines the result (possibly an error) of the activation of a given component in a given cycle.
 type ActivationResult struct {
-	chainableErr    error
 	componentName   string
 	activated       bool
 	code            ActivationResultCode
@@ -20,7 +19,6 @@ type ActivationResultCode int
 func (a ActivationResultCode) String() string {
 	switch a {
 	case ActivationCodeUndefined:
-
 		return "Undefined"
 	case ActivationCodeOK:
 		return "Success"
@@ -67,7 +65,6 @@ const (
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
-		chainableErr:  nil,
 	}
 }
 
@@ -174,20 +171,4 @@ func IsWaitingForInput(activationResult *ActivationResult) bool {
 // WantsToKeepInputs returns true if the component wants to keep inputs.
 func WantsToKeepInputs(activationResult *ActivationResult) bool {
 	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
-}
-
-// WithChainableErr sets a chainable error and returns the activation result.
-func (ar *ActivationResult) WithChainableErr(err error) *ActivationResult {
-	ar.chainableErr = fmt.Errorf("error in activation result for component '%s' : %w", ar.componentName, err)
-	return ar
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (ar *ActivationResult) HasChainableErr() bool {
-	return ar.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (ar *ActivationResult) ChainableErr() error {
-	return ar.chainableErr
 }

@@ -1,7 +1,6 @@
 package component
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh/port"
@@ -22,9 +21,11 @@ func TestComponent_AddInputs(t *testing.T) {
 	}{
 		{
 			name: "happy path",
-			component: New("c1").WithActivationFunc(func(this *Component) error {
-				return nil
-			}),
+			component: func() *Component {
+				c := mustNew("c1")
+				c.WithActivationFunc(func(this *Component) error { return nil })
+				return c
+			}(),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -38,7 +39,7 @@ func TestComponent_AddInputs(t *testing.T) {
 		},
 		{
 			name:      "no arg",
-			component: New("c1"),
+			component: mustNew("c1"),
 			args: args{
 				portNames: nil,
 			},
@@ -53,9 +54,10 @@ func TestComponent_AddInputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AddInputs(tt.args.portNames...)
+			err := tt.component.AddInputs(tt.args.portNames...)
+			require.NoError(t, err)
 			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
+				tt.assertions(t, tt.component)
 			}
 		})
 	}
@@ -73,9 +75,11 @@ func TestComponent_AddOutputs(t *testing.T) {
 	}{
 		{
 			name: "happy path",
-			component: New("c1").WithActivationFunc(func(this *Component) error {
-				return nil
-			}),
+			component: func() *Component {
+				c := mustNew("c1")
+				c.WithActivationFunc(func(this *Component) error { return nil })
+				return c
+			}(),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -89,7 +93,7 @@ func TestComponent_AddOutputs(t *testing.T) {
 		},
 		{
 			name:      "no arg",
-			component: New("c1"),
+			component: mustNew("c1"),
 			args: args{
 				portNames: nil,
 			},
@@ -104,9 +108,10 @@ func TestComponent_AddOutputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AddOutputs(tt.args.portNames...)
+			err := tt.component.AddOutputs(tt.args.portNames...)
+			require.NoError(t, err)
 			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
+				tt.assertions(t, tt.component)
 			}
 		})
 	}
@@ -125,8 +130,12 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name:      "component has no ports before",
-			component: New("c").AddOutputs("o1", "o2"),
+			name: "component has no ports before",
+			component: func() *Component {
+				c := mustNew("c")
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				return c
+			}(),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -138,8 +147,13 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 			},
 		},
 		{
-			name:      "component has ports before",
-			component: New("c").AddInputs("i1", "i2").AddOutputs("o1", "o2"),
+			name: "component has ports before",
+			component: func() *Component {
+				c := mustNew("c")
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				return c
+			}(),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -153,9 +167,10 @@ func TestComponent_WithInputsIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AddIndexedInputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			err := tt.component.AddIndexedInputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			require.NoError(t, err)
 			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
+				tt.assertions(t, tt.component)
 			}
 		})
 	}
@@ -174,8 +189,12 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name:      "component has no ports before",
-			component: New("c").AddInputs("i1", "i2"),
+			name: "component has no ports before",
+			component: func() *Component {
+				c := mustNew("c")
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				return c
+			}(),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -187,8 +206,13 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 			},
 		},
 		{
-			name:      "component has ports before",
-			component: New("c").AddInputs("i1", "i2").AddOutputs("o1", "o2"),
+			name: "component has ports before",
+			component: func() *Component {
+				c := mustNew("c")
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				return c
+			}(),
 			args: args{
 				prefix:     "p",
 				startIndex: 1,
@@ -202,9 +226,10 @@ func TestComponent_WithOutputsIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AddIndexedOutputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			err := tt.component.AddIndexedOutputs(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			require.NoError(t, err)
 			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
+				tt.assertions(t, tt.component)
 			}
 		})
 	}
@@ -218,17 +243,21 @@ func TestComponent_Inputs(t *testing.T) {
 	}{
 		{
 			name:      "no inputs",
-			component: New("c1"),
+			component: mustNew("c1"),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Zero(t, collection.Len())
 			},
 		},
 		{
-			name:      "with inputs",
-			component: New("c1").AddInputs("i1", "i2"),
+			name: "with inputs",
+			component: func() *Component {
+				c := mustNew("c1")
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				return c
+			}(),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
-				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
+				assert.True(t, collection.Every(func(p *port.Port) bool {
 					return p.IsInput()
 				}))
 			},
@@ -252,17 +281,21 @@ func TestComponent_Outputs(t *testing.T) {
 	}{
 		{
 			name:      "no outputs",
-			component: New("c1"),
+			component: mustNew("c1"),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Zero(t, collection.Len())
 			},
 		},
 		{
-			name:      "with outputs",
-			component: New("c1").AddOutputs("o1", "o2"),
+			name: "with outputs",
+			component: func() *Component {
+				c := mustNew("c1")
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				return c
+			}(),
 			assertions: func(t *testing.T, collection *port.Collection) {
 				assert.Equal(t, 2, collection.Len())
-				assert.True(t, collection.AllMatch(func(p *port.Port) bool {
+				assert.True(t, collection.Every(func(p *port.Port) bool {
 					return p.IsOutput()
 				}))
 			},
@@ -280,12 +313,14 @@ func TestComponent_Outputs(t *testing.T) {
 
 func TestComponent_ShortcutMethods(t *testing.T) {
 	t.Run("InputByName", func(t *testing.T) {
-		c := New("c").AddInputs("a", "b", "c")
+		c := mustNew("c")
+		require.NoError(t, c.AddInputs("a", "b", "c"))
 		assert.Equal(t, "b", c.InputByName("b").Name())
 	})
 
 	t.Run("OutputByName", func(t *testing.T) {
-		c := New("c").AddOutputs("a", "b", "c")
+		c := mustNew("c")
+		require.NoError(t, c.AddOutputs("a", "b", "c"))
 		assert.Equal(t, "c", c.OutputByName("c").Name())
 	})
 }
@@ -299,7 +334,10 @@ func TestComponent_ClearInputs(t *testing.T) {
 		{
 			name: "no side effects",
 			getComponent: func() *Component {
-				return New("c").AddInputs("i1").AddOutputs("o1")
+				c := mustNew("c")
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				return c
 			},
 			assertions: func(t *testing.T, componentAfter *Component) {
 				assert.Equal(t, 1, componentAfter.Inputs().Len())
@@ -311,9 +349,11 @@ func TestComponent_ClearInputs(t *testing.T) {
 		{
 			name: "only inputs are cleared",
 			getComponent: func() *Component {
-				c := New("c").AddInputs("i1").AddOutputs("o1")
-				c.Inputs().ByName("i1").PutSignals(signal.New(10))
-				c.Outputs().ByName("o1").PutSignals(signal.New(20))
+				c := mustNew("c")
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				require.NoError(t, c.Inputs().ByName("i1").PutSignals(signal.New(10)))
+				require.NoError(t, c.Outputs().ByName("o1").PutSignals(signal.New(20)))
 				return c
 			},
 			assertions: func(t *testing.T, componentAfter *Component) {
@@ -326,9 +366,10 @@ func TestComponent_ClearInputs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.getComponent().ClearInputs()
+			c := tt.getComponent()
+			require.NoError(t, c.ClearInputs())
 			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
+				tt.assertions(t, c)
 			}
 		})
 	}
@@ -343,7 +384,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "no outputs",
 			getComponent: func() *Component {
-				return New("c1")
+				return mustNew("c1")
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				assert.NotNil(t, componentAfterFlush.Outputs())
@@ -353,7 +394,9 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "output has no signal set",
 			getComponent: func() *Component {
-				return New("c1").AddOutputs("o1", "o2")
+				c := mustNew("c1")
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				return c
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
@@ -362,11 +405,13 @@ func TestComponent_FlushOutputs(t *testing.T) {
 		{
 			name: "happy path",
 			getComponent: func() *Component {
-				sink := port.NewInput("sink")
-				c := New("c1").AddOutputs("o1", "o2")
-				c.Outputs().ByNames("o1").PutSignals(signal.New(777))
-				c.Outputs().ByNames("o2").PutSignals(signal.New(888))
-				c.Outputs().ByNames("o1", "o2").PipeTo(sink)
+				sink, err := port.NewInput("sink")
+				require.NoError(t, err)
+				c := mustNew("c1")
+				require.NoError(t, c.AddOutputs("o1", "o2"))
+				require.NoError(t, c.Outputs().ByNames("o1").PutSignals(signal.New(777)))
+				require.NoError(t, c.Outputs().ByNames("o2").PutSignals(signal.New(888)))
+				require.NoError(t, c.Outputs().ByNames("o1", "o2").PipeTo(sink))
 				return c
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
@@ -380,231 +425,164 @@ func TestComponent_FlushOutputs(t *testing.T) {
 				assert.False(t, componentAfterFlush.Outputs().AnyHasSignals())
 			},
 		},
-		{
-			name: "with chain error",
-			getComponent: func() *Component {
-				c := New("c").AddOutputs("o1").WithChainableErr(errors.New("some error"))
-				// Component has error, so OutputByName returns nil - operations are no-ops
-				return c
-			},
-			assertions: func(t *testing.T, componentAfterFlush *Component) {
-				// Component still has error
-				assert.True(t, componentAfterFlush.HasChainableErr())
-				// OutputByName returns nil because component has error
-				assert.Nil(t, componentAfterFlush.OutputByName("o1"))
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.getComponent().FlushOutputs()
-			tt.assertions(t, componentAfter)
+			c := tt.getComponent()
+			require.NoError(t, c.FlushOutputs())
+			tt.assertions(t, c)
 		})
 	}
 }
 
 func TestComponent_AttachInputPorts(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		ports      []*port.Port
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:      "add single input port with description",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewInput("in1").WithDescription("input port 1"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Inputs().Len())
-				assert.Equal(t, "input port 1", component.InputByName("in1").Description())
-			},
-		},
-		{
-			name:      "add multiple input ports with descriptions and labels",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewInput("in1").
-					WithDescription("first input").
-					AddLabel("priority", "high"),
-				port.NewInput("in2").
-					WithDescription("second input").
-					AddLabel("priority", "low"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Inputs().Len())
-				assert.Equal(t, "first input", component.InputByName("in1").Description())
-				assert.Equal(t, "second input", component.InputByName("in2").Description())
-				assert.True(t, component.InputByName("in1").Labels().ValueIs("priority", "high"))
-				assert.True(t, component.InputByName("in2").Labels().ValueIs("priority", "low"))
-			},
-		},
-		{
-			name:      "add ports to existing inputs",
-			component: New("c1").AddInputs("in1"),
-			ports: []*port.Port{
-				port.NewInput("in2").WithDescription("second input"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Inputs().Len())
-				assert.Equal(t, "second input", component.InputByName("in2").Description())
-			},
-		},
-		{
-			name:      "chainable",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewInput("in1").WithDescription("input 1"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				result := component.AttachInputPorts(
-					port.NewInput("in2").WithDescription("input 2"),
-				)
-				assert.Equal(t, 2, result.Inputs().Len())
-			},
-		},
-		{
-			name:      "GUARDRAIL: reject output port (wrong direction)",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewOutput("wrong_direction"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				require.Error(t, component.ChainableErr())
-				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
-				assert.Contains(t, component.ChainableErr().Error(), "wrong_direction")
-				assert.Contains(t, component.ChainableErr().Error(), "not an input port")
-			},
-		},
-		{
-			name:      "GUARDRAIL: reject mixed input and output ports",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewInput("correct"),
-				port.NewOutput("wrong"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				require.Error(t, component.ChainableErr())
-				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
-				assert.Contains(t, component.ChainableErr().Error(), "wrong")
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AttachInputPorts(tt.ports...)
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
+	t.Run("add single input port with description", func(t *testing.T) {
+		c := mustNew("c1")
+		p, err := port.NewInput("in1", port.WithDescription("input port 1"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachInputPorts(p))
+		assert.Equal(t, 1, c.Inputs().Len())
+		assert.Equal(t, "input port 1", c.InputByName("in1").Description())
+	})
+
+	t.Run("add multiple input ports with descriptions and labels", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewInput("in1", port.WithDescription("first input"))
+		require.NoError(t, err)
+		p1.AddLabel("priority", "high")
+		p2, err := port.NewInput("in2", port.WithDescription("second input"))
+		require.NoError(t, err)
+		p2.AddLabel("priority", "low")
+		require.NoError(t, c.AttachInputPorts(p1, p2))
+		assert.Equal(t, 2, c.Inputs().Len())
+		assert.Equal(t, "first input", c.InputByName("in1").Description())
+		assert.Equal(t, "second input", c.InputByName("in2").Description())
+		assert.True(t, c.InputByName("in1").Labels().ValueIs("priority", "high"))
+		assert.True(t, c.InputByName("in2").Labels().ValueIs("priority", "low"))
+	})
+
+	t.Run("add ports to existing inputs", func(t *testing.T) {
+		c := mustNew("c1")
+		require.NoError(t, c.AddInputs("in1"))
+		p, err := port.NewInput("in2", port.WithDescription("second input"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachInputPorts(p))
+		assert.Equal(t, 2, c.Inputs().Len())
+		assert.Equal(t, "second input", c.InputByName("in2").Description())
+	})
+
+	t.Run("sequential attach calls", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewInput("in1", port.WithDescription("input 1"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachInputPorts(p1))
+		p2, err := port.NewInput("in2", port.WithDescription("input 2"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachInputPorts(p2))
+		assert.Equal(t, 2, c.Inputs().Len())
+	})
+
+	t.Run("GUARDRAIL: reject output port (wrong direction)", func(t *testing.T) {
+		c := mustNew("c1")
+		p, err := port.NewOutput("wrong_direction")
+		require.NoError(t, err)
+		attachErr := c.AttachInputPorts(p)
+		require.Error(t, attachErr)
+		require.ErrorIs(t, attachErr, port.ErrWrongPortDirection)
+		assert.Contains(t, attachErr.Error(), "wrong_direction")
+		assert.Contains(t, attachErr.Error(), "not an input port")
+	})
+
+	t.Run("GUARDRAIL: reject mixed input and output ports", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewInput("correct")
+		require.NoError(t, err)
+		p2, err := port.NewOutput("wrong")
+		require.NoError(t, err)
+		attachErr := c.AttachInputPorts(p1, p2)
+		require.Error(t, attachErr)
+		require.ErrorIs(t, attachErr, port.ErrWrongPortDirection)
+		assert.Contains(t, attachErr.Error(), "wrong")
+	})
 }
 
 func TestComponent_AttachOutputPorts(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		ports      []*port.Port
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:      "add single output port with description",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewOutput("out1").WithDescription("output port 1"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Outputs().Len())
-				assert.Equal(t, "output port 1", component.OutputByName("out1").Description())
-			},
-		},
-		{
-			name:      "add multiple output ports with descriptions and labels",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewOutput("out1").
-					WithDescription("first output").
-					AddLabel("type", "result"),
-				port.NewOutput("out2").
-					WithDescription("second output").
-					AddLabel("type", "error"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Outputs().Len())
-				assert.Equal(t, "first output", component.OutputByName("out1").Description())
-				assert.Equal(t, "second output", component.OutputByName("out2").Description())
-				assert.True(t, component.OutputByName("out1").Labels().ValueIs("type", "result"))
-				assert.True(t, component.OutputByName("out2").Labels().ValueIs("type", "error"))
-			},
-		},
-		{
-			name:      "add ports to existing outputs",
-			component: New("c1").AddOutputs("out1"),
-			ports: []*port.Port{
-				port.NewOutput("out2").WithDescription("second output"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Outputs().Len())
-				assert.Equal(t, "second output", component.OutputByName("out2").Description())
-			},
-		},
-		{
-			name:      "chainable",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewOutput("out1").WithDescription("output 1"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				result := component.AttachOutputPorts(
-					port.NewOutput("out2").WithDescription("output 2"),
-				)
-				assert.Equal(t, 2, result.Outputs().Len())
-			},
-		},
-		{
-			name:      "GUARDRAIL: reject input port (wrong direction)",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewInput("wrong_direction"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				require.Error(t, component.ChainableErr())
-				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
-				assert.Contains(t, component.ChainableErr().Error(), "wrong_direction")
-				assert.Contains(t, component.ChainableErr().Error(), "not an output port")
-			},
-		},
-		{
-			name:      "GUARDRAIL: reject mixed output and input ports",
-			component: New("c1"),
-			ports: []*port.Port{
-				port.NewOutput("correct"),
-				port.NewInput("wrong"),
-			},
-			assertions: func(t *testing.T, component *Component) {
-				require.Error(t, component.ChainableErr())
-				require.ErrorIs(t, component.ChainableErr(), port.ErrWrongPortDirection)
-				assert.Contains(t, component.ChainableErr().Error(), "wrong")
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			componentAfter := tt.component.AttachOutputPorts(tt.ports...)
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
+	t.Run("add single output port with description", func(t *testing.T) {
+		c := mustNew("c1")
+		p, err := port.NewOutput("out1", port.WithDescription("output port 1"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachOutputPorts(p))
+		assert.Equal(t, 1, c.Outputs().Len())
+		assert.Equal(t, "output port 1", c.OutputByName("out1").Description())
+	})
+
+	t.Run("add multiple output ports with descriptions and labels", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewOutput("out1", port.WithDescription("first output"))
+		require.NoError(t, err)
+		p1.AddLabel("type", "result")
+		p2, err := port.NewOutput("out2", port.WithDescription("second output"))
+		require.NoError(t, err)
+		p2.AddLabel("type", "error")
+		require.NoError(t, c.AttachOutputPorts(p1, p2))
+		assert.Equal(t, 2, c.Outputs().Len())
+		assert.Equal(t, "first output", c.OutputByName("out1").Description())
+		assert.Equal(t, "second output", c.OutputByName("out2").Description())
+		assert.True(t, c.OutputByName("out1").Labels().ValueIs("type", "result"))
+		assert.True(t, c.OutputByName("out2").Labels().ValueIs("type", "error"))
+	})
+
+	t.Run("add ports to existing outputs", func(t *testing.T) {
+		c := mustNew("c1")
+		require.NoError(t, c.AddOutputs("out1"))
+		p, err := port.NewOutput("out2", port.WithDescription("second output"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachOutputPorts(p))
+		assert.Equal(t, 2, c.Outputs().Len())
+		assert.Equal(t, "second output", c.OutputByName("out2").Description())
+	})
+
+	t.Run("sequential attach calls", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewOutput("out1", port.WithDescription("output 1"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachOutputPorts(p1))
+		p2, err := port.NewOutput("out2", port.WithDescription("output 2"))
+		require.NoError(t, err)
+		require.NoError(t, c.AttachOutputPorts(p2))
+		assert.Equal(t, 2, c.Outputs().Len())
+	})
+
+	t.Run("GUARDRAIL: reject input port (wrong direction)", func(t *testing.T) {
+		c := mustNew("c1")
+		p, err := port.NewInput("wrong_direction")
+		require.NoError(t, err)
+		attachErr := c.AttachOutputPorts(p)
+		require.Error(t, attachErr)
+		require.ErrorIs(t, attachErr, port.ErrWrongPortDirection)
+		assert.Contains(t, attachErr.Error(), "wrong_direction")
+		assert.Contains(t, attachErr.Error(), "not an output port")
+	})
+
+	t.Run("GUARDRAIL: reject mixed output and input ports", func(t *testing.T) {
+		c := mustNew("c1")
+		p1, err := port.NewOutput("correct")
+		require.NoError(t, err)
+		p2, err := port.NewInput("wrong")
+		require.NoError(t, err)
+		attachErr := c.AttachOutputPorts(p1, p2)
+		require.Error(t, attachErr)
+		require.ErrorIs(t, attachErr, port.ErrWrongPortDirection)
+		assert.Contains(t, attachErr.Error(), "wrong")
+	})
 }
 
 func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 	t.Run("multiple AddInputs calls add ports incrementally", func(t *testing.T) {
-		c := New("c1").
-			AddInputs("in1").
-			AddInputs("in2", "in3").
-			AddInputs("in4")
+		c := mustNew("c1")
+		require.NoError(t, c.AddInputs("in1"))
+		require.NoError(t, c.AddInputs("in2", "in3"))
+		require.NoError(t, c.AddInputs("in4"))
 
 		assert.Equal(t, 4, c.Inputs().Len())
 		assert.NotNil(t, c.InputByName("in1"))
@@ -614,10 +592,10 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 	})
 
 	t.Run("multiple AddOutputs calls add ports incrementally", func(t *testing.T) {
-		c := New("c1").
-			AddOutputs("out1").
-			AddOutputs("out2", "out3").
-			AddOutputs("out4")
+		c := mustNew("c1")
+		require.NoError(t, c.AddOutputs("out1"))
+		require.NoError(t, c.AddOutputs("out2", "out3"))
+		require.NoError(t, c.AddOutputs("out4"))
 
 		assert.Equal(t, 4, c.Outputs().Len())
 		assert.NotNil(t, c.OutputByName("out1"))
@@ -627,13 +605,15 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 	})
 
 	t.Run("mixing AddInputs and AttachInputPorts", func(t *testing.T) {
-		c := New("c1").
-			AddInputs("in1", "in2").
-			AttachInputPorts(
-				port.NewInput("in3").WithDescription("third input"),
-				port.NewInput("in4").WithDescription("fourth input").AddLabel("important", "true"),
-			).
-			AddInputs("in5")
+		c := mustNew("c1")
+		require.NoError(t, c.AddInputs("in1", "in2"))
+		p3, err := port.NewInput("in3", port.WithDescription("third input"))
+		require.NoError(t, err)
+		p4, err := port.NewInput("in4", port.WithDescription("fourth input"))
+		require.NoError(t, err)
+		p4.AddLabel("important", "true")
+		require.NoError(t, c.AttachInputPorts(p3, p4))
+		require.NoError(t, c.AddInputs("in5"))
 
 		assert.Equal(t, 5, c.Inputs().Len())
 		assert.Empty(t, c.InputByName("in1").Description())
@@ -645,13 +625,15 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 	})
 
 	t.Run("mixing AddOutputs and AttachOutputPorts", func(t *testing.T) {
-		c := New("c1").
-			AddOutputs("out1", "out2").
-			AttachOutputPorts(
-				port.NewOutput("out3").WithDescription("third output"),
-				port.NewOutput("out4").WithDescription("fourth output").AddLabel("type", "error"),
-			).
-			AddOutputs("out5")
+		c := mustNew("c1")
+		require.NoError(t, c.AddOutputs("out1", "out2"))
+		p3, err := port.NewOutput("out3", port.WithDescription("third output"))
+		require.NoError(t, err)
+		p4, err := port.NewOutput("out4", port.WithDescription("fourth output"))
+		require.NoError(t, err)
+		p4.AddLabel("type", "error")
+		require.NoError(t, c.AttachOutputPorts(p3, p4))
+		require.NoError(t, c.AddOutputs("out5"))
 
 		assert.Equal(t, 5, c.Outputs().Len())
 		assert.Empty(t, c.OutputByName("out1").Description())

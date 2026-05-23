@@ -14,12 +14,12 @@ func TestComponent_WithInitialState(t *testing.T) {
 	}{
 		{
 			name:      "no initial state",
-			component: New("c1"),
+			component: mustNew("c1"),
 			wantState: NewState(),
 		},
 		{
 			name: "with initial state",
-			component: New("c1").WithInitialState(func(state State) {
+			component: mustNew("c1").WithInitialState(func(state State) {
 				state.Set("battery", 100.00)
 				state.Set("speed", 200)
 				state.Set("data", []byte{1, 2, 3})
@@ -34,7 +34,7 @@ func TestComponent_WithInitialState(t *testing.T) {
 		},
 		{
 			name:      "with nil state initializer",
-			component: New("c1").WithInitialState(nil),
+			component: mustNew("c1").WithInitialState(nil),
 			wantState: NewState(),
 		},
 	}
@@ -90,7 +90,7 @@ func TestComponent_ResetState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := New("comp").WithInitialState(tt.initState)
+			c := mustNew("comp").WithInitialState(tt.initState)
 			if tt.assertions != nil {
 				tt.assertions(t, c)
 			}
@@ -278,9 +278,9 @@ func TestState_GetTyped(t *testing.T) {
 			fn := func() {
 				switch tt.typ.(type) {
 				case int:
-					_ = GetTyped[int](s, tt.key)
+					_ = MustGetTyped[int](s, tt.key)
 				case string:
-					_ = GetTyped[string](s, tt.key)
+					_ = MustGetTyped[string](s, tt.key)
 				default:
 					panic("unsupported type in test")
 				}
@@ -292,9 +292,9 @@ func TestState_GetTyped(t *testing.T) {
 				fn() // no panic expected
 				switch tt.typ.(type) {
 				case int:
-					assert.Equal(t, tt.want, GetTyped[int](s, tt.key))
+					assert.Equal(t, tt.want, MustGetTyped[int](s, tt.key))
 				case string:
-					assert.Equal(t, tt.want, GetTyped[string](s, tt.key))
+					assert.Equal(t, tt.want, MustGetTyped[string](s, tt.key))
 				}
 			}
 		})

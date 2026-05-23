@@ -10,22 +10,20 @@ type Map map[string]*Port
 // Collection is a port collection.
 // indexed by name; hence it cannot carry
 // 2 ports with the same name. Optimized for lookups.
+// @TODO: do we need this type if now it holds only 1 field?
 type Collection struct {
-	chainableErr error
-	ports        Map
+	ports Map
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		chainableErr: nil,
-		ports:        make(Map),
+		ports: make(Map),
 	}
 }
 
 // ByName retrieves a specific port from the collection by its name.
-// Returns nil if not found or if the collection has an error.
-// Commonly used to access individual ports from input/output collections.
+// Returns nil if not found.
 //
 // Example (in activation function):
 //
@@ -33,14 +31,7 @@ func NewCollection() *Collection {
 //	    data := port.Signals().FirstPayloadOrDefault("")
 //	}
 func (c *Collection) ByName(name string) *Port {
-	if c.HasChainableErr() {
-		return nil
-	}
-	port, ok := c.ports[name]
-	if !ok {
-		return nil
-	}
-	return port
+	return c.ports[name]
 }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
@@ -53,19 +44,13 @@ func (c *Collection) ByName(name string) *Port {
 //	    return nil // Wait for required inputs
 //	}
 func (c *Collection) ByNames(names ...string) *Collection {
-	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
-	}
-
-	selectedPorts := NewCollection()
-
+	selected := NewCollection()
 	for _, name := range names {
 		if p, ok := c.ports[name]; ok {
-			selectedPorts.Add(p)
+			selected.Add(p)
 		}
 	}
-
-	return selectedPorts
+	return selected
 }
 
 // AnyHasSignals returns true if at least one port in collection has signals.
@@ -85,139 +70,97 @@ func (c *Collection) AnyHasSignals() bool {
 //	}
 //	// Process all inputs...
 func (c *Collection) AllHaveSignals() bool {
-	return c.AllMatch(func(p *Port) bool {
+	return c.Every(func(p *Port) bool {
 		return p.HasSignals()
 	})
 }
 
 // PutSignals adds signals to every port in the collection.
-// Individual port errors do not poison the collection - check each port if needed.
-func (c *Collection) PutSignals(signals ...*signal.Signal) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
+// Stops and returns the first error encountered.
+func (c *Collection) PutSignals(signals ...*signal.Signal) error {
 	for _, p := range c.ports {
-		p.PutSignals(signals...)
-		// Individual port errors stay with the port, don't propagate to collection
+		if err := p.PutSignals(signals...); err != nil {
+			return err
+		}
 	}
-
-	return c
+	return nil
 }
 
-// ForEach applies an action to each port in the collection and returns it for chaining.
-// Use this to perform operations on all ports, such as clearing signals or adding labels.
+// ForEach applies an action to each port in the collection.
+// Returns the first error encountered.
 //
 // Example (in activation function):
 //
-//	// Clear all output ports before writing new data
-//	this.Outputs().ForEach(func(p *port.Port) {
-//	    p.Clear()
-//	})
-//
 //	// Add labels to all input ports
-//	this.Inputs().ForEach(func(p *port.Port) {
-//	    p.WithLabel("processed", "true")
+//	this.Inputs().ForEach(func(p *port.Port) error {
+//	    p.AddLabel("processed", "true")
+//	    return nil
 //	})
-func (c *Collection) ForEach(action func(*Port) error) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
+func (c *Collection) ForEach(action func(*Port) error) error {
 	for _, p := range c.ports {
 		if err := action(p); err != nil {
-			c.chainableErr = err
-			return c
+			return err
 		}
 	}
-	return c
+	return nil
 }
 
 // Flush flushes all ports in a collection.
-// Individual port errors do not poison the collection - check each port if needed.
-func (c *Collection) Flush() *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
+// Stops and returns the first error encountered.
+func (c *Collection) Flush() error {
 	for _, p := range c.ports {
-		p.Flush()
-		// Individual port errors stay with the port, don't propagate to collection
+		if err := p.Flush(); err != nil {
+			return err
+		}
 	}
-	return c
+	return nil
 }
 
 // PipeTo creates pipes from each port in a collection to given destination ports.
-// Individual port errors do not poison the collection - check each port if needed.
-func (c *Collection) PipeTo(destPorts ...*Port) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
+// Stops and returns the first error encountered.
+func (c *Collection) PipeTo(destPorts ...*Port) error {
 	for _, p := range c.ports {
-		p.PipeTo(destPorts...)
-		// Individual port errors stay with the port, don't propagate to collection
+		if err := p.PipeTo(destPorts...); err != nil {
+			return err
+		}
 	}
-
-	return c
+	return nil
 }
 
-// Add adds ports to a collection and returns it.
+// Add adds ports to a collection and returns it. Overwrites on name conflict.
 func (c *Collection) Add(ports ...*Port) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
 	for _, port := range ports {
-		if port.HasChainableErr() {
-			return c.WithChainableErr(port.ChainableErr())
-		}
 		c.ports[port.Name()] = port
 	}
-
 	return c
 }
 
 // Without removes ports by name and returns the collection.
 func (c *Collection) Without(names ...string) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
 	for _, name := range names {
 		delete(c.ports, name)
 	}
-
 	return c
 }
 
 // AddIndexed creates ports with names like "o1","o2","o3" and so on.
-func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
-	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex).All()
+func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) error {
+	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex)
 	if err != nil {
-		c.WithChainableErr(err)
-		return NewCollection().WithChainableErr(c.ChainableErr())
+		return err
 	}
-	return c.Add(indexedPorts...)
+	ports, _ := indexedPorts.All()
+	c.Add(ports...)
+	return nil
 }
 
 // Signals returns all signals of all ports in the collection.
-// If any port has an error, the returned group will have that error,
-// but the collection itself is not poisoned.
 func (c *Collection) Signals() *signal.Group {
-	if c.HasChainableErr() {
-		return signal.NewGroup().WithChainableErr(c.ChainableErr())
-	}
-
 	group := signal.NewGroup()
 	for _, p := range c.ports {
 		signals, err := p.Signals().All()
 		if err != nil {
-			// Return a group with error, but don't poison the collection
-			return signal.NewGroup().WithChainableErr(err)
+			continue
 		}
 		group = group.With(signals...)
 	}
@@ -226,34 +169,21 @@ func (c *Collection) Signals() *signal.Group {
 
 // All returns all ports as a map.
 func (c *Collection) All() (Map, error) {
-	if c.HasChainableErr() {
-		return nil, c.ChainableErr()
-	}
 	return c.ports, nil
 }
 
 // Any returns any arbitrary port from the collection.
-// Returns nil if the collection is empty or has an error.
+// Returns nil if the collection is empty.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) Any() *Port {
-	if c.HasChainableErr() {
-		return nil
-	}
-	if c.IsEmpty() {
-		return nil
-	}
-	// Get arbitrary port from map (order not guaranteed)
 	for _, port := range c.ports {
 		return port
 	}
 	return nil
 }
 
-// AllMatch returns true if all ports match the predicate.
-func (c *Collection) AllMatch(predicate Predicate) bool {
-	if c.HasChainableErr() {
-		return false
-	}
+// Every returns true if all ports match the predicate.
+func (c *Collection) Every(predicate Predicate) bool {
 	for _, port := range c.ports {
 		if !predicate(port) {
 			return false
@@ -263,10 +193,8 @@ func (c *Collection) AllMatch(predicate Predicate) bool {
 }
 
 // AnyMatch returns true if any port matches the predicate.
+// Note: AnyMatch is used instead of Any to avoid conflict with the no-arg Any() *Port method.
 func (c *Collection) AnyMatch(predicate Predicate) bool {
-	if c.HasChainableErr() {
-		return false
-	}
 	for _, port := range c.ports {
 		if predicate(port) {
 			return true
@@ -275,11 +203,8 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// CountMatch returns the number of ports that match the predicate.
-func (c *Collection) CountMatch(predicate Predicate) int {
-	if c.HasChainableErr() {
-		return 0
-	}
+// Count returns the number of ports that match the predicate.
+func (c *Collection) Count(predicate Predicate) int {
 	count := 0
 	for _, port := range c.ports {
 		if predicate(port) {
@@ -290,12 +215,9 @@ func (c *Collection) CountMatch(predicate Predicate) int {
 }
 
 // FindAny returns any arbitrary port that matches the predicate.
-// Returns nil if no match found or if the collection has an error.
+// Returns nil if no match found.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Port {
-	if c.HasChainableErr() {
-		return nil
-	}
 	for _, port := range c.ports {
 		if predicate(port) {
 			return port
@@ -320,16 +242,10 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 //	    return labels["priority"] == "high"
 //	})
 func (c *Collection) Filter(predicate Predicate) *Collection {
-	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
-	}
 	filtered := NewCollection()
 	for _, port := range c.ports {
 		if predicate(port) {
-			filtered = filtered.Add(port)
-			if filtered.HasChainableErr() {
-				return filtered
-			}
+			filtered.Add(port)
 		}
 	}
 	return filtered
@@ -337,52 +253,26 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 
 // Map returns a new collection with ports transformed by the mapper function.
 func (c *Collection) Map(mapper Mapper) *Collection {
-	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
-	}
 	mapped := NewCollection()
 	for _, port := range c.ports {
-		transformedPort := mapper(port)
-		if transformedPort != nil {
-			mapped = mapped.Add(transformedPort)
-			if mapped.HasChainableErr() {
-				return mapped
-			}
+		if result := mapper(port); result != nil {
+			mapped.Add(result)
 		}
 	}
 	return mapped
 }
 
-// WithChainableErr sets a chainable error and returns the collection.
-func (c *Collection) WithChainableErr(err error) *Collection {
-	c.chainableErr = err
+// WithParentComponent sets the parent component on all ports in the collection and returns the collection.
+func (c *Collection) WithParentComponent(comp ParentComponent) *Collection {
+	for _, p := range c.ports {
+		p.setParentComponent(comp)
+	}
 	return c
 }
 
-// HasChainableErr returns true when a chainable error is set.
-func (c *Collection) HasChainableErr() bool {
-	return c.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (c *Collection) ChainableErr() error {
-	return c.chainableErr
-}
-
 // Len returns the number of ports in a collection.
-// Returns 0 if the collection has a chainable error.
 func (c *Collection) Len() int {
-	if c.HasChainableErr() {
-		return 0
-	}
 	return len(c.ports)
-}
-
-// WithParentComponent adds a parent component to all ports in a collection.
-func (c *Collection) WithParentComponent(component ParentComponent) *Collection {
-	return c.ForEach(func(p *Port) error {
-		return p.WithParentComponent(component).ChainableErr()
-	})
 }
 
 // IsEmpty returns true when there are no ports in the collection.

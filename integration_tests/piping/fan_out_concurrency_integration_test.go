@@ -20,39 +20,39 @@ import (
 func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 	var ptrs sync.Map
 
-	producer := component.New("producer").
-		AddInputs("start").
-		AddOutputs("o1").
-		WithActivationFunc(func(this *component.Component) error {
-			this.OutputByName("o1").PutSignals(signal.New(42).WithLabel("route", "fan"))
-			return nil
-		})
+	producer := mustComponent("producer",
+		component.WithInputs("start"),
+		component.WithOutputs("o1"),
+		component.WithActivationFunc(func(this *component.Component) error {
+			return this.OutputByName("o1").PutSignals(signal.New(42).WithLabel("route", "fan"))
+		}))
 
 	makeConsumer := func(name, slot string) *component.Component {
-		return component.New(name).
-			AddInputs("i1").
-			AddOutputs("o1").
-			WithActivationFunc(func(this *component.Component) error {
+		return mustComponent(name,
+			component.WithInputs("i1"),
+			component.WithOutputs("o1"),
+			component.WithActivationFunc(func(this *component.Component) error {
 				first := this.InputByName("i1").Signals().First()
 				if first != nil {
 					ptrs.Store(slot, uintptr(unsafe.Pointer(first)))
 				}
 				return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-			})
+			}))
 	}
 
 	c1 := makeConsumer("consumer1", "1")
 	c2 := makeConsumer("consumer2", "2")
 	c3 := makeConsumer("consumer3", "3")
 
-	fm := fmesh.New("fan-out-same-pointer").AddComponents(producer, c1, c2, c3)
-	fm.Components().ByName("producer").OutputByName("o1").PipeTo(
+	fm := mustFMesh("fan-out-same-pointer")
+	require.NoError(t, fm.AddComponents(producer, c1, c2, c3))
+	require.NoError(t, fm.Components().ByName("producer").OutputByName("o1").PipeTo(
 		fm.Components().ByName("consumer1").InputByName("i1"),
 		fm.Components().ByName("consumer2").InputByName("i1"),
 		fm.Components().ByName("consumer3").InputByName("i1"),
-	)
+	))
 
-	fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
+	require.NoError(t, fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{})))
 
 	_, err := fm.Run()
 	require.NoError(t, err)
@@ -74,19 +74,18 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 
 	var ptrs sync.Map
 
-	producer := component.New("producer").
-		AddInputs("start").
-		AddOutputs("o1").
-		WithActivationFunc(func(this *component.Component) error {
-			this.OutputByName("o1").PutSignals(signal.New(1).WithLabel("seed", "x"))
-			return nil
-		})
+	producer := mustComponent("producer",
+		component.WithInputs("start"),
+		component.WithOutputs("o1"),
+		component.WithActivationFunc(func(this *component.Component) error {
+			return this.OutputByName("o1").PutSignals(signal.New(1).WithLabel("seed", "x"))
+		}))
 
 	makeConsumer := func(name string, mode int) *component.Component {
-		return component.New(name).
-			AddInputs("i1").
-			AddOutputs("o1").
-			WithActivationFunc(func(this *component.Component) error {
+		return mustComponent(name,
+			component.WithInputs("i1"),
+			component.WithOutputs("o1"),
+			component.WithActivationFunc(func(this *component.Component) error {
 				shared := this.InputByName("i1").Signals().First()
 				if shared == nil {
 					return nil
@@ -111,27 +110,29 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 					}
 				}
 				return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-			})
+			}))
 	}
 
-	fm := fmesh.NewWithConfig("fan-out-stress", &fmesh.Config{
+	fm, err := fmesh.New("fan-out-stress", fmesh.WithConfig(&fmesh.Config{
 		ErrorHandlingStrategy: fmesh.IgnoreAll,
-	}).AddComponents(
+	}))
+	require.NoError(t, err)
+	require.NoError(t, fm.AddComponents(
 		producer,
 		makeConsumer("consumerA", 0),
 		makeConsumer("consumerB", 1),
 		makeConsumer("consumerC", 2),
-	)
+	))
 
-	fm.Components().ByName("producer").OutputByName("o1").PipeTo(
+	require.NoError(t, fm.Components().ByName("producer").OutputByName("o1").PipeTo(
 		fm.Components().ByName("consumerA").InputByName("i1"),
 		fm.Components().ByName("consumerB").InputByName("i1"),
 		fm.Components().ByName("consumerC").InputByName("i1"),
-	)
+	))
 
-	fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
+	require.NoError(t, fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{})))
 
-	_, err := fm.Run()
+	_, err = fm.Run()
 	require.NoError(t, err)
 
 	pA, okA := ptrs.Load("consumerA")

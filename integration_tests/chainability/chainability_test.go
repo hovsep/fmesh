@@ -8,17 +8,35 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustInputPort(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewInput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
 
 // TestChainability_CrossPackage verifies realistic cross-package chaining scenarios.
 func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("full component setup", func(t *testing.T) {
-		c := component.New("processor").
+		c := mustComponent("processor",
+			component.WithInputs("in1", "in2"),
+			component.WithOutputs("out1", "out2"),
+		).
 			WithDescription("main processor").
 			AddLabel("env", "prod").
 			AddLabel("tier", "backend").
-			AddInputs("in1", "in2").
-			AddOutputs("out1", "out2").
 			SetLabels(labels.Map{"reset": "true"}). // Reset all labels
 			AddLabel("final", "label")
 
@@ -33,12 +51,11 @@ func TestChainability_CrossPackage(t *testing.T) {
 	})
 
 	t.Run("port with signals and labels", func(t *testing.T) {
-		p := port.NewInput("data").
-			WithDescription("data input").
-			AddLabel("type", "data").
-			PutSignals(signal.New(1), signal.New(2)).
-			AddLabel("count", "2").
-			PutSignals(signal.New(3))
+		p := mustInputPort("data", port.WithDescription("data input")).
+			AddLabel("type", "data")
+		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
+		p.AddLabel("count", "2")
+		require.NoError(t, p.PutSignals(signal.New(3)))
 
 		assert.Equal(t, "data", p.Name())
 		assert.Equal(t, "data input", p.Description())
@@ -59,7 +76,10 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("component with label cleanup", func(t *testing.T) {
 		// Simulate component lifecycle: setup with debug labels, then clean them up
-		c := component.New("worker").
+		c := mustComponent("worker",
+			component.WithInputs("tasks"),
+			component.WithOutputs("results"),
+		).
 			WithDescription("background worker").
 			AddLabels(labels.Map{
 				"env":      "prod",
@@ -67,8 +87,6 @@ func TestChainability_CrossPackage(t *testing.T) {
 				"debug":    "true",
 				"trace-id": "abc123",
 			}).
-			AddInputs("tasks").
-			AddOutputs("results").
 			RemoveLabels("debug", "trace-id") // Clean up temporary labels
 
 		assert.Equal(t, 2, c.Labels().Len(), "should have only permanent labels")
@@ -80,15 +98,15 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("port with label reset workflow", func(t *testing.T) {
 		// Port initially configured with temporary setup labels, then cleared for production
-		p := port.NewInput("input").
+		p := mustInputPort("input").
 			AddLabels(labels.Map{
 				"setup": "true",
 				"test":  "mode",
 				"debug": "enabled",
-			}).
-			PutSignals(signal.New(1), signal.New(2)).
-			ClearLabels(). // Clear all setup labels
-			AddLabels(labels.Map{
+			})
+		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
+		p.ClearLabels(). // Clear all setup labels
+					AddLabels(labels.Map{
 				"required":  "true",
 				"validated": "true",
 			})
@@ -127,14 +145,15 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("complex label lifecycle", func(t *testing.T) {
 		// Realistic scenario: component setup -> debug -> cleanup -> finalize
-		c := component.New("api-handler").
+		c := mustComponent("api-handler",
+			component.WithInputs("request"),
+			component.WithOutputs("response", "errors"),
+		).
 			WithDescription("HTTP API handler").
 			AddLabels(labels.Map{
 				"env":  "dev",
 				"team": "platform",
 			}).
-			AddInputs("request").
-			AddOutputs("response", "errors").
 			AddLabels(labels.Map{ // Add debug labels
 				"debug":    "true",
 				"verbose":  "true",
@@ -165,10 +184,10 @@ func TestChainability_CrossPackage(t *testing.T) {
 			WithNoLabels().
 			WithLabels(labels.Map{"priority": "high", "source": "validated"})
 
-		p := port.NewInput("validated-input").
-			AddLabel("type", "input").
-			PutSignals(s1, s2).
-			AddLabel("count", "2").
+		p := mustInputPort("validated-input").
+			AddLabel("type", "input")
+		require.NoError(t, p.PutSignals(s1, s2))
+		p.AddLabel("count", "2").
 			RemoveLabels("type") // Remove type
 
 		assert.Equal(t, 2, p.Signals().Len())

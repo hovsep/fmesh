@@ -72,19 +72,6 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 		assert.Equal(t, 1, next.Labels().Len())
 		assert.False(t, next.Labels().Has("b"))
 	})
-
-	t.Run("WithChainableErr_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(7).WithLabel("k", "v")
-		sentinel := errors.New("sentinel")
-		next := orig.WithChainableErr(sentinel)
-
-		assert.False(t, orig.HasChainableErr())
-		_, err := orig.Payload()
-		require.NoError(t, err)
-
-		assert.True(t, next.HasChainableErr())
-		assert.Equal(t, sentinel, next.ChainableErr())
-	})
 }
 
 func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
@@ -103,49 +90,30 @@ func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
 	assert.True(t, next.Labels().ValueIs("trace", "id"))
 }
 
-func TestGroup_Add_does_not_poison_receiver_on_invalid_signal(t *testing.T) {
-	t.Run("nil_signal", func(t *testing.T) {
-		g := NewGroup(1)
-		_ = g.With(nil)
+func TestGroup_Add_does_not_poison_receiver_on_nil_signal(t *testing.T) {
+	g := NewGroup(1)
+	_ = g.With(nil)
 
-		assert.False(t, g.HasChainableErr(), "receiver must not retain Add error")
-		assert.Equal(t, 1, g.Len())
+	assert.Equal(t, 1, g.Len(), "receiver must not change after nil add")
 
-		g2 := g.With(New(99))
-		assert.False(t, g2.HasChainableErr())
-		assert.Equal(t, 2, g2.Len())
-	})
-
-	t.Run("signal_with_chainable_error", func(t *testing.T) {
-		g := NewGroup(1)
-		bad := New(2).WithChainableErr(errors.New("bad signal"))
-		_ = g.With(bad)
-
-		assert.False(t, g.HasChainableErr())
-		assert.Equal(t, 1, g.Len())
-
-		g2 := g.With(New(3))
-		assert.False(t, g2.HasChainableErr())
-		assert.Equal(t, 2, g2.Len())
-	})
+	g2 := g.With(New(99))
+	assert.Equal(t, 2, g2.Len())
 }
 
 func TestGroup_ForEach_does_not_poison_receiver_on_error(t *testing.T) {
 	g := NewGroup(1, 2, 3)
-	_ = g.ForEach(func(*Signal) error { return errors.New("stop") })
+	_, _ = g.ForEach(func(*Signal) error { return errors.New("stop") })
 
-	assert.False(t, g.HasChainableErr(), "ForEach must not persist error on original group")
 	assert.Equal(t, 3, g.Len())
 }
 
 func TestGroup_ForEachIf_does_not_poison_receiver_on_error(t *testing.T) {
 	g := NewGroup(1, 2, 3)
-	_ = g.ForEachIf(
+	_, _ = g.ForEachIf(
 		func(*Signal) bool { return true },
 		func(*Signal) error { return errors.New("stop") },
 	)
 
-	assert.False(t, g.HasChainableErr())
 	assert.Equal(t, 3, g.Len())
 }
 

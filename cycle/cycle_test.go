@@ -13,7 +13,6 @@ func TestNew(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		cycle := New()
 		assert.NotNil(t, cycle)
-		assert.False(t, cycle.HasChainableErr())
 	})
 }
 
@@ -352,18 +351,4 @@ func TestCycle_AllPanicsCombined(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestCycle_ChainableErr(t *testing.T) {
-	t.Run("cycle with error", func(t *testing.T) {
-		c := New().WithChainableErr(errors.New("test error"))
-		assert.True(t, c.HasChainableErr())
-		assert.ErrorContains(t, c.ChainableErr(), "test error")
-	})
-
-	t.Run("cycle without error", func(t *testing.T) {
-		c := New()
-		assert.False(t, c.HasChainableErr())
-		assert.NoError(t, c.ChainableErr())
-	})
 }

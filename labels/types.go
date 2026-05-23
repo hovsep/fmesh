@@ -1,10 +1,7 @@
 package labels
 
-// Map is a map of labels.
-type Map map[string]string
+// Predicate tests a label key-value pair.
+type Predicate func(label, value string) bool
 
-// LabelPredicate tests a label key-value pair.
-type LabelPredicate func(label, value string) bool
-
-// LabelMapper transforms a label key-value pair into a new key-value pair.
-type LabelMapper func(key, value string) (newKey, newValue string)
+// Mapper transforms a label key-value pair into a new key-value pair.
+type Mapper func(key, value string) (newKey, newValue string)

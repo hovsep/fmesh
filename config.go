@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// @TODO: use functional options instead of such constants.
 const (
 	// UnlimitedCycles defines the maximum number of activation cycles, 0 means no limit.
 	UnlimitedCycles = 0
@@ -30,24 +31,26 @@ type Config struct {
 	TimeLimit time.Duration
 }
 
-var defaultConfig = &Config{
-	ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-	CyclesLimit:           1000,
-	Debug:                 false,
-	Logger:                getDefaultLogger(),
-	TimeLimit:             UnlimitedTime,
+// @TODO: maybe we need to use struct, not pointer
+// @TODO: Use functional options
+// newDefaultConfig returns a new default configuration.
+func newDefaultConfig() *Config {
+	return &Config{
+		ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
+		CyclesLimit:           1000,
+		Debug:                 false,
+		Logger:                getDefaultLogger(),
+		TimeLimit:             UnlimitedTime,
+	}
 }
 
-// withConfig sets the configuration and returns the f-mesh.
-func (fm *FMesh) withConfig(config *Config) *FMesh {
-	if fm.HasChainableErr() {
-		return fm
+// WithConfig is an FMesh option that sets the configuration.
+func WithConfig(config *Config) Option {
+	return func(fm *FMesh) error {
+		fm.config = config
+		if fm.config.Logger == nil {
+			fm.config.Logger = getDefaultLogger()
+		}
+		return nil
 	}
-
-	fm.config = config
-
-	if fm.Logger() == nil {
-		fm.config.Logger = getDefaultLogger()
-	}
-	return fm
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestComponent_WithActivationFunc(t *testing.T) {
@@ -21,12 +22,17 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 		args      args
 	}{
 		{
-			name:      "happy path",
-			component: New("c1").AddOutputs("out1"),
+			name: "happy path",
+			component: func() *Component {
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddOutputs("out1"))
+				return c
+			}(),
 			args: args{
 				f: func(this *Component) error {
 					if out := this.OutputByName("out1"); out != nil {
-						out.PutSignals(signal.New(23))
+						return out.PutSignals(signal.New(23))
 					}
 					return nil
 				},
@@ -38,8 +44,16 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			componentAfter := tt.component.WithActivationFunc(tt.args.f)
 
 			// Compare activation functions by they result and error
-			dummyComponent1 := New("c1").AddInputs("i1", "i2").AddOutputs("o1", "o2")
-			dummyComponent2 := New("c2").AddInputs("i1", "i2").AddOutputs("o1", "o2")
+			dummyComponent1, err := New("c1")
+			require.NoError(t, err)
+			require.NoError(t, dummyComponent1.AddInputs("i1", "i2"))
+			require.NoError(t, dummyComponent1.AddOutputs("o1", "o2"))
+
+			dummyComponent2, err := New("c2")
+			require.NoError(t, err)
+			require.NoError(t, dummyComponent2.AddInputs("i1", "i2"))
+			require.NoError(t, dummyComponent2.AddOutputs("o1", "o2"))
+
 			err1 := componentAfter.f(dummyComponent1)
 			err2 := tt.args.f(dummyComponent2)
 			assert.Equal(t, err1, err2)
@@ -66,12 +80,13 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component with activation func, but no inputs",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-					})
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+				})
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -81,13 +96,13 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "activated with error",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					WithActivationFunc(func(this *Component) error {
-						return errors.New("test error")
-					})
-				// Only one input set
-				c.InputByName("i1").PutSignals(signal.New(123))
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				c.WithActivationFunc(func(this *Component) error {
+					return errors.New("test error")
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -98,14 +113,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "activated without error",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-					})
-				// Only one input set
-				c.InputByName("i1").PutSignals(signal.New(123))
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -115,14 +130,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component panicked with error",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						panic(errors.New("oh shrimps"))
-					})
-				// Only one input set
-				c.InputByName("i1").PutSignals(signal.New(123))
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					panic(errors.New("oh shrimps"))
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -133,14 +148,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component panicked with string",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						panic("oh shrimps")
-					})
-				// Only one input set
-				c.InputByName("i1").PutSignals(signal.New(123))
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					panic("oh shrimps")
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").
@@ -151,20 +166,18 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component is waiting for inputs",
 			getComponent: func() *Component {
-				c1 := New("c1").
-					AddInputs("i1", "i2").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return ErrWaitingForInputs
-						}
-						return nil
-					})
-
-				// Only one input set
-				c1.InputByName("i1").PutSignals(signal.New(123))
-
-				return c1
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
+						return ErrWaitingForInputs
+					}
+					return nil
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
+				return c
 			},
 			wantActivationResult: &ActivationResult{
 				componentName:   "c1",
@@ -176,20 +189,18 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "component is waiting for inputs and wants to keep them",
 			getComponent: func() *Component {
-				c1 := New("c1").
-					AddInputs("i1", "i2").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return ErrWaitingForInputsKeep
-						}
-						return nil
-					})
-
-				// Only one input set
-				c1.InputByName("i1").PutSignals(signal.New(123))
-
-				return c1
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1", "i2"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
+						return ErrWaitingForInputsKeep
+					}
+					return nil
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
+				return c
 			},
 			wantActivationResult: &ActivationResult{
 				componentName:   "c1",
@@ -199,40 +210,18 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 		},
 		{
-			name: "with chain error from input port",
-			getComponent: func() *Component {
-				c := New("c").AddInputs("i1").AddOutputs("o1")
-				c.Inputs().Add(port.NewInput("p").WithChainableErr(errors.New("some error")))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c").
-				WithActivationCode(ActivationCodeUndefined).
-				WithChainableErr(errors.New("some error")),
-		},
-		{
-			name: "with chain error from output port",
-			getComponent: func() *Component {
-				c := New("c").AddInputs("i1").AddOutputs("o1")
-				c.Outputs().Add(port.NewOutput("p").WithChainableErr(errors.New("some error")))
-				return c
-			},
-			wantActivationResult: NewActivationResult("c").
-				WithActivationCode(ActivationCodeUndefined).
-				WithChainableErr(errors.New("some error")),
-		},
-		{
 			name: "component not activated, logger must be empty",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *Component) error {
-						this.Logger().Println("This must not be logged, as component must not activate")
-						return nil
-					})
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				require.NoError(t, c.AddOutputs("o1"))
+				c.WithActivationFunc(func(this *Component) error {
+					this.Logger().Println("This must not be logged, as component must not activate")
+					return nil
+				})
 				return c
 			},
-
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
 				WithActivationCode(ActivationCodeNoInput),
@@ -243,14 +232,14 @@ func TestComponent_MaybeActivate(t *testing.T) {
 		{
 			name: "activated with error, with logging",
 			getComponent: func() *Component {
-				c := New("c1").
-					AddInputs("i1").
-					WithActivationFunc(func(this *Component) error {
-						this.logger.Println("This line must be logged")
-						return errors.New("test error")
-					})
-				// Only one input set
-				c.InputByName("i1").PutSignals(signal.New(123))
+				c, err := New("c1")
+				require.NoError(t, err)
+				require.NoError(t, c.AddInputs("i1"))
+				c.WithActivationFunc(func(this *Component) error {
+					this.logger.Println("This line must be logged")
+					return errors.New("test error")
+				})
+				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
 			wantActivationResult: NewActivationResult("c1").

@@ -7,24 +7,23 @@ import (
 	"github.com/hovsep/fmesh/hook"
 )
 
-// WithActivationFunc sets the activation function and returns the component for chaining.
-func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
-	if c.HasChainableErr() {
-		return c
+// WithActivationFunc is a component option that sets the activation function.
+func WithActivationFunc(f ActivationFunc) Option {
+	return func(c *Component) error {
+		c.f = f
+		return nil
 	}
+}
 
+// WithActivationFunc sets the activation function on the component and returns the component for chaining.
+// This method can be called after construction; the option form is preferred when building inside New().
+func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
 	c.f = f
 	return c
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met.
 func (c *Component) MaybeActivate() *ActivationResult {
-	c.propagateChainErrors()
-
-	if c.HasChainableErr() {
-		return NewActivationResult(c.Name()).WithChainableErr(c.ChainableErr())
-	}
-
 	if !c.Inputs().AnyHasSignals() {
 		return c.newActivationResultNoInput()
 	}
@@ -35,7 +34,11 @@ func (c *Component) MaybeActivate() *ActivationResult {
 // activate executes the activation function and manages hooks.
 func (c *Component) activate() (result *ActivationResult) {
 	if err := c.hooks.beforeActivation.Trigger(c); err != nil {
-		result = NewActivationResult(c.Name()).WithChainableErr(fmt.Errorf("beforeActivation hook failed: %w", err))
+		// @TODO: shall we introduce new activation code?
+		result = NewActivationResult(c.Name()).
+			SetActivated(false).
+			WithActivationCode(ActivationCodeUndefined).
+			WithActivationError(fmt.Errorf("beforeActivation hook failed: %w", err))
 		c.triggerAfterActivation(result)
 		return result
 	}
@@ -56,6 +59,7 @@ func (c *Component) activate() (result *ActivationResult) {
 }
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
+// @TODO: maybe we need to do things separately.
 func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 	if errors.Is(err, ErrWaitingForInputs) {
 		result := c.newActivationResultWaitingForInputs(err)

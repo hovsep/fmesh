@@ -14,6 +14,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 func Test_Fan(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -24,50 +40,52 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-out (3 pipes from 1 source port)",
 			setupFM: func() *fmesh.FMesh {
-				fm := fmesh.New("fan-out").AddComponents(
-					component.New("producer").
-						AddInputs("start").
-						AddOutputs("o1").
-						WithActivationFunc(func(this *component.Component) error {
-							this.OutputByName("o1").PutSignals(signal.New(time.Now()))
-							return nil
-						}),
+				producer := mustComponent("producer",
+					component.WithInputs("start"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return this.OutputByName("o1").PutSignals(signal.New(time.Now()))
+					}))
 
-					component.New("consumer1").
-						AddInputs("i1").
-						AddOutputs("o1").
-						WithActivationFunc(func(this *component.Component) error {
-							// Bypass received signal to output
-							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						}),
+				consumer1 := mustComponent("consumer1",
+					component.WithInputs("i1"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					}))
 
-					component.New("consumer2").
-						AddInputs("i1").
-						AddOutputs("o1").
-						WithActivationFunc(func(this *component.Component) error {
-							// Bypass received signal to output
-							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						}),
+				consumer2 := mustComponent("consumer2",
+					component.WithInputs("i1"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					}))
 
-					component.New("consumer3").
-						AddInputs("i1").
-						AddOutputs("o1").
-						WithActivationFunc(func(this *component.Component) error {
-							// Bypass received signal to output
-							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						}),
-				)
+				consumer3 := mustComponent("consumer3",
+					component.WithInputs("i1"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					}))
 
-				fm.Components().ByName("producer").OutputByName("o1").PipeTo(
-					fm.Components().ByName("consumer1").InputByName("i1"),
-					fm.Components().ByName("consumer2").InputByName("i1"),
-					fm.Components().ByName("consumer3").InputByName("i1"))
+				if err := producer.OutputByName("o1").PipeTo(
+					consumer1.InputByName("i1"),
+					consumer2.InputByName("i1"),
+					consumer3.InputByName("i1")); err != nil {
+					panic(err)
+				}
 
+				fm := mustFMesh("fan-out")
+				if err := fm.AddComponents(producer, consumer1, consumer2, consumer3); err != nil {
+					panic(err)
+				}
 				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				// Fire the mesh
-				fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{}))
+				if err := fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{})); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
 				require.NoError(t, runErr)
@@ -91,47 +109,60 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-in (3 pipes coming into 1 destination port)",
 			setupFM: func() *fmesh.FMesh {
-				producer1 := component.New("producer1").
-					AddInputs("start").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
-						return nil
-					})
+				producer1 := mustComponent("producer1",
+					component.WithInputs("start"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
+					}))
 
-				producer2 := component.New("producer2").
-					AddInputs("start").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
-						return nil
-					})
+				producer2 := mustComponent("producer2",
+					component.WithInputs("start"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
+					}))
 
-				producer3 := component.New("producer3").
-					AddInputs("start").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
-						return nil
-					})
-				consumer := component.New("consumer").
-					AddInputs("i1").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
-						// Bypass
+				producer3 := mustComponent("producer3",
+					component.WithInputs("start"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
+					}))
+
+				consumer := mustComponent("consumer",
+					component.WithInputs("i1"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-					})
+					}))
 
-				producer1.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
-				producer2.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
-				producer3.OutputByName("o1").PipeTo(consumer.InputByName("i1"))
+				if err := producer1.OutputByName("o1").PipeTo(consumer.InputByName("i1")); err != nil {
+					panic(err)
+				}
+				if err := producer2.OutputByName("o1").PipeTo(consumer.InputByName("i1")); err != nil {
+					panic(err)
+				}
+				if err := producer3.OutputByName("o1").PipeTo(consumer.InputByName("i1")); err != nil {
+					panic(err)
+				}
 
-				return fmesh.New("multiplexer").AddComponents(producer1, producer2, producer3, consumer)
+				fm := mustFMesh("multiplexer")
+				if err := fm.AddComponents(producer1, producer2, producer3, consumer); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("producer1").InputByName("start").PutSignals(signal.New(struct{}{}))
-				fm.Components().ByName("producer2").InputByName("start").PutSignals(signal.New(struct{}{}))
-				fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{}))
+				if err := fm.Components().ByName("producer1").InputByName("start").PutSignals(signal.New(struct{}{})); err != nil {
+					panic(err)
+				}
+				if err := fm.Components().ByName("producer2").InputByName("start").PutSignals(signal.New(struct{}{})); err != nil {
+					panic(err)
+				}
+				if err := fm.Components().ByName("producer3").InputByName("start").PutSignals(signal.New(struct{}{})); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
 				require.NoError(t, runErr)
