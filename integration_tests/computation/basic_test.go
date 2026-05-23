@@ -64,7 +64,7 @@ func Test_Math(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error)
 	}{
 		{
 			name: "add and multiply",
@@ -104,7 +104,7 @@ func Test_Math(t *testing.T) {
 					panic(err)
 				}
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error) {
 				require.NoError(t, err)
 				assert.Len(t, cycles, 3)
 
@@ -212,7 +212,7 @@ func Test_Math(t *testing.T) {
 				// Send data to advanced port
 				mustPutSignals(proc.InputByName("config"), signal.New(5))
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error) {
 				require.NoError(t, err)
 				require.NotEmpty(t, cycles, "should have at least one cycle")
 

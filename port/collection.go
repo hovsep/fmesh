@@ -4,21 +4,17 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// Map is a map of ports.
-type Map map[string]*Port
-
 // Collection is a port collection.
 // indexed by name; hence it cannot carry
 // 2 ports with the same name. Optimized for lookups.
-// @TODO: do we need this type if now it holds only 1 field?
 type Collection struct {
-	ports Map
+	ports map[string]*Port
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		ports: make(Map),
+		ports: make(map[string]*Port),
 	}
 }
 
@@ -168,7 +164,7 @@ func (c *Collection) Signals() *signal.Group {
 }
 
 // All returns all ports as a map.
-func (c *Collection) All() (Map, error) {
+func (c *Collection) All() (map[string]*Port, error) {
 	return c.ports, nil
 }
 

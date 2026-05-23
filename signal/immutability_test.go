@@ -5,7 +5,6 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +30,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 
 	t.Run("AddLabels_leaves_receiver_unchanged", func(t *testing.T) {
 		orig := New(1).WithLabel("k", "v")
-		next := orig.WithLabels(labels.Map{"x": "y"})
+		next := orig.WithLabels(map[string]string{"x": "y"})
 
 		assert.Equal(t, 1, orig.Labels().Len())
 		assert.True(t, orig.Labels().ValueIs("k", "v"))
@@ -43,7 +42,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 
 	t.Run("SetLabels_leaves_receiver_unchanged", func(t *testing.T) {
 		orig := New(1).WithLabel("keep", "old")
-		next := orig.WithOnlyLabels(labels.Map{"new": "set"})
+		next := orig.WithOnlyLabels(map[string]string{"new": "set"})
 
 		assert.True(t, orig.Labels().ValueIs("keep", "old"))
 		assert.False(t, orig.Labels().Has("new"))
@@ -63,7 +62,7 @@ func TestSignal_immutable_builder_operations(t *testing.T) {
 	})
 
 	t.Run("WithoutLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).WithLabels(labels.Map{"a": "1", "b": "2"})
+		orig := New(1).WithLabels(map[string]string{"a": "1", "b": "2"})
 		next := orig.WithoutLabels("b")
 
 		assert.Equal(t, 2, orig.Labels().Len())

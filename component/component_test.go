@@ -76,13 +76,13 @@ func TestComponent_SetLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		component  *Component
-		labels     labels.Map
+		labels     map[string]string
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
 			name:      "set labels on new component",
 			component: mustNew("c1"),
-			labels: labels.Map{
+			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
@@ -93,8 +93,8 @@ func TestComponent_SetLabels(t *testing.T) {
 		},
 		{
 			name:      "set labels replaces existing labels",
-			component: mustNew("c1").AddLabels(labels.Map{"old": "value"}),
-			labels: labels.Map{
+			component: mustNew("c1").AddLabels(map[string]string{"old": "value"}),
+			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
@@ -119,13 +119,13 @@ func TestComponent_AddLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		component  *Component
-		labels     labels.Map
+		labels     map[string]string
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
 			name:      "add labels to new component",
 			component: mustNew("c1"),
-			labels: labels.Map{
+			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
@@ -136,8 +136,8 @@ func TestComponent_AddLabels(t *testing.T) {
 		},
 		{
 			name:      "add labels merges with existing",
-			component: mustNew("c1").AddLabels(labels.Map{"existing": "label"}),
-			labels: labels.Map{
+			component: mustNew("c1").AddLabels(map[string]string{"existing": "label"}),
+			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
@@ -148,8 +148,8 @@ func TestComponent_AddLabels(t *testing.T) {
 		},
 		{
 			name:      "add labels updates existing key",
-			component: mustNew("c1").AddLabels(labels.Map{"l1": "old"}),
-			labels: labels.Map{
+			component: mustNew("c1").AddLabels(map[string]string{"l1": "old"}),
+			labels: map[string]string{
 				"l1": "new",
 			},
 			assertions: func(t *testing.T, component *Component) {
@@ -236,7 +236,7 @@ func TestComponent_ClearLabels(t *testing.T) {
 	}{
 		{
 			name:      "clear labels from component with labels",
-			component: mustNew("c1").AddLabels(labels.Map{"k1": "v1", "k2": "v2"}),
+			component: mustNew("c1").AddLabels(map[string]string{"k1": "v1", "k2": "v2"}),
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 0, component.Labels().Len())
 				assert.False(t, component.Labels().Has("k1"))
@@ -252,7 +252,7 @@ func TestComponent_ClearLabels(t *testing.T) {
 		},
 		{
 			name:      "chainable",
-			component: mustNew("c1").AddLabels(labels.Map{"k1": "v1"}),
+			component: mustNew("c1").AddLabels(map[string]string{"k1": "v1"}),
 			assertions: func(t *testing.T, component *Component) {
 				result := component.ClearLabels().AddLabel("k2", "v2")
 				assert.Equal(t, 1, result.Labels().Len())
@@ -280,7 +280,7 @@ func TestComponent_RemoveLabels(t *testing.T) {
 	}{
 		{
 			name:           "remove single label",
-			component:      mustNew("c1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			component:      mustNew("c1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 2, component.Labels().Len())
@@ -291,7 +291,7 @@ func TestComponent_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "remove multiple labels",
-			component:      mustNew("c1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			component:      mustNew("c1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1", "k2"},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 1, component.Labels().Len())
@@ -302,7 +302,7 @@ func TestComponent_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "remove non-existent label",
-			component:      mustNew("c1").AddLabels(labels.Map{"k1": "v1"}),
+			component:      mustNew("c1").AddLabels(map[string]string{"k1": "v1"}),
 			labelsToRemove: []string{"k2"},
 			assertions: func(t *testing.T, component *Component) {
 				assert.Equal(t, 1, component.Labels().Len())
@@ -311,7 +311,7 @@ func TestComponent_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "chainable",
-			component:      mustNew("c1").AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			component:      mustNew("c1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, component *Component) {
 				result := component.RemoveLabels("k2").AddLabel("k4", "v4")
@@ -336,8 +336,8 @@ func TestComponent_RemoveLabels(t *testing.T) {
 func TestComponent_Chainability(t *testing.T) {
 	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
 		c := mustNew("c1").
-			SetLabels(labels.Map{"k1": "v1", "k2": "v2"}).
-			SetLabels(labels.Map{"k3": "v3"})
+			SetLabels(map[string]string{"k1": "v1", "k2": "v2"}).
+			SetLabels(map[string]string{"k3": "v3"})
 
 		assert.Equal(t, 1, c.Labels().Len())
 		assert.False(t, c.Labels().Has("k1"), "k1 should be replaced")
@@ -347,8 +347,8 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
 		c := mustNew("c1").
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
-			AddLabels(labels.Map{"k3": "v3", "k2": "v2-updated"})
+			AddLabels(map[string]string{"k1": "v1", "k2": "v2"}).
+			AddLabels(map[string]string{"k3": "v3", "k2": "v2-updated"})
 
 		assert.Equal(t, 3, c.Labels().Len())
 		assert.True(t, c.Labels().ValueIs("k1", "v1"))
@@ -359,9 +359,9 @@ func TestComponent_Chainability(t *testing.T) {
 	t.Run("mixed Set and Add operations", func(t *testing.T) {
 		c := mustNew("c1").
 			AddLabel("k1", "v1").
-			AddLabels(labels.Map{"k2": "v2", "k3": "v3"}).
-			SetLabels(labels.Map{"k4": "v4"}). // Wipes k1, k2, k3
-			AddLabel("k5", "v5")               // Merges with k4
+			AddLabels(map[string]string{"k2": "v2", "k3": "v3"}).
+			SetLabels(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
+			AddLabel("k5", "v5")                      // Merges with k4
 
 		assert.Equal(t, 2, c.Labels().Len())
 		assert.False(t, c.Labels().Has("k1"), "wiped by SetLabels")
@@ -406,7 +406,7 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("ClearLabels removes all labels", func(t *testing.T) {
 		c := mustNew("c1").
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2"}).
+			AddLabels(map[string]string{"k1": "v1", "k2": "v2"}).
 			ClearLabels().
 			AddLabel("k3", "v3")
 
@@ -418,7 +418,7 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("RemoveLabels removes specific labels", func(t *testing.T) {
 		c := mustNew("c1").
-			AddLabels(labels.Map{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
 			RemoveLabels("k1", "k2").
 			AddLabel("k4", "v4")
 

@@ -16,7 +16,7 @@ func Test_WaitingForInputs(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error)
 	}{
 		{
 			name: "waiting for longer chain",
@@ -92,7 +92,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					panic(err)
 				}
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error) {
 				require.NoError(t, err)
 				result, err := fm.Components().ByName("sum").OutputByName("o1").Signals().FirstPayload()
 				require.NoError(t, err)

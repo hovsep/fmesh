@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/labels"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 			WithDescription("main processor").
 			AddLabel("env", "prod").
 			AddLabel("tier", "backend").
-			SetLabels(labels.Map{"reset": "true"}). // Reset all labels
+			SetLabels(map[string]string{"reset": "true"}). // Reset all labels
 			AddLabel("final", "label")
 
 		assert.Equal(t, "processor", c.Name())
@@ -66,8 +65,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("signal with multiple label operations", func(t *testing.T) {
 		s := signal.New("payload").
 			WithLabel("source", "api").
-			WithLabels(labels.Map{"priority": "high", "retry": "true"}).
-			WithOnlyLabels(labels.Map{"final": "label"}) // Reset
+			WithLabels(map[string]string{"priority": "high", "retry": "true"}).
+			WithOnlyLabels(map[string]string{"final": "label"}) // Reset
 
 		assert.Equal(t, 1, s.Labels().Len())
 		assert.True(t, s.Labels().ValueIs("final", "label"))
@@ -81,7 +80,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 			component.WithOutputs("results"),
 		).
 			WithDescription("background worker").
-			AddLabels(labels.Map{
+			AddLabels(map[string]string{
 				"env":      "prod",
 				"team":     "backend",
 				"debug":    "true",
@@ -99,14 +98,14 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("port with label reset workflow", func(t *testing.T) {
 		// Port initially configured with temporary setup labels, then cleared for production
 		p := mustInputPort("input").
-			AddLabels(labels.Map{
+			AddLabels(map[string]string{
 				"setup": "true",
 				"test":  "mode",
 				"debug": "enabled",
 			})
 		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
 		p.ClearLabels(). // Clear all setup labels
-					AddLabels(labels.Map{
+					AddLabels(map[string]string{
 				"required":  "true",
 				"validated": "true",
 			})
@@ -124,7 +123,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("signal filtering and relabeling", func(t *testing.T) {
 		// Signal with metadata that gets filtered and relabeled
 		s := signal.New(map[string]any{"data": "value"}).
-			WithLabels(labels.Map{
+			WithLabels(map[string]string{
 				"source":    "api",
 				"priority":  "low",
 				"timestamp": "2024-01-01",
@@ -150,11 +149,11 @@ func TestChainability_CrossPackage(t *testing.T) {
 			component.WithOutputs("response", "errors"),
 		).
 			WithDescription("HTTP API handler").
-			AddLabels(labels.Map{
+			AddLabels(map[string]string{
 				"env":  "dev",
 				"team": "platform",
 			}).
-			AddLabels(labels.Map{ // Add debug labels
+			AddLabels(map[string]string{ // Add debug labels
 				"debug":    "true",
 				"verbose":  "true",
 				"trace-id": "xyz789",
@@ -175,14 +174,14 @@ func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("port and signal label coordination", func(t *testing.T) {
 		// Port and signals with coordinated label management
 		s1 := signal.New(1).
-			WithLabels(labels.Map{"priority": "high", "source": "user"}).
+			WithLabels(map[string]string{"priority": "high", "source": "user"}).
 			WithoutLabels("source").
 			WithLabel("source", "validated")
 
 		s2 := signal.New(2).
-			WithLabels(labels.Map{"priority": "low", "source": "batch"}).
+			WithLabels(map[string]string{"priority": "low", "source": "batch"}).
 			WithNoLabels().
-			WithLabels(labels.Map{"priority": "high", "source": "validated"})
+			WithLabels(map[string]string{"priority": "high", "source": "validated"})
 
 		p := mustInputPort("validated-input").
 			AddLabel("type", "input")

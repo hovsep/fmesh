@@ -4,18 +4,15 @@ import (
 	"fmt"
 )
 
-// Map is a map of components.
-type Map map[string]*Component
-
 // Collection is a collection of components with useful methods.
 type Collection struct {
-	components Map
+	components map[string]*Component
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		components: make(Map),
+		components: make(map[string]*Component),
 	}
 }
 
@@ -65,7 +62,7 @@ func (c *Collection) Any() *Component {
 }
 
 // All returns all components as a map.
-func (c *Collection) All() (Map, error) {
+func (c *Collection) All() (map[string]*Component, error) {
 	return c.components, nil
 }
 
@@ -151,6 +148,6 @@ func (c *Collection) ForEach(action func(*Component) error) error {
 
 // Clear removes all components from the collection.
 func (c *Collection) Clear() *Collection {
-	c.components = make(Map)
+	c.components = make(map[string]*Component)
 	return c
 }

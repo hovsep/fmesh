@@ -3,13 +3,12 @@ package signal
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // mustAll is a test helper that panics if All returns an error.
-func (g *Group) mustAll() Signals {
+func (g *Group) mustAll() []*Signal {
 	signals, err := g.All()
 	if err != nil {
 		panic(err)
@@ -133,7 +132,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 
 func TestGroup_With(t *testing.T) {
 	type args struct {
-		signals Signals
+		signals []*Signal
 	}
 	tests := []struct {
 		name  string
@@ -407,30 +406,30 @@ func TestGroup_All(t *testing.T) {
 	tests := []struct {
 		name            string
 		group           *Group
-		want            Signals
+		want            []*Signal
 		wantErrorString string
 	}{
 		{
 			name:            "empty group",
 			group:           NewGroup(),
-			want:            Signals{},
+			want:            []*Signal{},
 			wantErrorString: "",
 		},
 		{
 			name:            "with signals",
 			group:           NewGroup(1, nil, 3),
-			want:            Signals{New(1), New(nil), New(3)},
+			want:            []*Signal{New(1), New(nil), New(3)},
 			wantErrorString: "",
 		},
 		{
 			name: "with labeled signals",
 			group: NewGroup(1, nil, 3).Map(func(s *Signal) *Signal {
-				return s.WithOnlyLabels(labels.Map{"flavor": "banana"})
+				return s.WithOnlyLabels(map[string]string{"flavor": "banana"})
 			}),
-			want: Signals{
-				New(1).WithOnlyLabels(labels.Map{"flavor": "banana"}),
-				New(nil).WithOnlyLabels(labels.Map{"flavor": "banana"}),
-				New(3).WithOnlyLabels(labels.Map{"flavor": "banana"}),
+			want: []*Signal{
+				New(1).WithOnlyLabels(map[string]string{"flavor": "banana"}),
+				New(nil).WithOnlyLabels(map[string]string{"flavor": "banana"}),
+				New(3).WithOnlyLabels(map[string]string{"flavor": "banana"}),
 			},
 			wantErrorString: "",
 		},

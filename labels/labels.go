@@ -9,19 +9,19 @@ import (
 // Collection is a mutable key-value string store.
 // All write methods modify the receiver in place.
 type Collection struct {
-	labels Map
+	labels map[string]string
 }
 
 // NewCollection creates an initialized collection.
 func NewCollection() *Collection {
 	return &Collection{
-		labels: make(Map),
+		labels: make(map[string]string),
 	}
 }
 
 // All returns all labels as a map (a defensive copy; mutating the returned map
 // does not change the collection).
-func (c *Collection) All() (Map, error) {
+func (c *Collection) All() (map[string]string, error) {
 	return maps.Clone(c.labels), nil
 }
 
@@ -102,7 +102,7 @@ func (c *Collection) Add(label, value string) *Collection {
 }
 
 // AddMany adds or updates multiple labels.
-func (c *Collection) AddMany(labels Map) *Collection {
+func (c *Collection) AddMany(labels map[string]string) *Collection {
 	for label, value := range labels {
 		c.Add(label, value)
 	}
@@ -165,7 +165,7 @@ func (c *Collection) IsEmpty() bool {
 
 // Clear removes all labels from the collection.
 func (c *Collection) Clear() *Collection {
-	c.labels = make(Map)
+	c.labels = make(map[string]string)
 	return c
 }
 

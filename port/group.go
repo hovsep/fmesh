@@ -8,13 +8,13 @@ import (
 // Group represents a list of ports.
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
-	ports Ports
+	ports []*Port
 }
 
 // NewGroup creates multiple output ports.
 func NewGroup(names ...string) *Group {
 	newGroup := &Group{}
-	ports := make(Ports, len(names))
+	ports := make([]*Port, len(names))
 	for i, name := range names {
 		p, _ := NewOutput(name) // no opts, never fails
 		ports[i] = p
@@ -29,7 +29,7 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) (*Group, error) {
 		return nil, ErrInvalidRangeForIndexedGroup
 	}
 
-	ports := make(Ports, endIndex-startIndex+1)
+	ports := make([]*Port, endIndex-startIndex+1)
 	for i := startIndex; i <= endIndex; i++ {
 		p, _ := NewOutput(fmt.Sprintf("%s%d", prefix, i)) // no opts, never fails
 		ports[i-startIndex] = p
@@ -73,13 +73,13 @@ func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) error {
 }
 
 // withPorts sets ports.
-func (g *Group) withPorts(ports Ports) *Group {
+func (g *Group) withPorts(ports []*Port) *Group {
 	g.ports = ports
 	return g
 }
 
 // All returns all ports as a slice.
-func (g *Group) All() (Ports, error) {
+func (g *Group) All() ([]*Port, error) {
 	return g.ports, nil
 }
 

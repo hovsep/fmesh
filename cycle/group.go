@@ -4,13 +4,13 @@ import "slices"
 
 // Group contains multiple activation cycles.
 type Group struct {
-	cycles Cycles
+	cycles []*Cycle
 }
 
 // NewGroup creates a group of cycles.
 func NewGroup() *Group {
 	return &Group{
-		cycles: make(Cycles, 0),
+		cycles: make([]*Cycle, 0),
 	}
 }
 
@@ -19,7 +19,7 @@ func NewGroup() *Group {
 // because cycles represent historical execution records - users need to access
 // cycles that had errors to understand what happened.
 func (g *Group) Add(cycles ...*Cycle) *Group {
-	newCycles := make(Cycles, len(g.cycles)+len(cycles))
+	newCycles := make([]*Cycle, len(g.cycles)+len(cycles))
 	copy(newCycles, g.cycles)
 	for i, c := range cycles {
 		newCycles[len(g.cycles)+i] = c
@@ -96,7 +96,7 @@ func (g *Group) First() *Cycle {
 }
 
 // All returns all cycles as a slice.
-func (g *Group) All() (Cycles, error) {
+func (g *Group) All() ([]*Cycle, error) {
 	return g.cycles, nil
 }
 

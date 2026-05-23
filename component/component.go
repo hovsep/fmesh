@@ -64,13 +64,13 @@ func (c *Component) Labels() *labels.Collection {
 }
 
 // SetLabels replaces all labels.
-func (c *Component) SetLabels(labelMap labels.Map) *Component {
+func (c *Component) SetLabels(labelMap map[string]string) *Component {
 	c.labels.Clear().AddMany(labelMap)
 	return c
 }
 
 // AddLabels adds or updates labels.
-func (c *Component) AddLabels(labelMap labels.Map) *Component {
+func (c *Component) AddLabels(labelMap map[string]string) *Component {
 	c.labels.AddMany(labelMap)
 	return c
 }

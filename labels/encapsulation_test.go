@@ -23,7 +23,7 @@ func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 }
 
 func TestLabelsCollection_All_map_not_shared_with_AddMany(t *testing.T) {
-	c1 := NewCollection().AddMany(Map{"a": "1", "b": "2"})
+	c1 := NewCollection().AddMany(map[string]string{"a": "1", "b": "2"})
 	m, err := c1.All()
 	require.NoError(t, err)
 
