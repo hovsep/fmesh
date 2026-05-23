@@ -134,20 +134,20 @@ func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
 		count := 0
-		group.ForEach(func(c *Cycle) error {
+		require.NoError(t, group.ForEach(func(c *Cycle) error {
 			count++
 			return nil
-		})
+		}))
 		assert.Equal(t, 3, count)
 	})
 
 	t.Run("empty group", func(t *testing.T) {
 		group := NewGroup()
 		count := 0
-		group.ForEach(func(c *Cycle) error {
+		require.NoError(t, group.ForEach(func(c *Cycle) error {
 			count++
 			return nil
-		})
+		}))
 		assert.Equal(t, 0, count)
 	})
 }
@@ -161,49 +161,49 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action only to matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3, c4)
 		count := 0
-		group.ForEachIf(
+		require.NoError(t, group.ForEachIf(
 			func(c *Cycle) bool { return c.Number()%2 == 0 },
 			func(c *Cycle) error { count++; return nil },
-		)
+		))
 		assert.Equal(t, 2, count) // c2 and c4
 	})
 
 	t.Run("applies action to all when predicate always true", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
 		count := 0
-		group.ForEachIf(
+		require.NoError(t, group.ForEachIf(
 			func(c *Cycle) bool { return true },
 			func(c *Cycle) error { count++; return nil },
-		)
+		))
 		assert.Equal(t, 3, count)
 	})
 
 	t.Run("applies action to none when predicate always false", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
 		count := 0
-		group.ForEachIf(
+		require.NoError(t, group.ForEachIf(
 			func(c *Cycle) bool { return false },
 			func(c *Cycle) error { count++; return nil },
-		)
+		))
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+	t.Run("stops on error and returns error", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
-		result := group.ForEachIf(
+		err := group.ForEachIf(
 			func(c *Cycle) bool { return true },
 			func(c *Cycle) error { return assert.AnError },
 		)
-		assert.True(t, result.HasChainableErr())
+		assert.Error(t, err)
 	})
 
-	t.Run("skips when group has error", func(t *testing.T) {
-		group := NewGroup().Add(c1).WithChainableErr(assert.AnError)
+	t.Run("skips when predicate is always false", func(t *testing.T) {
+		group := NewGroup().Add(c1)
 		visited := false
-		group.ForEachIf(
-			func(c *Cycle) bool { return true },
+		require.NoError(t, group.ForEachIf(
+			func(c *Cycle) bool { return false },
 			func(c *Cycle) error { visited = true; return nil },
-		)
+		))
 		assert.False(t, visited)
 	})
 }
@@ -267,12 +267,6 @@ func TestGroup_Find(t *testing.T) {
 		got := group.Find(func(c *Cycle) bool { return true })
 		assert.Nil(t, got)
 	})
-
-	t.Run("returns nil when group has error", func(t *testing.T) {
-		group := NewGroup().Add(c1).WithChainableErr(assert.AnError)
-		got := group.Find(func(c *Cycle) bool { return true })
-		assert.Nil(t, got)
-	})
 }
 
 func TestGroup_All(t *testing.T) {
@@ -301,7 +295,7 @@ func TestGroup_AllMatch(t *testing.T) {
 
 	t.Run("all match", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
-		result := group.AllMatch(func(c *Cycle) bool {
+		result := group.Every(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.True(t, result)
@@ -309,7 +303,7 @@ func TestGroup_AllMatch(t *testing.T) {
 
 	t.Run("not all match", func(t *testing.T) {
 		group := NewGroup().Add(c1, c3)
-		result := group.AllMatch(func(c *Cycle) bool {
+		result := group.Every(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.False(t, result)
@@ -317,7 +311,7 @@ func TestGroup_AllMatch(t *testing.T) {
 
 	t.Run("empty group returns true", func(t *testing.T) {
 		group := NewGroup()
-		result := group.AllMatch(func(c *Cycle) bool {
+		result := group.Every(func(c *Cycle) bool {
 			return false
 		})
 		assert.True(t, result)
@@ -330,7 +324,7 @@ func TestGroup_AnyMatch(t *testing.T) {
 
 	t.Run("at least one matches", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
-		result := group.AnyMatch(func(c *Cycle) bool {
+		result := group.Any(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.True(t, result)
@@ -338,7 +332,7 @@ func TestGroup_AnyMatch(t *testing.T) {
 
 	t.Run("none match", func(t *testing.T) {
 		group := NewGroup().Add(c2)
-		result := group.AnyMatch(func(c *Cycle) bool {
+		result := group.Any(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.False(t, result)
@@ -346,7 +340,7 @@ func TestGroup_AnyMatch(t *testing.T) {
 
 	t.Run("empty group returns false", func(t *testing.T) {
 		group := NewGroup()
-		result := group.AnyMatch(func(c *Cycle) bool {
+		result := group.Any(func(c *Cycle) bool {
 			return true
 		})
 		assert.False(t, result)
@@ -360,7 +354,7 @@ func TestGroup_CountMatch(t *testing.T) {
 
 	t.Run("counts matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
-		count := group.CountMatch(func(c *Cycle) bool {
+		count := group.Count(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.Equal(t, 2, count)
@@ -368,7 +362,7 @@ func TestGroup_CountMatch(t *testing.T) {
 
 	t.Run("no matches", func(t *testing.T) {
 		group := NewGroup().Add(c2)
-		count := group.CountMatch(func(c *Cycle) bool {
+		count := group.Count(func(c *Cycle) bool {
 			return c.HasActivatedComponents()
 		})
 		assert.Equal(t, 0, count)
@@ -438,15 +432,6 @@ func TestGroup_MapIf(t *testing.T) {
 		)
 		assert.Equal(t, 2, mapped.Len()) // c2 dropped, c1 and c3 kept
 	})
-
-	t.Run("propagates error from source group", func(t *testing.T) {
-		group := NewGroup().Add(New().WithNumber(1)).WithChainableErr(assert.AnError)
-		mapped := group.MapIf(
-			func(c *Cycle) bool { return true },
-			func(c *Cycle) *Cycle { return c },
-		)
-		assert.True(t, mapped.HasChainableErr())
-	})
 }
 
 func TestGroup_Map(t *testing.T) {
@@ -484,39 +469,17 @@ func TestGroup_IsEmpty(t *testing.T) {
 	})
 }
 
-func TestGroup_ChainableErr(t *testing.T) {
-	t.Run("with error", func(t *testing.T) {
-		group := NewGroup().WithChainableErr(assert.AnError)
-		assert.True(t, group.HasChainableErr())
-		assert.Equal(t, assert.AnError, group.ChainableErr())
-	})
-
-	t.Run("without error", func(t *testing.T) {
-		group := NewGroup()
-		assert.False(t, group.HasChainableErr())
-		assert.NoError(t, group.ChainableErr())
-	})
-}
-
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 	t.Run("First does not poison group when empty", func(t *testing.T) {
 		group := NewGroup()
 
-		// Query first on empty group
 		result := group.First()
-
-		// Result should be nil
 		assert.Nil(t, result)
-
-		// Group should NOT be poisoned
-		assert.False(t, group.HasChainableErr())
 
 		// Group should still be usable for adding
 		group = group.Add(New().WithNumber(42))
 		assert.Equal(t, 1, group.Len())
-		assert.False(t, group.HasChainableErr())
 
-		// Now First should work
 		first := group.First()
 		require.NotNil(t, first)
 		assert.Equal(t, 42, first.Number())

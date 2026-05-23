@@ -15,6 +15,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustInputPort(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewInput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func mustOutputPort(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewOutput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
+func mustPutSignals(p *port.Port, signals ...*signal.Signal) {
+	if err := p.PutSignals(signals...); err != nil {
+		panic(err)
+	}
+}
+
+func mustPipeTo(src *port.Port, dsts ...*port.Port) {
+	if err := src.PipeTo(dsts...); err != nil {
+		panic(err)
+	}
+}
+
 func Test_Math(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -25,34 +69,40 @@ func Test_Math(t *testing.T) {
 		{
 			name: "add and multiply",
 			setupFM: func() *fmesh.FMesh {
-				c1 := component.New("c1").
-					WithDescription("adds 2 to the input").
-					AddInputs("num").
-					AddOutputs("res").
-					WithActivationFunc(func(this *component.Component) error {
+				c1 := mustComponent("c1",
+					component.WithInputs("num"),
+					component.WithOutputs("res"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrNil()
-						this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
-						return nil
-					})
+						return this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
+					}),
+				).WithDescription("adds 2 to the input")
 
-				c2 := component.New("c2").
-					WithDescription("multiplies by 3").
-					AddInputs("num").
-					AddOutputs("res").
-					WithActivationFunc(func(this *component.Component) error {
+				c2 := mustComponent("c2",
+					component.WithInputs("num"),
+					component.WithOutputs("res"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
-						this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
-						return nil
-					})
+						return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
+					}),
+				).WithDescription("multiplies by 3")
 
-				c1.OutputByName("res").PipeTo(c2.InputByName("num"))
-				return fmesh.NewWithConfig("fm", &fmesh.Config{
+				if err := c1.OutputByName("res").PipeTo(c2.InputByName("num")); err != nil {
+					panic(err)
+				}
+				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
-				}).AddComponents(c1, c2)
+				}))
+				if err := fm.AddComponents(c1, c2); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32))
+				if err := fm.Components().ByName("c1").InputByName("num").PutSignals(signal.New(32)); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)
@@ -69,29 +119,10 @@ func Test_Math(t *testing.T) {
 			name: "mixed port creation - simple and advanced",
 			setupFM: func() *fmesh.FMesh {
 				// Component with mixed port creation
-				processor := component.New("processor").
-					WithDescription("processes data using mixed ports").
-					// Simple ports (created by name only)
-					AddInputs("raw_data", "metadata").
-					// Advanced port (pre-configured with description and labels)
-					AttachInputPorts(
-						port.NewInput("config").
-							WithDescription("Configuration parameters").
-							AddLabel("required", "true").
-							AddLabel("type", "config"),
-					).
-					// Simple output port
-					AddOutputs("logs").
-					// Advanced output ports (pre-configured)
-					AttachOutputPorts(
-						port.NewOutput("result").
-							WithDescription("Processed result").
-							AddLabel("format", "json"),
-						port.NewOutput("error").
-							WithDescription("Error details if any").
-							AddLabel("status", "error"),
-					).
-					WithActivationFunc(func(this *component.Component) error {
+				processor := mustComponent("processor",
+					component.WithInputs("raw_data", "metadata"),
+					component.WithOutputs("logs"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						// Check if all required inputs have signals
 						if !this.Inputs().AllHaveSignals() {
 							return nil // Wait for all inputs
@@ -106,18 +137,42 @@ func Test_Math(t *testing.T) {
 						result := (rawData * config) + len(metadata)
 
 						// Write to all outputs (both simple and advanced)
-						this.OutputByName("result").PutSignals(signal.New(result))
-						this.OutputByName("logs").PutSignals(signal.New("Processed with metadata: " + metadata))
+						if err := this.OutputByName("result").PutSignals(signal.New(result)); err != nil {
+							return err
+						}
+						return this.OutputByName("logs").PutSignals(signal.New("Processed with metadata: " + metadata))
 						// error port stays empty (no error)
+					}),
+				).WithDescription("processes data using mixed ports")
 
-						return nil
-					})
+				// Add advanced ports
+				if err := processor.AttachInputPorts(
+					mustInputPort("config",
+						port.WithDescription("Configuration parameters"),
+						port.WithLabel("required", "true"),
+						port.WithLabel("type", "config"),
+					),
+				); err != nil {
+					panic(err)
+				}
+				if err := processor.AttachOutputPorts(
+					mustOutputPort("result",
+						port.WithDescription("Processed result"),
+						port.WithLabel("format", "json"),
+					),
+					mustOutputPort("error",
+						port.WithDescription("Error details if any"),
+						port.WithLabel("status", "error"),
+					),
+				); err != nil {
+					panic(err)
+				}
 
 				// Verifier component with simple ports
-				verifier := component.New("verifier").
-					AddInputs("value", "log").
-					AddOutputs("verified").
-					WithActivationFunc(func(this *component.Component) error {
+				verifier := mustComponent("verifier",
+					component.WithInputs("value", "log"),
+					component.WithOutputs("verified"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						// Wait for all inputs
 						if !this.Inputs().AllHaveSignals() {
 							return nil
@@ -128,26 +183,34 @@ func Test_Math(t *testing.T) {
 
 						// Verify we received data from both simple and advanced ports
 						verified := value > 0 && log != ""
-						this.OutputByName("verified").PutSignals(signal.New(verified))
-						return nil
-					})
+						return this.OutputByName("verified").PutSignals(signal.New(verified))
+					}),
+				)
 
 				// Connect ports
-				processor.OutputByName("result").PipeTo(verifier.InputByName("value"))
-				processor.OutputByName("logs").PipeTo(verifier.InputByName("log"))
+				if err := processor.OutputByName("result").PipeTo(verifier.InputByName("value")); err != nil {
+					panic(err)
+				}
+				if err := processor.OutputByName("logs").PipeTo(verifier.InputByName("log")); err != nil {
+					panic(err)
+				}
 
-				return fmesh.NewWithConfig("mixed_ports_fm", &fmesh.Config{
+				fm := mustFMesh("mixed_ports_fm", fmesh.WithConfig(&fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
-				}).AddComponents(processor, verifier)
+				}))
+				if err := fm.AddComponents(processor, verifier); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				proc := fm.Components().ByName("processor")
 				// Send data to simple ports
-				proc.InputByName("raw_data").PutSignals(signal.New(10))
-				proc.InputByName("metadata").PutSignals(signal.New("test"))
+				mustPutSignals(proc.InputByName("raw_data"), signal.New(10))
+				mustPutSignals(proc.InputByName("metadata"), signal.New("test"))
 				// Send data to advanced port
-				proc.InputByName("config").PutSignals(signal.New(5))
+				mustPutSignals(proc.InputByName("config"), signal.New(5))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)
@@ -192,36 +255,43 @@ func Test_Math(t *testing.T) {
 
 func Test_Readme(t *testing.T) {
 	t.Run("readme test", func(t *testing.T) {
-		fm := fmesh.NewWithConfig("hello world", &fmesh.Config{
+		fm := mustFMesh("hello world", fmesh.WithConfig(&fmesh.Config{
 			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 			CyclesLimit:           10,
-		}).
-			AddComponents(
-				component.New("concat").
-					AddInputs("i1", "i2").
-					AddOutputs("res").
-					WithActivationFunc(func(this *component.Component) error {
-						word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-						word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
-						this.OutputByName("res").PutSignals(signal.New(word1 + word2))
-						return nil
-					}),
-				component.New("case").
-					AddInputs("i1").
-					AddOutputs("res").
-					WithActivationFunc(func(this *component.Component) error {
-						inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-						this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
-						return nil
-					}))
+		}))
 
-		fm.Components().ByName("concat").OutputByName("res").PipeTo(
-			fm.Components().ByName("case").InputByName("i1"),
+		concat := mustComponent("concat",
+			component.WithInputs("i1", "i2"),
+			component.WithOutputs("res"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+				word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
+				return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
+			}),
 		)
 
+		caseC := mustComponent("case",
+			component.WithInputs("i1"),
+			component.WithOutputs("res"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+				return this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
+			}),
+		)
+
+		if err := fm.AddComponents(concat, caseC); err != nil {
+			panic(err)
+		}
+
+		if err := fm.Components().ByName("concat").OutputByName("res").PipeTo(
+			fm.Components().ByName("case").InputByName("i1"),
+		); err != nil {
+			panic(err)
+		}
+
 		// Init inputs
-		fm.Components().ByName("concat").InputByName("i1").PutSignals(signal.New("hello "))
-		fm.Components().ByName("concat").InputByName("i2").PutSignals(signal.New("world !"))
+		mustPutSignals(fm.Components().ByName("concat").InputByName("i1"), signal.New("hello "))
+		mustPutSignals(fm.Components().ByName("concat").InputByName("i2"), signal.New("world !"))
 
 		// Run the mesh
 		_, err := fm.Run()

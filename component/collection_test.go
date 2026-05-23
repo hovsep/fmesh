@@ -7,6 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newCol is a test helper to build a collection from names, panicking on error.
+func newCol(names ...string) *Collection {
+	col := NewCollection()
+	for _, name := range names {
+		c, err := New(name)
+		if err != nil {
+			panic(err)
+		}
+		if err := col.Add(c); err != nil {
+			panic(err)
+		}
+	}
+	return col
+}
+
 func TestCollection_ByName(t *testing.T) {
 	type args struct {
 		name string
@@ -15,28 +30,31 @@ func TestCollection_ByName(t *testing.T) {
 		name       string
 		components *Collection
 		args       args
-		want       *Component
+		wantName   string
+		wantNil    bool
 	}{
 		{
 			name:       "component found",
-			components: NewCollection().Add(New("c1"), New("c2")),
-			args: args{
-				name: "c2",
-			},
-			want: New("c2"),
+			components: newCol("c1", "c2"),
+			args:       args{name: "c2"},
+			wantName:   "c2",
 		},
 		{
 			name:       "component not found returns nil",
-			components: NewCollection().Add(New("c1"), New("c2")),
-			args: args{
-				name: "c3",
-			},
-			want: nil,
+			components: newCol("c1", "c2"),
+			args:       args{name: "c3"},
+			wantNil:    true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.components.ByName(tt.args.name))
+			result := tt.components.ByName(tt.args.name)
+			if tt.wantNil {
+				assert.Nil(t, result)
+			} else {
+				require.NotNil(t, result)
+				assert.Equal(t, tt.wantName, result.Name())
+			}
 		})
 	}
 }
@@ -45,14 +63,15 @@ func TestCollection_Add(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		components []*Component
-		assertions func(t *testing.T, collection *Collection)
+		toAdd      []string
+		assertions func(t *testing.T, collection *Collection, addErr error)
 	}{
 		{
 			name:       "adding to empty collection",
 			collection: NewCollection(),
-			components: []*Component{New("c1"), New("c2")},
-			assertions: func(t *testing.T, collection *Collection) {
+			toAdd:      []string{"c1", "c2"},
+			assertions: func(t *testing.T, collection *Collection, addErr error) {
+				require.NoError(t, addErr)
 				assert.Equal(t, 2, collection.Len())
 				assert.Equal(t, "c1", collection.ByName("c1").Name())
 				assert.Equal(t, "c2", collection.ByName("c2").Name())
@@ -60,9 +79,10 @@ func TestCollection_Add(t *testing.T) {
 		},
 		{
 			name:       "adding to non-empty collection",
-			collection: NewCollection().Add(New("existing")),
-			components: []*Component{New("c1"), New("c2")},
-			assertions: func(t *testing.T, collection *Collection) {
+			collection: newCol("existing"),
+			toAdd:      []string{"c1", "c2"},
+			assertions: func(t *testing.T, collection *Collection, addErr error) {
+				require.NoError(t, addErr)
 				assert.Equal(t, 3, collection.Len())
 				assert.Equal(t, "existing", collection.ByName("existing").Name())
 				assert.Equal(t, "c1", collection.ByName("c1").Name())
@@ -71,21 +91,27 @@ func TestCollection_Add(t *testing.T) {
 		},
 		{
 			name:       "adding 2 components with the same name",
-			collection: NewCollection().Add(New("existing")),
-			components: []*Component{New("existing")},
-			assertions: func(t *testing.T, collection *Collection) {
-				require.Error(t, collection.ChainableErr())
-				require.ErrorContains(t, collection.ChainableErr(), "component with name 'existing' already exists")
-				assert.True(t, collection.HasChainableErr())
-				assert.Equal(t, 0, collection.Len())
+			collection: newCol("existing"),
+			toAdd:      []string{"existing"},
+			assertions: func(t *testing.T, collection *Collection, addErr error) {
+				require.Error(t, addErr)
+				require.ErrorContains(t, addErr, `component with name "existing" already exists`)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.collection.Add(tt.components...)
+			var addErr error
+			for _, name := range tt.toAdd {
+				c, err := New(name)
+				require.NoError(t, err)
+				if err := tt.collection.Add(c); err != nil {
+					addErr = err
+					break
+				}
+			}
 			if tt.assertions != nil {
-				tt.assertions(t, result)
+				tt.assertions(t, tt.collection, addErr)
 			}
 		})
 	}
@@ -104,7 +130,7 @@ func TestCollection_Len(t *testing.T) {
 		},
 		{
 			name:       "non-empty collection",
-			collection: NewCollection().Add(New("c1"), New("c2"), New("c3")),
+			collection: newCol("c1", "c2", "c3"),
 			want:       3,
 		},
 	}
@@ -128,7 +154,7 @@ func TestCollection_IsEmpty(t *testing.T) {
 		},
 		{
 			name:       "non-empty collection",
-			collection: NewCollection().Add(New("c1")),
+			collection: newCol("c1"),
 			want:       false,
 		},
 	}
@@ -139,7 +165,7 @@ func TestCollection_IsEmpty(t *testing.T) {
 	}
 }
 
-func TestCollection_AllMatch(t *testing.T) {
+func TestCollection_Every(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
@@ -154,20 +180,20 @@ func TestCollection_AllMatch(t *testing.T) {
 		},
 		{
 			name:       "all match",
-			collection: NewCollection().Add(New("c1"), New("c2")),
+			collection: newCol("c1", "c2"),
 			predicate:  func(c *Component) bool { return c.Name() != "" },
 			want:       true,
 		},
 		{
 			name:       "not all match",
-			collection: NewCollection().Add(New("c1"), New("")),
-			predicate:  func(c *Component) bool { return c.Name() != "" },
+			collection: newCol("c1", "c2_noname_placeholder"),
+			predicate:  func(c *Component) bool { return c.Name() == "c1" },
 			want:       false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.AllMatch(tt.predicate))
+			assert.Equal(t, tt.want, tt.collection.Every(tt.predicate))
 		})
 	}
 }
@@ -187,14 +213,14 @@ func TestCollection_AnyMatch(t *testing.T) {
 		},
 		{
 			name:       "at least one matches",
-			collection: NewCollection().Add(New("c1"), New("")),
-			predicate:  func(c *Component) bool { return c.Name() != "" },
+			collection: newCol("c1", "c2"),
+			predicate:  func(c *Component) bool { return c.Name() == "c1" },
 			want:       true,
 		},
 		{
 			name:       "none match",
-			collection: NewCollection().Add(New(""), New("")),
-			predicate:  func(c *Component) bool { return c.Name() != "" },
+			collection: newCol("b1", "b2"),
+			predicate:  func(c *Component) bool { return c.Name() == "" },
 			want:       false,
 		},
 	}
@@ -220,13 +246,13 @@ func TestCollection_Filter(t *testing.T) {
 		},
 		{
 			name:       "filter some components",
-			collection: NewCollection().Add(New("c1"), New("c2"), New("c3")),
+			collection: newCol("c1", "c2", "c3"),
 			predicate:  func(c *Component) bool { return c.Name() != "c2" },
 			want:       2,
 		},
 		{
 			name:       "filter all components",
-			collection: NewCollection().Add(New("c1"), New("c2")),
+			collection: newCol("c1", "c2"),
 			predicate:  func(c *Component) bool { return false },
 			want:       0,
 		},
@@ -241,7 +267,7 @@ func TestCollection_Filter(t *testing.T) {
 
 func TestCollection_Any(t *testing.T) {
 	t.Run("returns component from non-empty collection", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"))
+		collection := newCol("c1")
 		result := collection.Any()
 		require.NotNil(t, result)
 		assert.Equal(t, "c1", result.Name())
@@ -252,17 +278,11 @@ func TestCollection_Any(t *testing.T) {
 		result := collection.Any()
 		assert.Nil(t, result)
 	})
-
-	t.Run("returns nil when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		result := collection.Any()
-		assert.Nil(t, result)
-	})
 }
 
 func TestCollection_FindAny(t *testing.T) {
 	t.Run("finds matching component", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"), New("target"))
+		collection := newCol("c1", "c2", "target")
 		result := collection.FindAny(func(c *Component) bool {
 			return c.Name() == "target"
 		})
@@ -271,26 +291,18 @@ func TestCollection_FindAny(t *testing.T) {
 	})
 
 	t.Run("returns nil when no match", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+		collection := newCol("c1", "c2")
 		result := collection.FindAny(func(c *Component) bool {
 			return c.Name() == "nonexistent"
 		})
 		assert.Nil(t, result)
 	})
-
-	t.Run("returns nil when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
-		result := collection.FindAny(func(c *Component) bool {
-			return true
-		})
-		assert.Nil(t, result)
-	})
 }
 
-func TestCollection_CountMatch(t *testing.T) {
+func TestCollection_Count(t *testing.T) {
 	t.Run("counts matching components", func(t *testing.T) {
-		collection := NewCollection().Add(New("a1"), New("a2"), New("b1"))
-		count := collection.CountMatch(func(c *Component) bool {
+		collection := newCol("a1", "a2", "b1")
+		count := collection.Count(func(c *Component) bool {
 			return c.Name()[0] == 'a'
 		})
 		assert.Equal(t, 2, count)
@@ -298,15 +310,7 @@ func TestCollection_CountMatch(t *testing.T) {
 
 	t.Run("returns 0 for empty collection", func(t *testing.T) {
 		collection := NewCollection()
-		count := collection.CountMatch(func(c *Component) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("returns 0 when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
-		count := collection.CountMatch(func(c *Component) bool {
+		count := collection.Count(func(c *Component) bool {
 			return true
 		})
 		assert.Equal(t, 0, count)
@@ -315,83 +319,66 @@ func TestCollection_CountMatch(t *testing.T) {
 
 func TestCollection_Map(t *testing.T) {
 	t.Run("transforms components", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
-		mapped := collection.Map(func(c *Component) *Component {
-			return New("mapped_" + c.Name())
+		collection := newCol("c1", "c2")
+		mapped, err := collection.Map(func(c *Component) *Component {
+			nc, nerr := New("mapped_" + c.Name())
+			if nerr != nil {
+				panic(nerr)
+			}
+			return nc
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 2, mapped.Len())
 		assert.NotNil(t, mapped.ByName("mapped_c1"))
 		assert.NotNil(t, mapped.ByName("mapped_c2"))
 	})
 
 	t.Run("filters out nil results", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
-		mapped := collection.Map(func(c *Component) *Component {
+		collection := newCol("c1", "c2", "c3")
+		mapped, err := collection.Map(func(c *Component) *Component {
 			if c.Name() == "c2" {
 				return nil
 			}
 			return c
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 2, mapped.Len())
-	})
-
-	t.Run("propagates error from source collection", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		mapped := collection.Map(func(c *Component) *Component {
-			return c
-		})
-		assert.True(t, mapped.HasChainableErr())
 	})
 }
 
 func TestCollection_ForEach(t *testing.T) {
 	t.Run("applies action to each component", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+		collection := newCol("c1", "c2")
 		visited := make([]string, 0)
-		collection.ForEach(func(c *Component) error {
+		err := collection.ForEach(func(c *Component) error {
 			visited = append(visited, c.Name())
 			return nil
 		})
+		require.NoError(t, err)
 		assert.Len(t, visited, 2)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
-		result := collection.ForEach(func(c *Component) error {
+	t.Run("stops on error and returns error", func(t *testing.T) {
+		collection := newCol("c1", "c2", "c3")
+		err := collection.ForEach(func(c *Component) error {
 			return assert.AnError
 		})
-		assert.True(t, result.HasChainableErr())
-	})
-
-	t.Run("skips when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		visited := false
-		collection.ForEach(func(c *Component) error {
-			visited = true
-			return nil
-		})
-		assert.False(t, visited)
+		assert.Error(t, err)
 	})
 }
 
 func TestCollection_Clear(t *testing.T) {
 	t.Run("removes all components", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+		collection := newCol("c1", "c2")
 		result := collection.Clear()
 		assert.Equal(t, 0, result.Len())
 		assert.True(t, result.IsEmpty())
-	})
-
-	t.Run("skips when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
-		result := collection.Clear()
-		assert.True(t, result.HasChainableErr())
 	})
 }
 
 func TestCollection_Without(t *testing.T) {
 	t.Run("removes specified components", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"), New("c3"))
+		collection := newCol("c1", "c2", "c3")
 		result := collection.Without("c1", "c3")
 		assert.Equal(t, 1, result.Len())
 		assert.NotNil(t, result.ByName("c2"))
@@ -399,36 +386,31 @@ func TestCollection_Without(t *testing.T) {
 	})
 
 	t.Run("handles non-existent names gracefully", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"))
+		collection := newCol("c1")
 		result := collection.Without("nonexistent")
 		assert.Equal(t, 1, result.Len())
-	})
-
-	t.Run("skips when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1")).WithChainableErr(assert.AnError)
-		result := collection.Without("c1")
-		assert.True(t, result.HasChainableErr())
 	})
 }
 
 func TestCollection_All(t *testing.T) {
 	t.Run("returns all components", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+		collection := newCol("c1", "c2")
 		all, err := collection.All()
 		require.NoError(t, err)
 		assert.Len(t, all, 2)
 	})
 
-	t.Run("returns error when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		_, err := collection.All()
-		require.Error(t, err)
+	t.Run("returns empty map for empty collection", func(t *testing.T) {
+		collection := NewCollection()
+		all, err := collection.All()
+		require.NoError(t, err)
+		assert.Empty(t, all)
 	})
 }
 
 func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+		collection := newCol("c1", "c2")
 
 		// Query for non-existent component
 		result := collection.ByName("nonexistent")
@@ -436,8 +418,7 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
+		// Collection should still have 2 components
 		assert.Equal(t, 2, collection.Len())
 
 		// Collection should still be usable
@@ -446,36 +427,30 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		assert.Equal(t, "c1", c1.Name())
 	})
 
-	t.Run("Any does not poison collection when empty", func(t *testing.T) {
+	t.Run("Any does not affect collection when empty", func(t *testing.T) {
 		collection := NewCollection()
 
 		// Query any on empty collection
 		result := collection.Any()
-
-		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
-
 		// Collection should still be usable for adding
-		collection.Add(New("c1"))
+		c, err := New("c1")
+		require.NoError(t, err)
+		require.NoError(t, collection.Add(c))
 		assert.Equal(t, 1, collection.Len())
 	})
 
-	t.Run("FindAny does not poison collection when no match", func(t *testing.T) {
-		collection := NewCollection().Add(New("c1"), New("c2"))
+	t.Run("FindAny does not affect collection when no match", func(t *testing.T) {
+		collection := newCol("c1", "c2")
 
 		// Query with predicate that matches nothing
 		result := collection.FindAny(func(c *Component) bool {
 			return c.Name() == "nonexistent"
 		})
-
-		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
+		// Collection should have 2 components
 		assert.Equal(t, 2, collection.Len())
 
 		// Subsequent FindAny should work

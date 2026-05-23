@@ -8,95 +8,68 @@ import (
 // Group represents a list of ports.
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
-	chainableErr error
-	ports        Ports
+	ports Ports
 }
 
-// NewGroup creates multiple ports.
+// NewGroup creates multiple output ports.
 func NewGroup(names ...string) *Group {
-	newGroup := &Group{
-		chainableErr: nil,
-	}
+	newGroup := &Group{}
 	ports := make(Ports, len(names))
 	for i, name := range names {
-		ports[i] = NewOutput(name)
+		p, _ := NewOutput(name) // no opts, never fails
+		ports[i] = p
 	}
 	return newGroup.withPorts(ports)
 }
 
-// NewIndexedGroup creates a group of ports with the same prefix.
+// NewIndexedGroup creates a group of output ports with the same prefix.
 // NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0".
-func NewIndexedGroup(prefix string, startIndex, endIndex int) *Group {
+func NewIndexedGroup(prefix string, startIndex, endIndex int) (*Group, error) {
 	if startIndex > endIndex {
-		return NewGroup().WithChainableErr(ErrInvalidRangeForIndexedGroup)
+		return nil, ErrInvalidRangeForIndexedGroup
 	}
 
 	ports := make(Ports, endIndex-startIndex+1)
-
 	for i := startIndex; i <= endIndex; i++ {
-		ports[i-startIndex] = NewOutput(fmt.Sprintf("%s%d", prefix, i))
+		p, _ := NewOutput(fmt.Sprintf("%s%d", prefix, i)) // no opts, never fails
+		ports[i-startIndex] = p
 	}
 
-	return NewGroup().withPorts(ports)
+	return NewGroup().withPorts(ports), nil
 }
 
-// Add adds ports to group.
-func (g *Group) Add(ports ...*Port) *Group {
-	if g.HasChainableErr() {
-		return g
-	}
-
-	newPorts := make(Ports, len(g.ports)+len(ports))
-	copy(newPorts, g.ports)
-	for i, port := range ports {
-		if port.HasChainableErr() {
-			return g.WithChainableErr(port.ChainableErr())
-		}
-		newPorts[len(g.ports)+i] = port
-	}
-
-	return g.withPorts(newPorts)
+// add appends ports to the group in place. Internal use only; always succeeds.
+func (g *Group) add(ports ...*Port) {
+	g.ports = append(g.ports, ports...)
 }
 
 // Without removes ports matching the predicate and returns a new group.
 func (g *Group) Without(predicate Predicate) *Group {
-	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
-	}
-	// Keep ports that DON'T match the predicate
 	return g.Filter(func(p *Port) bool {
 		return !predicate(p)
 	})
 }
 
-// ForEach applies the action to each port and returns the group for chaining.
-func (g *Group) ForEach(action func(*Port) error) *Group {
-	if g.HasChainableErr() {
-		return g
-	}
+// ForEach applies the action to each port. Returns the first error encountered.
+func (g *Group) ForEach(action func(*Port) error) error {
 	for _, p := range g.ports {
 		if err := action(p); err != nil {
-			g.chainableErr = err
-			return g
+			return err
 		}
 	}
-	return g
+	return nil
 }
 
 // ForEachIf applies the action only to ports that match the predicate.
-func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) *Group {
-	if g.HasChainableErr() {
-		return g
-	}
+func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) error {
 	for _, p := range g.ports {
 		if predicate(p) {
 			if err := action(p); err != nil {
-				g.chainableErr = err
-				return g
+				return err
 			}
 		}
 	}
-	return g
+	return nil
 }
 
 // withPorts sets ports.
@@ -107,34 +80,11 @@ func (g *Group) withPorts(ports Ports) *Group {
 
 // All returns all ports as a slice.
 func (g *Group) All() (Ports, error) {
-	if g.HasChainableErr() {
-		return nil, g.ChainableErr()
-	}
 	return g.ports, nil
 }
 
-// WithChainableErr sets a chainable error and returns the group.
-func (g *Group) WithChainableErr(err error) *Group {
-	g.chainableErr = err
-	return g
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (g *Group) HasChainableErr() bool {
-	return g.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (g *Group) ChainableErr() error {
-	return g.chainableErr
-}
-
 // Len returns the number of ports in a group.
-// Returns 0 if the group has a chainable error.
 func (g *Group) Len() int {
-	if g.HasChainableErr() {
-		return 0
-	}
 	return len(g.ports)
 }
 
@@ -145,9 +95,6 @@ func (g *Group) IsEmpty() bool {
 
 // Find returns the first port matching the predicate, or nil if none match.
 func (g *Group) Find(predicate Predicate) *Port {
-	if g.HasChainableErr() || g.IsEmpty() {
-		return nil
-	}
 	for _, p := range g.ports {
 		if predicate(p) {
 			return p
@@ -156,23 +103,16 @@ func (g *Group) Find(predicate Predicate) *Port {
 	return nil
 }
 
-// First returns the first port in the group.
-// Returns nil if the group is empty or has an error.
+// First returns the first port in the group, or nil if empty.
 func (g *Group) First() *Port {
-	if g.HasChainableErr() {
-		return nil
-	}
 	if g.IsEmpty() {
 		return nil
 	}
 	return g.ports[0]
 }
 
-// AllMatch returns true if all ports match the predicate.
-func (g *Group) AllMatch(predicate Predicate) bool {
-	if g.HasChainableErr() {
-		return false
-	}
+// Every returns true if all ports match the predicate.
+func (g *Group) Every(predicate Predicate) bool {
 	for _, port := range g.ports {
 		if !predicate(port) {
 			return false
@@ -181,19 +121,13 @@ func (g *Group) AllMatch(predicate Predicate) bool {
 	return true
 }
 
-// AnyMatch returns true if any port matches the predicate.
-func (g *Group) AnyMatch(predicate Predicate) bool {
-	if g.HasChainableErr() {
-		return false
-	}
+// Any returns true if any port matches the predicate.
+func (g *Group) Any(predicate Predicate) bool {
 	return slices.ContainsFunc(g.ports, predicate)
 }
 
-// CountMatch returns the number of ports that match the predicate.
-func (g *Group) CountMatch(predicate Predicate) int {
-	if g.HasChainableErr() {
-		return 0
-	}
+// Count returns the number of ports that match the predicate.
+func (g *Group) Count(predicate Predicate) int {
 	count := 0
 	for _, port := range g.ports {
 		if predicate(port) {
@@ -205,16 +139,10 @@ func (g *Group) CountMatch(predicate Predicate) int {
 
 // Filter returns a new group with ports that match the predicate.
 func (g *Group) Filter(predicate Predicate) *Group {
-	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
-	}
 	filtered := NewGroup()
 	for _, port := range g.ports {
 		if predicate(port) {
-			filtered = filtered.Add(port)
-			if filtered.HasChainableErr() {
-				return filtered
-			}
+			filtered.add(port)
 		}
 	}
 	return filtered
@@ -223,42 +151,26 @@ func (g *Group) Filter(predicate Predicate) *Group {
 // MapIf is like Map but only applies the mapper to ports that match the predicate.
 // Non-matching ports are kept as-is. Nil mapper results are dropped.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
-	}
 	mapped := NewGroup()
 	for _, p := range g.ports {
 		if predicate(p) {
-			transformedPort := mapper(p)
-			if transformedPort != nil {
-				mapped = mapped.Add(transformedPort)
-				if mapped.HasChainableErr() {
-					return mapped
-				}
+			if result := mapper(p); result != nil {
+				mapped.add(result)
 			}
 		} else {
-			mapped = mapped.Add(p)
-			if mapped.HasChainableErr() {
-				return mapped
-			}
+			mapped.add(p)
 		}
 	}
 	return mapped
 }
 
 // Map returns a new group with ports transformed by the mapper function.
+// Nil mapper results are dropped.
 func (g *Group) Map(mapper Mapper) *Group {
-	if g.HasChainableErr() {
-		return NewGroup().WithChainableErr(g.ChainableErr())
-	}
 	mapped := NewGroup()
 	for _, port := range g.ports {
-		transformedPort := mapper(port)
-		if transformedPort != nil {
-			mapped = mapped.Add(transformedPort)
-			if mapped.HasChainableErr() {
-				return mapped
-			}
+		if result := mapper(port); result != nil {
+			mapped.add(result)
 		}
 	}
 	return mapped

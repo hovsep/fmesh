@@ -12,65 +12,94 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustInputPort(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewInput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func mustOutputPort(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewOutput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 func Test_PortCreationAndManipulation(t *testing.T) {
 	t.Run("mixed port creation with all features", func(t *testing.T) {
 		// Create a component using both simple and advanced port creation APIs
-		processor := component.New("data-processor").
-			WithDescription("Demonstrates all port creation and manipulation features").
-			// Simple API: create ports by name only
-			AddInputs("raw_data", "filter").
-			// Advanced API: create ports with descriptions and labels
-			AttachInputPorts(
-				port.NewInput("config").
-					WithDescription("Configuration parameters").
-					AddLabel("required", "true").
-					AddLabel("type", "json"),
-				port.NewInput("metadata").
-					WithDescription("Request metadata").
-					AddLabel("required", "false"),
-			).
-			// Simple API for outputs
-			AddOutputs("processed", "metrics").
-			// Advanced API for outputs with labels
-			AttachOutputPorts(
-				port.NewOutput("errors").
-					WithDescription("Error details if processing fails").
-					AddLabel("severity", "high").
-					AddLabel("format", "structured"),
-			).
-			WithActivationFunc(func(this *component.Component) error {
-				// Wait for required inputs
-				if !this.InputByName("raw_data").HasSignals() ||
-					!this.InputByName("config").HasSignals() {
-					return nil
-				}
+		processor := mustComponent("data-processor",
+			component.WithInputs("raw_data", "filter"),
+			component.WithOutputs("processed", "metrics"),
+		).
+			WithDescription("Demonstrates all port creation and manipulation features")
 
-				// Read inputs
-				data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("").(string)
-				config := this.InputByName("config").Signals().FirstPayloadOrDefault("").(string)
-				filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("").(string)
-				metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none").(string)
-
-				// Process data
-				result := fmt.Sprintf("[%s:%s] %s (meta: %s)", config, filter, data, metadata)
-
-				// Write outputs
-				this.OutputByName("processed").PutSignals(signal.New(result))
-				this.OutputByName("metrics").PutSignals(
-					signal.New(fmt.Sprintf("processed %d chars", len(result))),
-				)
-
+		// Advanced API: attach ports with descriptions and labels
+		require.NoError(t, processor.AttachInputPorts(
+			mustInputPort("config", port.WithDescription("Configuration parameters")).
+				AddLabel("required", "true").
+				AddLabel("type", "json"),
+			mustInputPort("metadata", port.WithDescription("Request metadata")).
+				AddLabel("required", "false"),
+		))
+		require.NoError(t, processor.AttachOutputPorts(
+			mustOutputPort("errors", port.WithDescription("Error details if processing fails")).
+				AddLabel("severity", "high").
+				AddLabel("format", "structured"),
+		))
+		processor.WithActivationFunc(func(this *component.Component) error {
+			// Wait for required inputs
+			if !this.InputByName("raw_data").HasSignals() ||
+				!this.InputByName("config").HasSignals() {
 				return nil
-			})
+			}
+
+			// Read inputs
+			data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("").(string)
+			config := this.InputByName("config").Signals().FirstPayloadOrDefault("").(string)
+			filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("").(string)
+			metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none").(string)
+
+			// Process data
+			result := fmt.Sprintf("[%s:%s] %s (meta: %s)", config, filter, data, metadata)
+
+			// Write outputs
+			if err := this.OutputByName("processed").PutSignals(signal.New(result)); err != nil {
+				return err
+			}
+			return this.OutputByName("metrics").PutSignals(
+				signal.New(fmt.Sprintf("processed %d chars", len(result))),
+			)
+		})
 
 		// Put signals on all inputs
-		processor.InputByName("raw_data").PutSignals(signal.New("test data"))
-		processor.InputByName("config").PutSignals(signal.New("prod"))
-		processor.InputByName("filter").PutSignals(signal.New("all"))
-		processor.InputByName("metadata").PutSignals(signal.New("user123"))
+		require.NoError(t, processor.InputByName("raw_data").PutSignals(signal.New("test data")))
+		require.NoError(t, processor.InputByName("config").PutSignals(signal.New("prod")))
+		require.NoError(t, processor.InputByName("filter").PutSignals(signal.New("all")))
+		require.NoError(t, processor.InputByName("metadata").PutSignals(signal.New("user123")))
 
 		// Create and run mesh
-		fm := fmesh.New("test-mesh").AddComponents(processor)
+		fm := mustFMesh("test-mesh")
+		require.NoError(t, fm.AddComponents(processor))
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -127,85 +156,88 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 	t.Run("port label manipulation", func(t *testing.T) {
 		// Create a component and manipulate port labels
-		c := component.New("label-demo").
-			AttachInputPorts(
-				port.NewInput("input").
-					AddLabel("env", "dev").
-					AddLabel("version", "1.0").
-					AddLabel("owner", "team-a"),
-			).
-			AddOutputs("output").
-			WithActivationFunc(func(this *component.Component) error {
-				if !this.InputByName("input").HasSignals() {
-					return nil
-				}
-
-				// Manipulate port labels during processing
-				inputPort := this.InputByName("input")
-
-				// Add a single label
-				inputPort.AddLabel("processed", "true")
-
-				// Remove specific labels
-				inputPort.RemoveLabels("version")
-
-				// Update labels
-				inputPort.AddLabels(map[string]string{
-					"env":   "prod", // update
-					"build": "123",  // add new
-				})
-
-				// Forward signal to output
-				sig, _ := inputPort.Signals().FirstPayload()
-				this.OutputByName("output").PutSignals(signal.New(sig))
-
+		c := mustComponent("label-demo",
+			component.WithOutputs("output"),
+		)
+		require.NoError(t, c.AttachInputPorts(
+			mustInputPort("input").
+				AddLabel("env", "dev").
+				AddLabel("version", "1.0").
+				AddLabel("owner", "team-a"),
+		))
+		c.WithActivationFunc(func(this *component.Component) error {
+			if !this.InputByName("input").HasSignals() {
 				return nil
+			}
+
+			// Manipulate port labels during processing
+			inputPort := this.InputByName("input")
+
+			// Add a single label
+			inputPort.AddLabel("processed", "true")
+
+			// Remove specific labels
+			inputPort.RemoveLabels("version")
+
+			// Update labels
+			inputPort.AddLabels(map[string]string{
+				"env":   "prod", // update
+				"build": "123",  // add new
 			})
 
+			// Forward signal to output
+			sig, _ := inputPort.Signals().FirstPayload()
+			return this.OutputByName("output").PutSignals(signal.New(sig))
+		})
+
 		// Set up and run
-		c.InputByName("input").PutSignals(signal.New("data"))
-		fm := fmesh.New("label-mesh").AddComponents(c)
+		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
+		fm := mustFMesh("label-mesh")
+		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)
 
 		// Verify label manipulation results
 		inputPort := c.InputByName("input")
-		labels, err := inputPort.Labels().All()
+		lbls, err := inputPort.Labels().All()
 		require.NoError(t, err)
 
-		assert.Equal(t, "prod", labels["env"], "env should be updated")
-		assert.Equal(t, "123", labels["build"], "build should be added")
-		assert.Equal(t, "true", labels["processed"], "processed should be added")
-		assert.Equal(t, "team-a", labels["owner"], "owner should remain")
-		assert.NotContains(t, labels, "version", "version should be removed")
+		assert.Equal(t, "prod", lbls["env"], "env should be updated")
+		assert.Equal(t, "123", lbls["build"], "build should be added")
+		assert.Equal(t, "true", lbls["processed"], "processed should be added")
+		assert.Equal(t, "team-a", lbls["owner"], "owner should remain")
+		assert.NotContains(t, lbls, "version", "version should be removed")
 	})
 
 	t.Run("incremental port addition", func(t *testing.T) {
 		// Demonstrate adding ports one by one
-		c := component.New("incremental").
-			AddInputs("a").                                                      // Add first input
-			AddInputs("b").                                                      // Add second input
-			AttachInputPorts(port.NewInput("c").WithDescription("Third input")). // Add with details
-			AddOutputs("result").
-			WithActivationFunc(func(this *component.Component) error {
-				if !this.Inputs().AllHaveSignals() {
-					return nil
-				}
-
-				a := this.InputByName("a").Signals().FirstPayloadOrDefault(0).(int)
-				b := this.InputByName("b").Signals().FirstPayloadOrDefault(0).(int)
-				c := this.InputByName("c").Signals().FirstPayloadOrDefault(0).(int)
-
-				this.OutputByName("result").PutSignals(signal.New(a + b + c))
+		c := mustComponent("incremental",
+			component.WithOutputs("result"),
+		)
+		require.NoError(t, c.AddInputs("a"))   // Add first input
+		require.NoError(t, c.AddInputs("b"))   // Add second input
+		require.NoError(t, c.AttachInputPorts( // Add with details
+			mustInputPort("c", port.WithDescription("Third input")),
+		))
+		c.WithActivationFunc(func(this *component.Component) error {
+			if !this.Inputs().AllHaveSignals() {
 				return nil
-			})
+			}
+
+			a := this.InputByName("a").Signals().FirstPayloadOrDefault(0).(int)
+			b := this.InputByName("b").Signals().FirstPayloadOrDefault(0).(int)
+			cv := this.InputByName("c").Signals().FirstPayloadOrDefault(0).(int)
+
+			return this.OutputByName("result").PutSignals(signal.New(a + b + cv))
+		})
 
 		// Verify all ports exist and work
-		c.InputByName("a").PutSignals(signal.New(1))
-		c.InputByName("b").PutSignals(signal.New(2))
-		c.InputByName("c").PutSignals(signal.New(3))
+		require.NoError(t, c.InputByName("a").PutSignals(signal.New(1)))
+		require.NoError(t, c.InputByName("b").PutSignals(signal.New(2)))
+		require.NoError(t, c.InputByName("c").PutSignals(signal.New(3)))
 
-		fm := fmesh.New("incremental-mesh").AddComponents(c)
+		fm := mustFMesh("incremental-mesh")
+		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -219,49 +251,53 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 	t.Run("port collection operations", func(t *testing.T) {
 		// Demonstrate port collection methods
-		c := component.New("collection-demo").
-			AddInputs("i1", "i2", "i3").
-			AttachInputPorts(
-				port.NewInput("i4").AddLabel("priority", "high"),
-				port.NewInput("i5").AddLabel("priority", "low"),
-			).
-			AddOutputs("summary").
-			WithActivationFunc(func(this *component.Component) error {
-				inputs := this.Inputs()
+		c := mustComponent("collection-demo",
+			component.WithInputs("i1", "i2", "i3"),
+			component.WithOutputs("summary"),
+		)
+		require.NoError(t, c.AttachInputPorts(
+			mustInputPort("i4").AddLabel("priority", "high"),
+			mustInputPort("i5").AddLabel("priority", "low"),
+		))
+		c.WithActivationFunc(func(this *component.Component) error {
+			inputs := this.Inputs()
 
-				// Count ports with signals
-				portsWithSignals := inputs.Filter(func(p *port.Port) bool {
-					return p.HasSignals()
-				}).Len()
+			// Count ports with signals
+			portsWithSignals := inputs.Filter(func(p *port.Port) bool {
+				return p.HasSignals()
+			}).Len()
 
-				// Find high priority ports
-				highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
-					labels, err := p.Labels().All()
-					if err != nil {
-						return false
-					}
-					return labels["priority"] == "high"
-				})
-
-				// Apply operation to all ports (add processing label)
-				inputs.ForEach(func(p *port.Port) error {
-					return p.AddLabel("checked", "true").ChainableErr()
-				})
-
-				highPriorityCount, _ := highPriorityPorts.All()
-				summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
-					inputs.Len(), portsWithSignals, len(highPriorityCount))
-
-				this.OutputByName("summary").PutSignals(signal.New(summary))
-				return nil
+			// Find high priority ports
+			highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
+				lbls, err := p.Labels().All()
+				if err != nil {
+					return false
+				}
+				return lbls["priority"] == "high"
 			})
 
-		// Put signals on some ports
-		c.InputByName("i1").PutSignals(signal.New(1))
-		c.InputByName("i2").PutSignals(signal.New(2))
-		c.InputByName("i4").PutSignals(signal.New(4))
+			// Apply operation to all ports (add processing label)
+			if err := inputs.ForEach(func(p *port.Port) error {
+				p.AddLabel("checked", "true")
+				return nil
+			}); err != nil {
+				return err
+			}
 
-		fm := fmesh.New("collection-mesh").AddComponents(c)
+			highPriorityCount, _ := highPriorityPorts.All()
+			summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
+				inputs.Len(), portsWithSignals, len(highPriorityCount))
+
+			return this.OutputByName("summary").PutSignals(signal.New(summary))
+		})
+
+		// Put signals on some ports
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+		require.NoError(t, c.InputByName("i2").PutSignals(signal.New(2)))
+		require.NoError(t, c.InputByName("i4").PutSignals(signal.New(4)))
+
+		fm := mustFMesh("collection-mesh")
+		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)
 
@@ -270,9 +306,9 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
 		// Verify all ports were labeled
-		c.Inputs().ForEach(func(p *port.Port) error {
+		require.NoError(t, c.Inputs().ForEach(func(p *port.Port) error {
 			assert.True(t, p.Labels().Has("checked"))
 			return nil
-		})
+		}))
 	})
 }

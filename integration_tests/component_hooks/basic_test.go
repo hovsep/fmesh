@@ -12,34 +12,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 func TestComponentHooks_AllTypes(t *testing.T) {
 	var executionLog []string
 
-	c := component.New("processor").
-		AddInputs("in").
-		AddOutputs("out").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				executionLog = append(executionLog, "before")
-				return nil
-			})
-
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "success")
-				return nil
-			})
-
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				executionLog = append(executionLog, "after")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			c.OutputByName("out").PutSignals(signal.New(42))
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			executionLog = append(executionLog, "before")
 			return nil
 		})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			executionLog = append(executionLog, "success")
+			return nil
+		})
+
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			executionLog = append(executionLog, "after")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return c.OutputByName("out").PutSignals(signal.New(42))
+	})
+
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	result := c.MaybeActivate()
 
 	require.True(t, result.Activated())
@@ -52,26 +66,25 @@ func TestComponentHooks_OnError(t *testing.T) {
 	var afterFired bool
 	testErr := errors.New("test error")
 
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.OnError(func(ctx *component.ActivationContext) error {
-				errorCaught = true
-				assert.Equal(t, component.ActivationCodeReturnedError, ctx.Result.Code())
-				require.Error(t, ctx.Result.ActivationError())
-				return nil
-			})
-
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				afterFired = true
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			return testErr
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.OnError(func(ctx *component.ActivationContext) error {
+			errorCaught = true
+			assert.Equal(t, component.ActivationCodeReturnedError, ctx.Result.Code())
+			require.Error(t, ctx.Result.ActivationError())
+			return nil
 		})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			afterFired = true
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return testErr
+	})
+
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	result := c.MaybeActivate()
 
 	require.True(t, result.Activated())
@@ -84,26 +97,25 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 	var panicCaught bool
 	var afterFired bool
 
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.OnPanic(func(ctx *component.ActivationContext) error {
-				panicCaught = true
-				assert.Equal(t, component.ActivationCodePanicked, ctx.Result.Code())
-				require.Error(t, ctx.Result.ActivationError())
-				return nil
-			})
-
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				afterFired = true
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			panic("oh no!")
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.OnPanic(func(ctx *component.ActivationContext) error {
+			panicCaught = true
+			assert.Equal(t, component.ActivationCodePanicked, ctx.Result.Code())
+			require.Error(t, ctx.Result.ActivationError())
+			return nil
 		})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			afterFired = true
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		panic("oh no!")
+	})
+
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	result := c.MaybeActivate()
 
 	require.True(t, result.Activated())
@@ -115,25 +127,24 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 	var waitingCaught bool
 
-	c := component.New("processor").
-		AddInputs("data", "config").
-		SetupHooks(func(h *component.Hooks) {
-			h.OnWaitingForInputs(func(ctx *component.ActivationContext) error {
-				waitingCaught = true
-				assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			// Wait for config input
-			if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
-				return component.ErrWaitingForInputs
-			}
+	c := mustComponent("processor",
+		component.WithInputs("data", "config"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.OnWaitingForInputs(func(ctx *component.ActivationContext) error {
+			waitingCaught = true
+			assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
 			return nil
 		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		// Wait for config input
+		if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
+			return component.ErrWaitingForInputs
+		}
+		return nil
+	})
 
 	// Only provide data input, not config
-	c.InputByName("data").PutSignals(signal.New(1))
+	require.NoError(t, c.InputByName("data").PutSignals(signal.New(1)))
 	result := c.MaybeActivate()
 
 	require.True(t, result.Activated())
@@ -143,31 +154,30 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 	var log []string
 
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log = append(log, "before1")
-				return nil
-			})
-			h.BeforeActivation(func(c *component.Component) error {
-				log = append(log, "before2")
-				return nil
-			})
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				log = append(log, "success1")
-				return nil
-			})
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				log = append(log, "success2")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log = append(log, "before1")
 			return nil
 		})
+		h.BeforeActivation(func(c *component.Component) error {
+			log = append(log, "before2")
+			return nil
+		})
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			log = append(log, "success1")
+			return nil
+		})
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			log = append(log, "success2")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return nil
+	})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	c.MaybeActivate()
 
 	assert.Equal(t, []string{"before1", "before2", "success1", "success2"}, log)
@@ -176,17 +186,16 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 	var beforeFired bool
 
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				beforeFired = true
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			beforeFired = true
 			return nil
 		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return nil
+	})
 
 	// No input signals provided
 	result := c.MaybeActivate()
@@ -200,23 +209,21 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 	var componentName string
 	var activationCode component.ActivationResultCode
 
-	c := component.New("test-component").
-		AddInputs("in").
-		AddOutputs("out").
-		SetupHooks(func(h *component.Hooks) {
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				componentName = ctx.Component.Name()
-				activationCode = ctx.Result.Code()
-				assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			c.OutputByName("out").PutSignals(signal.New(100))
+	c := mustComponent("test-component",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			componentName = ctx.Component.Name()
+			activationCode = ctx.Result.Code()
+			assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
 			return nil
 		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return c.OutputByName("out").PutSignals(signal.New(100))
+	})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	c.MaybeActivate()
 
 	assert.Equal(t, "test-component", componentName)
@@ -226,36 +233,34 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	var log hookLog
 
-	c1 := component.New("c1").
-		AddInputs("in").
-		AddOutputs("out").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log.add(c.Name())
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			c.OutputByName("out").PutSignals(signal.New(1))
+	c1 := mustComponent("c1",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log.add(c.Name())
 			return nil
 		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return c.OutputByName("out").PutSignals(signal.New(1))
+	})
 
-	c2 := component.New("c2").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log.add(c.Name())
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
+	c2 := mustComponent("c2",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log.add(c.Name())
 			return nil
 		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return nil
+	})
 
-	c1.OutputByName("out").PipeTo(c2.InputByName("in"))
+	require.NoError(t, c1.OutputByName("out").PipeTo(c2.InputByName("in")))
 
-	fm := fmesh.New("test").AddComponents(c1, c2)
-	c1.InputByName("in").PutSignals(signal.New(0))
+	fm := mustFMesh("test")
+	require.NoError(t, fm.AddComponents(c1, c2))
+	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
 
 	_, err := fm.Run()
 	require.NoError(t, err)
@@ -270,77 +275,73 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	var log hookLog
 
 	// Create three components with hooks
-	c1 := component.New("c1").
-		AddInputs("in").
-		AddOutputs("out").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log.add("c1:before")
-				return nil
-			})
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				log.add("c1:success")
-				return nil
-			})
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				log.add("c1:after")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			c.OutputByName("out").PutSignals(signal.New(1))
+	c1 := mustComponent("c1",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log.add("c1:before")
 			return nil
 		})
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			log.add("c1:success")
+			return nil
+		})
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			log.add("c1:after")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return c.OutputByName("out").PutSignals(signal.New(1))
+	})
 
-	c2 := component.New("c2").
-		AddInputs("in").
-		AddOutputs("out").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log.add("c2:before")
-				return nil
-			})
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				log.add("c2:success")
-				return nil
-			})
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				log.add("c2:after")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
-			c.OutputByName("out").PutSignals(signal.New(2))
+	c2 := mustComponent("c2",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log.add("c2:before")
 			return nil
 		})
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			log.add("c2:success")
+			return nil
+		})
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			log.add("c2:after")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return c.OutputByName("out").PutSignals(signal.New(2))
+	})
 
-	c3 := component.New("c3").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log.add("c3:before")
-				return nil
-			})
-			h.OnSuccess(func(ctx *component.ActivationContext) error {
-				log.add("c3:success")
-				return nil
-			})
-			h.AfterActivation(func(ctx *component.ActivationContext) error {
-				log.add("c3:after")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
+	c3 := mustComponent("c3",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log.add("c3:before")
 			return nil
 		})
+		h.OnSuccess(func(ctx *component.ActivationContext) error {
+			log.add("c3:success")
+			return nil
+		})
+		h.AfterActivation(func(ctx *component.ActivationContext) error {
+			log.add("c3:after")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return nil
+	})
 
 	// Wire: c1, c2 -> c3 (both feed into c3)
-	c1.OutputByName("out").PipeTo(c3.InputByName("in"))
-	c2.OutputByName("out").PipeTo(c3.InputByName("in"))
+	require.NoError(t, c1.OutputByName("out").PipeTo(c3.InputByName("in")))
+	require.NoError(t, c2.OutputByName("out").PipeTo(c3.InputByName("in")))
 
-	fm := fmesh.New("test").AddComponents(c1, c2, c3)
-	c1.InputByName("in").PutSignals(signal.New(0))
-	c2.InputByName("in").PutSignals(signal.New(0))
+	fm := mustFMesh("test")
+	require.NoError(t, fm.AddComponents(c1, c2, c3))
+	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
+	require.NoError(t, c2.InputByName("in").PutSignals(signal.New(0)))
 
 	_, err := fm.Run()
 	require.NoError(t, err)
@@ -348,7 +349,6 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	executionLog := log.snapshot()
 
 	// Verify all components activated with proper hook order
-	// c1 and c2 fire in cycle 1, c3 in cycle 2
 	assert.Contains(t, executionLog, "c1:before")
 	assert.Contains(t, executionLog, "c1:success")
 	assert.Contains(t, executionLog, "c1:after")
@@ -375,31 +375,28 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 	var log []string
 
 	// Multiple SetupHooks calls should accumulate hooks
-	c := component.New("processor").
-		AddInputs("in").
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log = append(log, "setup1")
-				return nil
-			})
-		}).
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log = append(log, "setup2")
-				return nil
-			})
-		}).
-		SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error {
-				log = append(log, "setup3")
-				return nil
-			})
-		}).
-		WithActivationFunc(func(c *component.Component) error {
+	c := mustComponent("processor",
+		component.WithInputs("in"),
+	).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log = append(log, "setup1")
 			return nil
 		})
+	}).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log = append(log, "setup2")
+			return nil
+		})
+	}).SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(c *component.Component) error {
+			log = append(log, "setup3")
+			return nil
+		})
+	}).WithActivationFunc(func(c *component.Component) error {
+		return nil
+	})
 
-	c.InputByName("in").PutSignals(signal.New(1))
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	c.MaybeActivate()
 
 	// All hooks from all SetupHooks calls should execute in order
@@ -409,39 +406,48 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 func BenchmarkComponentHooks_Overhead(b *testing.B) {
 	// Measure overhead of hooks vs no hooks
 	b.Run("WithoutHooks", func(b *testing.B) {
-		c := component.New("processor").
-			AddInputs("in").
-			WithActivationFunc(func(c *component.Component) error {
+		c := mustComponent("processor",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(c *component.Component) error {
 				return nil
-			})
+			}),
+		)
 
-		c.InputByName("in").PutSignals(signal.New(1))
+		if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
+			b.Fatal(err)
+		}
 
 		b.ResetTimer()
 		for range b.N {
 			c.MaybeActivate()
-			c.InputByName("in").PutSignals(signal.New(1))
+			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
 	b.Run("WithHooks", func(b *testing.B) {
-		c := component.New("processor").
-			AddInputs("in").
-			SetupHooks(func(h *component.Hooks) {
-				h.BeforeActivation(func(c *component.Component) error { return nil })
-				h.OnSuccess(func(ctx *component.ActivationContext) error { return nil })
-				h.AfterActivation(func(ctx *component.ActivationContext) error { return nil })
-			}).
-			WithActivationFunc(func(c *component.Component) error {
+		c := mustComponent("processor",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(c *component.Component) error {
 				return nil
-			})
+			}),
+		).SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(c *component.Component) error { return nil })
+			h.OnSuccess(func(ctx *component.ActivationContext) error { return nil })
+			h.AfterActivation(func(ctx *component.ActivationContext) error { return nil })
+		})
 
-		c.InputByName("in").PutSignals(signal.New(1))
+		if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
+			b.Fatal(err)
+		}
 
 		b.ResetTimer()
 		for range b.N {
 			c.MaybeActivate()
-			c.InputByName("in").PutSignals(signal.New(1))
+			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }

@@ -9,11 +9,11 @@ type Mapper func(component *Component) *Component
 // Components is a slice of components for type safety and method attachment.
 type Components []*Component
 
-// ActivationResultPredicate is a function that tests whether an ActivationResult matches a condition.
-type ActivationResultPredicate func(result *ActivationResult) bool
+// ResultPredicate is a function that tests whether an ActivationResult matches a condition.
+type ResultPredicate func(result *ActivationResult) bool
 
-// ActivationResultMapper transforms an ActivationResult into a new ActivationResult.
-type ActivationResultMapper func(result *ActivationResult) *ActivationResult
+// ResultMapper transforms an ActivationResult into a new ActivationResult.
+type ResultMapper func(result *ActivationResult) *ActivationResult
 
 // ActivationResults is a slice of activation results for type safety and method attachment.
 type ActivationResults []*ActivationResult
@@ -25,3 +25,6 @@ type ParentMesh interface {
 
 // ActivationFunc is the activation function of a component.
 type ActivationFunc func(this *Component) error
+
+// Option is a functional option for configuring a component during construction.
+type Option func(*Component) error

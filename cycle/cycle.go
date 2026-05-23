@@ -2,14 +2,12 @@ package cycle
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/hovsep/fmesh/component"
 )
 
 // Cycle contains the info about one activation cycle.
 type Cycle struct {
-	chainableErr      error
 	number            int
 	activationResults *component.ActivationResultCollection
 }
@@ -17,7 +15,6 @@ type Cycle struct {
 // New creates a new cycle.
 func New() *Cycle {
 	return &Cycle{
-		chainableErr:      nil,
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -89,20 +86,4 @@ func (c *Cycle) Number() int {
 func (c *Cycle) WithNumber(number int) *Cycle {
 	c.number = number
 	return c
-}
-
-// WithChainableErr sets a chainable error and returns the cycle.
-func (c *Cycle) WithChainableErr(err error) *Cycle {
-	c.chainableErr = fmt.Errorf("error in cycle #%d : %w", c.number, err)
-	return c
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (c *Cycle) HasChainableErr() bool {
-	return c.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (c *Cycle) ChainableErr() error {
-	return c.chainableErr
 }

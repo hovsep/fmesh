@@ -13,6 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 func Test_State(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -23,28 +39,26 @@ func Test_State(t *testing.T) {
 		{
 			name: "stateful counter",
 			setupFM: func() *fmesh.FMesh {
-				producer := component.New("producer").
-					WithDescription("produces some signals").
-					AddInputs("demand_rate").
-					AddOutputs("signal_out").
-					WithActivationFunc(func(this *component.Component) error {
+				producer := mustComponent("producer",
+					component.WithInputs("demand_rate"),
+					component.WithOutputs("signal_out"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
 
 						for range demandRate {
-							this.OutputByName("signal_out").PutSignals(signal.New(rand.Int()))
+							if err := this.OutputByName("signal_out").PutSignals(signal.New(rand.Int())); err != nil {
+								return err
+							}
 						}
 						return nil
-					})
+					}),
+				).WithDescription("produces some signals")
 
-				counter := component.New("stateful_counter").
-					WithDescription("counts all observed signals and bypasses them down the stream").
-					AddInputs("bypass_in").
-					AddOutputs("bypass_out").
-					WithInitialState(func(state component.State) {
-						state.Set("observed_signals_count", 0)
-					}).
-					WithActivationFunc(func(this *component.Component) error {
+				counter := mustComponent("stateful_counter",
+					component.WithInputs("bypass_in"),
+					component.WithOutputs("bypass_out"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						count := this.State().Get("observed_signals_count").(int)
 
 						defer func() {
@@ -57,17 +71,16 @@ func Test_State(t *testing.T) {
 						_ = port.ForwardSignals(this.InputByName("bypass_in"), this.OutputByName("bypass_out"))
 
 						return nil
+					}),
+				).WithDescription("counts all observed signals and bypasses them down the stream").
+					WithInitialState(func(state component.State) {
+						state.Set("observed_signals_count", 0)
 					})
 
-				consumer := component.New("consumer").
-					WithDescription("consumes signals").
-					AddInputs("signal_in", "start").
-					AddOutputs("consumed_signals", "demand_rate").
-					WithInitialState(func(state component.State) {
-						// Simulate uneven demand
-						state.Set("demand_shape", []int{3, 70, 22, 1350})
-					}).
-					WithActivationFunc(func(this *component.Component) error {
+				consumer := mustComponent("consumer",
+					component.WithInputs("signal_in", "start"),
+					component.WithOutputs("consumed_signals", "demand_rate"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						demandShape := this.State().Get("demand_shape").([]int)
 						defer func() {
 							this.State().Set("demand_shape", demandShape)
@@ -78,25 +91,43 @@ func Test_State(t *testing.T) {
 							demandRate := demandShape[0]
 							demandShape = demandShape[1:]
 
-							this.OutputByName("demand_rate").PutSignals(signal.New(demandRate))
+							if err := this.OutputByName("demand_rate").PutSignals(signal.New(demandRate)); err != nil {
+								return err
+							}
 						}
 
 						// Consume signals
 						return port.ForwardSignals(this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
+					}),
+				).WithDescription("consumes signals").
+					WithInitialState(func(state component.State) {
+						// Simulate uneven demand
+						state.Set("demand_shape", []int{3, 70, 22, 1350})
 					})
 
-				producer.OutputByName("signal_out").PipeTo(counter.InputByName("bypass_in"))
-				counter.OutputByName("bypass_out").PipeTo(consumer.InputByName("signal_in"))
-				consumer.OutputByName("demand_rate").PipeTo(producer.InputByName("demand_rate"))
+				if err := producer.OutputByName("signal_out").PipeTo(counter.InputByName("bypass_in")); err != nil {
+					panic(err)
+				}
+				if err := counter.OutputByName("bypass_out").PipeTo(consumer.InputByName("signal_in")); err != nil {
+					panic(err)
+				}
+				if err := consumer.OutputByName("demand_rate").PipeTo(producer.InputByName("demand_rate")); err != nil {
+					panic(err)
+				}
 
-				return fmesh.NewWithConfig("fm", &fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10000,
-				}).
-					AddComponents(producer, counter, consumer)
+				}))
+				if err := fm.AddComponents(producer, counter, consumer); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
-				fm.Components().ByName("consumer").InputByName("start").PutSignals(signal.New("start demand"))
+				if err := fm.Components().ByName("consumer").InputByName("start").PutSignals(signal.New("start demand")); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)

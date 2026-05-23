@@ -1,7 +1,6 @@
 package signal
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh/labels"
@@ -24,9 +23,8 @@ func TestNew(t *testing.T) {
 				payload: nil,
 			},
 			want: &Signal{
-				payload:      []any{nil},
-				chainableErr: nil,
-				labels:       labels.NewCollection(),
+				payload: []any{nil},
+				labels:  labels.NewCollection(),
 			},
 		},
 		{
@@ -35,9 +33,8 @@ func TestNew(t *testing.T) {
 				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
 			want: &Signal{
-				payload:      []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				chainableErr: nil,
-				labels:       labels.NewCollection(),
+				payload: []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
+				labels:  labels.NewCollection(),
 			},
 		},
 	}
@@ -65,12 +62,6 @@ func TestSignal_Payload(t *testing.T) {
 			signal: New(123),
 			want:   123,
 		},
-		{
-			name:            "with error in chain",
-			signal:          New(123).WithChainableErr(errors.New("some error in chain")),
-			want:            nil,
-			wantErrorString: "some error in chain",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,11 +86,6 @@ func TestSignal_PayloadOrNil(t *testing.T) {
 			name:   "payload returned",
 			signal: New(123),
 			want:   123,
-		},
-		{
-			name:   "nil returned",
-			signal: New(123).WithChainableErr(errors.New("some error in chain")),
-			want:   nil,
 		},
 	}
 	for _, tt := range tests {
@@ -128,16 +114,6 @@ func TestSignal_Map(t *testing.T) {
 				"l1": "v1",
 			}),
 		},
-		{
-			name:   "with chain error",
-			signal: New(1).WithChainableErr(errors.New("some error in chain")),
-			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithOnlyLabels(labels.Map{
-					"l1": "v1",
-				})
-			},
-			want: New(1).WithChainableErr(errors.New("some error in chain")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,14 +138,6 @@ func TestSignal_MapPayload(t *testing.T) {
 			want: New(2).WithLabel("foo", "bar"),
 		},
 		{
-			name:   "with chain error",
-			signal: New(1).WithChainableErr(errors.New("some error in chain")),
-			mapperFunc: func(payload any) any {
-				return payload.(int) * 2
-			},
-			want: New(1).WithChainableErr(errors.New("some error in chain")),
-		},
-		{
 			name:   "payload nil",
 			signal: New(nil).WithLabel("x", "y"),
 			mapperFunc: func(payload any) any {
@@ -186,7 +154,6 @@ func TestSignal_MapPayload(t *testing.T) {
 			got := tt.signal.MapPayload(tt.mapperFunc)
 			assert.Equal(t, tt.want.PayloadOrNil(), got.PayloadOrNil())
 			assert.Equal(t, tt.want.Labels(), got.Labels())
-			assert.Equal(t, tt.want.HasChainableErr(), got.HasChainableErr())
 		})
 	}
 }

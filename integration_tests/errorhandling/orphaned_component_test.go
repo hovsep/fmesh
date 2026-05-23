@@ -11,29 +11,34 @@ import (
 
 func Test_AllComponentsMustBeRegistered(t *testing.T) {
 	t.Run("orphaned component", func(t *testing.T) {
-		c1 := component.New("c1").
-			WithDescription("adds 2 to the input").
-			AddInputs("num").
-			AddOutputs("res").
-			WithActivationFunc(func(this *component.Component) error {
+		c1, err := component.New("c1",
+			component.WithInputs("num"),
+			component.WithOutputs("res"),
+			component.WithActivationFunc(func(this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrNil()
-				this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
-				return nil
-			})
+				return this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
+			}),
+		)
+		require.NoError(t, err)
+		c1.WithDescription("adds 2 to the input")
 
-		c2 := component.New("c2").
-			WithDescription("multiplies by 3").
-			AddInputs("num").
-			AddOutputs("res").
-			WithActivationFunc(func(this *component.Component) error {
+		c2, err := component.New("c2",
+			component.WithInputs("num"),
+			component.WithOutputs("res"),
+			component.WithActivationFunc(func(this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
-				this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
-				return nil
-			})
+				return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
+			}),
+		)
+		require.NoError(t, err)
+		c2.WithDescription("multiplies by 3")
 
-		c1.OutputByName("res").PipeTo(c2.InputByName("num"))
-		fm := fmesh.New("fm").AddComponents(c1) // Oops, we forgot to add c2
-		_, err := fm.Run()
+		require.NoError(t, c1.OutputByName("res").PipeTo(c2.InputByName("num")))
+
+		fm, err := fmesh.New("fm")
+		require.NoError(t, err)
+		require.NoError(t, fm.AddComponents(c1)) // Oops, we forgot to add c2
+		_, err = fm.Run()
 		require.Error(t, err)
 	})
 }

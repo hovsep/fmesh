@@ -7,31 +7,37 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/port"
 )
+
+// Option is a functional option for configuring an FMesh during construction.
+type Option func(*FMesh) error
 
 // FMesh is the functional mesh.
 type FMesh struct {
-	name         string
-	description  string
-	chainableErr error
-	components   *component.Collection
-	runtimeInfo  *RuntimeInfo
-	config       *Config
-	hooks        *Hooks
+	name        string
+	description string
+	components  *component.Collection
+	runtimeInfo *RuntimeInfo
+	config      *Config
+	hooks       *Hooks
 }
 
-// New creates a new F-Mesh with the default configuration.
-func New(name string) *FMesh {
-	return &FMesh{
-		name:         name,
-		description:  "",
-		chainableErr: nil,
-		components:   component.NewCollection(),
-		runtimeInfo:  NewRuntimeInfo(),
-		config:       defaultConfig,
-		hooks:        NewHooks(),
+// New creates a new F-Mesh with the default configuration and applies any provided options.
+func New(name string, opts ...Option) (*FMesh, error) {
+	fm := &FMesh{
+		name:        name,
+		description: "",
+		components:  component.NewCollection(),
+		runtimeInfo: NewRuntimeInfo(),
+		config:      newDefaultConfig(),
+		hooks:       NewHooks(),
 	}
+	for _, opt := range opts {
+		if err := opt(fm); err != nil {
+			return nil, fmt.Errorf("fmesh %q option failed: %w", name, err)
+		}
+	}
+	return fm, nil
 }
 
 // Name returns the name of the F-Mesh.
@@ -44,16 +50,8 @@ func (fm *FMesh) Description() string {
 	return fm.description
 }
 
-// NewWithConfig creates a new F-Mesh with custom configuration.
-func NewWithConfig(name string, config *Config) *FMesh {
-	return New(name).withConfig(config)
-}
-
 // Components returns all components in the mesh.
 func (fm *FMesh) Components() *component.Collection {
-	if fm.HasChainableErr() {
-		return component.NewCollection().WithChainableErr(fm.ChainableErr())
-	}
 	return fm.components
 }
 
@@ -64,160 +62,109 @@ func (fm *FMesh) ComponentByName(name string) *component.Component {
 
 // WithDescription sets a description.
 func (fm *FMesh) WithDescription(description string) *FMesh {
-	if fm.HasChainableErr() {
-		return fm
-	}
-
 	fm.description = description
 	return fm
 }
 
-// AddComponents adds components to the mesh and returns the mesh for chaining.
-func (fm *FMesh) AddComponents(components ...*component.Component) *FMesh {
-	if fm.HasChainableErr() {
-		return fm
-	}
-
+// AddComponents adds components to the mesh. Returns an error if any component is invalid or has a duplicate name.
+func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	for _, c := range components {
-		validationErr := c.ValidateBeforeAddingToMesh()
-		if validationErr != nil {
-			return fm.WithChainableErr(fmt.Errorf("failed to add component: %s reason: %w", c.Name(), validationErr))
+		if err := c.ValidateBeforeAddingToMesh(); err != nil {
+			return fmt.Errorf("failed to add component %q: %w", c.Name(), err)
 		}
 
 		// Inherit logger from fm if the component does not have its own
 		if c.Logger() == nil {
-			c = c.WithLogger(fm.Logger())
+			c.WithLogger(fm.Logger())
 		}
 
-		fm.components = fm.components.Add(c.WithParentMesh(fm))
+		c.WithParentMesh(fm)
 
-		// Propagate error from component
-		if c.HasChainableErr() {
-			return fm.WithChainableErr(c.ChainableErr())
-		}
-
-		// Propagate error from component collection
-		if fm.components.HasChainableErr() {
-			return fm.WithChainableErr(fm.components.ChainableErr())
+		if err := fm.components.Add(c); err != nil {
+			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
 		}
 	}
 
 	fm.LogDebug(fmt.Sprintf("%d components added to mesh", fm.Components().Len()))
-	return fm
+	return nil
 }
 
 // SetupHooks configures hooks for the mesh using a closure.
-// All hook registration happens inside the provided function.
 func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
-	if fm.HasChainableErr() {
-		return fm
-	}
 	configure(fm.hooks)
 	return fm
 }
 
 // runCycle runs one activation cycle (tries to activate ready components).
-func (fm *FMesh) runCycle() {
+// Returns any error that occurred.
+// The cycle is always added to runtimeInfo even if an error occurred.
+func (fm *FMesh) runCycle() error {
 	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
 	if err := fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, fmt.Errorf("cycleBegin hook failed: %w", err)))
-		fm.WithChainableErr(newCycle.ChainableErr())
+		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("cycleBegin hook failed: %w", err))
 		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
-		return
+		return cycleErr
 	}
 
 	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
 
-	if fm.HasChainableErr() {
-		newCycle.WithChainableErr(fm.ChainableErr())
+	components, err := fm.Components().All()
+	if err != nil {
+		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		return errors.Join(errFailedToRunCycle, err)
 	}
 
-	if fm.Components().Len() == 0 {
-		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, errNoComponents))
+	if len(components) == 0 {
+		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		return errors.Join(errFailedToRunCycle, errNoComponents)
 	}
 
 	var wg sync.WaitGroup
 
-	components, err := fm.Components().All()
-	if err != nil {
-		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, err))
-	}
-
 	for _, c := range components {
-		if c.HasChainableErr() {
-			fm.WithChainableErr(c.ChainableErr())
-		}
 		wg.Add(1)
-
-		go func(component *component.Component, cycle *cycle.Cycle) {
+		go func(comp *component.Component, cyc *cycle.Cycle) {
 			defer wg.Done()
-
-			cycle.ActivationResults().Add(component.MaybeActivate())
+			cyc.ActivationResults().Add(comp.MaybeActivate())
 		}(c, newCycle)
 	}
 
 	wg.Wait()
 
-	// Bubble up chain errors from activation results
-	activationResults, err := newCycle.ActivationResults().All()
-	if err != nil {
-		newCycle.WithChainableErr(err)
-	} else {
-		for _, ar := range activationResults {
-			if ar.HasChainableErr() {
-				newCycle.WithChainableErr(ar.ChainableErr())
-				break
-			}
-		}
-	}
-
-	if newCycle.HasChainableErr() {
-		fm.WithChainableErr(newCycle.ChainableErr())
-	}
-
 	if fm.IsDebug() {
-		newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
-			fm.LogDebug(fmt.Sprintf("activation result for component %s : activated: %t, , code: %s, is error: %t, is panic: %t, error: %v", ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+		_ = newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
+			fm.LogDebug(fmt.Sprintf("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
+				ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
 			return nil
 		})
 	}
 
 	if err := fm.hooks.cycleEnd.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		newCycle.WithChainableErr(errors.Join(errFailedToRunCycle, fmt.Errorf("cycleEnd hook failed: %w", err)))
-		fm.WithChainableErr(newCycle.ChainableErr())
+		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("cycleEnd hook failed: %w", err))
+		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		return cycleErr
 	}
 
 	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+	return nil
 }
 
-// DrainComponents drains the data from activated components.
-func (fm *FMesh) drainComponents() {
-	if fm.HasChainableErr() {
-		fm.WithChainableErr(errors.Join(ErrFailedToDrain, fm.ChainableErr()))
-		return
-	}
-
-	fm.clearInputs()
-	if fm.HasChainableErr() {
-		return
+// drainComponents drains the data from activated components.
+func (fm *FMesh) drainComponents() error {
+	if err := fm.clearInputs(); err != nil {
+		return errors.Join(ErrFailedToDrain, err)
 	}
 
 	components, err := fm.Components().All()
 	if err != nil {
-		fm.WithChainableErr(errors.Join(ErrFailedToDrain, err))
-		return
+		return errors.Join(ErrFailedToDrain, err)
 	}
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByName(c.Name())
-
-		if activationResult.HasChainableErr() {
-			fm.WithChainableErr(errors.Join(ErrFailedToDrain, activationResult.ChainableErr()))
-			return
-		}
 
 		if !activationResult.Activated() {
 			// Component did not activate, so it did not create new output signals, hence nothing to drain
@@ -226,25 +173,21 @@ func (fm *FMesh) drainComponents() {
 
 		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
-			// @TODO: maybe we should additionally clear outputs
-			// because it is technically possible to set some output signals and then return errWaitingForInput in AF
 			continue
 		}
 
-		c.FlushOutputs()
+		if err := c.FlushOutputs(); err != nil {
+			return errors.Join(ErrFailedToDrain, fmt.Errorf("failed to flush outputs of component %q: %w", c.Name(), err))
+		}
 	}
+	return nil
 }
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
-func (fm *FMesh) clearInputs() {
-	if fm.HasChainableErr() {
-		return
-	}
-
+func (fm *FMesh) clearInputs() error {
 	components, err := fm.Components().All()
 	if err != nil {
-		fm.WithChainableErr(errors.Join(errFailedToClearInputs, err))
-		return
+		return errors.Join(errFailedToClearInputs, err)
 	}
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
@@ -252,98 +195,90 @@ func (fm *FMesh) clearInputs() {
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 
-		if activationResult.HasChainableErr() {
-			fm.WithChainableErr(errors.Join(errFailedToClearInputs, activationResult.ChainableErr()))
-		}
-
 		if !activationResult.Activated() {
-			// Component did not activate hence it's inputs must be clear
+			// Component did not activate hence its inputs must be clear
 			continue
 		}
 
 		if component.IsWaitingForInput(activationResult) && component.WantsToKeepInputs(activationResult) {
-			// Component want to keep inputs for the next cycle
-			// @TODO: add fine grained control on which ports to keep
+			// Component wants to keep inputs for the next cycle
 			continue
 		}
 
-		c.ClearInputs()
+		if err := c.ClearInputs(); err != nil {
+			return errors.Join(errFailedToClearInputs, fmt.Errorf("component %q: %w", c.Name(), err))
+		}
 	}
+	return nil
 }
 
-func (fm *FMesh) cleanUpPreviousRun() {
+func (fm *FMesh) cleanUpPreviousRun() error {
 	// Clear all output ports to prevent signal accumulation between runs
-	fm.Components().ForEach(func(c *component.Component) error {
-		c.ClearOutputs()
-		return nil
-	})
+	if err := fm.Components().ForEach(func(c *component.Component) error {
+		return c.ClearOutputs()
+	}); err != nil {
+		return err
+	}
 
 	// Init runtime info
 	fm.runtimeInfo = NewRuntimeInfo()
 	fm.runtimeInfo.MarkStarted()
+	return nil
 }
 
 // Run executes the mesh, activating components until completion or cycle limit.
-func (fm *FMesh) Run() (*RuntimeInfo, error) {
-	// Fail immediately if mesh already has a chainable error (e.g., from the previous run)
-	if fm.HasChainableErr() {
-		return nil, fm.ChainableErr()
+func (fm *FMesh) Run() (ri *RuntimeInfo, runErr error) {
+	if err := fm.cleanUpPreviousRun(); err != nil {
+		return nil, err
 	}
 
-	fm.cleanUpPreviousRun()
+	ri = fm.runtimeInfo
 
 	defer func() {
 		fm.runtimeInfo.MarkStopped()
 		if err := fm.hooks.afterRun.Trigger(fm); err != nil {
-			// Don't overwrite the existing chainable error
-			if !fm.HasChainableErr() {
-				fm.WithChainableErr(fmt.Errorf("afterRun hook failed: %w", err))
+			if runErr == nil {
+				runErr = fmt.Errorf("afterRun hook failed: %w", err)
 			}
 		}
 	}()
 
 	if err := fm.hooks.beforeRun.Trigger(fm); err != nil {
-		hookErr := fmt.Errorf("beforeRun hook failed: %w", err)
-		return fm.WithChainableErr(hookErr).runtimeInfo, hookErr
+		runErr = fmt.Errorf("beforeRun hook failed: %w", err)
+		return ri, runErr
 	}
 
-	validationErr := fm.validateBeforeRun()
-
-	if validationErr != nil {
-		return fm.WithChainableErr(validationErr).runtimeInfo, validationErr
+	if err := fm.validateBeforeRun(); err != nil {
+		runErr = err
+		return ri, runErr
 	}
 
 	for {
-		fm.runCycle()
-
-		if mustStop, err := fm.mustStop(); mustStop {
-			// Store error if it's not already stored (e.g., cycle limit, time limit errors)
-			// If mustStop returns chainable error, it's already stored
-			if err != nil && !fm.HasChainableErr() {
-				fm.WithChainableErr(err)
-			}
-			return fm.runtimeInfo, err
+		cycleErr := fm.runCycle()
+		if cycleErr != nil {
+			runErr = cycleErr
+			return ri, runErr
 		}
 
-		fm.drainComponents()
-		if fm.HasChainableErr() {
-			return fm.runtimeInfo, fm.ChainableErr()
+		if mustStop, err := fm.mustStop(); mustStop {
+			runErr = err
+			return ri, runErr
+		}
+
+		if err := fm.drainComponents(); err != nil {
+			runErr = err
+			return ri, runErr
 		}
 	}
 }
 
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
 func (fm *FMesh) mustStop() (bool, error) {
-	if fm.HasChainableErr() {
-		return true, fm.ChainableErr()
-	}
-
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	// Check if cycles limit is hit
 	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
 		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrReachedMaxAllowedCycles))
-
 		return true, ErrReachedMaxAllowedCycles
 	}
 
@@ -351,16 +286,13 @@ func (fm *FMesh) mustStop() (bool, error) {
 	if fm.config.TimeLimit != UnlimitedTime {
 		if fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
-
 			return true, ErrTimeLimitExceeded
 		}
 	}
 
 	// Check if the mesh finished naturally (no component activated during the last cycle)
 	if !lastCycle.HasActivatedComponents() {
-		// Stop naturally (no components activated during the cycle => all inputs are processed)
 		fm.LogDebug("going to stop naturally")
-
 		return true, nil
 	}
 
@@ -368,17 +300,17 @@ func (fm *FMesh) mustStop() (bool, error) {
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
-			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w", ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
+			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w",
+				ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
-
 			return true, runError
 		}
 		return false, nil
 	case StopOnFirstPanic:
 		if lastCycle.HasActivationPanics() {
-			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w", ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
+			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w",
+				ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
-
 			return true, runError
 		}
 		return false, nil
@@ -386,83 +318,61 @@ func (fm *FMesh) mustStop() (bool, error) {
 		return false, nil
 	default:
 		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrUnsupportedErrorHandlingStrategy))
-
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
 }
 
-// WithChainableErr returns f-mesh with an error.
-func (fm *FMesh) WithChainableErr(err error) *FMesh {
-	fm.chainableErr = fmt.Errorf("error in fmesh '%s' : %w", fm.name, err)
-	return fm
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (fm *FMesh) HasChainableErr() bool {
-	return fm.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (fm *FMesh) ChainableErr() error {
-	return fm.chainableErr
-}
-
-// validateBeforeRun does pre-run checks.
+// validateBeforeRun does pre-run checks using plain loops (no nested ForEach chains).
 func (fm *FMesh) validateBeforeRun() error {
-	if fm.HasChainableErr() {
-		return fmt.Errorf("failed to validate fmesh: %w", fm.ChainableErr())
+	components, err := fm.Components().All()
+	if err != nil {
+		return fmt.Errorf("failed to validate fmesh: %w", err)
 	}
 
-	return fm.Components().ForEach(func(c *component.Component) error {
-		componentValidationErr := c.ValidateBeforeActivating()
-		if componentValidationErr != nil {
-			return fmt.Errorf("invalid component: %s: %w", c.Name(), componentValidationErr)
+	for _, c := range components {
+		if err := c.ValidateBeforeActivating(); err != nil {
+			return fmt.Errorf("invalid component %q: %w", c.Name(), err)
 		}
 
 		if c.ParentMesh() != fm {
-			return fmt.Errorf("component %s has invalid parent mesh", c.Name())
+			return fmt.Errorf("component %q has invalid parent mesh", c.Name())
 		}
 
-		portsValidationErr := c.Outputs().ForEach(func(p *port.Port) error {
-			portValidationErr := p.ValidateBeforeActivation()
-			if portValidationErr != nil {
-				return portValidationErr
+		outputPorts, err := c.Outputs().All()
+		if err != nil {
+			return fmt.Errorf("invalid ports in component %q: %w", c.Name(), err)
+		}
+
+		for _, p := range outputPorts {
+			if err := p.ValidateBeforeActivation(); err != nil {
+				return fmt.Errorf("invalid port %q in component %q: %w", p.Name(), c.Name(), err)
 			}
 
 			if p.ParentComponent() != c {
-				return fmt.Errorf("port %s in component %s has invalid parent component", p.Name(), c.Name())
+				return fmt.Errorf("port %q in component %q has invalid parent component", p.Name(), c.Name())
 			}
 
-			pipesValidationErr := p.Pipes().ForEach(func(destPort *port.Port) error {
-				destPortValidationErr := destPort.ValidateBeforeActivation()
-				if destPortValidationErr != nil {
-					return destPortValidationErr
+			destPorts, _ := p.Pipes().All()
+			for _, destPort := range destPorts {
+				if err := destPort.ValidateBeforeActivation(); err != nil {
+					return fmt.Errorf("invalid pipe destination port %q from port %q: %w", destPort.Name(), p.Name(), err)
 				}
 
-				destComponent := destPort.ParentComponent().(*component.Component)
+				parent := destPort.ParentComponent()
+				destComponent, ok := parent.(*component.Component)
+				if !ok || destComponent == nil {
+					return fmt.Errorf("destination port %q has invalid parent component", destPort.Name())
+				}
 
-				destComponentValidationErr := destComponent.ValidateBeforeActivating()
-				if destComponentValidationErr != nil {
-					return fmt.Errorf("invalid component %s: %w", destComponent.Name(), destComponentValidationErr)
+				if err := destComponent.ValidateBeforeActivating(); err != nil {
+					return fmt.Errorf("invalid component %q (destination): %w", destComponent.Name(), err)
 				}
 
 				if destComponent.ParentMesh() != fm {
-					return fmt.Errorf("component %s has invalid parent mesh", destComponent.Name())
+					return fmt.Errorf("component %q has invalid parent mesh", destComponent.Name())
 				}
-				return nil
-			}).ChainableErr()
-
-			if pipesValidationErr != nil {
-				return fmt.Errorf("invalid pipes from port %s: %w", p.Name(), pipesValidationErr)
 			}
-
-			return nil
-		}).ChainableErr()
-
-		if portsValidationErr != nil {
-			return fmt.Errorf("invalid ports in component %s: %w", c.Name(), portsValidationErr)
 		}
-
-		return nil
-	}).ChainableErr()
+	}
+	return nil
 }

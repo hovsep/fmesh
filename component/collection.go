@@ -9,90 +9,43 @@ type Map map[string]*Component
 
 // Collection is a collection of components with useful methods.
 type Collection struct {
-	chainableErr error
-	components   Map
+	components Map
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		chainableErr: nil,
-		components:   make(Map),
+		components: make(Map),
 	}
 }
 
 // ByName returns a component by its name.
-// Returns nil if not found or if the collection has an error.
+// Returns nil if not found.
 func (c *Collection) ByName(name string) *Component {
-	if c.HasChainableErr() {
-		return nil
-	}
-
-	component, ok := c.components[name]
-
-	if !ok {
-		return nil
-	}
-
-	return component
+	return c.components[name]
 }
 
-// Add adds components and returns the collection.
-func (c *Collection) Add(components ...*Component) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
-	for _, component := range components {
-		if c.AnyMatch(func(existingComponent *Component) bool {
-			return existingComponent.Name() == component.Name()
-		}) {
-			return c.WithChainableErr(fmt.Errorf("component with name '%s' already exists", component.Name()))
+// Add adds components and returns an error if a duplicate name is found.
+func (c *Collection) Add(components ...*Component) error {
+	for _, comp := range components {
+		if _, exists := c.components[comp.Name()]; exists {
+			return fmt.Errorf("component with name %q already exists", comp.Name())
 		}
-		c.components[component.Name()] = component
-
-		if component.HasChainableErr() {
-			return c.WithChainableErr(component.ChainableErr())
-		}
+		c.components[comp.Name()] = comp
 	}
-
-	return c
+	return nil
 }
 
 // Without removes components by name and returns the collection.
 func (c *Collection) Without(names ...string) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
-
 	for _, name := range names {
 		delete(c.components, name)
 	}
-
 	return c
-}
-
-// WithChainableErr sets a chainable error and returns the collection.
-func (c *Collection) WithChainableErr(err error) *Collection {
-	c.chainableErr = err
-	return c
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (c *Collection) HasChainableErr() bool {
-	return c.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (c *Collection) ChainableErr() error {
-	return c.chainableErr
 }
 
 // Len returns the number of components in the collection.
 func (c *Collection) Len() int {
-	if c.HasChainableErr() {
-		return 0
-	}
 	return len(c.components)
 }
 
@@ -102,16 +55,9 @@ func (c *Collection) IsEmpty() bool {
 }
 
 // Any returns any arbitrary component from the collection.
-// Returns nil if the collection is empty or has an error.
+// Returns nil if the collection is empty.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) Any() *Component {
-	if c.HasChainableErr() {
-		return nil
-	}
-	if c.IsEmpty() {
-		return nil
-	}
-	// Get arbitrary component from map (order not guaranteed)
 	for _, comp := range c.components {
 		return comp
 	}
@@ -120,17 +66,11 @@ func (c *Collection) Any() *Component {
 
 // All returns all components as a map.
 func (c *Collection) All() (Map, error) {
-	if c.HasChainableErr() {
-		return nil, c.ChainableErr()
-	}
 	return c.components, nil
 }
 
-// AllMatch returns true if all components match the predicate.
-func (c *Collection) AllMatch(predicate Predicate) bool {
-	if c.HasChainableErr() {
-		return false
-	}
+// Every returns true if all components match the predicate.
+func (c *Collection) Every(predicate Predicate) bool {
 	for _, comp := range c.components {
 		if !predicate(comp) {
 			return false
@@ -140,10 +80,8 @@ func (c *Collection) AllMatch(predicate Predicate) bool {
 }
 
 // AnyMatch returns true if any component matches the predicate.
+// Note: AnyMatch is used instead of Any to avoid conflict with the no-arg Any() *Component method.
 func (c *Collection) AnyMatch(predicate Predicate) bool {
-	if c.HasChainableErr() {
-		return false
-	}
 	for _, comp := range c.components {
 		if predicate(comp) {
 			return true
@@ -152,11 +90,8 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 	return false
 }
 
-// CountMatch returns the number of components that match the predicate.
-func (c *Collection) CountMatch(predicate Predicate) int {
-	if c.HasChainableErr() {
-		return 0
-	}
+// Count returns the number of components that match the predicate.
+func (c *Collection) Count(predicate Predicate) int {
 	count := 0
 	for _, comp := range c.components {
 		if predicate(comp) {
@@ -167,12 +102,9 @@ func (c *Collection) CountMatch(predicate Predicate) int {
 }
 
 // FindAny returns any arbitrary component that matches the predicate.
-// Returns nil if no match found or if the collection has an error.
+// Returns nil if no match found.
 // Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Component {
-	if c.HasChainableErr() {
-		return nil
-	}
 	for _, comp := range c.components {
 		if predicate(comp) {
 			return comp
@@ -183,58 +115,42 @@ func (c *Collection) FindAny(predicate Predicate) *Component {
 
 // Filter returns a new collection with components that match the predicate.
 func (c *Collection) Filter(predicate Predicate) *Collection {
-	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
-	}
 	filtered := NewCollection()
 	for _, comp := range c.components {
 		if predicate(comp) {
-			filtered = filtered.Add(comp)
-			if filtered.HasChainableErr() {
-				return filtered
-			}
+			filtered.components[comp.Name()] = comp
 		}
 	}
 	return filtered
 }
 
 // Map returns a new collection with components transformed by the mapper function.
-func (c *Collection) Map(mapper Mapper) *Collection {
-	if c.HasChainableErr() {
-		return NewCollection().WithChainableErr(c.ChainableErr())
-	}
+// Returns an error if a mapped component has a duplicate name.
+func (c *Collection) Map(mapper Mapper) (*Collection, error) {
 	mapped := NewCollection()
 	for _, comp := range c.components {
 		transformedComp := mapper(comp)
 		if transformedComp != nil {
-			mapped = mapped.Add(transformedComp)
-			if mapped.HasChainableErr() {
-				return mapped
+			if err := mapped.Add(transformedComp); err != nil {
+				return nil, err
 			}
 		}
 	}
-	return mapped
+	return mapped, nil
 }
 
-// ForEach applies the action to each component and returns the collection for chaining.
-func (c *Collection) ForEach(action func(*Component) error) *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
+// ForEach applies the action to each component. Returns the first error encountered.
+func (c *Collection) ForEach(action func(*Component) error) error {
 	for _, comp := range c.components {
 		if err := action(comp); err != nil {
-			c.chainableErr = err
-			return c
+			return err
 		}
 	}
-	return c
+	return nil
 }
 
 // Clear removes all components from the collection.
 func (c *Collection) Clear() *Collection {
-	if c.HasChainableErr() {
-		return c
-	}
 	c.components = make(Map)
 	return c
 }

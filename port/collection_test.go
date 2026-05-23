@@ -1,7 +1,6 @@
 package port
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -19,8 +18,9 @@ func (c *Collection) mustAll() Map {
 }
 
 func TestCollection_AllHaveSignals(t *testing.T) {
-	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
-	oneEmptyPorts.ByName("p2").Clear()
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...)
+	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
+	require.NoError(t, oneEmptyPorts.ByName("p2").Clear())
 
 	tests := []struct {
 		name  string
@@ -38,9 +38,13 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 			want:  false,
 		},
 		{
-			name:  "all set",
-			ports: NewCollection().Add(NewGroup("out1", "out2", "out3").mustAll()...).PutSignals(signal.New(77)),
-			want:  true,
+			name: "all set",
+			ports: func() *Collection {
+				c := NewCollection().Add(NewGroup("out1", "out2", "out3").mustAll()...)
+				require.NoError(t, c.PutSignals(signal.New(77)))
+				return c
+			}(),
+			want: true,
 		},
 	}
 	for _, tt := range tests {
@@ -51,8 +55,9 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 }
 
 func TestCollection_AnyHasSignals(t *testing.T) {
-	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(123))
-	oneEmptyPorts.ByName("p2").Clear()
+	oneEmptyPorts := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...)
+	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
+	require.NoError(t, oneEmptyPorts.ByName("p2").Clear())
 
 	tests := []struct {
 		name  string
@@ -85,45 +90,41 @@ func TestCollection_ByName(t *testing.T) {
 		name       string
 		collection *Collection
 		args       args
-		want       *Port
+		wantName   string
+		wantNil    bool
 	}{
 		{
 			name:       "empty port found",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-			args: args{
-				name: "p1",
-			},
-			want: NewOutput("p1"),
+			args:       args{name: "p1"},
+			wantName:   "p1",
 		},
 		{
-			name:       "port with signals found",
-			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).PutSignals(signal.New(12)),
-			args: args{
-				name: "p2",
-			},
-			want: NewOutput("p2").PutSignals(signal.New(12)),
+			name: "port with signals found",
+			collection: func() *Collection {
+				c := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
+				require.NoError(t, c.PutSignals(signal.New(12)))
+				return c
+			}(),
+			args:     args{name: "p2"},
+			wantName: "p2",
 		},
 		{
 			name:       "port not found returns nil",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-			args: args{
-				name: "p3",
-			},
-			want: nil,
-		},
-		{
-			name:       "with chain error returns nil",
-			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
-			args: args{
-				name: "p1",
-			},
-			want: nil,
+			args:       args{name: "p3"},
+			wantNil:    true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.collection.ByName(tt.args.name)
-			assert.Equal(t, tt.want, got)
+			if tt.wantNil {
+				assert.Nil(t, got)
+			} else {
+				require.NotNil(t, got)
+				assert.Equal(t, tt.wantName, got.Name())
+			}
 		})
 	}
 }
@@ -136,63 +137,50 @@ func TestCollection_ByNames(t *testing.T) {
 		name       string
 		collection *Collection
 		args       args
-		want       *Collection
+		wantLen    int
 	}{
 		{
 			name:       "single port found",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-			args: args{
-				names: []string{"p1"},
-			},
-			want: NewCollection().Add(NewOutput("p1")),
+			args:       args{names: []string{"p1"}},
+			wantLen:    1,
 		},
 		{
 			name:       "multiple ports found",
 			collection: NewCollection().Add(NewGroup("p1", "p2", "p3", "p4").mustAll()...),
-			args: args{
-				names: []string{"p1", "p2"},
-			},
-			want: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
+			args:       args{names: []string{"p1", "p2"}},
+			wantLen:    2,
 		},
 		{
 			name:       "single port not found",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-			args: args{
-				names: []string{"p7"},
-			},
-			want: NewCollection(),
+			args:       args{names: []string{"p7"}},
+			wantLen:    0,
 		},
 		{
 			name:       "some ports not found",
 			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-			args: args{
-				names: []string{"p1", "p2", "p3"},
-			},
-			want: NewCollection().Add(NewGroup("p1", "p2").mustAll()...),
-		},
-		{
-			name:       "with chain error",
-			collection: NewCollection().Add(NewGroup("p1", "p2").mustAll()...).WithChainableErr(errors.New("some error")),
-			args: args{
-				names: []string{"p1", "p2"},
-			},
-			want: NewCollection().WithChainableErr(errors.New("some error")),
+			args:       args{names: []string{"p1", "p2", "p3"}},
+			wantLen:    2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.ByNames(tt.args.names...))
+			result := tt.collection.ByNames(tt.args.names...)
+			assert.Equal(t, tt.wantLen, result.Len())
 		})
 	}
 }
 
 func TestCollection_ForEachClear(t *testing.T) {
 	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
-		ports := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...).PutSignals(signal.New(1), signal.New(2), signal.New(3))
+		ports := NewCollection().Add(NewGroup("p1", "p2", "p3").mustAll()...)
+		require.NoError(t, ports.PutSignals(signal.New(1), signal.New(2), signal.New(3)))
 		assert.True(t, ports.AllHaveSignals())
-		ports.ForEach(func(p *Port) error {
-			return p.Clear().ChainableErr()
+		err := ports.ForEach(func(p *Port) error {
+			return p.Clear()
 		})
+		require.NoError(t, err)
 		assert.False(t, ports.AnyHasSignals())
 	})
 }
@@ -265,14 +253,14 @@ func TestCollection_Flush(t *testing.T) {
 		},
 		{
 			name: "all ports in collection are flushed",
-			collection: NewCollection().Add(
-				NewOutput("src").
-					PutSignalGroups(signal.NewGroup(1, 2, 3)).
-					PipeTo(
-						NewInput("dst1"),
-						NewInput("dst2"),
-					),
-			),
+			collection: func() *Collection {
+				dst1 := mustInput("dst1")
+				dst2 := mustInput("dst2")
+				src := mustOutput("src")
+				require.NoError(t, src.PutSignalGroups(signal.NewGroup(1, 2, 3)))
+				require.NoError(t, src.PipeTo(dst1, dst2))
+				return NewCollection().Add(src)
+			}(),
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Equal(t, 1, collection.Len())
 				assert.False(t, collection.ByName("src").HasSignals())
@@ -289,7 +277,8 @@ func TestCollection_Flush(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.Flush()
+			err := tt.collection.Flush()
+			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}
@@ -311,7 +300,11 @@ func TestCollection_PipeTo(t *testing.T) {
 			name:       "empty collection",
 			collection: NewCollection(),
 			args: args{
-				destPorts: NewIndexedGroup("dest_", 1, 3).mustAll(),
+				destPorts: func() Ports {
+					g, err := NewIndexedGroup("dest_", 1, 3)
+					require.NoError(t, err)
+					return g.mustAll()
+				}(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Zero(t, collection.Len())
@@ -320,17 +313,17 @@ func TestCollection_PipeTo(t *testing.T) {
 		{
 			name: "add pipes to each port in collection",
 			collection: NewCollection().Add(
-				NewOutput("p_1"),
-				NewOutput("p_2"),
-				NewOutput("p_3"),
+				mustOutput("p_1"),
+				mustOutput("p_2"),
+				mustOutput("p_3"),
 			),
 			args: args{
 				destPorts: Ports{
-					NewInput("dest_1"),
-					NewInput("dest_2"),
-					NewInput("dest_3"),
-					NewInput("dest_4"),
-					NewInput("dest_5"),
+					mustInput("dest_1"),
+					mustInput("dest_2"),
+					mustInput("dest_3"),
+					mustInput("dest_4"),
+					mustInput("dest_5"),
 				},
 			},
 			assertions: func(t *testing.T, collection *Collection) {
@@ -344,7 +337,8 @@ func TestCollection_PipeTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.collection.PipeTo(tt.args.destPorts...)
+			err := tt.collection.PipeTo(tt.args.destPorts...)
+			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
 			}
@@ -391,9 +385,10 @@ func TestCollection_WithIndexed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collectionAfter := tt.collection.AddIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			err := tt.collection.AddIndexed(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
+			require.NoError(t, err)
 			if tt.assertions != nil {
-				tt.assertions(t, collectionAfter)
+				tt.assertions(t, tt.collection)
 			}
 		})
 	}
@@ -412,10 +407,16 @@ func TestCollection_Signals(t *testing.T) {
 		},
 		{
 			name: "non-empty collection",
-			collection: NewCollection().
-				AddIndexed("p", 1, 3).
-				PutSignals(signal.New(1), signal.New(2), signal.New(3)).
-				PutSignals(signal.New("test")),
+			collection: func() *Collection {
+				c := NewCollection().AddIndexed("p", 1, 3)
+				// AddIndexed now returns error; we ignore it since it mutates in place
+				_ = c
+				c2 := NewCollection()
+				require.NoError(t, c2.AddIndexed("p", 1, 3))
+				require.NoError(t, c2.PutSignals(signal.New(1), signal.New(2), signal.New(3)))
+				require.NoError(t, c2.PutSignals(signal.New("test")))
+				return c2
+			}(),
 			want: signal.NewGroup(1, 2, 3, "test", 1, 2, 3, "test", 1, 2, 3, "test"),
 		},
 	}
@@ -428,7 +429,7 @@ func TestCollection_Signals(t *testing.T) {
 
 func TestCollection_Any(t *testing.T) {
 	t.Run("returns port from non-empty collection", func(t *testing.T) {
-		collection := NewCollection().Add(NewOutput("p1"))
+		collection := NewCollection().Add(mustOutput("p1"))
 		result := collection.Any()
 		require.NotNil(t, result)
 		assert.Equal(t, "p1", result.Name())
@@ -436,12 +437,6 @@ func TestCollection_Any(t *testing.T) {
 
 	t.Run("returns nil from empty collection", func(t *testing.T) {
 		collection := NewCollection()
-		result := collection.Any()
-		assert.Nil(t, result)
-	})
-
-	t.Run("returns nil when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
 		result := collection.Any()
 		assert.Nil(t, result)
 	})
@@ -464,20 +459,12 @@ func TestCollection_FindAny(t *testing.T) {
 		})
 		assert.Nil(t, result)
 	})
-
-	t.Run("returns nil when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(NewOutput("p1")).WithChainableErr(assert.AnError)
-		result := collection.FindAny(func(p *Port) bool {
-			return true
-		})
-		assert.Nil(t, result)
-	})
 }
 
 func TestCollection_CountMatch(t *testing.T) {
 	t.Run("counts matching ports", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("a1", "a2", "b1").mustAll()...)
-		count := collection.CountMatch(func(p *Port) bool {
+		count := collection.Count(func(p *Port) bool {
 			return p.Name()[0] == 'a'
 		})
 		assert.Equal(t, 2, count)
@@ -485,15 +472,7 @@ func TestCollection_CountMatch(t *testing.T) {
 
 	t.Run("returns 0 for empty collection", func(t *testing.T) {
 		collection := NewCollection()
-		count := collection.CountMatch(func(p *Port) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("returns 0 when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(NewOutput("p1")).WithChainableErr(assert.AnError)
-		count := collection.CountMatch(func(p *Port) bool {
+		count := collection.Count(func(p *Port) bool {
 			return true
 		})
 		assert.Equal(t, 0, count)
@@ -503,7 +482,7 @@ func TestCollection_CountMatch(t *testing.T) {
 func TestCollection_AllMatch(t *testing.T) {
 	t.Run("returns true when all match", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
-		result := collection.AllMatch(func(p *Port) bool {
+		result := collection.Every(func(p *Port) bool {
 			return p.Name() != ""
 		})
 		assert.True(t, result)
@@ -511,16 +490,8 @@ func TestCollection_AllMatch(t *testing.T) {
 
 	t.Run("returns false when not all match", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "").mustAll()...)
-		result := collection.AllMatch(func(p *Port) bool {
+		result := collection.Every(func(p *Port) bool {
 			return p.Name() != ""
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("returns false when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		result := collection.AllMatch(func(p *Port) bool {
-			return true
 		})
 		assert.False(t, result)
 	})
@@ -542,14 +513,6 @@ func TestCollection_AnyMatch(t *testing.T) {
 		})
 		assert.False(t, result)
 	})
-
-	t.Run("returns false when collection has error", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		result := collection.AnyMatch(func(p *Port) bool {
-			return true
-		})
-		assert.False(t, result)
-	})
 }
 
 func TestCollection_Filter(t *testing.T) {
@@ -560,21 +523,13 @@ func TestCollection_Filter(t *testing.T) {
 		})
 		assert.Equal(t, 2, filtered.Len())
 	})
-
-	t.Run("propagates error from source collection", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		filtered := collection.Filter(func(p *Port) bool {
-			return true
-		})
-		assert.True(t, filtered.HasChainableErr())
-	})
 }
 
 func TestCollection_Map(t *testing.T) {
 	t.Run("transforms ports", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
 		mapped := collection.Map(func(p *Port) *Port {
-			return NewOutput("mapped_" + p.Name())
+			return mustOutput("mapped_" + p.Name())
 		})
 		assert.Equal(t, 2, mapped.Len())
 		assert.NotNil(t, mapped.ByName("mapped_p1"))
@@ -590,14 +545,6 @@ func TestCollection_Map(t *testing.T) {
 		})
 		assert.Equal(t, 2, mapped.Len())
 	})
-
-	t.Run("propagates error from source collection", func(t *testing.T) {
-		collection := NewCollection().WithChainableErr(assert.AnError)
-		mapped := collection.Map(func(p *Port) *Port {
-			return p
-		})
-		assert.True(t, mapped.HasChainableErr())
-	})
 }
 
 func TestCollection_Len(t *testing.T) {
@@ -606,113 +553,71 @@ func TestCollection_Len(t *testing.T) {
 		assert.Equal(t, 3, collection.Len())
 	})
 
-	t.Run("returns 0 when collection has error", func(t *testing.T) {
-		collection := NewCollection().Add(NewOutput("p1")).WithChainableErr(assert.AnError)
+	t.Run("returns 0 for empty collection", func(t *testing.T) {
+		collection := NewCollection()
 		assert.Equal(t, 0, collection.Len())
 	})
 }
 
 func TestCollection_IterationOperationsDoNotPoisonCollection(t *testing.T) {
-	t.Run("PutSignals on port with error does not poison collection", func(t *testing.T) {
-		// Note: Add DOES propagate errors (broken input = invalid state)
-		// So we need to set up differently - add first, then break the port
-		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
-		// Manually break one port after adding
-		p1 := collection.ByName("p1")
-		p1.WithChainableErr(assert.AnError)
-
-		// PutSignals should NOT poison the collection
-		result := collection.PutSignals(signal.New(42))
-
-		// Collection is still healthy
-		assert.False(t, result.HasChainableErr())
-		assert.Equal(t, 2, result.Len())
-
-		// But the individual port still has its error
-		assert.True(t, collection.ByName("p1").HasChainableErr())
+	t.Run("PutSignals does not fail on valid collection", func(t *testing.T) {
+		collection := NewCollection().Add(mustOutput("p1"), mustOutput("p2"))
+		err := collection.PutSignals(signal.New(42))
+		require.NoError(t, err)
+		assert.Equal(t, 2, collection.Len())
 	})
 
-	t.Run("Flush does not poison collection when port has error", func(t *testing.T) {
-		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
-		// Break one port after adding
-		collection.ByName("p1").WithChainableErr(assert.AnError)
-
-		// Flush should NOT poison the collection
-		result := collection.Flush()
-
-		// Collection is still healthy
-		assert.False(t, result.HasChainableErr())
-		assert.Equal(t, 2, result.Len())
+	t.Run("Flush does not fail on valid collection", func(t *testing.T) {
+		collection := NewCollection().Add(mustOutput("p1"), mustOutput("p2"))
+		err := collection.Flush()
+		require.NoError(t, err)
+		assert.Equal(t, 2, collection.Len())
 	})
 
-	t.Run("PipeTo does not poison collection when port has error", func(t *testing.T) {
-		dest := NewInput("dest")
-		collection := NewCollection().Add(NewOutput("p1"), NewOutput("p2"))
-		// Break one port after adding
-		collection.ByName("p1").WithChainableErr(assert.AnError)
-
-		// PipeTo should NOT poison the collection
-		result := collection.PipeTo(dest)
-
-		// Collection is still healthy
-		assert.False(t, result.HasChainableErr())
-		assert.Equal(t, 2, result.Len())
+	t.Run("PipeTo does not fail on valid collection", func(t *testing.T) {
+		dest := mustInput("dest")
+		collection := NewCollection().Add(mustOutput("p1"), mustOutput("p2"))
+		err := collection.PipeTo(dest)
+		require.NoError(t, err)
+		assert.Equal(t, 2, collection.Len())
 	})
 }
 
 func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
-	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
+	t.Run("ByName returns nil on not found", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
 
-		// Query for non-existent port
 		result := collection.ByName("nonexistent")
-
-		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
-		assert.Equal(t, 2, collection.Len())
-
 		// Collection should still be usable
+		assert.Equal(t, 2, collection.Len())
 		p1 := collection.ByName("p1")
 		require.NotNil(t, p1)
 		assert.Equal(t, "p1", p1.Name())
 	})
 
-	t.Run("Any does not poison collection when empty", func(t *testing.T) {
+	t.Run("Any returns nil when empty", func(t *testing.T) {
 		collection := NewCollection()
 
-		// Query any on empty collection
 		result := collection.Any()
-
-		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
-
 		// Collection should still be usable for adding
-		collection.Add(NewOutput("p1"))
+		collection.Add(mustOutput("p1"))
 		assert.Equal(t, 1, collection.Len())
 	})
 
-	t.Run("FindAny does not poison collection when no match", func(t *testing.T) {
+	t.Run("FindAny returns nil when no match", func(t *testing.T) {
 		collection := NewCollection().Add(NewGroup("p1", "p2").mustAll()...)
 
-		// Query with predicate that matches nothing
 		result := collection.FindAny(func(p *Port) bool {
 			return p.Name() == "nonexistent"
 		})
-
-		// Result should be nil
 		assert.Nil(t, result)
 
-		// Collection should NOT be poisoned
-		assert.False(t, collection.HasChainableErr())
+		// Collection should still be usable
 		assert.Equal(t, 2, collection.Len())
-
-		// Subsequent FindAny should work
 		found := collection.FindAny(func(p *Port) bool {
 			return p.Name() == "p1"
 		})

@@ -22,16 +22,14 @@ func Test_WaitingForInputs(t *testing.T) {
 			name: "waiting for longer chain",
 			setupFM: func() *fmesh.FMesh {
 				getDoubler := func(name string) *component.Component {
-					return component.New(name).
-						WithDescription("This component just doubles the input").
-						AddInputs("i1").
-						AddOutputs("o1").
-						WithActivationFunc(func(this *component.Component) error {
+					return mustComponent(name,
+						component.WithInputs("i1"),
+						component.WithOutputs("o1"),
+						component.WithActivationFunc(func(this *component.Component) error {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
-
-							this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
-							return nil
-						})
+							return this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
+						}),
+					).WithDescription("This component just doubles the input")
 				}
 
 				d1 := getDoubler("d1")
@@ -40,11 +38,10 @@ func Test_WaitingForInputs(t *testing.T) {
 				d4 := getDoubler("d4")
 				d5 := getDoubler("d5")
 
-				s := component.New("sum").
-					WithDescription("This component just sums 2 inputs").
-					AddInputs("i1", "i2").
-					AddOutputs("o1").
-					WithActivationFunc(func(this *component.Component) error {
+				s := mustComponent("sum",
+					component.WithInputs("i1", "i2"),
+					component.WithOutputs("o1"),
+					component.WithActivationFunc(func(this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return component.ErrWaitingForInputsKeep
 						}
@@ -52,31 +49,48 @@ func Test_WaitingForInputs(t *testing.T) {
 						inputNum1 := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 						inputNum2 := this.InputByName("i2").Signals().FirstPayloadOrDefault(0)
 
-						this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
-						return nil
-					})
+						return this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
+					}),
+				).WithDescription("This component just sums 2 inputs")
 
 				// This chain consists of 3 components: d1->d2->d3
-				d1.OutputByName("o1").PipeTo(d2.InputByName("i1"))
-				d2.OutputByName("o1").PipeTo(d3.InputByName("i1"))
+				if err := d1.OutputByName("o1").PipeTo(d2.InputByName("i1")); err != nil {
+					panic(err)
+				}
+				if err := d2.OutputByName("o1").PipeTo(d3.InputByName("i1")); err != nil {
+					panic(err)
+				}
 
 				// This chain has only 2: d4->d5
-				d4.OutputByName("o1").PipeTo(d5.InputByName("i1"))
+				if err := d4.OutputByName("o1").PipeTo(d5.InputByName("i1")); err != nil {
+					panic(err)
+				}
 
 				// Both chains go into summator
-				d3.OutputByName("o1").PipeTo(s.InputByName("i1"))
-				d5.OutputByName("o1").PipeTo(s.InputByName("i2"))
+				if err := d3.OutputByName("o1").PipeTo(s.InputByName("i1")); err != nil {
+					panic(err)
+				}
+				if err := d5.OutputByName("o1").PipeTo(s.InputByName("i2")); err != nil {
+					panic(err)
+				}
 
-				return fmesh.NewWithConfig("fm", &fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           5,
-				}).
-					AddComponents(d1, d2, d3, d4, d5, s)
+				}))
+				if err := fm.AddComponents(d1, d2, d3, d4, d5, s); err != nil {
+					panic(err)
+				}
+				return fm
 			},
 			setInputs: func(fm *fmesh.FMesh) {
 				// Put 1 signal to each chain so they start in the same cycle
-				fm.Components().ByName("d1").InputByName("i1").PutSignals(signal.New(1))
-				fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2))
+				if err := fm.Components().ByName("d1").InputByName("i1").PutSignals(signal.New(1)); err != nil {
+					panic(err)
+				}
+				if err := fm.Components().ByName("d4").InputByName("i1").PutSignals(signal.New(2)); err != nil {
+					panic(err)
+				}
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
 				require.NoError(t, err)

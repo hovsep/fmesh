@@ -1,7 +1,6 @@
 package labels
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -13,7 +12,6 @@ func TestLabelsCollection_New(t *testing.T) {
 	c := NewCollection()
 	assert.NotNil(t, c)
 	assert.Equal(t, 0, c.Len())
-	assert.False(t, c.HasChainableErr())
 }
 
 func TestLabelsCollection_Add(t *testing.T) {
@@ -451,7 +449,7 @@ func TestLabelsCollection_Every(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		predicate  LabelPredicate
+		predicate  Predicate
 		want       bool
 	}{
 		{
@@ -510,7 +508,7 @@ func TestLabelsCollection_Any(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		predicate  LabelPredicate
+		predicate  Predicate
 		want       bool
 	}{
 		{
@@ -588,7 +586,7 @@ func TestLabelsCollection_Map(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		mapper     LabelMapper
+		mapper     Mapper
 		assertions func(t *testing.T, result *Collection)
 	}{
 		{
@@ -656,15 +654,6 @@ func TestLabelsCollection_Map(t *testing.T) {
 				assert.True(t, result.ValueIs("system.tier", "[frontend]"))
 			},
 		},
-		{
-			name:       "with chainable error returns error collection",
-			collection: NewCollection().WithChainableErr(errors.New("test error")),
-			mapper:     func(k, v string) (string, string) { return k, v },
-			assertions: func(t *testing.T, result *Collection) {
-				assert.True(t, result.HasChainableErr())
-				require.Error(t, result.ChainableErr())
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -680,7 +669,7 @@ func TestLabelsCollection_Filter(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		predicate  LabelPredicate
+		predicate  Predicate
 		assertions func(t *testing.T, result *Collection)
 	}{
 		{
@@ -786,42 +775,17 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 }
 
 func TestLabelsCollection_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name       string
-		collection *Collection
-		assertions func(t *testing.T, lc *Collection)
-	}{
-		{
-			name:       "mutating methods return self without changes when error present",
-			collection: NewCollection().WithChainableErr(errors.New("test error")),
-			assertions: func(t *testing.T, lc *Collection) {
-				result := lc.Add("test", "value")
-				assert.True(t, result.HasChainableErr())
-				assert.Equal(t, 0, result.Len())
-			},
-		},
-		{
-			name:       "query methods return safe defaults when error present",
-			collection: NewCollection().WithChainableErr(errors.New("test error")),
-			assertions: func(t *testing.T, lc *Collection) {
-				assert.False(t, lc.Has("test"))
-				assert.Equal(t, 0, lc.Len())
-				assert.False(t, lc.Every(func(k, v string) bool { return true }))
-				assert.False(t, lc.Any(func(k, v string) bool { return true }))
+	t.Run("query methods return safe defaults on empty collection", func(t *testing.T) {
+		lc := NewCollection()
+		assert.False(t, lc.Has("test"))
+		assert.Equal(t, 0, lc.Len())
+		assert.True(t, lc.Every(func(k, v string) bool { return true })) // vacuous truth
+		assert.False(t, lc.Any(func(k, v string) bool { return true }))  // empty
 
-				val, err := lc.Value("test")
-				require.Error(t, err)
-				assert.Empty(t, val)
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.assertions != nil {
-				tt.assertions(t, tt.collection)
-			}
-		})
-	}
+		val, err := lc.Value("test")
+		require.Error(t, err)
+		assert.Empty(t, val)
+	})
 }
 
 func TestLabelsCollection_HasAllFrom(t *testing.T) {
@@ -934,7 +898,7 @@ func TestLabelsCollection_Count(t *testing.T) {
 	tests := []struct {
 		name       string
 		collection *Collection
-		pred       LabelPredicate
+		pred       Predicate
 		want       int
 	}{
 		{
@@ -971,15 +935,6 @@ func TestLabelsCollection_Count(t *testing.T) {
 			pred: func(_, _ string) bool { return true },
 			want: 2,
 		},
-		{
-			name: "chainable error → 0",
-			collection: NewCollection().AddMany(Map{
-				"a": "1",
-				"b": "2",
-			}).WithChainableErr(errors.New("err")),
-			pred: func(_, _ string) bool { return true },
-			want: 0,
-		},
 	}
 
 	for _, tt := range tests {
@@ -999,11 +954,6 @@ func TestLabelsCollection_Keys(t *testing.T) {
 	t.Run("empty collection", func(t *testing.T) {
 		assert.Empty(t, NewCollection().Keys())
 	})
-
-	t.Run("chainable error returns nil", func(t *testing.T) {
-		c := NewCollection().WithChainableErr(errors.New("err"))
-		assert.Nil(t, c.Keys())
-	})
 }
 
 func TestLabelsCollection_Values(t *testing.T) {
@@ -1014,11 +964,6 @@ func TestLabelsCollection_Values(t *testing.T) {
 
 	t.Run("empty collection", func(t *testing.T) {
 		assert.Empty(t, NewCollection().Values())
-	})
-
-	t.Run("chainable error returns nil", func(t *testing.T) {
-		c := NewCollection().WithChainableErr(errors.New("err"))
-		assert.Nil(t, c.Values())
 	})
 }
 
@@ -1054,18 +999,6 @@ func TestLabelsCollection_Merge(t *testing.T) {
 		merged := NewCollection().Merge(b)
 		assert.True(t, merged.ValueIs("k", "v"))
 	})
-
-	t.Run("receiver error propagates", func(t *testing.T) {
-		a := NewCollection().WithChainableErr(errors.New("bad"))
-		merged := a.Merge(NewCollection().Add("x", "1"))
-		assert.True(t, merged.HasChainableErr())
-	})
-
-	t.Run("other error propagates", func(t *testing.T) {
-		b := NewCollection().WithChainableErr(errors.New("bad other"))
-		merged := NewCollection().Add("x", "1").Merge(b)
-		assert.True(t, merged.HasChainableErr())
-	})
 }
 
 func TestLabelsCollection_ValueIs_edge_cases(t *testing.T) {
@@ -1079,10 +1012,5 @@ func TestLabelsCollection_ValueIs_edge_cases(t *testing.T) {
 		c := NewCollection()
 		assert.False(t, c.ValueIs("missing", ""))
 		assert.False(t, c.ValueIs("missing", "val"))
-	})
-
-	t.Run("chainable error returns false", func(t *testing.T) {
-		c := NewCollection().Add("k", "v").WithChainableErr(errors.New("err"))
-		assert.False(t, c.ValueIs("k", "v"))
 	})
 }

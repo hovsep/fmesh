@@ -1,7 +1,6 @@
 package signal
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh/labels"
@@ -87,12 +86,6 @@ func TestGroup_FirstPayload(t *testing.T) {
 			group: NewGroup([]string{"1", "2"}, 123),
 			want:  []string{"1", "2"},
 		},
-		{
-			name:            "with error in chain",
-			group:           NewGroup(3, 4, 5).WithChainableErr(errors.New("some error in chain")),
-			want:            nil,
-			wantErrorString: "some error in chain",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -123,18 +116,6 @@ func TestGroup_AllPayloads(t *testing.T) {
 			name:  "with payloads",
 			group: NewGroup(1, nil, 3, []int{4, 5, 6}, map[byte]byte{7: 8}),
 			want:  []any{1, nil, 3, []int{4, 5, 6}, map[byte]byte{7: 8}},
-		},
-		{
-			name:            "with error in chain",
-			group:           NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
-			want:            nil,
-			wantErrorString: "some error in chain",
-		},
-		{
-			name:            "with error in signal",
-			group:           newGroupFromSignals(Signals{New(33).WithChainableErr(errors.New("some error in signal"))}),
-			want:            nil,
-			wantErrorString: "some error in signal",
 		},
 	}
 	for _, tt := range tests {
@@ -192,37 +173,10 @@ func TestGroup_With(t *testing.T) {
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
 		},
-		{
-			name: "with error in chain",
-			group: NewGroup(1, 2, 3).
-				With(New("valid before invalid")).
-				With(nil).
-				WithPayloads(4, 5, 6),
-			args: args{
-				signals: NewGroup(7, nil, 9).mustAll(),
-			},
-			want: NewGroup().WithChainableErr(errors.New("signal is invalid")),
-		},
-		{
-			name:  "with error in signal",
-			group: NewGroup(1, 2, 3).With(New(44).WithChainableErr(errors.New("some error in signal"))),
-			args: args{
-				signals: Signals{New(456)},
-			},
-			want: NewGroup(1, 2, 3).
-				With(New(44).WithChainableErr(errors.New("some error in signal"))).
-				WithChainableErr(errors.New("some error in signal")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.With(tt.args.signals...)
-			if tt.want.HasChainableErr() {
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.NoError(t, got.ChainableErr())
-			}
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -293,12 +247,6 @@ func TestGroup_First(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 3, payload)
 	})
-
-	t.Run("with error in chain returns nil", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain"))
-		got := group.First()
-		assert.Nil(t, got)
-	})
 }
 
 func TestGroup_Last(t *testing.T) {
@@ -322,11 +270,6 @@ func TestGroup_Last(t *testing.T) {
 		payload, err := got.Payload()
 		require.NoError(t, err)
 		assert.Equal(t, 3, payload)
-	})
-
-	t.Run("with error in chain returns nil", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(errors.New("some error"))
-		assert.Nil(t, group.Last())
 	})
 }
 
@@ -355,17 +298,6 @@ func TestGroup_Join(t *testing.T) {
 		_ = a.Join(NewGroup(3, 4))
 		assert.Equal(t, 2, a.Len())
 	})
-
-	t.Run("receiver error propagates", func(t *testing.T) {
-		a := NewGroup(1).WithChainableErr(errors.New("bad"))
-		got := a.Join(NewGroup(2))
-		assert.True(t, got.HasChainableErr())
-	})
-
-	t.Run("other error propagates", func(t *testing.T) {
-		got := NewGroup(1).Join(NewGroup(2).WithChainableErr(errors.New("bad other")))
-		assert.True(t, got.HasChainableErr())
-	})
 }
 
 func TestGroup_Contains(t *testing.T) {
@@ -383,43 +315,39 @@ func TestGroup_Contains(t *testing.T) {
 	t.Run("empty group", func(t *testing.T) {
 		assert.False(t, NewGroup().Contains(New(1)))
 	})
-
-	t.Run("group with error", func(t *testing.T) {
-		s := New(1)
-		g := NewGroup().With(s).WithChainableErr(errors.New("e"))
-		assert.False(t, g.Contains(s))
-	})
 }
 
 func TestGroup_ContainsPayload(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		g := NewGroup(1, 2, 3)
-		assert.True(t, g.ContainsPayload(2))
+		found, err := g.ContainsPayload(2)
+		require.NoError(t, err)
+		assert.True(t, found)
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		g := NewGroup(1, 2, 3)
-		assert.False(t, g.ContainsPayload(99))
+		found, err := g.ContainsPayload(99)
+		require.NoError(t, err)
+		assert.False(t, found)
 	})
 
 	t.Run("nil payload found", func(t *testing.T) {
 		g := NewGroup(nil, 1)
-		assert.True(t, g.ContainsPayload(nil))
+		found, err := g.ContainsPayload(nil)
+		require.NoError(t, err)
+		assert.True(t, found)
 	})
 
 	t.Run("empty group", func(t *testing.T) {
-		assert.False(t, NewGroup().ContainsPayload(1))
+		found, err := NewGroup().ContainsPayload(1)
+		require.NoError(t, err)
+		assert.False(t, found)
 	})
 
-	t.Run("group with error", func(t *testing.T) {
-		g := NewGroup(1).WithChainableErr(errors.New("e"))
-		assert.False(t, g.ContainsPayload(1))
-	})
-
-	t.Run("non-comparable payload panics", func(t *testing.T) {
-		assert.Panics(t, func() {
-			NewGroup(1).ContainsPayload([]int{1, 2})
-		})
+	t.Run("non-comparable payload returns error", func(t *testing.T) {
+		_, err := NewGroup(1).ContainsPayload([]int{1, 2})
+		assert.Error(t, err)
 	})
 }
 
@@ -473,12 +401,6 @@ func TestGroup_Find(t *testing.T) {
 		got := group.Find(func(s *Signal) bool { return true })
 		assert.Nil(t, got)
 	})
-
-	t.Run("returns nil when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
-		got := group.Find(func(s *Signal) bool { return true })
-		assert.Nil(t, got)
-	})
 }
 
 func TestGroup_All(t *testing.T) {
@@ -499,12 +421,6 @@ func TestGroup_All(t *testing.T) {
 			group:           NewGroup(1, nil, 3),
 			want:            Signals{New(1), New(nil), New(3)},
 			wantErrorString: "",
-		},
-		{
-			name:            "with error in chain",
-			group:           NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
-			want:            nil,
-			wantErrorString: "some error in chain",
 		},
 		{
 			name: "with labeled signals",
@@ -622,28 +538,10 @@ func TestGroup_Map(t *testing.T) {
 			},
 			want: NewGroup(7, 14, 21),
 		},
-		{
-			name:  "signal with error",
-			group: NewGroup(1, 2, 3).With(New(4).WithChainableErr(errors.New("some error in chain"))),
-			args: args{
-				mapperFunc: func(signal *Signal) *Signal {
-					return signal.MapPayload(func(payload any) any {
-						return payload.(int) * 8
-					})
-				},
-			},
-			want: NewGroup().WithChainableErr(errors.New("some error in chain")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.Map(tt.args.mapperFunc)
-			if tt.want.HasChainableErr() {
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.NoError(t, got.ChainableErr())
-			}
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -705,26 +603,11 @@ func TestGroup_MapIf(t *testing.T) {
 			},
 			want: NewGroup(1, 200, 3, 400),
 		},
-		{
-			name:  "with error in chain",
-			group: NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
-			args: args{
-				predicate:  func(s *Signal) bool { return true },
-				mapperFunc: func(s *Signal) *Signal { return s },
-			},
-			want: NewGroup().WithChainableErr(errors.New("some error in chain")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.MapIf(tt.args.predicate, tt.args.mapperFunc)
-			if tt.want.HasChainableErr() {
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.NoError(t, got.ChainableErr())
-				assert.Equal(t, tt.want, got)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -779,26 +662,11 @@ func TestGroup_MapPayloadsIf(t *testing.T) {
 			},
 			want: NewGroup(1, 200, 3, 400),
 		},
-		{
-			name:  "with error in chain",
-			group: NewGroup(1, 2, 3).WithChainableErr(errors.New("some error in chain")),
-			args: args{
-				predicate:  func(s *Signal) bool { return true },
-				mapperFunc: func(p any) any { return p },
-			},
-			want: NewGroup().WithChainableErr(errors.New("some error in chain")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.MapPayloadsIf(tt.args.predicate, tt.args.mapperFunc)
-			if tt.want.HasChainableErr() {
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.NoError(t, got.ChainableErr())
-				assert.Equal(t, tt.want, got)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -833,26 +701,10 @@ func TestGroup_MapPayloads(t *testing.T) {
 			},
 			want: NewGroup(7, 14, 21),
 		},
-		{
-			name:  "signal with error",
-			group: NewGroup(1, 2, 3).With(New(4).WithChainableErr(errors.New("some error in chain"))),
-			args: args{
-				mapperFunc: func(payload any) any {
-					return payload.(int) * 7
-				},
-			},
-			want: NewGroup().WithChainableErr(errors.New("some error in chain")),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.group.MapPayloads(tt.args.mapperFunc)
-			if tt.want.HasChainableErr() {
-				assert.Error(t, got.ChainableErr())
-				assert.EqualError(t, got.ChainableErr(), tt.want.ChainableErr().Error())
-			} else {
-				assert.NoError(t, got.ChainableErr())
-			}
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -884,14 +736,6 @@ func TestGroup_Every(t *testing.T) {
 		})
 		assert.True(t, result)
 	})
-
-	t.Run("returns false when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2).WithChainableErr(assert.AnError)
-		result := group.Every(func(s *Signal) bool {
-			return true
-		})
-		assert.False(t, result)
-	})
 }
 
 func TestGroup_Any(t *testing.T) {
@@ -920,14 +764,6 @@ func TestGroup_Any(t *testing.T) {
 		})
 		assert.False(t, result)
 	})
-
-	t.Run("returns false when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2).WithChainableErr(assert.AnError)
-		result := group.Any(func(s *Signal) bool {
-			return true
-		})
-		assert.False(t, result)
-	})
 }
 
 func TestGroup_Count(t *testing.T) {
@@ -947,43 +783,26 @@ func TestGroup_Count(t *testing.T) {
 		})
 		assert.Equal(t, 0, count)
 	})
-
-	t.Run("returns 0 when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
-		count := group.Count(func(s *Signal) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
 }
 
 func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to each signal", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		group.ForEach(func(s *Signal) error {
+		_, err := group.ForEach(func(s *Signal) error {
 			count++
 			return nil
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 3, count)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
-		result := group.ForEach(func(s *Signal) error {
+		_, err := group.ForEach(func(s *Signal) error {
 			return assert.AnError
 		})
-		assert.True(t, result.HasChainableErr())
-	})
-
-	t.Run("skips when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
-		visited := false
-		group.ForEach(func(s *Signal) error {
-			visited = true
-			return nil
-		})
-		assert.False(t, visited)
+		assert.Error(t, err)
 	})
 }
 
@@ -991,7 +810,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action only to matching signals", func(t *testing.T) {
 		group := NewGroup(1, 2, 3, 4)
 		count := 0
-		group.ForEachIf(
+		_, err := group.ForEachIf(
 			func(s *Signal) bool {
 				payload, _ := s.Payload()
 				return payload.(int)%2 == 0
@@ -1001,46 +820,39 @@ func TestGroup_ForEachIf(t *testing.T) {
 				return nil
 			},
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 2, count)
 	})
 
 	t.Run("applies action to all when predicate always true", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		group.ForEachIf(
+		_, err := group.ForEachIf(
 			func(s *Signal) bool { return true },
 			func(s *Signal) error { count++; return nil },
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 3, count)
 	})
 
 	t.Run("applies action to none when predicate always false", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		group.ForEachIf(
+		_, err := group.ForEachIf(
 			func(s *Signal) bool { return false },
 			func(s *Signal) error { count++; return nil },
 		)
+		require.NoError(t, err)
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("stops on error and sets chainable error", func(t *testing.T) {
+	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup(2, 4, 6)
-		result := group.ForEachIf(
+		_, err := group.ForEachIf(
 			func(s *Signal) bool { return true },
 			func(s *Signal) error { return assert.AnError },
 		)
-		assert.True(t, result.HasChainableErr())
-	})
-
-	t.Run("skips when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
-		visited := false
-		group.ForEachIf(
-			func(s *Signal) bool { return true },
-			func(s *Signal) error { visited = true; return nil },
-		)
-		assert.False(t, visited)
+		assert.Error(t, err)
 	})
 }
 
@@ -1050,9 +862,8 @@ func TestGroup_Len(t *testing.T) {
 		assert.Equal(t, 3, group.Len())
 	})
 
-	t.Run("returns 0 when group has error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3).WithChainableErr(assert.AnError)
-		assert.Equal(t, 0, group.Len())
+	t.Run("returns 0 for empty group", func(t *testing.T) {
+		assert.Equal(t, 0, NewGroup().Len())
 	})
 }
 
@@ -1073,14 +884,6 @@ func TestGroup_Reduce(t *testing.T) {
 	t.Run("returns initial for empty group", func(t *testing.T) {
 		initial := New(99)
 		result := NewGroup().Reduce(initial, func(acc, s *Signal) *Signal { return s })
-		assert.Equal(t, initial, result)
-	})
-
-	t.Run("returns initial when group has error", func(t *testing.T) {
-		initial := New(0)
-		result := NewGroup(1, 2).WithChainableErr(assert.AnError).Reduce(initial, func(acc, s *Signal) *Signal {
-			return s
-		})
 		assert.Equal(t, initial, result)
 	})
 }
@@ -1106,31 +909,6 @@ func TestGroup_ReducePayloads(t *testing.T) {
 		result := NewGroup().ReducePayloads(42, func(acc, payload any) any { return payload })
 		assert.Equal(t, 42, result)
 	})
-
-	t.Run("returns initial when group has error", func(t *testing.T) {
-		result := NewGroup(1, 2).WithChainableErr(assert.AnError).ReducePayloads(0, func(acc, payload any) any {
-			return acc.(int) + payload.(int)
-		})
-		assert.Equal(t, 0, result)
-	})
-}
-
-func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
-	group := NewGroup()
-
-	result := group.First()
-	assert.Nil(t, result)
-	assert.False(t, group.HasChainableErr())
-
-	group = group.With(New(42))
-	assert.Equal(t, 1, group.Len())
-	assert.False(t, group.HasChainableErr())
-
-	first := group.First()
-	require.NotNil(t, first)
-	payload, err := first.Payload()
-	require.NoError(t, err)
-	assert.Equal(t, 42, payload)
 }
 
 // TestGroup_NilPayloadInvariant verifies that nil is a valid payload in a group
@@ -1186,7 +964,12 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 	})
 
 	t.Run("ContainsPayload finds nil", func(t *testing.T) {
-		assert.True(t, NewGroup(nil, 1).ContainsPayload(nil))
-		assert.False(t, NewGroup(1, 2).ContainsPayload(nil))
+		found1, err1 := NewGroup(nil, 1).ContainsPayload(nil)
+		require.NoError(t, err1)
+		assert.True(t, found1)
+
+		found2, err2 := NewGroup(1, 2).ContainsPayload(nil)
+		require.NoError(t, err2)
+		assert.False(t, found2)
 	})
 }

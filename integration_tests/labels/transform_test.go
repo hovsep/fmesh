@@ -12,6 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
 // Test_LabelTransformation demonstrates real-world use cases for labels.Collection.Map().
 func Test_LabelTransformation(t *testing.T) {
 	t.Run("normalize label keys to uppercase", func(t *testing.T) {
@@ -36,13 +52,13 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("add namespace prefix to labels", func(t *testing.T) {
 		// Scenario: You want to namespace all labels to avoid conflicts
-		c := component.New("processor").
-			AddInputs("in").
-			AddOutputs("out").
-			SetLabels(labels.Map{
-				"version": "1.0",
-				"type":    "transformer",
-			})
+		c := mustComponent("processor",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+		).SetLabels(labels.Map{
+			"version": "1.0",
+			"type":    "transformer",
+		})
 
 		// Add application-specific namespace to all labels
 		namespacedLabels := c.Labels().Map(func(k, v string) (string, string) {
@@ -89,15 +105,15 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("transform labels in mesh processing", func(t *testing.T) {
 		// Scenario: Process signals and normalize their labels during mesh execution
-		normalizer := component.New("normalizer").
-			AddInputs("in").
-			AddOutputs("out").
-			WithActivationFunc(func(this *component.Component) error {
+		normalizer := mustComponent("normalizer",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(this *component.Component) error {
 				inPort := this.InputByName("in")
 				outPort := this.OutputByName("out")
 
 				// Process each signal and normalize its labels
-				inPort.Signals().ForEach(func(sig *signal.Signal) error {
+				_, err := inPort.Signals().ForEach(func(sig *signal.Signal) error {
 					// Normalize label keys to the lowercase
 					normalizedLabels := sig.Labels().Map(func(k, v string) (string, string) {
 						return strings.ToLower(k), v
@@ -111,22 +127,24 @@ func Test_LabelTransformation(t *testing.T) {
 					}
 
 					newSignal := signal.New(sig.PayloadOrNil()).WithOnlyLabels(labelsMap)
-					return outPort.PutSignals(newSignal).ChainableErr()
+					return outPort.PutSignals(newSignal)
 				})
 
-				return nil
-			})
+				return err
+			}),
+		)
 
-		fm := fmesh.New("label-transform-mesh").AddComponents(normalizer)
+		fm := mustFMesh("label-transform-mesh")
+		require.NoError(t, fm.AddComponents(normalizer))
 
 		// Input signal with mixed-case labels
-		fm.ComponentByName("normalizer").InputByName("in").PutSignals(
+		require.NoError(t, fm.ComponentByName("normalizer").InputByName("in").PutSignals(
 			signal.New(100).WithOnlyLabels(labels.Map{
 				"ENV":    "prod",
 				"Region": "us-west",
 				"TIER":   "frontend",
 			}),
-		)
+		))
 
 		_, err := fm.Run()
 		require.NoError(t, err)

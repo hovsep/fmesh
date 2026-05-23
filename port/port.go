@@ -1,7 +1,6 @@
 package port
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hovsep/fmesh/labels"
@@ -9,51 +8,81 @@ import (
 )
 
 // Direction represents the direction of a port.
-type Direction bool
+type Direction int
 
 const (
+	// DirectionUndefined is the zero value; a port with this direction is misconfigured.
+	DirectionUndefined Direction = iota
 	// DirectionIn is the direction for input ports.
-	DirectionIn Direction = true
+	DirectionIn
 	// DirectionOut is the direction for output ports.
-	DirectionOut Direction = false
+	DirectionOut
 )
+
+// Option is a functional option for configuring a port during construction.
+type Option func(*Port) error
 
 // Port defines a connectivity point of a component.
 type Port struct {
 	name            string
-	direction       Direction // Input or output direction
+	direction       Direction
 	description     string
 	labels          *labels.Collection
-	chainableErr    error
 	signals         *signal.Group
 	pipes           *Group // Outbound pipes
 	parentComponent ParentComponent
 	hooks           *Hooks
 }
 
-// NewInput creates a new input port.
-func NewInput(name string) *Port {
-	return &Port{
-		name:         name,
-		direction:    DirectionIn,
-		labels:       labels.NewCollection(),
-		chainableErr: nil,
-		pipes:        NewGroup(),
-		signals:      signal.NewGroup(),
-		hooks:        NewHooks(),
+// NewInput creates a new input port, applying any provided options.
+func NewInput(name string, opts ...Option) (*Port, error) {
+	p := &Port{
+		name:      name,
+		direction: DirectionIn,
+		labels:    labels.NewCollection(),
+		pipes:     NewGroup(),
+		signals:   signal.NewGroup(),
+		hooks:     NewHooks(),
+	}
+	for _, opt := range opts {
+		if err := opt(p); err != nil {
+			return nil, fmt.Errorf("port %q option failed: %w", name, err)
+		}
+	}
+	return p, nil
+}
+
+// NewOutput creates a new output port, applying any provided options.
+func NewOutput(name string, opts ...Option) (*Port, error) {
+	p := &Port{
+		name:      name,
+		direction: DirectionOut,
+		labels:    labels.NewCollection(),
+		pipes:     NewGroup(),
+		signals:   signal.NewGroup(),
+		hooks:     NewHooks(),
+	}
+	for _, opt := range opts {
+		if err := opt(p); err != nil {
+			return nil, fmt.Errorf("port %q option failed: %w", name, err)
+		}
+	}
+	return p, nil
+}
+
+// WithDescription is a port option that sets the description.
+func WithDescription(description string) Option {
+	return func(p *Port) error {
+		p.description = description
+		return nil
 	}
 }
 
-// NewOutput creates a new output port.
-func NewOutput(name string) *Port {
-	return &Port{
-		name:         name,
-		direction:    DirectionOut,
-		labels:       labels.NewCollection(),
-		chainableErr: nil,
-		pipes:        NewGroup(),
-		signals:      signal.NewGroup(),
-		hooks:        NewHooks(),
+// WithLabel is a port option that adds a label.
+func WithLabel(name, value string) Option {
+	return func(p *Port) error {
+		p.labels.Add(name, value)
+		return nil
 	}
 }
 
@@ -84,208 +113,130 @@ func (p *Port) IsOutput() bool {
 
 // Labels returns the port's labels collection.
 func (p *Port) Labels() *labels.Collection {
-	if p.HasChainableErr() {
-		return labels.NewCollection().WithChainableErr(p.ChainableErr())
-	}
 	return p.labels
 }
 
 // SetLabels replaces all labels.
 func (p *Port) SetLabels(labelMap labels.Map) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	p.labels.Clear().AddMany(labelMap)
 	return p
 }
 
 // AddLabels adds or updates labels.
 func (p *Port) AddLabels(labelMap labels.Map) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	p.labels.AddMany(labelMap)
 	return p
 }
 
 // AddLabel adds or updates a single label.
 func (p *Port) AddLabel(name, value string) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	p.labels.Add(name, value)
 	return p
 }
 
 // ClearLabels removes all labels.
 func (p *Port) ClearLabels() *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	p.labels.Clear()
 	return p
 }
 
 // RemoveLabels removes specific labels.
 func (p *Port) RemoveLabels(names ...string) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	p.labels.Remove(names...)
 	return p
 }
 
-// WithDescription sets the port description.
-func (p *Port) WithDescription(description string) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
-	p.description = description
-	return p
-}
-
-// Pipes returns outbound pipes (output ports only).
+// Pipes returns outbound pipes. Input ports always return an empty group.
 func (p *Port) Pipes() *Group {
-	if p.HasChainableErr() {
-		return NewGroup().WithChainableErr(p.ChainableErr())
-	}
-
-	if p.IsInput() {
-		return NewGroup().WithChainableErr(fmt.Errorf("port '%s' is an input port and cannot have outbound pipes", p.Name()))
-	}
-
 	return p.pipes
 }
 
 // withSignals sets the signals field.
-func (p *Port) withSignals(signalsGroup *signal.Group) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
-	if signalsGroup.HasChainableErr() {
-		return p.WithChainableErr(signalsGroup.ChainableErr())
-	}
+func (p *Port) withSignals(signalsGroup *signal.Group) {
 	p.signals = signalsGroup
-	return p
 }
 
 // Signals returns all signals in the port.
 func (p *Port) Signals() *signal.Group {
-	if p.HasChainableErr() {
-		return signal.NewGroup().WithChainableErr(p.ChainableErr())
-	}
 	return p.signals
 }
 
 // PutSignals adds signals to the port.
-func (p *Port) PutSignals(signals ...*signal.Signal) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
-	result := p.withSignals(p.Signals().With(signals...))
+func (p *Port) PutSignals(signals ...*signal.Signal) error {
+	p.withSignals(p.Signals().With(signals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: signals,
 	}); err != nil {
-		return result.WithChainableErr(fmt.Errorf("onSignalsAdded hook failed: %w", err))
+		return fmt.Errorf("onSignalsAdded hook failed: %w", err)
 	}
 
-	return result
+	return nil
 }
 
 // PutPayloads creates signals from given payloads.
-func (p *Port) PutPayloads(payloads ...any) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
+func (p *Port) PutPayloads(payloads ...any) error {
 	newSignals, _ := signal.NewGroup(payloads...).All()
-
-	result := p.withSignals(p.Signals().With(newSignals...))
+	p.withSignals(p.Signals().With(newSignals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: newSignals,
 	}); err != nil {
-		return result.WithChainableErr(fmt.Errorf("onSignalsAdded hook failed: %w", err))
+		return fmt.Errorf("onSignalsAdded hook failed: %w", err)
 	}
 
-	return result
+	return nil
 }
 
 // PutSignalGroups adds all signals from signal groups.
-func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
+func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 	for _, group := range signalGroups {
 		signals, err := group.All()
 		if err != nil {
-			return p.WithChainableErr(err)
+			return err
 		}
-		p.PutSignals(signals...)
-		if p.HasChainableErr() {
-			return p
+		if err := p.PutSignals(signals...); err != nil {
+			return err
 		}
 	}
-
-	return p
+	return nil
 }
 
 // Clear removes all signals.
-func (p *Port) Clear() *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
+func (p *Port) Clear() error {
 	signalsCleared := p.Signals().Len()
 	p.withSignals(signal.NewGroup())
 
 	// Trigger OnClear hook
-	err := p.hooks.onClear.Trigger(&ClearContext{
+	if err := p.hooks.onClear.Trigger(&ClearContext{
 		Port:           p,
 		SignalsCleared: signalsCleared,
-	})
-
-	if err != nil {
-		return p.WithChainableErr(fmt.Errorf("onClear hook failed: %w", err))
+	}); err != nil {
+		return fmt.Errorf("onClear hook failed: %w", err)
 	}
 
-	return p
+	return nil
 }
 
 // Flush pushes signals to pipes and clears the port (output ports only).
-func (p *Port) Flush() *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
+func (p *Port) Flush() error {
 	if p.IsInput() {
-		return p.WithChainableErr(fmt.Errorf("cannot flush input port '%s': only output ports can be flushed", p.Name()))
+		return fmt.Errorf("cannot flush input port %q: only output ports can be flushed", p.Name())
 	}
 
 	if !p.HasSignals() || !p.HasPipes() {
-		// Log this
-		// Nothing to flush
-		return p
+		return nil
 	}
 
-	pipes, err := p.pipes.All()
-	if err != nil {
-		return p.WithChainableErr(err)
-	}
-
+	pipes, _ := p.pipes.All()
 	for _, outboundPort := range pipes {
 		// Fan-Out
-		err = ForwardSignals(p, outboundPort)
-		if err != nil {
-			return p.WithChainableErr(err)
+		if err := ForwardSignals(p, outboundPort); err != nil {
+			return err
 		}
 	}
 	return p.Clear()
@@ -302,38 +253,30 @@ func (p *Port) HasPipes() bool {
 }
 
 // PipeTo connects this port to destination ports.
-func (p *Port) PipeTo(destPorts ...*Port) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
-
+func (p *Port) PipeTo(destPorts ...*Port) error {
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
-			return p.WithChainableErr(fmt.Errorf("pipe validation failed: %w", err))
+			return fmt.Errorf("pipe validation failed: %w", err)
 		}
-		p.pipes = p.pipes.Add(destPort)
+		p.pipes.add(destPort)
 
 		// Trigger OnOutboundPipe hook on source port (this port)
-		err := p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
+		if err := p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
 			SourcePort:      p,
 			DestinationPort: destPort,
-		})
-
-		if err != nil {
-			return p.WithChainableErr(fmt.Errorf("onOutboundPipe hook failed: %w", err))
+		}); err != nil {
+			return fmt.Errorf("onOutboundPipe hook failed: %w", err)
 		}
 
 		// Trigger OnInboundPipe hook on destination port
-		err = destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
+		if err := destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
 			DestinationPort: destPort,
 			SourcePort:      p,
-		})
-
-		if err != nil {
-			return p.WithChainableErr(fmt.Errorf("onInboundPipe hook failed: %w", err))
+		}); err != nil {
+			return fmt.Errorf("onInboundPipe hook failed: %w", err)
 		}
 	}
-	return p
+	return nil
 }
 
 func validatePipe(srcPort, dstPort *Port) error {
@@ -351,83 +294,29 @@ func validatePipe(srcPort, dstPort *Port) error {
 
 // ForwardSignals copies all signals from source to destination port without clearing source.
 func ForwardSignals(source, dest *Port) error {
-	if source.HasChainableErr() {
-		return source.ChainableErr()
-	}
-
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-
 	signals, err := source.Signals().All()
 	if err != nil {
 		return err
 	}
-	dest.PutSignals(signals...)
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-	return nil
+	return dest.PutSignals(signals...)
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
-	if source.HasChainableErr() {
-		return source.ChainableErr()
-	}
-
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-
 	filteredSignals, err := source.Signals().Filter(p).All()
 	if err != nil {
 		return err
 	}
-
-	dest.PutSignals(filteredSignals...)
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-	return nil
+	return dest.PutSignals(filteredSignals...)
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
-	if source.HasChainableErr() {
-		return source.ChainableErr()
-	}
-
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-
 	mappedSignals, err := source.Signals().Map(mapperFunc).All()
 	if err != nil {
 		return err
 	}
-
-	dest.PutSignals(mappedSignals...)
-	if dest.HasChainableErr() {
-		return dest.ChainableErr()
-	}
-	return nil
-}
-
-// WithChainableErr sets a chainable error and returns the port.
-func (p *Port) WithChainableErr(err error) *Port {
-	p.chainableErr = fmt.Errorf("error in port '%s' : %w", p.Name(), err)
-	return p
-}
-
-// HasChainableErr returns true when a chainable error is set.
-func (p *Port) HasChainableErr() bool {
-	return p.chainableErr != nil
-}
-
-// ChainableErr returns the chainable error.
-func (p *Port) ChainableErr() error {
-	return p.chainableErr
+	return dest.PutSignals(mappedSignals...)
 }
 
 // ParentComponent returns the port's parent component.
@@ -435,30 +324,21 @@ func (p *Port) ParentComponent() ParentComponent {
 	return p.parentComponent
 }
 
-// WithParentComponent sets the parent component.
-func (p *Port) WithParentComponent(parentComponent ParentComponent) *Port {
+// setParentComponent sets the parent component.
+func (p *Port) setParentComponent(parentComponent ParentComponent) {
 	p.parentComponent = parentComponent
-	return p
 }
 
 // SetupHooks configures port hooks using a closure.
 func (p *Port) SetupHooks(configure func(*Hooks)) *Port {
-	if p.HasChainableErr() {
-		return p
-	}
 	configure(p.hooks)
 	return p
 }
 
 // ValidateBeforeActivation checks if the port is valid before parent component activation.
 func (p *Port) ValidateBeforeActivation() error {
-	if p.HasChainableErr() {
-		return p.ChainableErr()
-	}
-
 	if p.ParentComponent() == nil {
-		return errors.New("parent component is not set")
+		return fmt.Errorf("port %q has no parent component", p.name)
 	}
-
 	return nil
 }
