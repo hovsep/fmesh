@@ -7,10 +7,10 @@ import (
 
 // Group represents an ordered list of signals.
 type Group struct {
-	signals Signals
+	signals []*Signal
 }
 
-func newGroupFromSignals(signals Signals) *Group {
+func newGroupFromSignals(signals []*Signal) *Group {
 	return &Group{
 		signals: slices.Clone(signals),
 	}
@@ -18,7 +18,7 @@ func newGroupFromSignals(signals Signals) *Group {
 
 // NewGroup creates a new group from the given payloads.
 func NewGroup(payloads ...any) *Group {
-	signals := make(Signals, len(payloads))
+	signals := make([]*Signal, len(payloads))
 	for i, payload := range payloads {
 		signals[i] = New(payload)
 	}
@@ -166,7 +166,7 @@ func (g *Group) AllPayloads() ([]any, error) {
 // With returns a new group with the given signals appended. The receiver is never modified.
 // Nil signals are silently skipped.
 func (g *Group) With(signals ...*Signal) *Group {
-	newSignals := make(Signals, 0, g.Len()+len(signals))
+	newSignals := make([]*Signal, 0, g.Len()+len(signals))
 	newSignals = append(newSignals, g.signals...)
 	for _, sig := range signals {
 		if sig == nil {
@@ -179,7 +179,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 
 // WithPayloads returns a new group with signals created from the given payloads appended.
 func (g *Group) WithPayloads(payloads ...any) *Group {
-	newSignals := make(Signals, g.Len()+len(payloads))
+	newSignals := make([]*Signal, g.Len()+len(payloads))
 	copy(newSignals, g.signals)
 	for i, p := range payloads {
 		newSignals[g.Len()+i] = New(p)
@@ -189,7 +189,7 @@ func (g *Group) WithPayloads(payloads ...any) *Group {
 
 // Join returns a new group containing signals from both groups.
 func (g *Group) Join(other *Group) *Group {
-	newSignals := make(Signals, g.Len()+other.Len())
+	newSignals := make([]*Signal, g.Len()+other.Len())
 	copy(newSignals, g.signals)
 	copy(newSignals[g.Len():], other.signals)
 	return newGroupFromSignals(newSignals)
@@ -198,7 +198,7 @@ func (g *Group) Join(other *Group) *Group {
 // All returns a cloned slice of signals. The slice is independent of the group;
 // the *Signal pointers inside are shared, but Signal is copy-on-write so callers
 // cannot corrupt group state through the returned pointers.
-func (g *Group) All() (Signals, error) {
+func (g *Group) All() ([]*Signal, error) {
 	return slices.Clone(g.signals), nil
 }
 
@@ -232,7 +232,7 @@ func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) (*Gro
 
 // Filter returns a new group with signals that pass the predicate.
 func (g *Group) Filter(p Predicate) *Group {
-	filtered := make(Signals, 0, len(g.signals))
+	filtered := make([]*Signal, 0, len(g.signals))
 	for _, s := range g.signals {
 		if p(s) {
 			filtered = append(filtered, s)
@@ -243,7 +243,7 @@ func (g *Group) Filter(p Predicate) *Group {
 
 // Map returns a new group with every signal transformed by the mapper.
 func (g *Group) Map(m Mapper) *Group {
-	mapped := make(Signals, 0, len(g.signals))
+	mapped := make([]*Signal, 0, len(g.signals))
 	for _, s := range g.signals {
 		mapped = append(mapped, m(cloneSignal(s)))
 	}
@@ -252,7 +252,7 @@ func (g *Group) Map(m Mapper) *Group {
 
 // MapIf is like Map but applies the mapper only to signals matching the predicate.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	mapped := make(Signals, len(g.signals))
+	mapped := make([]*Signal, len(g.signals))
 	for i, s := range g.signals {
 		cloned := cloneSignal(s)
 		if predicate(s) {
@@ -266,7 +266,7 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 
 // MapPayloads returns a new group with every payload transformed by the mapper.
 func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
-	mapped := make(Signals, 0, len(g.signals))
+	mapped := make([]*Signal, 0, len(g.signals))
 	for _, s := range g.signals {
 		mapped = append(mapped, s.MapPayload(mapper))
 	}
@@ -275,7 +275,7 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 
 // MapPayloadsIf is like MapPayloads but applies the mapper only to signals matching the predicate.
 func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group {
-	mapped := make(Signals, len(g.signals))
+	mapped := make([]*Signal, len(g.signals))
 	for i, s := range g.signals {
 		if predicate(s) {
 			mapped[i] = s.MapPayload(mapper)

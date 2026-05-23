@@ -117,13 +117,13 @@ func (p *Port) Labels() *labels.Collection {
 }
 
 // SetLabels replaces all labels.
-func (p *Port) SetLabels(labelMap labels.Map) *Port {
+func (p *Port) SetLabels(labelMap map[string]string) *Port {
 	p.labels.Clear().AddMany(labelMap)
 	return p
 }
 
 // AddLabels adds or updates labels.
-func (p *Port) AddLabels(labelMap labels.Map) *Port {
+func (p *Port) AddLabels(labelMap map[string]string) *Port {
 	p.labels.AddMany(labelMap)
 	return p
 }

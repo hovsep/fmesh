@@ -3,7 +3,6 @@ package signal
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,7 +69,7 @@ func TestLabelContains(t *testing.T) {
 }
 
 func TestHasAllLabels(t *testing.T) {
-	s := New(1).WithLabels(labels.Map{"a": "1", "b": "2", "c": "3"})
+	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2", "c": "3"})
 
 	assert.True(t, HasAllLabels("a", "b")(s))
 	assert.True(t, HasAllLabels("a", "b", "c")(s))
@@ -79,7 +78,7 @@ func TestHasAllLabels(t *testing.T) {
 }
 
 func TestHasAnyLabel(t *testing.T) {
-	s := New(1).WithLabels(labels.Map{"a": "1", "b": "2"})
+	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2"})
 
 	assert.True(t, HasAnyLabel("a", "z")(s))
 	assert.True(t, HasAnyLabel("b")(s))

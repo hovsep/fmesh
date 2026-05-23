@@ -9,7 +9,7 @@ import (
 )
 
 // mustAll is a test helper that panics if All returns an error.
-func (c *Collection) mustAll() Map {
+func (c *Collection) mustAll() map[string]*Port {
 	ports, err := c.All()
 	if err != nil {
 		panic(err)
@@ -187,7 +187,7 @@ func TestCollection_ForEachClear(t *testing.T) {
 
 func TestCollection_With(t *testing.T) {
 	type args struct {
-		ports Ports
+		ports []*Port
 	}
 	tests := []struct {
 		name       string
@@ -288,7 +288,7 @@ func TestCollection_Flush(t *testing.T) {
 
 func TestCollection_PipeTo(t *testing.T) {
 	type args struct {
-		destPorts Ports
+		destPorts []*Port
 	}
 	tests := []struct {
 		name       string
@@ -300,7 +300,7 @@ func TestCollection_PipeTo(t *testing.T) {
 			name:       "empty collection",
 			collection: NewCollection(),
 			args: args{
-				destPorts: func() Ports {
+				destPorts: func() []*Port {
 					g, err := NewIndexedGroup("dest_", 1, 3)
 					require.NoError(t, err)
 					return g.mustAll()
@@ -318,7 +318,7 @@ func TestCollection_PipeTo(t *testing.T) {
 				mustOutput("p_3"),
 			),
 			args: args{
-				destPorts: Ports{
+				destPorts: []*Port{
 					mustInput("dest_1"),
 					mustInput("dest_2"),
 					mustInput("dest_3"),

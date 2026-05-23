@@ -35,7 +35,7 @@ func Test_Fan(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, runErr error)
 	}{
 		{
 			name: "fan-out (3 pipes from 1 source port)",
@@ -87,7 +87,7 @@ func Test_Fan(t *testing.T) {
 					panic(err)
 				}
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, runErr error) {
 				require.NoError(t, runErr)
 				// AllMatch consumers received a signal
 				c1, c2, c3 := fm.Components().ByName("consumer1"), fm.Components().ByName("consumer2"), fm.Components().ByName("consumer3")
@@ -164,7 +164,7 @@ func Test_Fan(t *testing.T) {
 					panic(err)
 				}
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, runErr error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, runErr error) {
 				require.NoError(t, runErr)
 				// Consumer received a signal
 				assert.True(t, fm.Components().ByName("consumer").OutputByName("o1").HasSignals())

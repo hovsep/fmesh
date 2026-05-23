@@ -48,14 +48,14 @@ func (s *Signal) Labels() *labels.Collection {
 }
 
 // WithOnlyLabels replaces all labels and returns a new signal.
-func (s *Signal) WithOnlyLabels(labelMap labels.Map) *Signal {
+func (s *Signal) WithOnlyLabels(labelMap map[string]string) *Signal {
 	next := cloneSignal(s)
 	next.labels = labels.NewCollection().AddMany(maps.Clone(labelMap))
 	return next
 }
 
 // WithLabels adds or updates labels and returns a new signal.
-func (s *Signal) WithLabels(labelMap labels.Map) *Signal {
+func (s *Signal) WithLabels(labelMap map[string]string) *Signal {
 	next := cloneSignal(s)
 	next.labels = next.labels.AddMany(maps.Clone(labelMap))
 	return next

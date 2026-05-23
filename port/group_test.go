@@ -9,7 +9,7 @@ import (
 )
 
 // mustAll is a test helper that panics if All returns an error.
-func (g *Group) mustAll() Ports {
+func (g *Group) mustAll() []*Port {
 	ports, err := g.All()
 	if err != nil {
 		panic(err)
@@ -105,7 +105,7 @@ func TestNewIndexedGroup(t *testing.T) {
 
 func TestGroup_With(t *testing.T) {
 	type args struct {
-		ports Ports
+		ports []*Port
 	}
 	tests := []struct {
 		name       string

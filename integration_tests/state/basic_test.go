@@ -34,7 +34,7 @@ func Test_State(t *testing.T) {
 		name       string
 		setupFM    func() *fmesh.FMesh
 		setInputs  func(fm *fmesh.FMesh)
-		assertions func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error)
+		assertions func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error)
 	}{
 		{
 			name: "stateful counter",
@@ -129,7 +129,7 @@ func Test_State(t *testing.T) {
 					panic(err)
 				}
 			},
-			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles cycle.Cycles, err error) {
+			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error) {
 				require.NoError(t, err)
 
 				consumedSignals := fm.Components().ByName("consumer").OutputByName("consumed_signals").Signals()

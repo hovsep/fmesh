@@ -14,6 +14,3 @@ type Reducer func(acc *Signal, s *Signal) *Signal
 
 // PayloadReducer accumulates payloads into a single value.
 type PayloadReducer func(acc any, payload any) any
-
-// Signals is a slice of signals.
-type Signals []*Signal
