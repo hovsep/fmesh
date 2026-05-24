@@ -2,6 +2,7 @@ package signal
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"unsafe"
 
@@ -171,4 +172,127 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 
 	assert.False(t, g.First().Labels().Has("x"),
 		"mutating output group's signal must not change original group's signal (#203)")
+}
+
+// TestSignal_concurrent_CoW_is_race_free verifies that multiple goroutines
+// simultaneously calling CoW methods on the same shared *Signal do not cause
+// a data race. This mirrors the fan-out scenario: the same *Signal pointer
+// lands in N input ports and N components activate concurrently, each
+// deriving their own annotated copy.
+//
+// Run with: go test -race ./signal/...
+func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
+	const goroutines = 50
+
+	// Shared signal — simulates a fanned-out signal sitting in multiple ports.
+	shared := New("payload").
+		WithLabel("origin", "sensor-1").
+		WithScalar("temp", 36.6)
+
+	var wg sync.WaitGroup
+	results := make([]*Signal, goroutines)
+
+	for i := range goroutines {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			// Each goroutine acts like a component: reads the shared signal and
+			// produces its own annotated copy without touching the original.
+			results[idx] = shared.
+				WithLabel("processed-by", "component").
+				WithScalar("adjusted", shared.Scalars().GetOrDefault("temp", 0)+float64(idx))
+		}(i)
+	}
+	wg.Wait()
+
+	// Original must be completely unchanged.
+	assert.Equal(t, 1, shared.Labels().Len(), "shared signal labels must not grow")
+	assert.True(t, shared.Labels().ValueIs("origin", "sensor-1"))
+	assert.False(t, shared.Labels().Has("processed-by"))
+
+	assert.Equal(t, 1, shared.Scalars().Len(), "shared signal scalars must not grow")
+	v, ok := shared.Scalars().Get("temp")
+	assert.True(t, ok)
+	assert.InDelta(t, 36.6, v, 1e-9)
+	assert.False(t, shared.Scalars().Has("adjusted"))
+
+	// Every derived signal must have both the inherited and the new metadata.
+	for i, s := range results {
+		assert.True(t, s.Labels().ValueIs("origin", "sensor-1"),
+			"goroutine %d: inherited label must be present", i)
+		assert.True(t, s.Labels().Has("processed-by"),
+			"goroutine %d: own label must be present", i)
+
+		_, hasScalar := s.Scalars().Get("adjusted")
+		assert.True(t, hasScalar, "goroutine %d: own scalar must be present", i)
+	}
+}
+
+// TestGroup_concurrent_WithLabel_is_race_free verifies that multiple goroutines
+// calling WithLabel on the same *Group concurrently do not race. Each call
+// returns a new group; the original must be unmodified.
+func TestGroup_concurrent_WithLabel_is_race_free(t *testing.T) {
+	const goroutines = 50
+
+	shared := NewGroup(1, 2, 3).WithLabel("batch", "A")
+
+	var wg sync.WaitGroup
+	results := make([]*Group, goroutines)
+
+	for i := range goroutines {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			results[idx] = shared.WithLabel("worker", "x")
+		}(i)
+	}
+	wg.Wait()
+
+	// Original group must still have only its own label.
+	assert.Equal(t, 1, shared.Labels().Len())
+	assert.True(t, shared.Labels().ValueIs("batch", "A"))
+	assert.False(t, shared.Labels().Has("worker"))
+
+	for i, g := range results {
+		assert.True(t, g.Labels().Has("worker"),
+			"goroutine %d: derived group must have added label", i)
+		assert.True(t, g.Labels().ValueIs("batch", "A"),
+			"goroutine %d: derived group must inherit original label", i)
+	}
+}
+
+// TestGroup_concurrent_WithScalarOnEach_is_race_free verifies that multiple
+// goroutines stamping scalars on copies of the same group do not race.
+func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
+	const goroutines = 50
+
+	shared := NewGroup(1, 2, 3)
+
+	var wg sync.WaitGroup
+	results := make([]*Group, goroutines)
+
+	for i := range goroutines {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			results[idx] = shared.WithScalarOnEach("priority", float64(idx))
+		}(i)
+	}
+	wg.Wait()
+
+	// Signals inside the original group must have no scalars.
+	sigs, _ := shared.All()
+	for _, s := range sigs {
+		assert.False(t, s.Scalars().Has("priority"),
+			"original group's signals must not be affected")
+	}
+
+	// Each result group's signals must have the scalar.
+	for i, g := range results {
+		outSigs, _ := g.All()
+		for _, s := range outSigs {
+			assert.True(t, s.Scalars().Has("priority"),
+				"goroutine %d: derived signal must have scalar", i)
+		}
+	}
 }
