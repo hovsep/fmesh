@@ -4,17 +4,22 @@ import (
 	"errors"
 
 	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Cycle contains the info about one activation cycle.
 type Cycle struct {
 	number            int
+	labels            *meta.Labels
+	scalars           *meta.Scalars
 	activationResults *component.ActivationResultCollection
 }
 
 // New creates a new cycle.
 func New() *Cycle {
 	return &Cycle{
+		labels:            meta.NewLabels(),
+		scalars:           meta.NewScalars(),
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -85,5 +90,27 @@ func (c *Cycle) Number() int {
 // WithNumber sets the sequence number.
 func (c *Cycle) WithNumber(number int) *Cycle {
 	c.number = number
+	return c
+}
+
+// Labels returns the cycle's labels store.
+func (c *Cycle) Labels() *meta.Labels {
+	return c.labels
+}
+
+// WithLabel adds or updates a single label.
+func (c *Cycle) WithLabel(name, value string) *Cycle {
+	c.labels.Set(name, value)
+	return c
+}
+
+// Scalars returns the cycle's scalars store.
+func (c *Cycle) Scalars() *meta.Scalars {
+	return c.scalars
+}
+
+// WithScalar adds or updates a single scalar.
+func (c *Cycle) WithScalar(name string, value float64) *Cycle {
+	c.scalars.Set(name, value)
 	return c
 }

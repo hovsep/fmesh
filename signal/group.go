@@ -3,16 +3,22 @@ package signal
 import (
 	"reflect"
 	"slices"
+
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Group represents an ordered list of signals.
 type Group struct {
 	signals []*Signal
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 func newGroupFromSignals(signals []*Signal) *Group {
 	return &Group{
 		signals: slices.Clone(signals),
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
 	}
 }
 
@@ -23,6 +29,69 @@ func NewGroup(payloads ...any) *Group {
 		signals[i] = New(payload)
 	}
 	return newGroupFromSignals(signals)
+}
+
+// Labels returns the group's own labels store.
+func (g *Group) Labels() *meta.Labels { return g.labels }
+
+// WithLabel adds or updates a single label on the group and returns a new group.
+func (g *Group) WithLabel(name, value string) *Group {
+	next := newGroupFromSignals(g.signals)
+	next.labels = cloneLabels(g.labels)
+	next.scalars = cloneScalars(g.scalars)
+	next.labels.Set(name, value)
+	return next
+}
+
+// Scalars returns the group's own scalars store.
+func (g *Group) Scalars() *meta.Scalars { return g.scalars }
+
+// WithScalar adds or updates a single scalar on the group and returns a new group.
+func (g *Group) WithScalar(name string, value float64) *Group {
+	next := newGroupFromSignals(g.signals)
+	next.labels = cloneLabels(g.labels)
+	next.scalars = cloneScalars(g.scalars)
+	next.scalars.Set(name, value)
+	return next
+}
+
+// copyGroupMeta copies the group's own labels and scalars into dst.
+func copyGroupMeta(src, dst *Group) *Group {
+	dst.labels = cloneLabels(src.labels)
+	dst.scalars = cloneScalars(src.scalars)
+	return dst
+}
+
+// WithLabelOnEach returns a new group with each signal having the label set.
+// The group's own labels and scalars are preserved on the returned group.
+func (g *Group) WithLabelOnEach(name, value string) *Group {
+	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
+		return s.WithLabel(name, value)
+	}))
+}
+
+// WithScalarOnEach returns a new group with each signal having the scalar set.
+// The group's own labels and scalars are preserved on the returned group.
+func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
+		return s.WithScalar(name, value)
+	}))
+}
+
+// RemoveLabelOnEach returns a new group with each signal having the label removed.
+// The group's own labels and scalars are preserved on the returned group.
+func (g *Group) RemoveLabelOnEach(names ...string) *Group {
+	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
+		return s.WithoutLabels(names...)
+	}))
+}
+
+// RemoveScalarOnEach returns a new group with each signal having the scalar removed.
+// The group's own labels and scalars are preserved on the returned group.
+func (g *Group) RemoveScalarOnEach(names ...string) *Group {
+	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
+		return s.WithoutScalars(names...)
+	}))
 }
 
 // First returns the first signal in the group, or nil if empty.
@@ -306,4 +375,70 @@ func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 		acc = fn(acc, p)
 	}
 	return acc
+}
+
+// SumScalar returns the sum of the named scalar across all signals in the group.
+// Signals that do not have the scalar contribute 0. Returns 0 for an empty group.
+func (g *Group) SumScalar(name string) float64 {
+	var total float64
+	for _, s := range g.signals {
+		v, ok := s.scalars.Get(name)
+		if ok {
+			total += v
+		}
+	}
+	return total
+}
+
+// MinScalar returns the minimum value of the named scalar across all signals.
+// ok is false when no signal in the group has that scalar.
+func (g *Group) MinScalar(name string) (float64, bool) {
+	found := false
+	var minVal float64
+	for _, s := range g.signals {
+		v, ok := s.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		if !found || v < minVal {
+			minVal, found = v, true
+		}
+	}
+	return minVal, found
+}
+
+// MaxScalar returns the maximum value of the named scalar across all signals.
+// ok is false when no signal in the group has that scalar.
+func (g *Group) MaxScalar(name string) (float64, bool) {
+	found := false
+	var maxVal float64
+	for _, s := range g.signals {
+		v, ok := s.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		if !found || v > maxVal {
+			maxVal, found = v, true
+		}
+	}
+	return maxVal, found
+}
+
+// AvgScalar returns the mean value of the named scalar across all signals that have it.
+// ok is false when no signal in the group has that scalar.
+func (g *Group) AvgScalar(name string) (float64, bool) {
+	var sum float64
+	count := 0
+	for _, s := range g.signals {
+		v, ok := s.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		sum += v
+		count++
+	}
+	if count == 0 {
+		return 0, false
+	}
+	return sum / float64(count), true
 }

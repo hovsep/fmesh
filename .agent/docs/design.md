@@ -6,7 +6,8 @@
 |---|---|---|
 | Data packet | `*Signal` | `signal` |
 | Ordered signal collection | `*signal.Group` | `signal` |
-| Key-value metadata | `*labels.Collection` | `labels` |
+| String metadata | `*meta.Labels` | `meta` |
+| Numeric metadata | `*meta.Scalars` | `meta` |
 | Component | `*component.Component` | `component` |
 | Data endpoint | `*port.Port` | `port` |
 | Connection | pipe via `PipeTo` (output→input only) | `port` |
@@ -14,24 +15,36 @@
 
 ## Invariants
 
-**`*Signal` and `*signal.Group` are copy-on-write.** Mutating methods return a new value; receiver is never modified. `cloneSignal(s)` is the single clone primitive — nil-safe, use it in all CoW methods.
+**`*Signal` and `*signal.Group` are copy-on-write.** Mutating methods return a new value; receiver is never modified. `cloneSignal(s)` is the single clone primitive — nil-safe, use it in all CoW methods. `cloneScalars(s)` / `cloneLabels(c)` are the analogous clone helpers for metadata.
 
 **Payload is shallow-copied.** Mutable reference payloads (map, slice, pointer) must be treated as immutable by the caller. `nil` is a valid payload and must survive all CoW operations unchanged.
 
-**`labels.Collection` is mutable.** It mutates in place. Do not make it CoW — `port` and `component` depend on mutation.
+**`meta.Labels` and `meta.Scalars` are mutable.** They mutate in place. Do not make them CoW — `port`, `component`, `cycle`, and the Group/Collection types depend on mutation. The one exception is `Merge(other)` on both types, which returns a new value.
 
 **Errors are returned directly.** Methods that can fail return `error` as the last return value. Infallible methods (transformations like `Filter`, `Map`, `With*` on `signal.Signal`) return their type directly for fluency. There is no "poison object" or chainable error field on any type.
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
-**No generics.** `signal`/`labels` use `any`; FBP requires mixed-type signal flows in one group.
+**No generics.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group.
 
 **Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
 
 ## Package notes
 
 - **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach` returns `(*Group, error)`.
-- **`labels`** — `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`.
+- **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
 - **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time.
 - **`component`** — `State` is `map[string]any`, persistent across cycles. Constructors use functional options: `component.New(name, opts...) (*Component, error)`.
 - **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
+
+## Metadata tiers on groups/collections
+
+Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Scalars` (Tier 1), plus batch mutation of its **contents** (Tier 2a). `signal.Group` and `port.Group` additionally expose cross-entity scalar aggregation (Tier 2b).
+
+| Tier | Methods | Where |
+|---|---|---|
+| 1 — entity's own | `Labels()`, `Scalars()`, `WithLabel(k,v)`, `WithScalar(k,v)` | all groups/collections |
+| 2a — batch on contents | `WithLabelOnEach(k,v)`, `WithScalarOnEach(k,v)`, `RemoveLabelOnEach(names...)`, `RemoveScalarOnEach(names...)` | all groups/collections |
+| 2b — cross-entity aggregation | `MinScalar(name)`, `MaxScalar(name)`, `AvgScalar(name)`, `SumScalar(name)` | `signal.Group`, `port.Group` only |
+
+`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`. Cross-entity aggregation returns `(float64, bool)` where `bool` is false when no element has the named scalar; `SumScalar` always returns `float64` (0 when absent).

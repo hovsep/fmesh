@@ -27,7 +27,7 @@ func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
 	return fm
 }
 
-// Test_LabelTransformation demonstrates real-world use cases for labels.Collection.Map().
+// Test_LabelTransformation demonstrates real-world use cases for labels.Labels.Map().
 func Test_LabelTransformation(t *testing.T) {
 	t.Run("normalize label keys to uppercase", func(t *testing.T) {
 		// Scenario: You receive signals with mixed-case labels and want to normalize them

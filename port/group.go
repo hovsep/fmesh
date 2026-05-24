@@ -3,23 +3,77 @@ package port
 import (
 	"fmt"
 	"slices"
+
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Group represents a list of ports.
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
-	ports []*Port
+	ports   []*Port
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 // NewGroup creates multiple output ports.
 func NewGroup(names ...string) *Group {
-	newGroup := &Group{}
+	newGroup := &Group{
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
+	}
 	ports := make([]*Port, len(names))
 	for i, name := range names {
 		p, _ := NewOutput(name) // no opts, never fails
 		ports[i] = p
 	}
 	return newGroup.withPorts(ports)
+}
+
+// Labels returns the group's own labels store.
+func (g *Group) Labels() *meta.Labels { return g.labels }
+
+// WithLabel adds or updates a single label on the group itself.
+func (g *Group) WithLabel(name, value string) *Group { g.labels.Set(name, value); return g }
+
+// Scalars returns the group's own scalars store.
+func (g *Group) Scalars() *meta.Scalars { return g.scalars }
+
+// WithScalar adds or updates a single scalar on the group itself.
+func (g *Group) WithScalar(name string, value float64) *Group {
+	g.scalars.Set(name, value)
+	return g
+}
+
+// WithLabelOnEach sets a label on every port in the group.
+func (g *Group) WithLabelOnEach(name, value string) *Group {
+	for _, p := range g.ports {
+		p.labels.Set(name, value)
+	}
+	return g
+}
+
+// WithScalarOnEach sets a scalar on every port in the group.
+func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+	for _, p := range g.ports {
+		p.scalars.Set(name, value)
+	}
+	return g
+}
+
+// RemoveLabelOnEach removes a label from every port in the group.
+func (g *Group) RemoveLabelOnEach(names ...string) *Group {
+	for _, p := range g.ports {
+		p.labels.Remove(names...)
+	}
+	return g
+}
+
+// RemoveScalarOnEach removes a scalar from every port in the group.
+func (g *Group) RemoveScalarOnEach(names ...string) *Group {
+	for _, p := range g.ports {
+		p.scalars.Remove(names...)
+	}
+	return g
 }
 
 // NewIndexedGroup creates a group of output ports with the same prefix.
@@ -174,4 +228,70 @@ func (g *Group) Map(mapper Mapper) *Group {
 		}
 	}
 	return mapped
+}
+
+// SumScalar returns the sum of the named scalar across all ports in the group.
+// Ports that do not have the scalar contribute 0. Returns 0 for an empty group.
+func (g *Group) SumScalar(name string) float64 {
+	var total float64
+	for _, p := range g.ports {
+		v, ok := p.scalars.Get(name)
+		if ok {
+			total += v
+		}
+	}
+	return total
+}
+
+// MinScalar returns the minimum value of the named scalar across all ports.
+// ok is false when no port in the group has that scalar.
+func (g *Group) MinScalar(name string) (float64, bool) {
+	found := false
+	var minVal float64
+	for _, p := range g.ports {
+		v, ok := p.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		if !found || v < minVal {
+			minVal, found = v, true
+		}
+	}
+	return minVal, found
+}
+
+// MaxScalar returns the maximum value of the named scalar across all ports.
+// ok is false when no port in the group has that scalar.
+func (g *Group) MaxScalar(name string) (float64, bool) {
+	found := false
+	var maxVal float64
+	for _, p := range g.ports {
+		v, ok := p.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		if !found || v > maxVal {
+			maxVal, found = v, true
+		}
+	}
+	return maxVal, found
+}
+
+// AvgScalar returns the mean value of the named scalar across all ports that have it.
+// ok is false when no port in the group has that scalar.
+func (g *Group) AvgScalar(name string) (float64, bool) {
+	var sum float64
+	count := 0
+	for _, p := range g.ports {
+		v, ok := p.scalars.Get(name)
+		if !ok {
+			continue
+		}
+		sum += v
+		count++
+	}
+	if count == 0 {
+		return 0, false
+	}
+	return sum / float64(count), true
 }

@@ -12,7 +12,7 @@ accordingly. Internal-only mutating helpers use `set…` (unexported).
 
 ## Label operations by type
 
-| | CoW (`signal.Signal`) | Mutating (`port.Port`, `component.Component`) |
+| | CoW (`signal.Signal`, `signal.Group`) | Mutating (`port.Port`, `component.Component`, `fmesh.FMesh`) |
 |---|---|---|
 | Add/update one | `WithLabel(k, v)` | `AddLabel(k, v)` |
 | Add/update many | `WithLabels(map)` | `AddLabels(map)` |
@@ -20,8 +20,34 @@ accordingly. Internal-only mutating helpers use `set…` (unexported).
 | Remove specific | `WithoutLabels(names...)` | `RemoveLabels(names...)` |
 | Remove all | `WithNoLabels()` | `ClearLabels()` |
 
-`labels.Collection` (mutating): `Add`, `AddMany`, `Remove`, `Clear`. `Merge(other)` is the one
-exception — returns a new collection.
+## Scalar operations by type
+
+| | CoW (`signal.Signal`, `signal.Group`) | Mutating (`port.Port`, `component.Component`, `fmesh.FMesh`) |
+|---|---|---|
+| Add/update one | `WithScalar(k, v)` | `AddScalar(k, v)` |
+| Add/update many | `WithScalars(map)` | `AddScalars(map)` |
+| Replace all | `WithOnlyScalars(map)` | `SetScalars(map)` |
+| Remove specific | `WithoutScalars(names...)` | `RemoveScalars(names...)` |
+| Remove all | `WithNoScalars()` | `ClearScalars()` |
+
+`meta.Labels` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Merge(other)` returns a new collection.
+`meta.Scalars` (mutating): `Set`, `SetMany`, `Remove`, `Clear`, `Scale`. `Merge(other)` returns a new collection.
+
+## Group/Collection metadata batch methods
+
+| Method | Effect |
+|---|---|
+| `WithLabel(k, v)` / `WithScalar(k, v)` | Sets metadata on the Group/Collection **itself** |
+| `WithLabelOnEach(k, v)` / `WithScalarOnEach(k, v)` | Sets metadata on each **contained element** |
+| `RemoveLabelOnEach(names...)` / `RemoveScalarOnEach(names...)` | Removes metadata from each **contained element** |
+
+For `signal.Group` (fully CoW): `WithLabel`/`WithScalar` return a new group with the group's own metadata cloned then updated. Batch methods also return a new group and preserve the group's own metadata via `copyGroupMeta`.
+For other groups/collections (mutating): `WithLabel`/`WithScalar` mutate the receiver in place and return it. Batch methods do the same.
+
+## Constructor options
+
+`WithLabelOption(k, v)` and `WithScalarOption(k, v)` are `Option` functions available for all
+constructors that accept options (`fmesh.New`, `component.New`, `port.NewInput`, `port.NewOutput`).
 
 ## Collection/group operations
 
@@ -44,7 +70,7 @@ Prefer combinators over inline closures: `Not`, `And`, `Or`, `HasLabel`, `LabelE
 
 ## Stuttering
 
-Do not repeat the package name in a type or function name. Within the `labels` package, use
-`Predicate` and `Mapper` (not `LabelPredicate` / `LabelMapper`). Within the `component`
-package, use `ResultPredicate` and `ResultMapper` for activation-result types (not
+Do not repeat the package name in a type or function name. Within the `meta` package, use
+`Predicate`, `Mapper`, `ScalarPredicate` (not `LabelPredicate` / `MetaPredicate`). Within the
+`component` package, use `ResultPredicate` and `ResultMapper` for activation-result types (not
 `ActivationResultPredicate` / `ActivationResultMapper`).

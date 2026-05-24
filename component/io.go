@@ -44,7 +44,10 @@ func (c *Component) addInputs(portNames ...string) error {
 		}
 		ports = append(ports, p)
 	}
-	c.inputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.inputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("failed to add input ports: %w", err)
+	}
+	c.inputPorts.WithParentComponent(c)
 	return nil
 }
 
@@ -58,7 +61,10 @@ func (c *Component) addOutputs(portNames ...string) error {
 		}
 		ports = append(ports, p)
 	}
-	c.outputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.outputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("failed to add output ports: %w", err)
+	}
+	c.outputPorts.WithParentComponent(c)
 	return nil
 }
 
@@ -76,7 +82,10 @@ func (c *Component) addIndexedInputs(prefix string, startIndex, endIndex int) er
 		}
 		ports = append(ports, p)
 	}
-	c.inputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.inputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("failed to add indexed input ports: %w", err)
+	}
+	c.inputPorts.WithParentComponent(c)
 	return nil
 }
 
@@ -94,7 +103,10 @@ func (c *Component) addIndexedOutputs(prefix string, startIndex, endIndex int) e
 		}
 		ports = append(ports, p)
 	}
-	c.outputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.outputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("failed to add indexed output ports: %w", err)
+	}
+	c.outputPorts.WithParentComponent(c)
 	return nil
 }
 
@@ -127,7 +139,10 @@ func (c *Component) AttachInputPorts(ports ...*port.Port) error {
 			return fmt.Errorf("AttachInputPorts: port %q is not an input port (use port.NewInput): %w", p.Name(), port.ErrWrongPortDirection)
 		}
 	}
-	c.inputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.inputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("AttachInputPorts: %w", err)
+	}
+	c.inputPorts.WithParentComponent(c)
 	return nil
 }
 
@@ -138,7 +153,10 @@ func (c *Component) AttachOutputPorts(ports ...*port.Port) error {
 			return fmt.Errorf("AttachOutputPorts: port %q is not an output port (use port.NewOutput): %w", p.Name(), port.ErrWrongPortDirection)
 		}
 	}
-	c.outputPorts.Add(ports...).WithParentComponent(c)
+	if err := c.outputPorts.Add(ports...); err != nil {
+		return fmt.Errorf("AttachOutputPorts: %w", err)
+	}
+	c.outputPorts.WithParentComponent(c)
 	return nil
 }
 

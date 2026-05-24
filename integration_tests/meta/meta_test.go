@@ -1,0 +1,200 @@
+package meta
+
+import (
+	"testing"
+
+	"github.com/hovsep/fmesh"
+	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/port"
+	"github.com/hovsep/fmesh/signal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func mustComponent(name string, opts ...component.Option) *component.Component {
+	c, err := component.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
+	fm, err := fmesh.New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fm
+}
+
+func mustInput(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewInput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func mustOutput(name string, opts ...port.Option) *port.Port {
+	p, err := port.NewOutput(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+// Test_ScalarsOnSignals verifies that scalars can be attached to signals and
+// aggregate methods on signal.Group work as expected.
+func Test_ScalarsOnSignals(t *testing.T) {
+	t.Run("scalars flow through a mesh and are aggregated at the sink", func(t *testing.T) {
+		// Scenario: a sensor component emits temperature readings as signals with
+		// a "temp" scalar. A monitor component collects them and checks the average.
+
+		var collectedGroup *signal.Group
+
+		sensor := mustComponent("sensor",
+			component.WithInputs("trigger"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				readings := []float64{36.6, 37.1, 38.2, 36.9}
+				for _, r := range readings {
+					sig := signal.New("reading").WithScalar("temp", r)
+					if err := this.Outputs().ByName("out").PutSignals(sig); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		)
+
+		monitor := mustComponent("monitor",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				grp := this.Inputs().ByName("in").Signals()
+				collectedGroup = grp
+				return nil
+			}),
+		)
+
+		fm := mustFMesh("temp-mesh")
+		require.NoError(t, fm.AddComponents(sensor, monitor))
+		require.NoError(t, sensor.Outputs().ByName("out").PipeTo(monitor.Inputs().ByName("in")))
+
+		// Seed the sensor trigger to kick off activation
+		require.NoError(t, sensor.Inputs().ByName("trigger").PutSignals(signal.New("go")))
+
+		_, err := fm.Run()
+		require.NoError(t, err)
+
+		require.NotNil(t, collectedGroup)
+		assert.Equal(t, 4, collectedGroup.Len())
+
+		avg, ok := collectedGroup.AvgScalar("temp")
+		require.True(t, ok)
+		assert.InDelta(t, 37.2, avg, 0.01)
+
+		minTemp, ok := collectedGroup.MinScalar("temp")
+		require.True(t, ok)
+		assert.InDelta(t, 36.6, minTemp, 1e-9)
+
+		maxTemp, ok := collectedGroup.MaxScalar("temp")
+		require.True(t, ok)
+		assert.InDelta(t, 38.2, maxTemp, 1e-9)
+
+		sum := collectedGroup.SumScalar("temp")
+		assert.InDelta(t, 148.8, sum, 0.01)
+	})
+
+	t.Run("WithScalarOnEach stamps every signal in a group", func(t *testing.T) {
+		grp := signal.NewGroup(1, 2, 3).WithScalarOnEach("priority", 5.0)
+		assert.Equal(t, 3, grp.Len())
+
+		signals, _ := grp.All()
+		for _, s := range signals {
+			v, ok := s.Scalars().Get("priority")
+			require.True(t, ok)
+			assert.InDelta(t, 5.0, v, 1e-9)
+		}
+	})
+
+	t.Run("RemoveScalarOnEach removes the scalar from every signal", func(t *testing.T) {
+		grp := signal.NewGroup(1, 2).
+			WithScalarOnEach("temp", 36.6).
+			WithScalarOnEach("humidity", 0.55).
+			RemoveScalarOnEach("humidity")
+
+		signals, _ := grp.All()
+		for _, s := range signals {
+			assert.True(t, s.Scalars().Has("temp"))
+			assert.False(t, s.Scalars().Has("humidity"))
+		}
+	})
+
+	t.Run("AvgScalar returns ok=false when no signal has the scalar", func(t *testing.T) {
+		grp := signal.NewGroup(1, 2, 3)
+		_, ok := grp.AvgScalar("nonexistent")
+		assert.False(t, ok)
+	})
+}
+
+// Test_ScalarsOnComponents verifies scalar metadata on components.
+func Test_ScalarsOnComponents(t *testing.T) {
+	t.Run("component scalars are independent of signal scalars", func(t *testing.T) {
+		c := mustComponent("proc",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithScalarOption("version", 2.0),
+		)
+
+		v, ok := c.Scalars().Get("version")
+		require.True(t, ok)
+		assert.InDelta(t, 2.0, v, 1e-9)
+
+		// Signal scalars are separate
+		sig := signal.New("data").WithScalar("weight", 1.5)
+		sv, ok := sig.Scalars().Get("weight")
+		require.True(t, ok)
+		assert.InDelta(t, 1.5, sv, 1e-9)
+
+		_, ok = c.Scalars().Get("weight")
+		assert.False(t, ok, "component must not have signal's scalar")
+	})
+}
+
+// Test_ScalarGroupMetadata verifies that a Group's OWN scalars are independent of its contents.
+func Test_ScalarGroupMetadata(t *testing.T) {
+	t.Run("group own scalar is separate from element scalars", func(t *testing.T) {
+		grp := signal.NewGroup(1, 2, 3).
+			WithScalar("batch_id", 42.0).
+			WithScalarOnEach("temp", 37.0)
+
+		// Group's own scalar
+		v, ok := grp.Scalars().Get("batch_id")
+		require.True(t, ok)
+		assert.InDelta(t, 42.0, v, 1e-9)
+
+		// Elements have "temp" but not "batch_id"
+		signals, _ := grp.All()
+		for _, s := range signals {
+			assert.True(t, s.Scalars().Has("temp"))
+			assert.False(t, s.Scalars().Has("batch_id"))
+		}
+	})
+}
+
+// Test_PortScalarsWithOptions verifies the WithScalarOption port constructor option.
+func Test_PortScalarsWithOptions(t *testing.T) {
+	t.Run("port scalars set via constructor option", func(t *testing.T) {
+		p := mustInput("sensor-in", port.WithScalarOption("sample_rate", 100.0))
+		v, ok := p.Scalars().Get("sample_rate")
+		require.True(t, ok)
+		assert.InDelta(t, 100.0, v, 1e-9)
+	})
+
+	t.Run("port WithScalar mutating method", func(t *testing.T) {
+		p := mustOutput("data-out").AddScalar("bandwidth", 1e6)
+		v, ok := p.Scalars().Get("bandwidth")
+		require.True(t, ok)
+		assert.InDelta(t, 1e6, v, 1e-9)
+	})
+}

@@ -3,7 +3,7 @@ package signal
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
+	"github.com/hovsep/fmesh/meta"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,8 @@ func TestNew(t *testing.T) {
 			},
 			want: &Signal{
 				payload: []any{nil},
-				labels:  labels.NewCollection(),
+				labels:  meta.NewLabels(),
+				scalars: meta.NewScalars(),
 			},
 		},
 		{
@@ -34,7 +35,8 @@ func TestNew(t *testing.T) {
 			},
 			want: &Signal{
 				payload: []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				labels:  labels.NewCollection(),
+				labels:  meta.NewLabels(),
+				scalars: meta.NewScalars(),
 			},
 		},
 	}
