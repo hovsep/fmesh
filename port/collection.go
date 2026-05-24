@@ -1,6 +1,9 @@
 package port
 
 import (
+	"fmt"
+
+	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -8,14 +11,68 @@ import (
 // indexed by name; hence it cannot carry
 // 2 ports with the same name. Optimized for lookups.
 type Collection struct {
-	ports map[string]*Port
+	ports   map[string]*Port
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		ports: make(map[string]*Port),
+		ports:   make(map[string]*Port),
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
 	}
+}
+
+// Labels returns the collection's own labels store.
+func (c *Collection) Labels() *meta.Labels { return c.labels }
+
+// WithLabel adds or updates a single label on the collection itself.
+func (c *Collection) WithLabel(name, value string) *Collection {
+	c.labels.Set(name, value)
+	return c
+}
+
+// Scalars returns the collection's own scalars store.
+func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
+
+// WithScalar adds or updates a single scalar on the collection itself.
+func (c *Collection) WithScalar(name string, value float64) *Collection {
+	c.scalars.Set(name, value)
+	return c
+}
+
+// WithLabelOnEach sets a label on every port in the collection.
+func (c *Collection) WithLabelOnEach(name, value string) *Collection {
+	for _, p := range c.ports {
+		p.labels.Set(name, value)
+	}
+	return c
+}
+
+// WithScalarOnEach sets a scalar on every port in the collection.
+func (c *Collection) WithScalarOnEach(name string, value float64) *Collection {
+	for _, p := range c.ports {
+		p.scalars.Set(name, value)
+	}
+	return c
+}
+
+// RemoveLabelOnEach removes a label from every port in the collection.
+func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
+	for _, p := range c.ports {
+		p.labels.Remove(names...)
+	}
+	return c
+}
+
+// RemoveScalarOnEach removes a scalar from every port in the collection.
+func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
+	for _, p := range c.ports {
+		p.scalars.Remove(names...)
+	}
+	return c
 }
 
 // ByName retrieves a specific port from the collection by its name.
@@ -43,7 +100,7 @@ func (c *Collection) ByNames(names ...string) *Collection {
 	selected := NewCollection()
 	for _, name := range names {
 		if p, ok := c.ports[name]; ok {
-			selected.Add(p)
+			_ = selected.Add(p) // port comes from existing collection — name is unique by construction
 		}
 	}
 	return selected
@@ -124,11 +181,14 @@ func (c *Collection) PipeTo(destPorts ...*Port) error {
 }
 
 // Add adds ports to a collection and returns it. Overwrites on name conflict.
-func (c *Collection) Add(ports ...*Port) *Collection {
-	for _, port := range ports {
-		c.ports[port.Name()] = port
+func (c *Collection) Add(ports ...*Port) error {
+	for _, p := range ports {
+		if _, exists := c.ports[p.Name()]; exists {
+			return fmt.Errorf("port %q already exists in collection", p.Name())
+		}
+		c.ports[p.Name()] = p
 	}
-	return c
+	return nil
 }
 
 // Without removes ports by name and returns the collection.
@@ -146,8 +206,7 @@ func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) error {
 		return err
 	}
 	ports, _ := indexedPorts.All()
-	c.Add(ports...)
-	return nil
+	return c.Add(ports...)
 }
 
 // Signals returns all signals of all ports in the collection.
@@ -241,7 +300,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
 	for _, port := range c.ports {
 		if predicate(port) {
-			filtered.Add(port)
+			_ = filtered.Add(port) // port comes from existing collection — name is unique by construction
 		}
 	}
 	return filtered
@@ -252,7 +311,7 @@ func (c *Collection) Map(mapper Mapper) *Collection {
 	mapped := NewCollection()
 	for _, port := range c.ports {
 		if result := mapper(port); result != nil {
-			mapped.Add(result)
+			_ = mapped.Add(result) // mapper is responsible for returning uniquely-named ports
 		}
 	}
 	return mapped

@@ -3,7 +3,7 @@ package component
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/labels"
+	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,8 @@ func TestComponent_WithDescription(t *testing.T) {
 			want: &Component{
 				name:        "c1",
 				description: "descr",
-				labels:      labels.NewCollection(),
+				labels:      meta.NewLabels(),
+				scalars:     meta.NewScalars(),
 				inputPorts:  port.NewCollection(),
 				outputPorts: port.NewCollection(),
 				f:           nil,

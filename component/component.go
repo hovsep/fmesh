@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hovsep/fmesh/labels"
+	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/port"
 )
 
@@ -13,7 +13,8 @@ import (
 type Component struct {
 	name        string
 	description string
-	labels      *labels.Collection
+	labels      *meta.Labels
+	scalars     *meta.Scalars
 	inputPorts  *port.Collection
 	outputPorts *port.Collection
 	f           ActivationFunc
@@ -28,7 +29,8 @@ func New(name string, opts ...Option) (*Component, error) {
 	c := &Component{
 		name:        name,
 		description: "",
-		labels:      labels.NewCollection(),
+		labels:      meta.NewLabels(),
+		scalars:     meta.NewScalars(),
 		inputPorts:  port.NewCollection(),
 		outputPorts: port.NewCollection(),
 		state:       NewState(),
@@ -59,25 +61,25 @@ func (c *Component) WithDescription(description string) *Component {
 }
 
 // Labels returns the component's labels collection.
-func (c *Component) Labels() *labels.Collection {
+func (c *Component) Labels() *meta.Labels {
 	return c.labels
 }
 
 // SetLabels replaces all labels.
 func (c *Component) SetLabels(labelMap map[string]string) *Component {
-	c.labels.Clear().AddMany(labelMap)
+	c.labels.Clear().SetMany(labelMap)
 	return c
 }
 
 // AddLabels adds or updates labels.
 func (c *Component) AddLabels(labelMap map[string]string) *Component {
-	c.labels.AddMany(labelMap)
+	c.labels.SetMany(labelMap)
 	return c
 }
 
 // AddLabel adds or updates a single label.
 func (c *Component) AddLabel(name, value string) *Component {
-	c.labels.Add(name, value)
+	c.labels.Set(name, value)
 	return c
 }
 
@@ -91,6 +93,57 @@ func (c *Component) ClearLabels() *Component {
 func (c *Component) RemoveLabels(names ...string) *Component {
 	c.labels.Remove(names...)
 	return c
+}
+
+// Scalars returns the component's scalars store.
+func (c *Component) Scalars() *meta.Scalars {
+	return c.scalars
+}
+
+// SetScalars replaces all scalars.
+func (c *Component) SetScalars(scalarsMap map[string]float64) *Component {
+	c.scalars.Clear().SetMany(scalarsMap)
+	return c
+}
+
+// AddScalars adds or updates scalars.
+func (c *Component) AddScalars(scalarsMap map[string]float64) *Component {
+	c.scalars.SetMany(scalarsMap)
+	return c
+}
+
+// AddScalar adds or updates a single scalar.
+func (c *Component) AddScalar(name string, value float64) *Component {
+	c.scalars.Set(name, value)
+	return c
+}
+
+// ClearScalars removes all scalars.
+func (c *Component) ClearScalars() *Component {
+	c.scalars.Clear()
+	return c
+}
+
+// RemoveScalars removes specific scalars.
+func (c *Component) RemoveScalars(names ...string) *Component {
+	c.scalars.Remove(names...)
+	return c
+}
+
+// WithLabelOption is a component constructor option that adds or updates a single label.
+func WithLabelOption(name, value string) Option {
+	return func(c *Component) error {
+		c.labels.Set(name, value)
+		return nil
+	}
+}
+
+// WithScalarOption is a component constructor option that adds or updates a single scalar.
+func WithScalarOption(name string, value float64) Option {
+	return func(c *Component) error {
+		c.scalars.Set(name, value)
+		return nil
+	}
 }
 
 // WithLogger creates a new logger prefixed with component name.

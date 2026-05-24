@@ -2,18 +2,74 @@ package component
 
 import (
 	"fmt"
+
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Collection is a collection of components with useful methods.
 type Collection struct {
 	components map[string]*Component
+	labels     *meta.Labels
+	scalars    *meta.Scalars
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
 		components: make(map[string]*Component),
+		labels:     meta.NewLabels(),
+		scalars:    meta.NewScalars(),
 	}
+}
+
+// Labels returns the collection's own labels store.
+func (c *Collection) Labels() *meta.Labels { return c.labels }
+
+// WithLabel adds or updates a single label on the collection itself.
+func (c *Collection) WithLabel(name, value string) *Collection {
+	c.labels.Set(name, value)
+	return c
+}
+
+// Scalars returns the collection's own scalars store.
+func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
+
+// WithScalar adds or updates a single scalar on the collection itself.
+func (c *Collection) WithScalar(name string, value float64) *Collection {
+	c.scalars.Set(name, value)
+	return c
+}
+
+// WithLabelOnEach sets a label on every component in the collection.
+func (c *Collection) WithLabelOnEach(name, value string) *Collection {
+	for _, comp := range c.components {
+		comp.labels.Set(name, value)
+	}
+	return c
+}
+
+// WithScalarOnEach sets a scalar on every component in the collection.
+func (c *Collection) WithScalarOnEach(name string, value float64) *Collection {
+	for _, comp := range c.components {
+		comp.scalars.Set(name, value)
+	}
+	return c
+}
+
+// RemoveLabelOnEach removes a label from every component in the collection.
+func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
+	for _, comp := range c.components {
+		comp.labels.Remove(names...)
+	}
+	return c
+}
+
+// RemoveScalarOnEach removes a scalar from every component in the collection.
+func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
+	for _, comp := range c.components {
+		comp.scalars.Remove(names...)
+	}
+	return c
 }
 
 // ByName returns a component by its name.

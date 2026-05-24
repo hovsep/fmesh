@@ -4,25 +4,34 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/hovsep/fmesh/labels"
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Signal is a wrapper around the data flowing between components.
 // Mutating-style methods return a new *Signal; receivers are never modified.
 type Signal struct {
-	labels  *labels.Collection
+	labels  *meta.Labels
+	scalars *meta.Scalars
 	payload []any // Slice is used in order to support nil payload
 }
 
-// cloneLabels returns an independent labels.Collection with the same entries.
-func cloneLabels(c *labels.Collection) *labels.Collection {
+// cloneLabels returns an independent meta.Labels with the same entries.
+func cloneLabels(c *meta.Labels) *meta.Labels {
 	if c == nil {
-		return labels.NewCollection()
+		return meta.NewLabels()
 	}
 	return c.Filter(func(string, string) bool { return true })
 }
 
-// cloneSignal returns a copy of s with an independent labels collection.
+// cloneScalars returns an independent meta.Scalars with the same entries.
+func cloneScalars(s *meta.Scalars) *meta.Scalars {
+	if s == nil {
+		return meta.NewScalars()
+	}
+	return s.Filter(func(string, float64) bool { return true })
+}
+
+// cloneSignal returns a copy of s with an independent labels and scalars collection.
 // Payload is shallow-copied.
 func cloneSignal(s *Signal) *Signal {
 	if s == nil {
@@ -30,6 +39,7 @@ func cloneSignal(s *Signal) *Signal {
 	}
 	return &Signal{
 		labels:  cloneLabels(s.labels),
+		scalars: cloneScalars(s.scalars),
 		payload: slices.Clone(s.payload),
 	}
 }
@@ -37,41 +47,42 @@ func cloneSignal(s *Signal) *Signal {
 // New creates a new signal with the given payload.
 func New(payload any) *Signal {
 	return &Signal{
-		labels:  labels.NewCollection(),
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
 		payload: []any{payload},
 	}
 }
 
 // Labels returns a defensive copy of the signal's labels collection.
-func (s *Signal) Labels() *labels.Collection {
+func (s *Signal) Labels() *meta.Labels {
 	return cloneLabels(s.labels)
 }
 
 // WithOnlyLabels replaces all labels and returns a new signal.
 func (s *Signal) WithOnlyLabels(labelMap map[string]string) *Signal {
 	next := cloneSignal(s)
-	next.labels = labels.NewCollection().AddMany(maps.Clone(labelMap))
+	next.labels = meta.NewLabels().SetMany(maps.Clone(labelMap))
 	return next
 }
 
 // WithLabels adds or updates labels and returns a new signal.
 func (s *Signal) WithLabels(labelMap map[string]string) *Signal {
 	next := cloneSignal(s)
-	next.labels = next.labels.AddMany(maps.Clone(labelMap))
+	next.labels = next.labels.SetMany(maps.Clone(labelMap))
 	return next
 }
 
 // WithLabel adds or updates a single label and returns a new signal.
 func (s *Signal) WithLabel(name, value string) *Signal {
 	next := cloneSignal(s)
-	next.labels = next.labels.Add(name, value)
+	next.labels = next.labels.Set(name, value)
 	return next
 }
 
 // WithNoLabels removes all labels and returns a new signal.
 func (s *Signal) WithNoLabels() *Signal {
 	next := cloneSignal(s)
-	next.labels = labels.NewCollection()
+	next.labels = meta.NewLabels()
 	return next
 }
 
@@ -82,12 +93,53 @@ func (s *Signal) WithoutLabels(names ...string) *Signal {
 	return next
 }
 
+// Scalars returns a defensive copy of the signal's scalars store.
+func (s *Signal) Scalars() *meta.Scalars {
+	return cloneScalars(s.scalars)
+}
+
+// WithOnlyScalars replaces all scalars and returns a new signal.
+func (s *Signal) WithOnlyScalars(scalarsMap map[string]float64) *Signal {
+	next := cloneSignal(s)
+	next.scalars = meta.NewScalars().SetMany(scalarsMap)
+	return next
+}
+
+// WithScalars adds or updates scalars and returns a new signal.
+func (s *Signal) WithScalars(scalarsMap map[string]float64) *Signal {
+	next := cloneSignal(s)
+	next.scalars = next.scalars.SetMany(scalarsMap)
+	return next
+}
+
+// WithScalar adds or updates a single scalar and returns a new signal.
+func (s *Signal) WithScalar(name string, value float64) *Signal {
+	next := cloneSignal(s)
+	next.scalars = next.scalars.Set(name, value)
+	return next
+}
+
+// WithNoScalars removes all scalars and returns a new signal.
+func (s *Signal) WithNoScalars() *Signal {
+	next := cloneSignal(s)
+	next.scalars = meta.NewScalars()
+	return next
+}
+
+// WithoutScalars removes specific scalars and returns a new signal.
+func (s *Signal) WithoutScalars(names ...string) *Signal {
+	next := cloneSignal(s)
+	next.scalars = next.scalars.Remove(names...)
+	return next
+}
+
 // MapPayload applies a mapper function to the signal's payload and returns a new signal.
-// The new signal preserves all labels from the original signal.
+// The new signal preserves all labels and scalars from the original signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	payload, _ := s.Payload()
 	out := New(mapper(payload))
 	out.labels = cloneLabels(s.labels)
+	out.scalars = cloneScalars(s.scalars)
 	return out
 }
 

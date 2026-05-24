@@ -3,7 +3,7 @@ package port
 import (
 	"fmt"
 
-	"github.com/hovsep/fmesh/labels"
+	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -27,7 +27,8 @@ type Port struct {
 	name            string
 	direction       Direction
 	description     string
-	labels          *labels.Collection
+	labels          *meta.Labels
+	scalars         *meta.Scalars
 	signals         *signal.Group
 	pipes           *Group // Outbound pipes
 	parentComponent ParentComponent
@@ -39,7 +40,8 @@ func NewInput(name string, opts ...Option) (*Port, error) {
 	p := &Port{
 		name:      name,
 		direction: DirectionIn,
-		labels:    labels.NewCollection(),
+		labels:    meta.NewLabels(),
+		scalars:   meta.NewScalars(),
 		pipes:     NewGroup(),
 		signals:   signal.NewGroup(),
 		hooks:     NewHooks(),
@@ -57,7 +59,8 @@ func NewOutput(name string, opts ...Option) (*Port, error) {
 	p := &Port{
 		name:      name,
 		direction: DirectionOut,
-		labels:    labels.NewCollection(),
+		labels:    meta.NewLabels(),
+		scalars:   meta.NewScalars(),
 		pipes:     NewGroup(),
 		signals:   signal.NewGroup(),
 		hooks:     NewHooks(),
@@ -81,7 +84,7 @@ func WithDescription(description string) Option {
 // WithLabel is a port option that adds a label.
 func WithLabel(name, value string) Option {
 	return func(p *Port) error {
-		p.labels.Add(name, value)
+		p.labels.Set(name, value)
 		return nil
 	}
 }
@@ -112,25 +115,25 @@ func (p *Port) IsOutput() bool {
 }
 
 // Labels returns the port's labels collection.
-func (p *Port) Labels() *labels.Collection {
+func (p *Port) Labels() *meta.Labels {
 	return p.labels
 }
 
 // SetLabels replaces all labels.
 func (p *Port) SetLabels(labelMap map[string]string) *Port {
-	p.labels.Clear().AddMany(labelMap)
+	p.labels.Clear().SetMany(labelMap)
 	return p
 }
 
 // AddLabels adds or updates labels.
 func (p *Port) AddLabels(labelMap map[string]string) *Port {
-	p.labels.AddMany(labelMap)
+	p.labels.SetMany(labelMap)
 	return p
 }
 
 // AddLabel adds or updates a single label.
 func (p *Port) AddLabel(name, value string) *Port {
-	p.labels.Add(name, value)
+	p.labels.Set(name, value)
 	return p
 }
 
@@ -144,6 +147,49 @@ func (p *Port) ClearLabels() *Port {
 func (p *Port) RemoveLabels(names ...string) *Port {
 	p.labels.Remove(names...)
 	return p
+}
+
+// Scalars returns the port's scalars store.
+func (p *Port) Scalars() *meta.Scalars {
+	return p.scalars
+}
+
+// SetScalars replaces all scalars.
+func (p *Port) SetScalars(scalarsMap map[string]float64) *Port {
+	p.scalars.Clear().SetMany(scalarsMap)
+	return p
+}
+
+// AddScalars adds or updates scalars.
+func (p *Port) AddScalars(scalarsMap map[string]float64) *Port {
+	p.scalars.SetMany(scalarsMap)
+	return p
+}
+
+// AddScalar adds or updates a single scalar.
+func (p *Port) AddScalar(name string, value float64) *Port {
+	p.scalars.Set(name, value)
+	return p
+}
+
+// ClearScalars removes all scalars.
+func (p *Port) ClearScalars() *Port {
+	p.scalars.Clear()
+	return p
+}
+
+// RemoveScalars removes specific scalars.
+func (p *Port) RemoveScalars(names ...string) *Port {
+	p.scalars.Remove(names...)
+	return p
+}
+
+// WithScalarOption is a port constructor option that adds or updates a single scalar.
+func WithScalarOption(name string, value float64) Option {
+	return func(p *Port) error {
+		p.scalars.Set(name, value)
+		return nil
+	}
 }
 
 // Pipes returns outbound pipes. Input ports always return an empty group.

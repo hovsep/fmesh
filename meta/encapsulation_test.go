@@ -1,4 +1,4 @@
-package labels
+package meta
 
 import (
 	"testing"
@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Contract tests: Collection.All must return a defensive copy of the internal map,
+// Contract tests: Labels.All must return a defensive copy of the internal map,
 // not a live reference. The collection itself is mutable by design; this file
 // guards only against callers reaching inside and corrupting internal state.
 
 func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
-	c := NewCollection().Add("k", "v")
+	c := NewLabels().Set("k", "v")
 	m, err := c.All()
 	require.NoError(t, err)
 
@@ -23,11 +23,11 @@ func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 }
 
 func TestLabelsCollection_All_map_not_shared_with_AddMany(t *testing.T) {
-	c1 := NewCollection().AddMany(map[string]string{"a": "1", "b": "2"})
+	c1 := NewLabels().SetMany(map[string]string{"a": "1", "b": "2"})
 	m, err := c1.All()
 	require.NoError(t, err)
 
-	c2 := NewCollection().AddMany(m)
+	c2 := NewLabels().SetMany(m)
 
 	m["a"] = "hacked"
 	m["b"] = "hacked"

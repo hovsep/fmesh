@@ -1,17 +1,72 @@
 package cycle
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/hovsep/fmesh/meta"
+)
 
 // Group contains multiple activation cycles.
 type Group struct {
-	cycles []*Cycle
+	cycles  []*Cycle
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 // NewGroup creates a group of cycles.
 func NewGroup() *Group {
 	return &Group{
-		cycles: make([]*Cycle, 0),
+		cycles:  make([]*Cycle, 0),
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
 	}
+}
+
+// Labels returns the group's own labels store.
+func (g *Group) Labels() *meta.Labels { return g.labels }
+
+// WithLabel adds or updates a single label on the group itself.
+func (g *Group) WithLabel(name, value string) *Group { g.labels.Set(name, value); return g }
+
+// Scalars returns the group's own scalars store.
+func (g *Group) Scalars() *meta.Scalars { return g.scalars }
+
+// WithScalar adds or updates a single scalar on the group itself.
+func (g *Group) WithScalar(name string, value float64) *Group {
+	g.scalars.Set(name, value)
+	return g
+}
+
+// WithLabelOnEach sets a label on every cycle in the group.
+func (g *Group) WithLabelOnEach(name, value string) *Group {
+	for _, c := range g.cycles {
+		c.labels.Set(name, value)
+	}
+	return g
+}
+
+// WithScalarOnEach sets a scalar on every cycle in the group.
+func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+	for _, c := range g.cycles {
+		c.scalars.Set(name, value)
+	}
+	return g
+}
+
+// RemoveLabelOnEach removes a label from every cycle in the group.
+func (g *Group) RemoveLabelOnEach(names ...string) *Group {
+	for _, c := range g.cycles {
+		c.labels.Remove(names...)
+	}
+	return g
+}
+
+// RemoveScalarOnEach removes a scalar from every cycle in the group.
+func (g *Group) RemoveScalarOnEach(names ...string) *Group {
+	for _, c := range g.cycles {
+		c.scalars.Remove(names...)
+	}
+	return g
 }
 
 // Add adds cycles to the group and returns it.
