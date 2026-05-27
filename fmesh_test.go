@@ -127,12 +127,12 @@ func TestFMesh_WithDescription(t *testing.T) {
 func TestFMesh_WithConfig(t *testing.T) {
 	tests := []struct {
 		name       string
-		config     *Config
+		config     Config
 		assertions func(t *testing.T, fm *FMesh)
 	}{
 		{
 			name: "custom config",
-			config: &Config{
+			config: Config{
 				ErrorHandlingStrategy: IgnoreAll,
 				CyclesLimit:           9999,
 			},
@@ -145,6 +145,192 @@ func TestFMesh_WithConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := mustNewFMesh("fm1", WithConfig(tt.config))
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
+		})
+	}
+}
+
+func TestWithErrorHandlingStrategy(t *testing.T) {
+	tests := []struct {
+		name       string
+		strategy   ErrorHandlingStrategy
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:     "sets ignore all",
+			strategy: IgnoreAll,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, IgnoreAll, fm.config.ErrorHandlingStrategy)
+			},
+		},
+		{
+			name:     "sets stop on first error or panic",
+			strategy: StopOnFirstErrorOrPanic,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, StopOnFirstErrorOrPanic, fm.config.ErrorHandlingStrategy)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mustNewFMesh("fm1", WithErrorHandlingStrategy(tt.strategy))
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
+		})
+	}
+}
+
+func TestWithCyclesLimit(t *testing.T) {
+	tests := []struct {
+		name       string
+		limit      int
+		wantErr    bool
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:  "sets custom limit",
+			limit: 42,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, 42, fm.config.CyclesLimit)
+			},
+		},
+		{
+			name:    "zero is rejected",
+			limit:   0,
+			wantErr: true,
+		},
+		{
+			name:    "negative is rejected",
+			limit:   -1,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm, err := New("fm1", WithCyclesLimit(tt.limit))
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, fm)
+				return
+			}
+			require.NoError(t, err)
+			if tt.assertions != nil {
+				tt.assertions(t, fm)
+			}
+		})
+	}
+}
+
+func TestWithUnlimitedCycles(t *testing.T) {
+	fm := mustNewFMesh("fm1", WithUnlimitedCycles())
+	assert.Equal(t, 0, fm.config.CyclesLimit)
+}
+
+func TestWithTimeLimit(t *testing.T) {
+	tests := []struct {
+		name       string
+		limit      time.Duration
+		wantErr    bool
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:  "sets custom time limit",
+			limit: 5 * time.Second,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, 5*time.Second, fm.config.TimeLimit)
+			},
+		},
+		{
+			name:    "zero is rejected",
+			limit:   0,
+			wantErr: true,
+		},
+		{
+			name:    "negative is rejected",
+			limit:   -time.Second,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm, err := New("fm1", WithTimeLimit(tt.limit))
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, fm)
+				return
+			}
+			require.NoError(t, err)
+			if tt.assertions != nil {
+				tt.assertions(t, fm)
+			}
+		})
+	}
+}
+
+func TestWithUnlimitedTime(t *testing.T) {
+	fm := mustNewFMesh("fm1", WithUnlimitedTime())
+	assert.Equal(t, time.Duration(0), fm.config.TimeLimit)
+}
+
+func TestWithDebug(t *testing.T) {
+	tests := []struct {
+		name       string
+		enabled    bool
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:    "enables debug",
+			enabled: true,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.True(t, fm.config.Debug)
+			},
+		},
+		{
+			name:    "disables debug",
+			enabled: false,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.False(t, fm.config.Debug)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mustNewFMesh("fm1", WithDebug(tt.enabled))
+			if tt.assertions != nil {
+				tt.assertions(t, got)
+			}
+		})
+	}
+}
+
+func TestWithLogger(t *testing.T) {
+	customLogger := log.New(io.Discard, "test", log.LstdFlags)
+	tests := []struct {
+		name       string
+		logger     *log.Logger
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:   "sets custom logger",
+			logger: customLogger,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, customLogger, fm.config.Logger)
+			},
+		},
+		{
+			name:   "nil falls back to default logger",
+			logger: nil,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.NotNil(t, fm.config.Logger)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mustNewFMesh("fm1", WithLogger(tt.logger))
 			if tt.assertions != nil {
 				tt.assertions(t, got)
 			}
@@ -282,7 +468,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "unsupported error handling strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: 100,
 					CyclesLimit:           0,
 				}))
@@ -310,7 +496,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first error on first cycle",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 				}))
 				require.NoError(t, fm.AddComponents(
@@ -339,7 +525,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "ErrWaitingForInputs does not stop mesh with StopOnFirstErrorOrPanic strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 				}))
 				require.NoError(t, fm.AddComponents(
@@ -384,7 +570,7 @@ func TestFMesh_Run(t *testing.T) {
 			// stops naturally — proving ErrWaitingForInputsKeep never triggers StopOnFirstErrorOrPanic.
 			name: "ErrWaitingForInputsKeep does not stop mesh with StopOnFirstErrorOrPanic strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 				}))
 				require.NoError(t, fm.AddComponents(
@@ -465,7 +651,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first panic on cycle 3",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstPanic,
 				}))
 				require.NoError(t, fm.AddComponents(
@@ -560,7 +746,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "all errors and panics are ignored",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: IgnoreAll,
 				}))
 				require.NoError(t, fm.AddComponents(
@@ -902,9 +1088,9 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit an error",
 			getFMesh: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-					CyclesLimit:           UnlimitedCycles,
+					CyclesLimit:           0,
 				}))
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
@@ -921,7 +1107,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit a panic",
 			getFMesh: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(&Config{
+				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstPanic,
 				}))
 				c := cycle.New().AddActivationResults(
@@ -1106,7 +1292,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	})
 
 	t.Run("cycle limit error causes Run to return ErrReachedMaxAllowedCycles", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(&Config{
+		fm := mustNewFMesh("test fm", WithConfig(Config{
 			CyclesLimit:           2,
 			ErrorHandlingStrategy: IgnoreAll,
 		}))
@@ -1130,7 +1316,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	})
 
 	t.Run("time limit error causes Run to return ErrTimeLimitExceeded", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(&Config{
+		fm := mustNewFMesh("test fm", WithConfig(Config{
 			TimeLimit:             10 * time.Millisecond,
 			ErrorHandlingStrategy: IgnoreAll,
 		}))
@@ -1155,7 +1341,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	})
 
 	t.Run("component error causes Run to return ErrHitAnErrorOrPanic", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(&Config{
+		fm := mustNewFMesh("test fm", WithConfig(Config{
 			ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 		}))
 		require.NoError(t, fm.AddComponents(
@@ -1174,7 +1360,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	})
 
 	t.Run("component panic causes Run to return ErrHitAPanic", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(&Config{
+		fm := mustNewFMesh("test fm", WithConfig(Config{
 			ErrorHandlingStrategy: StopOnFirstPanic,
 		}))
 		require.NoError(t, fm.AddComponents(
@@ -1193,7 +1379,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	})
 
 	t.Run("unsupported error handling strategy causes Run to return ErrUnsupportedErrorHandlingStrategy", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(&Config{
+		fm := mustNewFMesh("test fm", WithConfig(Config{
 			ErrorHandlingStrategy: 999,
 		}))
 		require.NoError(t, fm.AddComponents(

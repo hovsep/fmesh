@@ -115,7 +115,7 @@ func Test_State(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10000,
 				}))

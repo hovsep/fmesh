@@ -90,7 +90,7 @@ func Test_Math(t *testing.T) {
 				if err := c1.OutputByName("res").PipeTo(c2.InputByName("num")); err != nil {
 					panic(err)
 				}
-				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
 				}))
@@ -195,7 +195,7 @@ func Test_Math(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("mixed_ports_fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("mixed_ports_fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
 				}))
@@ -255,7 +255,7 @@ func Test_Math(t *testing.T) {
 
 func Test_Readme(t *testing.T) {
 	t.Run("readme test", func(t *testing.T) {
-		fm := mustFMesh("hello world", fmesh.WithConfig(&fmesh.Config{
+		fm := mustFMesh("hello world", fmesh.WithConfig(fmesh.Config{
 			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 			CyclesLimit:           10,
 		}))
