@@ -59,7 +59,7 @@ func Test_TimeConstraint(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
 					TimeLimit: 2 * time.Second,
 				}))
@@ -105,9 +105,9 @@ func Test_TimeConstraint(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
-					TimeLimit: fmesh.UnlimitedTime,
+					TimeLimit: 0,
 				}))
 				fm.WithDescription("this mesh ticks every second for 10 seconds")
 				if err := fm.AddComponents(ticker); err != nil {

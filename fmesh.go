@@ -21,7 +21,7 @@ type FMesh struct {
 	scalars     *meta.Scalars
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
-	config      *Config
+	config      Config
 	hooks       *Hooks
 }
 
@@ -374,7 +374,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 	}
 
 	// Check if the time constraint is hit
-	if fm.config.TimeLimit != UnlimitedTime {
+	if fm.config.TimeLimit > 0 {
 		if fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
 			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
 			return true, ErrTimeLimitExceeded

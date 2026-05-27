@@ -1,21 +1,14 @@
 package fmesh
 
 import (
+	"errors"
 	"log"
 	"time"
 )
 
-// @TODO: use functional options instead of such constants.
-const (
-	// UnlimitedCycles defines the maximum number of activation cycles, 0 means no limit.
-	UnlimitedCycles = 0
-	// UnlimitedTime defines the maximum duration F-Mesh can run before being forcefully stopped, 0 means no limit.
-	UnlimitedTime = 0
-)
-
 // Config defines the configuration for the f-mesh.
 type Config struct {
-	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics
+	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics.
 	ErrorHandlingStrategy ErrorHandlingStrategy
 
 	// Debug enables debug mode, which logs additional detailed information for troubleshooting and analysis.
@@ -23,34 +16,101 @@ type Config struct {
 
 	Logger *log.Logger
 
-	// CyclesLimit defines max number of activation cycles, 0 means no limit
+	// CyclesLimit defines the maximum number of activation cycles.
+	// 0 means no limit (use WithUnlimitedCycles to express this explicitly).
 	CyclesLimit int
 
 	// TimeLimit defines the maximum duration F-Mesh can run before being forcefully stopped.
-	// A value of 0 disables the time constraint, allowing indefinite execution.
+	// 0 means no limit (use WithUnlimitedTime to express this explicitly).
 	TimeLimit time.Duration
 }
 
-// @TODO: maybe we need to use struct, not pointer
-// @TODO: Use functional options
-// newDefaultConfig returns a new default configuration.
-func newDefaultConfig() *Config {
-	return &Config{
+// newDefaultConfig returns a safe default configuration.
+func newDefaultConfig() Config {
+	return Config{
 		ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 		CyclesLimit:           1000,
 		Debug:                 false,
 		Logger:                getDefaultLogger(),
-		TimeLimit:             UnlimitedTime,
+		TimeLimit:             5 * time.Second,
 	}
 }
 
-// WithConfig is an FMesh option that sets the configuration.
-func WithConfig(config *Config) Option {
+// WithConfig is an FMesh option that replaces the entire configuration.
+func WithConfig(config Config) Option {
 	return func(fm *FMesh) error {
 		fm.config = config
 		if fm.config.Logger == nil {
 			fm.config.Logger = getDefaultLogger()
 		}
+		return nil
+	}
+}
+
+// WithErrorHandlingStrategy is an FMesh option that sets the error handling strategy.
+func WithErrorHandlingStrategy(s ErrorHandlingStrategy) Option {
+	return func(fm *FMesh) error {
+		fm.config.ErrorHandlingStrategy = s
+		return nil
+	}
+}
+
+// WithCyclesLimit is an FMesh option that sets the maximum number of activation cycles.
+// limit must be greater than 0. Use WithUnlimitedCycles to remove the cycle limit.
+func WithCyclesLimit(limit int) Option {
+	return func(fm *FMesh) error {
+		if limit <= 0 {
+			return errors.New("cycles limit must be greater than 0, use WithUnlimitedCycles() to remove the limit")
+		}
+		fm.config.CyclesLimit = limit
+		return nil
+	}
+}
+
+// WithUnlimitedCycles is an FMesh option that removes the cycle limit.
+func WithUnlimitedCycles() Option {
+	return func(fm *FMesh) error {
+		fm.config.CyclesLimit = 0
+		return nil
+	}
+}
+
+// WithTimeLimit is an FMesh option that sets the maximum duration the mesh can run.
+// d must be greater than 0. Use WithUnlimitedTime to remove the time limit.
+func WithTimeLimit(d time.Duration) Option {
+	return func(fm *FMesh) error {
+		if d <= 0 {
+			return errors.New("time limit must be greater than 0, use WithUnlimitedTime() to remove the limit")
+		}
+		fm.config.TimeLimit = d
+		return nil
+	}
+}
+
+// WithUnlimitedTime is an FMesh option that removes the time limit.
+func WithUnlimitedTime() Option {
+	return func(fm *FMesh) error {
+		fm.config.TimeLimit = 0
+		return nil
+	}
+}
+
+// WithDebug is an FMesh option that enables or disables debug mode.
+func WithDebug(enabled bool) Option {
+	return func(fm *FMesh) error {
+		fm.config.Debug = enabled
+		return nil
+	}
+}
+
+// WithLogger is an FMesh option that sets a custom logger.
+func WithLogger(logger *log.Logger) Option {
+	return func(fm *FMesh) error {
+		if logger == nil {
+			fm.config.Logger = getDefaultLogger()
+			return nil
+		}
+		fm.config.Logger = logger
 		return nil
 	}
 }

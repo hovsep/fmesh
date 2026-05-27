@@ -74,7 +74,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(&fmesh.Config{
+				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           5,
 				}))
