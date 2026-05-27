@@ -7,10 +7,10 @@ import (
 
 // ActivationResult defines the result (possibly an error) of the activation of a given component in a given cycle.
 type ActivationResult struct {
-	componentName   string
-	activated       bool
-	code            ActivationResultCode
-	activationError error // Error returned from a component activation function
+	componentName    string
+	activated        bool
+	code             ActivationResultCode
+	activationErrors []error // All errors accumulated during activation (component error + any hook errors)
 }
 
 // ActivationResultCode denotes specific info about how a component been activated or why not activated at all.
@@ -32,6 +32,8 @@ func (a ActivationResultCode) String() string {
 		return "Waiting for input (clear)"
 	case ActivationCodeWaitingForInputsKeep:
 		return "Waiting for input (keep)"
+	case ActivationCodeHookFailed:
+		return "Hook failed"
 	default:
 		return "Unknown code"
 	}
@@ -58,6 +60,9 @@ const (
 
 	// ActivationCodeWaitingForInputsKeep - the component waits for signals on specific input ports and wants to keep current input signals for the next cycle.
 	ActivationCodeWaitingForInputsKeep
+
+	// ActivationCodeHookFailed - a hook failed, preventing or disrupting activation.
+	ActivationCodeHookFailed
 )
 
 // NewActivationResult creates a new activation result for the given component.
@@ -78,9 +83,14 @@ func (ar *ActivationResult) Activated() bool {
 	return ar.activated
 }
 
-// ActivationError returns the activation error if any occurred.
+// ActivationError returns all accumulated activation errors joined into a single error, or nil if there are none.
 func (ar *ActivationResult) ActivationError() error {
-	return ar.activationError
+	return errors.Join(ar.activationErrors...)
+}
+
+// ActivationErrors returns all accumulated activation errors as a slice.
+func (ar *ActivationResult) ActivationErrors() []error {
+	return ar.activationErrors
 }
 
 // ActivationErrorWithComponentName returns activation error enriched with component name.
@@ -95,12 +105,12 @@ func (ar *ActivationResult) Code() ActivationResultCode {
 
 // IsError returns true when an activation result has an error.
 func (ar *ActivationResult) IsError() bool {
-	return ar.code == ActivationCodeReturnedError && ar.ActivationError() != nil
+	return ar.code == ActivationCodeReturnedError && len(ar.activationErrors) > 0
 }
 
 // IsPanic returns true when an activation result is derived from panic.
 func (ar *ActivationResult) IsPanic() bool {
-	return ar.code == ActivationCodePanicked && ar.ActivationError() != nil
+	return ar.code == ActivationCodePanicked && len(ar.activationErrors) > 0
 }
 
 // SetActivated sets the activated flag and returns the activation result.
@@ -115,9 +125,9 @@ func (ar *ActivationResult) WithActivationCode(code ActivationResultCode) *Activ
 	return ar
 }
 
-// WithActivationError sets the activation result error.
+// WithActivationError appends an error to the activation result's error list and returns the activation result.
 func (ar *ActivationResult) WithActivationError(activationError error) *ActivationResult {
-	ar.activationError = activationError
+	ar.activationErrors = append(ar.activationErrors, activationError)
 	return ar
 }
 
@@ -148,6 +158,14 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		WithActivationCode(ActivationCodePanicked).
+		WithActivationError(err)
+}
+
+// newActivationResultHookFailed builds a specific activation result for when a hook fails.
+func (c *Component) newActivationResultHookFailed(err error) *ActivationResult {
+	return NewActivationResult(c.Name()).
+		SetActivated(false).
+		WithActivationCode(ActivationCodeHookFailed).
 		WithActivationError(err)
 }
 

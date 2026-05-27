@@ -180,10 +180,10 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				return c
 			},
 			wantActivationResult: &ActivationResult{
-				componentName:   "c1",
-				activated:       true,
-				code:            ActivationCodeWaitingForInputsClear,
-				activationError: ErrWaitingForInputs,
+				componentName:    "c1",
+				activated:        true,
+				code:             ActivationCodeWaitingForInputsClear,
+				activationErrors: []error{ErrWaitingForInputs},
 			},
 		},
 		{
@@ -203,10 +203,10 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				return c
 			},
 			wantActivationResult: &ActivationResult{
-				componentName:   "c1",
-				activated:       true,
-				code:            ActivationCodeWaitingForInputsKeep,
-				activationError: ErrWaitingForInputsKeep,
+				componentName:    "c1",
+				activated:        true,
+				code:             ActivationCodeWaitingForInputsKeep,
+				activationErrors: []error{ErrWaitingForInputsKeep},
 			},
 		},
 		{
@@ -273,4 +273,89 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
+	t.Run("beforeActivation hook fails: ActivationCodeHookFailed, not activated, error captured", func(t *testing.T) {
+		c, err := New("c1")
+		require.NoError(t, err)
+		require.NoError(t, c.AddInputs("i1"))
+		c.WithActivationFunc(func(this *Component) error { return nil })
+		c.SetupHooks(func(h *Hooks) {
+			h.BeforeActivation(func(_ *Component) error {
+				return errors.New("before hook error")
+			})
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate()
+
+		assert.Equal(t, ActivationCodeHookFailed, result.Code())
+		assert.False(t, result.Activated())
+		require.Error(t, result.ActivationError())
+		require.ErrorContains(t, result.ActivationError(), "before hook error")
+		assert.Len(t, result.ActivationErrors(), 1)
+	})
+
+	t.Run("onSuccess hook fails: ActivationCodeHookFailed, error accumulated", func(t *testing.T) {
+		c, err := New("c1")
+		require.NoError(t, err)
+		require.NoError(t, c.AddInputs("i1"))
+		c.WithActivationFunc(func(this *Component) error { return nil })
+		c.SetupHooks(func(h *Hooks) {
+			h.OnSuccess(func(_ *ActivationContext) error {
+				return errors.New("onSuccess hook error")
+			})
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate()
+
+		assert.Equal(t, ActivationCodeHookFailed, result.Code())
+		require.Error(t, result.ActivationError())
+		require.ErrorContains(t, result.ActivationError(), "onSuccess hook error")
+		assert.Len(t, result.ActivationErrors(), 1)
+	})
+
+	t.Run("onError hook fails: ActivationCodeHookFailed, both errors accumulated", func(t *testing.T) {
+		c, err := New("c1")
+		require.NoError(t, err)
+		require.NoError(t, c.AddInputs("i1"))
+		c.WithActivationFunc(func(this *Component) error {
+			return errors.New("component error")
+		})
+		c.SetupHooks(func(h *Hooks) {
+			h.OnError(func(_ *ActivationContext) error {
+				return errors.New("onError hook error")
+			})
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate()
+
+		assert.Equal(t, ActivationCodeHookFailed, result.Code())
+		assert.Len(t, result.ActivationErrors(), 2)
+		require.ErrorContains(t, result.ActivationError(), "component error")
+		assert.ErrorContains(t, result.ActivationError(), "onError hook error")
+	})
+
+	t.Run("afterActivation hook fails: ActivationCodeHookFailed, error accumulated", func(t *testing.T) {
+		c, err := New("c1")
+		require.NoError(t, err)
+		require.NoError(t, c.AddInputs("i1"))
+		c.WithActivationFunc(func(this *Component) error { return nil })
+		c.SetupHooks(func(h *Hooks) {
+			h.AfterActivation(func(_ *ActivationContext) error {
+				return errors.New("afterActivation hook error")
+			})
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate()
+
+		assert.Equal(t, ActivationCodeHookFailed, result.Code())
+		require.Error(t, result.ActivationError())
+		require.ErrorContains(t, result.ActivationError(), "afterActivation hook error")
+		assert.Len(t, result.ActivationErrors(), 1)
+	})
 }

@@ -393,3 +393,33 @@ func mustNew(name string, opts ...Option) *Component {
 	}
 	return c
 }
+
+func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
+	err1 := errors.New("first error")
+	err2 := errors.New("second error")
+	err3 := errors.New("third error")
+
+	t.Run("single error", func(t *testing.T) {
+		r := NewActivationResult("c").WithActivationError(err1)
+		assert.Len(t, r.ActivationErrors(), 1)
+		require.Error(t, r.ActivationError())
+		assert.ErrorIs(t, r.ActivationError(), err1)
+	})
+
+	t.Run("multiple errors accumulate", func(t *testing.T) {
+		r := NewActivationResult("c").
+			WithActivationError(err1).
+			WithActivationError(err2).
+			WithActivationError(err3)
+		assert.Len(t, r.ActivationErrors(), 3)
+		require.ErrorIs(t, r.ActivationError(), err1)
+		require.ErrorIs(t, r.ActivationError(), err2)
+		assert.ErrorIs(t, r.ActivationError(), err3)
+	})
+
+	t.Run("no errors returns nil", func(t *testing.T) {
+		r := NewActivationResult("c")
+		assert.Empty(t, r.ActivationErrors())
+		assert.NoError(t, r.ActivationError())
+	})
+}

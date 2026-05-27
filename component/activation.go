@@ -34,11 +34,7 @@ func (c *Component) MaybeActivate() *ActivationResult {
 // activate executes the activation function and manages hooks.
 func (c *Component) activate() (result *ActivationResult) {
 	if err := c.hooks.beforeActivation.Trigger(c); err != nil {
-		// @TODO: shall we introduce new activation code?
-		result = NewActivationResult(c.Name()).
-			SetActivated(false).
-			WithActivationCode(ActivationCodeUndefined).
-			WithActivationError(fmt.Errorf("beforeActivation hook failed: %w", err))
+		result = c.newActivationResultHookFailed(fmt.Errorf("beforeActivation hook failed: %w", err))
 		c.triggerAfterActivation(result)
 		return result
 	}
@@ -59,7 +55,6 @@ func (c *Component) activate() (result *ActivationResult) {
 }
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
-// @TODO: maybe we need to do things separately.
 func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 	if errors.Is(err, ErrWaitingForInputs) {
 		result := c.newActivationResultWaitingForInputs(err)
@@ -81,23 +76,15 @@ func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 // triggerHooksForResult triggers the outcome-specific hook with the activation context.
 func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
 	if err := hookGroup.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
-		// Hook error takes precedence, wrap the activation result error if any
-		if result.ActivationError() != nil {
-			result.WithActivationError(fmt.Errorf("%w (hook also failed: %w)", result.ActivationError(), err))
-		} else {
-			result.WithActivationError(fmt.Errorf("activation hook failed: %w", err))
-		}
+		result.WithActivationCode(ActivationCodeHookFailed).
+			WithActivationError(fmt.Errorf("activation hook failed: %w", err))
 	}
 }
 
 // triggerAfterActivation triggers the AfterActivation hook.
 func (c *Component) triggerAfterActivation(result *ActivationResult) {
 	if err := c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
-		// AfterActivation hook error is always appended to result
-		if result.ActivationError() != nil {
-			result.WithActivationError(fmt.Errorf("%w (afterActivation hook failed: %w)", result.ActivationError(), err))
-		} else {
-			result.WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
-		}
+		result.WithActivationCode(ActivationCodeHookFailed).
+			WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
 	}
 }
