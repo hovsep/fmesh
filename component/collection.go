@@ -118,8 +118,8 @@ func (c *Collection) Any() *Component {
 }
 
 // All returns all components as a map.
-func (c *Collection) All() (map[string]*Component, error) {
-	return c.components, nil
+func (c *Collection) All() map[string]*Component {
+	return c.components
 }
 
 // Every returns true if all components match the predicate.

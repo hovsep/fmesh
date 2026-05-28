@@ -395,15 +395,13 @@ func TestCollection_Without(t *testing.T) {
 func TestCollection_All(t *testing.T) {
 	t.Run("returns all components", func(t *testing.T) {
 		collection := newCol("c1", "c2")
-		all, err := collection.All()
-		require.NoError(t, err)
+		all := collection.All()
 		assert.Len(t, all, 2)
 	})
 
 	t.Run("returns empty map for empty collection", func(t *testing.T) {
 		collection := NewCollection()
-		all, err := collection.All()
-		require.NoError(t, err)
+		all := collection.All()
 		assert.Empty(t, all)
 	})
 }

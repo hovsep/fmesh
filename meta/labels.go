@@ -21,8 +21,8 @@ func NewLabels() *Labels {
 
 // All returns all labels as a map (a defensive copy; mutating the returned map
 // does not change the collection).
-func (c *Labels) All() (map[string]string, error) {
-	return maps.Clone(c.labels), nil
+func (c *Labels) All() map[string]string {
+	return maps.Clone(c.labels)
 }
 
 // Keys returns all label names as a sorted slice. The caller owns the returned slice.

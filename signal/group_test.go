@@ -7,15 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mustAll is a test helper that panics if All returns an error.
-func (g *Group) mustAll() []*Signal {
-	signals, err := g.All()
-	if err != nil {
-		panic(err)
-	}
-	return signals
-}
-
 func TestNewGroup(t *testing.T) {
 	type args struct {
 		payloads []any
@@ -31,8 +22,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: nil,
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.All()
-				require.NoError(t, err)
+				signals := group.All()
 				assert.Empty(t, signals)
 				assert.Zero(t, group.Len())
 			},
@@ -43,8 +33,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: []any{1, nil, 3},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals, err := group.All()
-				require.NoError(t, err)
+				signals := group.All()
 				assert.Equal(t, 3, group.Len())
 				assert.Contains(t, signals, New(1))
 				assert.Contains(t, signals, New(nil))
@@ -160,7 +149,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to empty group",
 			group: NewGroup(),
 			args: args{
-				signals: NewGroup(3, 4, 5).mustAll(),
+				signals: NewGroup(3, 4, 5).All(),
 			},
 			want: NewGroup(3, 4, 5),
 		},
@@ -168,7 +157,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to group",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				signals: NewGroup(4, 5, 6).mustAll(),
+				signals: NewGroup(4, 5, 6).All(),
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
 		},
@@ -404,22 +393,19 @@ func TestGroup_Find(t *testing.T) {
 
 func TestGroup_All(t *testing.T) {
 	tests := []struct {
-		name            string
-		group           *Group
-		want            []*Signal
-		wantErrorString string
+		name  string
+		group *Group
+		want  []*Signal
 	}{
 		{
-			name:            "empty group",
-			group:           NewGroup(),
-			want:            []*Signal{},
-			wantErrorString: "",
+			name:  "empty group",
+			group: NewGroup(),
+			want:  []*Signal{},
 		},
 		{
-			name:            "with signals",
-			group:           NewGroup(1, nil, 3),
-			want:            []*Signal{New(1), New(nil), New(3)},
-			wantErrorString: "",
+			name:  "with signals",
+			group: NewGroup(1, nil, 3),
+			want:  []*Signal{New(1), New(nil), New(3)},
 		},
 		{
 			name: "with labeled signals",
@@ -431,18 +417,12 @@ func TestGroup_All(t *testing.T) {
 				New(nil).WithOnlyLabels(map[string]string{"flavor": "banana"}),
 				New(3).WithOnlyLabels(map[string]string{"flavor": "banana"}),
 			},
-			wantErrorString: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.group.All()
-			if tt.wantErrorString != "" {
-				require.Error(t, err)
-				require.EqualError(t, err, tt.wantErrorString)
-			} else {
-				assert.Equal(t, tt.want, got)
-			}
+			got := tt.group.All()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

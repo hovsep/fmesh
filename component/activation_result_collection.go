@@ -1,6 +1,7 @@
 package component
 
 import (
+	"maps"
 	"sync"
 )
 
@@ -87,11 +88,14 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	return nil
 }
 
-// All returns all activation results as a map.
-func (c *ActivationResultCollection) All() (map[string]*ActivationResult, error) {
+// All returns a shallow copy of all activation results as a map.
+// A copy is returned so the caller cannot mutate the internal state.
+func (c *ActivationResultCollection) All() map[string]*ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.activationResults, nil
+	result := make(map[string]*ActivationResult, len(c.activationResults))
+	maps.Copy(result, c.activationResults)
+	return result
 }
 
 // Len returns the number of activation results in the collection.

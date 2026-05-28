@@ -205,7 +205,7 @@ func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) error {
 	if err != nil {
 		return err
 	}
-	ports, _ := indexedPorts.All()
+	ports := indexedPorts.All()
 	return c.Add(ports...)
 }
 
@@ -213,18 +213,15 @@ func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) error {
 func (c *Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
 	for _, p := range c.ports {
-		signals, err := p.Signals().All()
-		if err != nil {
-			continue
-		}
+		signals := p.Signals().All()
 		group = group.With(signals...)
 	}
 	return group
 }
 
 // All returns all ports as a map.
-func (c *Collection) All() (map[string]*Port, error) {
-	return c.ports, nil
+func (c *Collection) All() map[string]*Port {
+	return c.ports
 }
 
 // Any returns any arbitrary port from the collection.
@@ -293,7 +290,7 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 //
 //	// Get priority ports
 //	priorityPorts := this.Inputs().Filter(func(p *port.Port) bool {
-//	    labels, _ := p.Labels().All()
+//	    labels := p.Labels().All()
 //	    return labels["priority"] == "high"
 //	})
 func (c *Collection) Filter(predicate Predicate) *Collection {

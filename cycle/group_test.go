@@ -275,15 +275,13 @@ func TestGroup_All(t *testing.T) {
 
 	t.Run("returns all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
-		all, err := group.All()
-		require.NoError(t, err)
+		all := group.All()
 		assert.Len(t, all, 2)
 	})
 
 	t.Run("returns empty slice for empty group", func(t *testing.T) {
 		group := NewGroup()
-		all, err := group.All()
-		require.NoError(t, err)
+		all := group.All()
 		assert.Empty(t, all)
 	})
 }

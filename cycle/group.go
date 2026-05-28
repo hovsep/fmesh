@@ -151,8 +151,8 @@ func (g *Group) First() *Cycle {
 }
 
 // All returns all cycles as a slice.
-func (g *Group) All() ([]*Cycle, error) {
-	return g.cycles, nil
+func (g *Group) All() []*Cycle {
+	return g.cycles
 }
 
 // Every returns true if all cycles match the predicate.

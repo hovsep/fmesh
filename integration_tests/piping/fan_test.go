@@ -174,8 +174,7 @@ func Test_Fan(t *testing.T) {
 				assert.Equal(t, 3, resultSignals.Len())
 
 				// And they are all different
-				signals, err := resultSignals.All()
-				require.NoError(t, err)
+				signals := resultSignals.All()
 				sig0, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
 				sig1, err := signals[1].Payload()
@@ -193,8 +192,7 @@ func Test_Fan(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run()
-			cycles, cycleErr := runResult.Cycles.All()
-			require.NoError(t, cycleErr)
+			cycles := runResult.Cycles.All()
 			tt.assertions(t, fm, cycles, err)
 		})
 	}

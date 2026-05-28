@@ -119,11 +119,7 @@ func Test_LabelTransformation(t *testing.T) {
 					})
 
 					// Create a new signal with normalized labels
-					labelsMap, err := normalizedLabels.All()
-
-					if err != nil {
-						return err
-					}
+					labelsMap := normalizedLabels.All()
 
 					newSignal := signal.New(sig.PayloadOrNil()).WithOnlyLabels(labelsMap)
 					return outPort.PutSignals(newSignal)

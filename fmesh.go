@@ -176,7 +176,7 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 		}
 	}
 
-	fm.LogDebug(fmt.Sprintf("%d components added to mesh", fm.Components().Len()))
+	fm.LogDebug("%d components added to mesh", fm.Components().Len())
 	return nil
 }
 
@@ -198,14 +198,9 @@ func (fm *FMesh) runCycle() error {
 		return cycleErr
 	}
 
-	fm.LogDebug(fmt.Sprintf("starting activation cycle #%d", newCycle.Number()))
+	fm.LogDebug("starting activation cycle #%d", newCycle.Number())
 
-	components, err := fm.Components().All()
-	if err != nil {
-		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
-		return errors.Join(errFailedToRunCycle, err)
-	}
-
+	components := fm.Components().All()
 	if len(components) == 0 {
 		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 		return errors.Join(errFailedToRunCycle, errNoComponents)
@@ -225,8 +220,8 @@ func (fm *FMesh) runCycle() error {
 
 	if fm.IsDebug() {
 		_ = newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
-			fm.LogDebug(fmt.Sprintf("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
-				ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError()))
+			fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
+				ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError())
 			return nil
 		})
 	}
@@ -247,10 +242,7 @@ func (fm *FMesh) drainComponents() error {
 		return errors.Join(ErrFailedToDrain, err)
 	}
 
-	components, err := fm.Components().All()
-	if err != nil {
-		return errors.Join(ErrFailedToDrain, err)
-	}
+	components := fm.Components().All()
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
@@ -276,10 +268,7 @@ func (fm *FMesh) drainComponents() error {
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs() error {
-	components, err := fm.Components().All()
-	if err != nil {
-		return errors.Join(errFailedToClearInputs, err)
-	}
+	components := fm.Components().All()
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
@@ -369,14 +358,14 @@ func (fm *FMesh) mustStop() (bool, error) {
 
 	// Check if cycles limit is hit
 	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
-		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrReachedMaxAllowedCycles))
+		fm.LogDebug("going to stop: %s", ErrReachedMaxAllowedCycles)
 		return true, ErrReachedMaxAllowedCycles
 	}
 
 	// Check if the time constraint is hit
 	if fm.config.TimeLimit > 0 {
 		if fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
-			fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrTimeLimitExceeded))
+			fm.LogDebug("going to stop: %s", ErrTimeLimitExceeded)
 			return true, ErrTimeLimitExceeded
 		}
 	}
@@ -393,7 +382,7 @@ func (fm *FMesh) mustStop() (bool, error) {
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
 			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w",
 				ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
-			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
+			fm.LogDebug("going to stop: %s", runError)
 			return true, runError
 		}
 		return false, nil
@@ -401,24 +390,21 @@ func (fm *FMesh) mustStop() (bool, error) {
 		if lastCycle.HasActivationPanics() {
 			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w",
 				ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
-			fm.LogDebug(fmt.Sprintf("going to stop: %s", runError))
+			fm.LogDebug("going to stop: %s", runError)
 			return true, runError
 		}
 		return false, nil
 	case IgnoreAll:
 		return false, nil
 	default:
-		fm.LogDebug(fmt.Sprintf("going to stop: %s", ErrUnsupportedErrorHandlingStrategy))
+		fm.LogDebug("going to stop: %s", ErrUnsupportedErrorHandlingStrategy)
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
 }
 
 // validateBeforeRun does pre-run checks using plain loops (no nested ForEach chains).
 func (fm *FMesh) validateBeforeRun() error {
-	components, err := fm.Components().All()
-	if err != nil {
-		return fmt.Errorf("failed to validate fmesh: %w", err)
-	}
+	components := fm.Components().All()
 
 	for _, c := range components {
 		if err := c.ValidateBeforeActivating(); err != nil {
@@ -429,10 +415,7 @@ func (fm *FMesh) validateBeforeRun() error {
 			return fmt.Errorf("component %q has invalid parent mesh", c.Name())
 		}
 
-		outputPorts, err := c.Outputs().All()
-		if err != nil {
-			return fmt.Errorf("invalid ports in component %q: %w", c.Name(), err)
-		}
+		outputPorts := c.Outputs().All()
 
 		for _, p := range outputPorts {
 			if err := p.ValidateBeforeActivation(); err != nil {
@@ -443,7 +426,7 @@ func (fm *FMesh) validateBeforeRun() error {
 				return fmt.Errorf("port %q in component %q has invalid parent component", p.Name(), c.Name())
 			}
 
-			destPorts, _ := p.Pipes().All()
+			destPorts := p.Pipes().All()
 			for _, destPort := range destPorts {
 				if err := destPort.ValidateBeforeActivation(); err != nil {
 					return fmt.Errorf("invalid pipe destination port %q from port %q: %w", destPort.Name(), p.Name(), err)

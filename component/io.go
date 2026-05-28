@@ -182,10 +182,7 @@ func (c *Component) InputByName(name string) *port.Port {
 
 // FlushOutputs pushes signals out of the component outputs to pipes and clears outputs.
 func (c *Component) FlushOutputs() error {
-	ports, err := c.Outputs().All()
-	if err != nil {
-		return err
-	}
+	ports := c.Outputs().All()
 	for _, out := range ports {
 		if err := out.Flush(); err != nil {
 			return fmt.Errorf("failed to flush output port %q: %w", out.Name(), err)
