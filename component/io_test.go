@@ -23,7 +23,7 @@ func TestComponent_AddInputs(t *testing.T) {
 			name: "happy path",
 			component: func() *Component {
 				c := mustNew("c1")
-				c.WithActivationFunc(func(this *Component) error { return nil })
+				c.SetActivationFunc(func(this *Component) error { return nil })
 				return c
 			}(),
 			args: args{
@@ -77,7 +77,7 @@ func TestComponent_AddOutputs(t *testing.T) {
 			name: "happy path",
 			component: func() *Component {
 				c := mustNew("c1")
-				c.WithActivationFunc(func(this *Component) error { return nil })
+				c.SetActivationFunc(func(this *Component) error { return nil })
 				return c
 			}(),
 			args: args{

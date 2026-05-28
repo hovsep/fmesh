@@ -197,8 +197,7 @@ func (p *Port) Pipes() *Group {
 	return p.pipes
 }
 
-// withSignals sets the signals field.
-func (p *Port) withSignals(signalsGroup *signal.Group) {
+func (p *Port) setSignals(signalsGroup *signal.Group) {
 	p.signals = signalsGroup
 }
 
@@ -209,7 +208,7 @@ func (p *Port) Signals() *signal.Group {
 
 // PutSignals adds signals to the port.
 func (p *Port) PutSignals(signals ...*signal.Signal) error {
-	p.withSignals(p.Signals().With(signals...))
+	p.setSignals(p.Signals().With(signals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
@@ -225,7 +224,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) error {
 // PutPayloads creates signals from given payloads.
 func (p *Port) PutPayloads(payloads ...any) error {
 	newSignals := signal.NewGroup(payloads...).All()
-	p.withSignals(p.Signals().With(newSignals...))
+	p.setSignals(p.Signals().With(newSignals...))
 
 	// Trigger OnSignalsAdded hook
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
@@ -252,7 +251,7 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 // Clear removes all signals.
 func (p *Port) Clear() error {
 	signalsCleared := p.Signals().Len()
-	p.withSignals(signal.NewGroup())
+	p.setSignals(signal.NewGroup())
 
 	// Trigger OnClear hook
 	if err := p.hooks.onClear.Trigger(&ClearContext{
@@ -358,7 +357,6 @@ func (p *Port) ParentComponent() ParentComponent {
 	return p.parentComponent
 }
 
-// setParentComponent sets the parent component.
 func (p *Port) setParentComponent(parentComponent ParentComponent) {
 	p.parentComponent = parentComponent
 }

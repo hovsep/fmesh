@@ -15,9 +15,9 @@ func WithActivationFunc(f ActivationFunc) Option {
 	}
 }
 
-// WithActivationFunc sets the activation function on the component and returns the component for chaining.
+// SetActivationFunc sets the activation function on the component and returns the component for chaining.
 // This method can be called after construction; the option form is preferred when building inside New().
-func (c *Component) WithActivationFunc(f ActivationFunc) *Component {
+func (c *Component) SetActivationFunc(f ActivationFunc) *Component {
 	c.f = f
 	return c
 }
@@ -76,7 +76,7 @@ func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 // triggerHooksForResult triggers the outcome-specific hook with the activation context.
 func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
 	if err := hookGroup.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
-		result.WithActivationCode(ActivationCodeHookFailed).
+		result.SetActivationCode(ActivationCodeHookFailed).
 			WithActivationError(fmt.Errorf("activation hook failed: %w", err))
 	}
 }
@@ -84,7 +84,7 @@ func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *h
 // triggerAfterActivation triggers the AfterActivation hook.
 func (c *Component) triggerAfterActivation(result *ActivationResult) {
 	if err := c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
-		result.WithActivationCode(ActivationCodeHookFailed).
+		result.SetActivationCode(ActivationCodeHookFailed).
 			WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
 	}
 }

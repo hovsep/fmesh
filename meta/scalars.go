@@ -145,9 +145,6 @@ func (s *Scalars) Average(names ...string) (float64, bool) {
 		}
 		return s.Sum() / float64(len(s.scalars)), true
 	}
-	if len(names) == 0 {
-		return 0, false
-	}
 	return s.Sum(names...) / float64(len(names)), true
 }
 

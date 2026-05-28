@@ -51,7 +51,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			component.WithInputs("raw_data", "filter"),
 			component.WithOutputs("processed", "metrics"),
 		).
-			WithDescription("Demonstrates all port creation and manipulation features")
+			SetDescription("Demonstrates all port creation and manipulation features")
 
 		// Advanced API: attach ports with descriptions and labels
 		require.NoError(t, processor.AttachInputPorts(
@@ -66,7 +66,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				AddLabel("severity", "high").
 				AddLabel("format", "structured"),
 		))
-		processor.WithActivationFunc(func(this *component.Component) error {
+		processor.SetActivationFunc(func(this *component.Component) error {
 			// Wait for required inputs
 			if !this.InputByName("raw_data").HasSignals() ||
 				!this.InputByName("config").HasSignals() {
@@ -165,7 +165,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				AddLabel("version", "1.0").
 				AddLabel("owner", "team-a"),
 		))
-		c.WithActivationFunc(func(this *component.Component) error {
+		c.SetActivationFunc(func(this *component.Component) error {
 			if !this.InputByName("input").HasSignals() {
 				return nil
 			}
@@ -219,7 +219,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, c.AttachInputPorts( // Add with details
 			mustInputPort("c", port.WithDescription("Third input")),
 		))
-		c.WithActivationFunc(func(this *component.Component) error {
+		c.SetActivationFunc(func(this *component.Component) error {
 			if !this.Inputs().AllHaveSignals() {
 				return nil
 			}
@@ -259,7 +259,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			mustInputPort("i4").AddLabel("priority", "high"),
 			mustInputPort("i5").AddLabel("priority", "low"),
 		))
-		c.WithActivationFunc(func(this *component.Component) error {
+		c.SetActivationFunc(func(this *component.Component) error {
 			inputs := this.Inputs()
 
 			// Count ports with signals

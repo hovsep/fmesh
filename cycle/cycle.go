@@ -60,7 +60,7 @@ func (c *Cycle) AllPanicsCombined() error {
 	return allPanics
 }
 
-// HasActivationPanics tells whether the cycle is ended with panic (at lease one component panicked).
+// HasActivationPanics tells whether the cycle ended with at least one component panicking.
 func (c *Cycle) HasActivationPanics() bool {
 	return c.ActivationResults().HasActivationPanics()
 }
@@ -81,8 +81,8 @@ func (c *Cycle) Number() int {
 	return c.number
 }
 
-// WithNumber sets the sequence number.
-func (c *Cycle) WithNumber(number int) *Cycle {
+// SetNumber sets the sequence number.
+func (c *Cycle) SetNumber(number int) *Cycle {
 	c.number = number
 	return c
 }

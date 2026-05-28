@@ -65,8 +65,8 @@ func (fm *FMesh) ComponentByName(name string) *component.Component {
 	return fm.Components().ByName(name)
 }
 
-// WithDescription sets a description.
-func (fm *FMesh) WithDescription(description string) *FMesh {
+// SetDescription sets a description.
+func (fm *FMesh) SetDescription(description string) *FMesh {
 	fm.description = description
 	return fm
 }
@@ -169,7 +169,7 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 			c.WithLogger(fm.Logger())
 		}
 
-		c.WithParentMesh(fm)
+		c.SetParentMesh(fm)
 
 		if err := fm.components.Add(c); err != nil {
 			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
@@ -190,7 +190,7 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 // Returns any error that occurred.
 // The cycle is always added to runtimeInfo even if an error occurred.
 func (fm *FMesh) runCycle() error {
-	newCycle := cycle.New().WithNumber(fm.runtimeInfo.Cycles.Len() + 1)
+	newCycle := cycle.New().SetNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
 	if err := fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("cycleBegin hook failed: %w", err))

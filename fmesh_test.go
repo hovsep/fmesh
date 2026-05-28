@@ -116,7 +116,7 @@ func TestFMesh_WithDescription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.fm.WithDescription(tt.description)
+			got := tt.fm.SetDescription(tt.description)
 			if tt.assertions != nil {
 				tt.assertions(t, got)
 			}
@@ -365,7 +365,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").WithActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -378,8 +378,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").WithActivationFunc(noOpActivationFunc),
-					mustNewComponent("c2").WithActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
+					mustNewComponent("c2").SetActivationFunc(noOpActivationFunc),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -393,8 +393,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").WithActivationFunc(noOpActivationFunc),
-					mustNewComponent("c1").WithActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
 				},
 			},
 			wantErr:    true,
@@ -405,8 +405,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").WithActivationFunc(noOpActivationFunc),                                                          // Must get default logger
-					mustNewComponent("c2").WithActivationFunc(noOpActivationFunc).WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
+					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),                                                          // Must get default logger
+					mustNewComponent("c2").SetActivationFunc(noOpActivationFunc).WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -426,7 +426,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").WithDescription("No AF"),
+					mustNewComponent("c1").SetDescription("No AF"),
 				},
 			},
 			wantErr:    true,
@@ -462,7 +462,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name:       "empty mesh stops after first cycle",
 			getFM:      func() *FMesh { return mustNewFMesh("fm") },
-			wantCycles: cycle.NewGroup().Add(cycle.New().WithNumber(1)),
+			wantCycles: cycle.NewGroup().Add(cycle.New().SetNumber(1)),
 			wantErr:    true,
 		},
 		{
@@ -474,8 +474,8 @@ func TestFMesh_Run(t *testing.T) {
 				}))
 				require.NoError(t, fm.AddComponents(
 					mustAddOutputs(mustAddInputs(mustNewComponent("c1").
-						WithDescription("This component simply puts a constant on o1"), "i1"), "o1").
-						WithActivationFunc(func(this *component.Component) error {
+						SetDescription("This component simply puts a constant on o1"), "i1"), "o1").
+						SetActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(77))
 						}),
 				))
@@ -489,7 +489,7 @@ func TestFMesh_Run(t *testing.T) {
 				cycle.New().
 					AddActivationResults(component.NewActivationResult("c1").
 						SetActivated(true).
-						WithActivationCode(component.ActivationCodeOK)),
+						SetActivationCode(component.ActivationCodeOK)),
 			),
 			wantErr: true,
 		},
@@ -501,8 +501,8 @@ func TestFMesh_Run(t *testing.T) {
 				}))
 				require.NoError(t, fm.AddComponents(
 					mustAddInputs(mustNewComponent("c1").
-						WithDescription("This component just returns an unexpected error"), "i1").
-						WithActivationFunc(func(this *component.Component) error {
+						SetDescription("This component just returns an unexpected error"), "i1").
+						SetActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
 						}),
 				))
@@ -516,7 +516,7 @@ func TestFMesh_Run(t *testing.T) {
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeReturnedError).
+							SetActivationCode(component.ActivationCodeReturnedError).
 							WithActivationError(errors.New("component returned an error: boom")),
 					),
 			),
@@ -537,7 +537,7 @@ func TestFMesh_Run(t *testing.T) {
 								return component.ErrWaitingForInputs
 							}
 							return this.OutputByName("o1").PutSignals(signal.New("done"))
-						})).WithDescription("This component waits until it gets signals on both inputs"),
+						})).SetDescription("This component waits until it gets signals on both inputs"),
 				))
 				return fm
 			},
@@ -550,7 +550,7 @@ func TestFMesh_Run(t *testing.T) {
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeWaitingForInputsClear).
+							SetActivationCode(component.ActivationCodeWaitingForInputsClear).
 							WithActivationError(component.ErrWaitingForInputs),
 					),
 				// Mesh stops naturally in the next cycle because nothing is activated
@@ -558,7 +558,7 @@ func TestFMesh_Run(t *testing.T) {
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 			),
 			wantErr: false,
@@ -597,7 +597,7 @@ func TestFMesh_Run(t *testing.T) {
 								}
 							}
 							return nil
-						})).WithDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
+						})).SetDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
 					mustNewComponent("c2",
 						component.WithInputs("in1", "in2"),
 						component.WithOutputs("result"),
@@ -608,7 +608,7 @@ func TestFMesh_Run(t *testing.T) {
 							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
 							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
 							return this.OutputByName("result").PutPayloads(a * b)
-						})).WithDescription("Waits for both inputs (keeping signals) then multiplies them"),
+						})).SetDescription("Waits for both inputs (keeping signals) then multiplies them"),
 				))
 				return fm
 			},
@@ -622,28 +622,28 @@ func TestFMesh_Run(t *testing.T) {
 			},
 			wantCycles: cycle.NewGroup().Add(
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
 				),
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
 				),
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
 				),
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
 				),
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-					component.NewActivationResult("c2").SetActivated(true).WithActivationCode(component.ActivationCodeOK),
+					component.NewActivationResult("c1").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
 				),
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
-					component.NewActivationResult("c2").SetActivated(false).WithActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c1").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
+					component.NewActivationResult("c2").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
 				),
 			),
 			wantErr: false,
@@ -660,25 +660,25 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
-						})).WithDescription("This component just sends a number to c2"),
+						})).SetDescription("This component just sends a number to c2"),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						})).WithDescription("This component receives a number from c1 and passes it to c4"),
+						})).SetDescription("This component receives a number from c1 and passes it to c4"),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
-						})).WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
+						})).SetDescription("This component returns an error, but the mesh is configured to ignore errors"),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							panic("no way")
-						})).WithDescription("This component receives a number from c2 and panics"),
+						})).SetDescription("This component receives a number from c2 and panics"),
 				))
 				return fm
 			},
@@ -697,47 +697,47 @@ func TestFMesh_Run(t *testing.T) {
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
+							SetActivationCode(component.ActivationCodeOK),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeReturnedError).
+							SetActivationCode(component.ActivationCodeReturnedError).
 							WithActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
+							SetActivationCode(component.ActivationCodeOK),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodePanicked).
+							SetActivationCode(component.ActivationCodePanicked).
 							WithActivationError(errors.New("panicked with: no way")),
 					),
 			),
@@ -755,20 +755,20 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
-						})).WithDescription("This component just sends a number to c2"),
+						})).SetDescription("This component just sends a number to c2"),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
-						})).WithDescription("This component receives a number from c1 and passes it to c4"),
+						})).SetDescription("This component receives a number from c1 and passes it to c4"),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
-						})).WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
+						})).SetDescription("This component returns an error, but the mesh is configured to ignore errors"),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
@@ -778,13 +778,13 @@ func TestFMesh_Run(t *testing.T) {
 							// Even component panicked, it managed to set some data on output "o1"
 							// so that data will be available in next cycle
 							panic("no way")
-						})).WithDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics"),
+						})).SetDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics"),
 					mustNewComponent("c5",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						})).WithDescription("This component receives a number from c4"),
+						})).SetDescription("This component receives a number from c4"),
 				))
 				return fm
 			},
@@ -805,97 +805,97 @@ func TestFMesh_Run(t *testing.T) {
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
+							SetActivationCode(component.ActivationCodeOK),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeReturnedError).
+							SetActivationCode(component.ActivationCodeReturnedError).
 							WithActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c5").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 				// Only c2 is activated
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
+							SetActivationCode(component.ActivationCodeOK),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c5").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 				// Only c4 is activated and panicked
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodePanicked).
+							SetActivationCode(component.ActivationCodePanicked).
 							WithActivationError(errors.New("panicked with: no way")),
 						component.NewActivationResult("c5").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 				// Only c5 is activated (after c4 panicked in the previous cycle)
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c5").
 							SetActivated(true).
-							WithActivationCode(component.ActivationCodeOK),
+							SetActivationCode(component.ActivationCodeOK),
 					),
 				// Last (control) cycle, no component activated, so f-mesh stops naturally
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c5").
 							SetActivated(false).
-							WithActivationCode(component.ActivationCodeNoInput),
+							SetActivationCode(component.ActivationCodeNoInput),
 					),
 			),
 			wantErr: false,
@@ -996,14 +996,14 @@ func TestFMesh_runCycle(t *testing.T) {
 			want: cycle.New().AddActivationResults(
 				component.NewActivationResult("c1").
 					SetActivated(true).
-					WithActivationCode(component.ActivationCodeOK),
+					SetActivationCode(component.ActivationCodeOK),
 				component.NewActivationResult("c2").
 					SetActivated(true).
-					WithActivationCode(component.ActivationCodeOK),
+					SetActivationCode(component.ActivationCodeOK),
 				component.NewActivationResult("c3").
 					SetActivated(true).
-					WithActivationCode(component.ActivationCodeOK),
-			).WithNumber(1),
+					SetActivationCode(component.ActivationCodeOK),
+			).SetNumber(1),
 		},
 	}
 	for _, tt := range tests {
@@ -1040,8 +1040,8 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						WithActivationCode(component.ActivationCodeOK),
-				).WithNumber(5)
+						SetActivationCode(component.ActivationCodeOK),
+				).SetNumber(5)
 
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
@@ -1056,8 +1056,8 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						WithActivationCode(component.ActivationCodeOK),
-				).WithNumber(1001)
+						SetActivationCode(component.ActivationCodeOK),
+				).SetNumber(1001)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
@@ -1071,8 +1071,8 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(false).
-						WithActivationCode(component.ActivationCodeNoInput),
-				).WithNumber(5)
+						SetActivationCode(component.ActivationCodeNoInput),
+				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
@@ -1089,9 +1089,9 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						WithActivationCode(component.ActivationCodeReturnedError).
+						SetActivationCode(component.ActivationCodeReturnedError).
 						WithActivationError(errors.New("c1 activation finished with error")),
-				).WithNumber(5)
+				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
@@ -1107,9 +1107,9 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						WithActivationCode(component.ActivationCodePanicked).
+						SetActivationCode(component.ActivationCodePanicked).
 						WithActivationError(errors.New("c1 panicked")),
-				).WithNumber(5)
+				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
 			},
@@ -1171,7 +1171,7 @@ func TestFMesh_validate(t *testing.T) {
 				c := mustNewComponent("c1",
 					component.WithInputs("in"),
 					component.WithOutputs("out")).
-					WithParentMesh(otherFm)
+					SetParentMesh(otherFm)
 				require.NoError(t, fm.components.Add(c))
 				return fm
 			},
@@ -1230,7 +1230,7 @@ func TestFMesh_validate(t *testing.T) {
 				c2 := mustNewComponent("c2",
 					component.WithInputs("in"),
 					component.WithActivationFunc(noOpActivationFunc)).
-					WithParentMesh(otherFm) // Wrong parent mesh
+					SetParentMesh(otherFm) // Wrong parent mesh
 
 				// Pipe between components
 				require.NoError(t, c1.OutputByName("out").PipeTo(c2.InputByName("in")))

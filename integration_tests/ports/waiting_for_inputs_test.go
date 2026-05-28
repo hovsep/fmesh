@@ -29,7 +29,7 @@ func Test_WaitingForInputs(t *testing.T) {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 							return this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 						}),
-					).WithDescription("This component just doubles the input")
+					).SetDescription("This component just doubles the input")
 				}
 
 				d1 := getDoubler("d1")
@@ -51,7 +51,7 @@ func Test_WaitingForInputs(t *testing.T) {
 
 						return this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 					}),
-				).WithDescription("This component just sums 2 inputs")
+				).SetDescription("This component just sums 2 inputs")
 
 				// This chain consists of 3 components: d1->d2->d3
 				if err := d1.OutputByName("o1").PipeTo(d2.InputByName("i1")); err != nil {

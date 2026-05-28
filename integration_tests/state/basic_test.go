@@ -53,7 +53,7 @@ func Test_State(t *testing.T) {
 						}
 						return nil
 					}),
-				).WithDescription("produces some signals")
+				).SetDescription("produces some signals")
 
 				counter := mustComponent("stateful_counter",
 					component.WithInputs("bypass_in"),
@@ -72,7 +72,7 @@ func Test_State(t *testing.T) {
 
 						return nil
 					}),
-				).WithDescription("counts all observed signals and bypasses them down the stream").
+				).SetDescription("counts all observed signals and bypasses them down the stream").
 					WithInitialState(func(state component.State) {
 						state.Set("observed_signals_count", 0)
 					})
@@ -99,7 +99,7 @@ func Test_State(t *testing.T) {
 						// Consume signals
 						return port.ForwardSignals(this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
 					}),
-				).WithDescription("consumes signals").
+				).SetDescription("consumes signals").
 					WithInitialState(func(state component.State) {
 						// Simulate uneven demand
 						state.Set("demand_shape", []int{3, 70, 22, 1350})

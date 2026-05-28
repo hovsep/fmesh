@@ -48,3 +48,26 @@ Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Sc
 | 2b — cross-entity aggregation | `MinScalar(name)`, `MaxScalar(name)`, `AvgScalar(name)`, `SumScalar(name)` | `signal.Group`, `port.Group` only |
 
 `signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`. Cross-entity aggregation returns `(float64, bool)` where `bool` is false when no element has the named scalar; `SumScalar` always returns `float64` (0 when absent).
+
+## Comment hygiene
+
+Comments must add information beyond the signature. Omit a comment entirely rather than restate what the name already says.
+
+**Omit comments on:**
+- Private builder methods whose name is self-explanatory (e.g. `newActivationResultOK`)
+- One-line setter bodies (e.g. `p.signals = sg`)
+- Constructors where the doc would only paraphrase the function name
+
+**Keep/write comments on:**
+- Exported types and functions (required by Go doc convention)
+- Non-obvious invariants, edge cases, or design constraints
+- Anything that would surprise a reader unfamiliar with the decision
+
+## Dead code policy
+
+Do not keep unused exported symbols "for future use". Remove them immediately:
+- Exported error vars with no callers (e.g. `ErrInvalidSignal`)
+- Named slice type aliases that carry no methods (e.g. `type Components []*Component`)
+- Unreachable branches (e.g. a second `if len(x) == 0` guard after the first already returned)
+
+These create noise, mislead readers, and rot silently as the surrounding code evolves.

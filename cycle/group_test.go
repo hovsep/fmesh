@@ -77,9 +77,9 @@ func TestGroup_With(t *testing.T) {
 }
 
 func TestGroup_Without(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
-	c3 := New().WithNumber(3)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
+	c3 := New().SetNumber(3)
 
 	tests := []struct {
 		name       string
@@ -127,9 +127,9 @@ func TestGroup_Without(t *testing.T) {
 }
 
 func TestGroup_ForEach(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
-	c3 := New().WithNumber(3)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
+	c3 := New().SetNumber(3)
 
 	t.Run("applies action to all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
@@ -153,10 +153,10 @@ func TestGroup_ForEach(t *testing.T) {
 }
 
 func TestGroup_ForEachIf(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
-	c3 := New().WithNumber(3)
-	c4 := New().WithNumber(4)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
+	c3 := New().SetNumber(3)
+	c4 := New().SetNumber(4)
 
 	t.Run("applies action only to matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3, c4)
@@ -209,9 +209,9 @@ func TestGroup_ForEachIf(t *testing.T) {
 }
 
 func TestGroup_Last(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
-	c3 := New().WithNumber(3)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
+	c3 := New().SetNumber(3)
 
 	t.Run("get last from group", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
@@ -227,8 +227,8 @@ func TestGroup_Last(t *testing.T) {
 }
 
 func TestGroup_First(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
 
 	t.Run("get first from group", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
@@ -244,10 +244,10 @@ func TestGroup_First(t *testing.T) {
 }
 
 func TestGroup_Find(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
-	c3 := New().WithNumber(3)
-	c4 := New().WithNumber(4)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
+	c3 := New().SetNumber(3)
+	c4 := New().SetNumber(4)
 
 	t.Run("returns first matching cycle", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3, c4)
@@ -270,8 +270,8 @@ func TestGroup_Find(t *testing.T) {
 }
 
 func TestGroup_All(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
 
 	t.Run("returns all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
@@ -346,9 +346,9 @@ func TestGroup_AnyMatch(t *testing.T) {
 }
 
 func TestGroup_CountMatch(t *testing.T) {
-	c1 := New().WithNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().WithNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
+	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
+	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
 
 	t.Run("counts matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
@@ -368,9 +368,9 @@ func TestGroup_CountMatch(t *testing.T) {
 }
 
 func TestGroup_Filter(t *testing.T) {
-	c1 := New().WithNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().WithNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().WithNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
+	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
+	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
+	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
 
 	t.Run("filters matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
@@ -391,10 +391,10 @@ func TestGroup_Filter(t *testing.T) {
 
 func TestGroup_MapIf(t *testing.T) {
 	t.Run("maps only matching cycles", func(t *testing.T) {
-		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3), New().WithNumber(4))
+		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
 		mapped := group.MapIf(
 			func(c *Cycle) bool { return c.Number()%2 == 0 },
-			func(c *Cycle) *Cycle { return c.WithNumber(c.Number() * 100) },
+			func(c *Cycle) *Cycle { return c.SetNumber(c.Number() * 100) },
 		)
 		assert.Equal(t, 4, mapped.Len())
 		assert.Equal(t, 1, mapped.First().Number()) // odd unchanged
@@ -403,27 +403,27 @@ func TestGroup_MapIf(t *testing.T) {
 	})
 
 	t.Run("predicate matches none - all cycles kept as-is", func(t *testing.T) {
-		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3))
+		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3))
 		mapped := group.MapIf(
 			func(c *Cycle) bool { return false },
-			func(c *Cycle) *Cycle { return c.WithNumber(-1) },
+			func(c *Cycle) *Cycle { return c.SetNumber(-1) },
 		)
 		assert.Equal(t, 3, mapped.Len())
 		assert.Equal(t, 1, mapped.First().Number())
 	})
 
 	t.Run("predicate matches all - all cycles mapped", func(t *testing.T) {
-		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2))
+		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2))
 		mapped := group.MapIf(
 			func(c *Cycle) bool { return true },
-			func(c *Cycle) *Cycle { return c.WithNumber(c.Number() * 10) },
+			func(c *Cycle) *Cycle { return c.SetNumber(c.Number() * 10) },
 		)
 		assert.Equal(t, 2, mapped.Len())
 		assert.Equal(t, 10, mapped.First().Number())
 	})
 
 	t.Run("nil mapper result drops the cycle", func(t *testing.T) {
-		group := NewGroup().Add(New().WithNumber(1), New().WithNumber(2), New().WithNumber(3))
+		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3))
 		mapped := group.MapIf(
 			func(c *Cycle) bool { return c.Number() == 2 },
 			func(c *Cycle) *Cycle { return nil },
@@ -433,13 +433,13 @@ func TestGroup_MapIf(t *testing.T) {
 }
 
 func TestGroup_Map(t *testing.T) {
-	c1 := New().WithNumber(1)
-	c2 := New().WithNumber(2)
+	c1 := New().SetNumber(1)
+	c2 := New().SetNumber(2)
 
 	t.Run("transforms all cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2)
 		mapped := group.Map(func(c *Cycle) *Cycle {
-			return c.WithNumber(c.Number() * 10)
+			return c.SetNumber(c.Number() * 10)
 		})
 		assert.Equal(t, 2, mapped.Len())
 		first := mapped.First()
@@ -475,7 +475,7 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		assert.Nil(t, result)
 
 		// Group should still be usable for adding
-		group = group.Add(New().WithNumber(42))
+		group = group.Add(New().SetNumber(42))
 		assert.Equal(t, 1, group.Len())
 
 		first := group.First()
