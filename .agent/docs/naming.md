@@ -5,10 +5,28 @@
 | Semantics | Prefix |
 |---|---|
 | Copy-on-write (returns new value) | `With` / `Without` |
-| Mutating (modifies receiver) | `Add` / `Remove` / `Set` |
+| Mutating field setter (modifies receiver, returns receiver) | `Set` |
+| Mutating collection modifier | `Add` / `Remove` |
 
 Never mix. When adding a new method: does it return a new value or mutate? Pick the prefix
 accordingly. Internal-only mutating helpers use `set…` (unexported).
+
+## `With` vs `Set` — the exact rule
+
+Use `With` **only** when the method is one of:
+- **CoW**: clones the receiver (or a sub-value) and returns the new instance
+- **Functional option constructor**: a free function returning an `Option` type (e.g. `port.WithDescription`, `component.WithActivationFunc`)
+- **Builder that does real work beyond field assignment**: e.g. nil guard + prefix logic, iteration over child objects, appending to a slice
+
+Use `Set` for **everything else** that is a plain `field = value; return receiver` mutating method, whether exported or unexported:
+- Exported example: `component.SetDescription`, `cycle.SetNumber`, `component.SetActivationFunc` (method)
+- Unexported example: `port.setSignals`, `port.setPorts`
+
+**Key distinction for dual-form APIs** (method + functional option):
+```
+component.WithActivationFunc(f)  // free Option constructor — stays With
+c.SetActivationFunc(f)           // method setter on *Component — Set
+```
 
 ## Label operations by type
 
@@ -48,6 +66,13 @@ For other groups/collections (mutating): `WithLabel`/`WithScalar` mutate the rec
 
 `WithLabelOption(k, v)` and `WithScalarOption(k, v)` are `Option` functions available for all
 constructors that accept options (`fmesh.New`, `component.New`, `port.NewInput`, `port.NewOutput`).
+
+Some capabilities exist in **two forms** — a functional `Option` constructor (used inside `New(...)`) and a fluent method (used after construction). The naming rule differs by form:
+
+| Form | Prefix | Example |
+|---|---|---|
+| Free `Option` constructor | `With` | `component.WithActivationFunc(f)`, `port.WithDescription(s)` |
+| Fluent method on receiver | `Set` | `c.SetActivationFunc(f)`, `c.SetDescription(s)` |
 
 ## Collection/group operations
 

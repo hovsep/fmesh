@@ -292,34 +292,34 @@ func TestActivationResult_ActivationErrorWithComponentName(t *testing.T) {
 
 func TestActivationResult_IsWaitingForInput(t *testing.T) {
 	t.Run("is waiting", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeWaitingForInputsClear)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsClear)
 		assert.True(t, IsWaitingForInput(r))
 	})
 
 	t.Run("is waiting and keeping inputs", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeWaitingForInputsKeep)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsKeep)
 		assert.True(t, IsWaitingForInput(r))
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeOK)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeOK)
 		assert.False(t, IsWaitingForInput(r))
 	})
 }
 
 func TestActivationResult_WantsToKeepInputs(t *testing.T) {
 	t.Run("wants to keep", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeWaitingForInputsKeep)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsKeep)
 		assert.True(t, WantsToKeepInputs(r))
 	})
 
 	t.Run("does not want to keep", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeWaitingForInputsClear)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsClear)
 		assert.False(t, WantsToKeepInputs(r))
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationCode(ActivationCodeOK)
+		r := NewActivationResult("c").SetActivationCode(ActivationCodeOK)
 		assert.False(t, WantsToKeepInputs(r))
 	})
 }

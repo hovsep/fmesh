@@ -26,7 +26,7 @@ func NewGroup(names ...string) *Group {
 		p, _ := NewOutput(name) // no opts, never fails
 		ports[i] = p
 	}
-	return newGroup.withPorts(ports)
+	return newGroup.setPorts(ports)
 }
 
 // Labels returns the group's own labels store.
@@ -89,7 +89,7 @@ func NewIndexedGroup(prefix string, startIndex, endIndex int) (*Group, error) {
 		ports[i-startIndex] = p
 	}
 
-	return NewGroup().withPorts(ports), nil
+	return NewGroup().setPorts(ports), nil
 }
 
 // add appends ports to the group in place. Internal use only; always succeeds.
@@ -126,8 +126,7 @@ func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) error {
 	return nil
 }
 
-// withPorts sets ports.
-func (g *Group) withPorts(ports []*Port) *Group {
+func (g *Group) setPorts(ports []*Port) *Group {
 	g.ports = ports
 	return g
 }

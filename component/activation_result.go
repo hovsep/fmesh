@@ -66,7 +66,6 @@ const (
 )
 
 // NewActivationResult creates a new activation result for the given component.
-// This is primarily used internally and in tests.
 func NewActivationResult(componentName string) *ActivationResult {
 	return &ActivationResult{
 		componentName: componentName,
@@ -119,8 +118,8 @@ func (ar *ActivationResult) SetActivated(activated bool) *ActivationResult {
 	return ar
 }
 
-// WithActivationCode sets the activation code and returns the activation result.
-func (ar *ActivationResult) WithActivationCode(code ActivationResultCode) *ActivationResult {
+// SetActivationCode sets the activation code and returns the activation result.
+func (ar *ActivationResult) SetActivationCode(code ActivationResultCode) *ActivationResult {
 	ar.code = code
 	return ar
 }
@@ -131,33 +130,29 @@ func (ar *ActivationResult) WithActivationError(activationError error) *Activati
 	return ar
 }
 
-// newActivationResultOK builds a specific activation result.
 func (c *Component) newActivationResultOK() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
-		WithActivationCode(ActivationCodeOK)
+		SetActivationCode(ActivationCodeOK)
 }
 
-// newActivationResultNoInput builds a specific activation result.
 func (c *Component) newActivationResultNoInput() *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
-		WithActivationCode(ActivationCodeNoInput)
+		SetActivationCode(ActivationCodeNoInput)
 }
 
-// newActivationResultReturnedError builds a specific activation result.
 func (c *Component) newActivationResultReturnedError(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
-		WithActivationCode(ActivationCodeReturnedError).
+		SetActivationCode(ActivationCodeReturnedError).
 		WithActivationError(fmt.Errorf("component returned an error: %w", err))
 }
 
-// newActivationResultPanicked builds a specific activation result.
 func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
-		WithActivationCode(ActivationCodePanicked).
+		SetActivationCode(ActivationCodePanicked).
 		WithActivationError(err)
 }
 
@@ -165,7 +160,7 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 func (c *Component) newActivationResultHookFailed(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
-		WithActivationCode(ActivationCodeHookFailed).
+		SetActivationCode(ActivationCodeHookFailed).
 		WithActivationError(err)
 }
 
@@ -176,7 +171,7 @@ func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationRe
 	}
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
-		WithActivationCode(activationCode).
+		SetActivationCode(activationCode).
 		WithActivationError(err)
 }
 

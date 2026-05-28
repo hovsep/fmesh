@@ -53,7 +53,7 @@ func Test_TimeConstraint(t *testing.T) {
 
 						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
 					}),
-				).WithDescription("simple clock ticking for 10 seconds")
+				).SetDescription("simple clock ticking for 10 seconds")
 
 				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
 					panic(err)
@@ -63,7 +63,7 @@ func Test_TimeConstraint(t *testing.T) {
 					Debug:     true,
 					TimeLimit: 2 * time.Second,
 				}))
-				fm.WithDescription("this mesh ticks every second for 10 seconds")
+				fm.SetDescription("this mesh ticks every second for 10 seconds")
 				if err := fm.AddComponents(ticker); err != nil {
 					panic(err)
 				}
@@ -99,7 +99,7 @@ func Test_TimeConstraint(t *testing.T) {
 
 						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
 					}),
-				).WithDescription("simple clock ticking for 3 seconds")
+				).SetDescription("simple clock ticking for 3 seconds")
 
 				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
 					panic(err)
@@ -109,7 +109,7 @@ func Test_TimeConstraint(t *testing.T) {
 					Debug:     true,
 					TimeLimit: 0,
 				}))
-				fm.WithDescription("this mesh ticks every second for 10 seconds")
+				fm.SetDescription("this mesh ticks every second for 10 seconds")
 				if err := fm.AddComponents(ticker); err != nil {
 					panic(err)
 				}

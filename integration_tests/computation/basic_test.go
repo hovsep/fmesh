@@ -76,7 +76,7 @@ func Test_Math(t *testing.T) {
 						num := this.InputByName("num").Signals().FirstPayloadOrNil()
 						return this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 					}),
-				).WithDescription("adds 2 to the input")
+				).SetDescription("adds 2 to the input")
 
 				c2 := mustComponent("c2",
 					component.WithInputs("num"),
@@ -85,7 +85,7 @@ func Test_Math(t *testing.T) {
 						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 						return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 					}),
-				).WithDescription("multiplies by 3")
+				).SetDescription("multiplies by 3")
 
 				if err := c1.OutputByName("res").PipeTo(c2.InputByName("num")); err != nil {
 					panic(err)
@@ -143,7 +143,7 @@ func Test_Math(t *testing.T) {
 						return this.OutputByName("logs").PutSignals(signal.New("Processed with metadata: " + metadata))
 						// error port stays empty (no error)
 					}),
-				).WithDescription("processes data using mixed ports")
+				).SetDescription("processes data using mixed ports")
 
 				// Add advanced ports
 				if err := processor.AttachInputPorts(

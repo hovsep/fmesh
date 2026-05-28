@@ -20,7 +20,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			}),
 		)
 		require.NoError(t, err)
-		c1.WithDescription("adds 2 to the input")
+		c1.SetDescription("adds 2 to the input")
 
 		c2, err := component.New("c2",
 			component.WithInputs("num"),
@@ -31,7 +31,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			}),
 		)
 		require.NoError(t, err)
-		c2.WithDescription("multiplies by 3")
+		c2.SetDescription("multiplies by 3")
 
 		require.NoError(t, c1.OutputByName("res").PipeTo(c2.InputByName("num")))
 

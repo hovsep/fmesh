@@ -49,7 +49,7 @@ func TestComponentHooks_AllTypes(t *testing.T) {
 			executionLog = append(executionLog, "after")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return c.OutputByName("out").PutSignals(signal.New(42))
 	})
 
@@ -80,7 +80,7 @@ func TestComponentHooks_OnError(t *testing.T) {
 			afterFired = true
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return testErr
 	})
 
@@ -111,7 +111,7 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 			afterFired = true
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		panic("oh no!")
 	})
 
@@ -135,7 +135,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 			assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		// Wait for config input
 		if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
 			return component.ErrWaitingForInputs
@@ -173,7 +173,7 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 			log = append(log, "success2")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return nil
 	})
 
@@ -193,7 +193,7 @@ func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 			beforeFired = true
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return nil
 	})
 
@@ -219,7 +219,7 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 			assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return c.OutputByName("out").PutSignals(signal.New(100))
 	})
 
@@ -241,7 +241,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 			log.add(c.Name())
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return c.OutputByName("out").PutSignals(signal.New(1))
 	})
 
@@ -252,7 +252,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 			log.add(c.Name())
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return nil
 	})
 
@@ -291,7 +291,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c1:after")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return c.OutputByName("out").PutSignals(signal.New(1))
 	})
 
@@ -311,7 +311,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c2:after")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return c.OutputByName("out").PutSignals(signal.New(2))
 	})
 
@@ -330,7 +330,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c3:after")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return nil
 	})
 
@@ -392,7 +392,7 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 			log = append(log, "setup3")
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		return nil
 	})
 

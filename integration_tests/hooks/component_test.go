@@ -34,7 +34,7 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 			}
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		// Simulate validation logic
 		inputVal := c.InputByName("data").Signals().First().PayloadOrDefault(0).(int)
 		if inputVal < 0 {
@@ -71,7 +71,7 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 			}
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		x := c.InputByName("x").Signals().First().PayloadOrDefault(0).(int)
 		y := c.InputByName("y").Signals().First().PayloadOrDefault(0).(int)
 		result := x + y
@@ -131,7 +131,7 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 			metrics.TotalActivations++
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
 		if val > 0 {
 			return c.OutputByName("success").PutSignals(signal.New(val * 2))
@@ -178,7 +178,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 			})
 			return err
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		// Process and output data
 		_, err := c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
 			processed := s.PayloadOrDefault(0).(int) * 10
@@ -219,7 +219,7 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 			}
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
 		if val == 0 {
 			return errors.New("division by zero")
@@ -268,7 +268,7 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 			}
 			return nil
 		})
-	}).WithActivationFunc(func(c *component.Component) error {
+	}).SetActivationFunc(func(c *component.Component) error {
 		sum := 0
 		if _, err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
 			sum += s.PayloadOrDefault(0).(int)

@@ -54,8 +54,8 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// WithDescription sets the component description.
-func (c *Component) WithDescription(description string) *Component {
+// SetDescription sets the component description.
+func (c *Component) SetDescription(description string) *Component {
 	c.description = description
 	return c
 }
@@ -167,8 +167,8 @@ func (c *Component) ParentMesh() ParentMesh {
 	return c.parentMesh
 }
 
-// WithParentMesh sets parent mesh.
-func (c *Component) WithParentMesh(parentMesh ParentMesh) *Component {
+// SetParentMesh sets parent mesh.
+func (c *Component) SetParentMesh(parentMesh ParentMesh) *Component {
 	c.parentMesh = parentMesh
 	return c
 }

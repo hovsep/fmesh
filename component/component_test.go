@@ -68,7 +68,7 @@ func TestComponent_WithDescription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.WithDescription(tt.args.description))
+			assert.Equal(t, tt.want, tt.component.SetDescription(tt.args.description))
 		})
 	}
 }
@@ -374,8 +374,8 @@ func TestComponent_Chainability(t *testing.T) {
 
 	t.Run("WithDescription replaces previous value", func(t *testing.T) {
 		c := mustNew("c1").
-			WithDescription("first").
-			WithDescription("second")
+			SetDescription("first").
+			SetDescription("second")
 
 		assert.Equal(t, "second", c.Description())
 	})
