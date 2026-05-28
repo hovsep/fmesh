@@ -104,7 +104,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify input ports (both simple and advanced)
-		inputs, err := processor.Inputs().All()
+		inputs := processor.Inputs().All()
 		require.NoError(t, err)
 		assert.Len(t, inputs, 4, "should have 4 input ports")
 
@@ -121,7 +121,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.True(t, config.Labels().Has("type"))
 
 		// Verify output ports (both simple and advanced)
-		outputs, err := processor.Outputs().All()
+		outputs := processor.Outputs().All()
 		require.NoError(t, err)
 		assert.Len(t, outputs, 3, "should have 3 output ports")
 
@@ -136,7 +136,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "Error details if processing fails", errors.Description())
 		assert.True(t, errors.Labels().Has("severity"))
 		assert.True(t, errors.Labels().Has("format"))
-		labelMap, err := errors.Labels().All()
+		labelMap := errors.Labels().All()
 		require.NoError(t, err)
 		assert.Equal(t, "high", labelMap["severity"])
 		assert.Equal(t, "structured", labelMap["format"])
@@ -199,7 +199,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		// Verify label manipulation results
 		inputPort := c.InputByName("input")
-		lbls, err := inputPort.Labels().All()
+		lbls := inputPort.Labels().All()
 		require.NoError(t, err)
 
 		assert.Equal(t, "prod", lbls["env"], "env should be updated")
@@ -269,10 +269,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 			// Find high priority ports
 			highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
-				lbls, err := p.Labels().All()
-				if err != nil {
-					return false
-				}
+				lbls := p.Labels().All()
 				return lbls["priority"] == "high"
 			})
 
@@ -284,7 +281,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				return err
 			}
 
-			highPriorityCount, _ := highPriorityPorts.All()
+			highPriorityCount := highPriorityPorts.All()
 			summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
 				inputs.Len(), portsWithSignals, len(highPriorityCount))
 

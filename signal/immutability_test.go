@@ -125,8 +125,7 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 	}
 	out := g.MapIf(func(*Signal) bool { return false }, mapper)
 
-	outSigs, err := out.All()
-	require.NoError(t, err)
+	outSigs := out.All()
 	require.Len(t, outSigs, 2)
 	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
 		"MapIf pass-through must use cloned signals, not shared pointers (#203)")
@@ -142,8 +141,7 @@ func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
 	identity := func(s *Signal) *Signal { return s }
 	out := g.Map(identity)
 
-	outSigs, err := out.All()
-	require.NoError(t, err)
+	outSigs := out.All()
 	require.Len(t, outSigs, 2)
 	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
 		"Map with identity mapper must clone signals, not share pointers")
@@ -163,8 +161,7 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 		},
 	)
 
-	outSigs, err := out.All()
-	require.NoError(t, err)
+	outSigs := out.All()
 	require.Len(t, outSigs, 2)
 	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])))
 
@@ -281,7 +278,7 @@ func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
 	wg.Wait()
 
 	// Signals inside the original group must have no scalars.
-	sigs, _ := shared.All()
+	sigs := shared.All()
 	for _, s := range sigs {
 		assert.False(t, s.Scalars().Has("priority"),
 			"original group's signals must not be affected")
@@ -289,7 +286,7 @@ func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
 
 	// Each result group's signals must have the scalar.
 	for i, g := range results {
-		outSigs, _ := g.All()
+		outSigs := g.All()
 		for _, s := range outSigs {
 			assert.True(t, s.Scalars().Has("priority"),
 				"goroutine %d: derived signal must have scalar", i)

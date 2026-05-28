@@ -133,8 +133,8 @@ func (g *Group) withPorts(ports []*Port) *Group {
 }
 
 // All returns all ports as a slice.
-func (g *Group) All() ([]*Port, error) {
-	return g.ports, nil
+func (g *Group) All() []*Port {
+	return g.ports
 }
 
 // Len returns the number of ports in a group.

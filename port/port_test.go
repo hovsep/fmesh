@@ -201,7 +201,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11), portAfter.Signals())
 			},
 			args: func() args {
-				signals, _ := signal.NewGroup(11).All()
+				signals := signal.NewGroup(11).All()
 				return args{signals: signals}
 			}(),
 		},
@@ -212,7 +212,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: func() args {
-				signals, _ := signal.NewGroup(11, 12).All()
+				signals := signal.NewGroup(11, 12).All()
 				return args{signals: signals}
 			}(),
 		},
@@ -227,7 +227,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: func() args {
-				signals, _ := signal.NewGroup(12).All()
+				signals := signal.NewGroup(12).All()
 				return args{signals: signals}
 			}(),
 		},
@@ -242,7 +242,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
 			},
 			args: func() args {
-				signals, _ := signal.NewGroup(13).All()
+				signals := signal.NewGroup(13).All()
 				return args{signals: signals}
 			}(),
 		},
@@ -257,7 +257,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
 			},
 			args: func() args {
-				signals, _ := signal.NewGroup(13, 14).All()
+				signals := signal.NewGroup(13, 14).All()
 				return args{signals: signals}
 			}(),
 		},
@@ -476,8 +476,7 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				destPorts, err := srcPort.Pipes().All()
-				require.NoError(t, err)
+				destPorts := srcPort.Pipes().All()
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 3, destPort.Signals().Len())
@@ -504,8 +503,7 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				destPorts, err := srcPort.Pipes().All()
-				require.NoError(t, err)
+				destPorts := srcPort.Pipes().All()
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 6, destPort.Signals().Len())

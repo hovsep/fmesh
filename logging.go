@@ -22,11 +22,12 @@ func (fm *FMesh) IsDebug() bool {
 	return fm.config.Debug
 }
 
-// LogDebug logs a debug message only when debug mode is enabled (no-op otherwise).
-func (fm *FMesh) LogDebug(v ...any) {
+// LogDebug logs a formatted debug message only when debug mode is enabled (no-op otherwise).
+// The format string and args follow fmt.Sprintf conventions.
+func (fm *FMesh) LogDebug(format string, args ...any) {
 	if !fm.IsDebug() {
 		return
 	}
 
-	fm.Logger().Println(append([]any{"DEBUG:"}, v...)...)
+	fm.Logger().Printf("DEBUG: "+format, args...)
 }

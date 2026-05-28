@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Contract tests: Labels.All must return a defensive copy of the internal map,
@@ -13,8 +12,7 @@ import (
 
 func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 	c := NewLabels().Set("k", "v")
-	m, err := c.All()
-	require.NoError(t, err)
+	m := c.All()
 
 	m["k"] = "mutated"
 
@@ -24,8 +22,7 @@ func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 
 func TestLabelsCollection_All_map_not_shared_with_AddMany(t *testing.T) {
 	c1 := NewLabels().SetMany(map[string]string{"a": "1", "b": "2"})
-	m, err := c1.All()
-	require.NoError(t, err)
+	m := c1.All()
 
 	c2 := NewLabels().SetMany(m)
 

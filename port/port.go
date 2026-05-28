@@ -224,7 +224,7 @@ func (p *Port) PutSignals(signals ...*signal.Signal) error {
 
 // PutPayloads creates signals from given payloads.
 func (p *Port) PutPayloads(payloads ...any) error {
-	newSignals, _ := signal.NewGroup(payloads...).All()
+	newSignals := signal.NewGroup(payloads...).All()
 	p.withSignals(p.Signals().With(newSignals...))
 
 	// Trigger OnSignalsAdded hook
@@ -241,10 +241,7 @@ func (p *Port) PutPayloads(payloads ...any) error {
 // PutSignalGroups adds all signals from signal groups.
 func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 	for _, group := range signalGroups {
-		signals, err := group.All()
-		if err != nil {
-			return err
-		}
+		signals := group.All()
 		if err := p.PutSignals(signals...); err != nil {
 			return err
 		}
@@ -278,7 +275,7 @@ func (p *Port) Flush() error {
 		return nil
 	}
 
-	pipes, _ := p.pipes.All()
+	pipes := p.pipes.All()
 	for _, outboundPort := range pipes {
 		// Fan-Out
 		if err := ForwardSignals(p, outboundPort); err != nil {
@@ -340,28 +337,19 @@ func validatePipe(srcPort, dstPort *Port) error {
 
 // ForwardSignals copies all signals from source to destination port without clearing source.
 func ForwardSignals(source, dest *Port) error {
-	signals, err := source.Signals().All()
-	if err != nil {
-		return err
-	}
+	signals := source.Signals().All()
 	return dest.PutSignals(signals...)
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
-	filteredSignals, err := source.Signals().Filter(p).All()
-	if err != nil {
-		return err
-	}
+	filteredSignals := source.Signals().Filter(p).All()
 	return dest.PutSignals(filteredSignals...)
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
-	mappedSignals, err := source.Signals().Map(mapperFunc).All()
-	if err != nil {
-		return err
-	}
+	mappedSignals := source.Signals().Map(mapperFunc).All()
 	return dest.PutSignals(mappedSignals...)
 }
 

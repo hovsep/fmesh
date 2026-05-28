@@ -160,17 +160,6 @@ func (g *Group) Contains(s *Signal) bool {
 	return slices.Contains(g.signals, s)
 }
 
-// MustContainsPayload returns true if any signal's payload equals the given value.
-// Panics if the payload type is not comparable; use ContainsPayloadFunc instead.
-func (g *Group) MustContainsPayload(payload any) bool {
-	if payload != nil && !reflect.TypeOf(payload).Comparable() {
-		panic("MustContainsPayload: payload type is not comparable, use ContainsPayloadFunc instead")
-	}
-	return g.ContainsPayloadFunc(func(p any) bool {
-		return p == payload
-	})
-}
-
 // ContainsPayload returns true if any signal's payload equals the given value.
 // Returns an error if the payload type is not comparable; use ContainsPayloadFunc for non-comparable types.
 func (g *Group) ContainsPayload(payload any) (bool, error) {
@@ -267,8 +256,8 @@ func (g *Group) Join(other *Group) *Group {
 // All returns a cloned slice of signals. The slice is independent of the group;
 // the *Signal pointers inside are shared, but Signal is copy-on-write so callers
 // cannot corrupt group state through the returned pointers.
-func (g *Group) All() ([]*Signal, error) {
-	return slices.Clone(g.signals), nil
+func (g *Group) All() []*Signal {
+	return slices.Clone(g.signals)
 }
 
 // Len returns the number of signals in the group.

@@ -101,8 +101,7 @@ func TestActivationResultCollection_All(t *testing.T) {
 
 	t.Run("returns all results", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
-		all, err := collection.All()
-		require.NoError(t, err)
+		all := collection.All()
 		assert.Len(t, all, 2)
 		assert.Contains(t, all, "c1")
 		assert.Contains(t, all, "c2")
@@ -110,8 +109,7 @@ func TestActivationResultCollection_All(t *testing.T) {
 
 	t.Run("empty collection", func(t *testing.T) {
 		collection := NewActivationResultCollection()
-		all, err := collection.All()
-		require.NoError(t, err)
+		all := collection.All()
 		assert.Empty(t, all)
 	})
 }

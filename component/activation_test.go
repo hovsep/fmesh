@@ -59,12 +59,12 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 			assert.Equal(t, err1, err2)
 
 			// Compare signals without keys (because they are random)
-			o1Signals1, _ := dummyComponent1.OutputByName("o1").Signals().All()
-			o1Signals2, _ := dummyComponent2.OutputByName("o1").Signals().All()
+			o1Signals1 := dummyComponent1.OutputByName("o1").Signals().All()
+			o1Signals2 := dummyComponent2.OutputByName("o1").Signals().All()
 			assert.ElementsMatch(t, o1Signals1, o1Signals2)
 
-			o2Signals1, _ := dummyComponent1.OutputByName("o2").Signals().All()
-			o2Signals2, _ := dummyComponent2.OutputByName("o2").Signals().All()
+			o2Signals1 := dummyComponent1.OutputByName("o2").Signals().All()
+			o2Signals2 := dummyComponent2.OutputByName("o2").Signals().All()
 			assert.ElementsMatch(t, o2Signals1, o2Signals2)
 		})
 	}

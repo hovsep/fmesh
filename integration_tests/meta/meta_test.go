@@ -109,7 +109,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 		grp := signal.NewGroup(1, 2, 3).WithScalarOnEach("priority", 5.0)
 		assert.Equal(t, 3, grp.Len())
 
-		signals, _ := grp.All()
+		signals := grp.All()
 		for _, s := range signals {
 			v, ok := s.Scalars().Get("priority")
 			require.True(t, ok)
@@ -123,7 +123,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 			WithScalarOnEach("humidity", 0.55).
 			RemoveScalarOnEach("humidity")
 
-		signals, _ := grp.All()
+		signals := grp.All()
 		for _, s := range signals {
 			assert.True(t, s.Scalars().Has("temp"))
 			assert.False(t, s.Scalars().Has("humidity"))
@@ -174,7 +174,7 @@ func Test_ScalarGroupMetadata(t *testing.T) {
 		assert.InDelta(t, 42.0, v, 1e-9)
 
 		// Elements have "temp" but not "batch_id"
-		signals, _ := grp.All()
+		signals := grp.All()
 		for _, s := range signals {
 			assert.True(t, s.Scalars().Has("temp"))
 			assert.False(t, s.Scalars().Has("batch_id"))
