@@ -143,7 +143,7 @@ func Test_ScalarsOnComponents(t *testing.T) {
 		c := mustComponent("proc",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithScalarOption("version", 2.0),
+			component.WithScalar("version", 2.0),
 		)
 
 		v, ok := c.Scalars().Get("version")
@@ -182,10 +182,10 @@ func Test_ScalarGroupMetadata(t *testing.T) {
 	})
 }
 
-// Test_PortScalarsWithOptions verifies the WithScalarOption port constructor option.
+// Test_PortScalarsWithOptions verifies the WithScalar port constructor option.
 func Test_PortScalarsWithOptions(t *testing.T) {
 	t.Run("port scalars set via constructor option", func(t *testing.T) {
-		p := mustInput("sensor-in", port.WithScalarOption("sample_rate", 100.0))
+		p := mustInput("sensor-in", port.WithScalar("sample_rate", 100.0))
 		v, ok := p.Scalars().Get("sample_rate")
 		require.True(t, ok)
 		assert.InDelta(t, 100.0, v, 1e-9)

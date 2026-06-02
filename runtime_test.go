@@ -20,9 +20,10 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("bypass",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
+				component.WithDescription("Bypasses all signals"),
 				component.WithActivationFunc(func(this *component.Component) error {
 					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
-				})).SetDescription("Bypasses all signals"),
+				})),
 		))
 
 		for i := range 5 {
@@ -43,15 +44,16 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("counter",
 				component.WithInputs("trigger"),
 				component.WithOutputs("count"),
+				component.WithDescription("Increments internal counter on each activation"),
+				component.WithInitialState(func(state component.State) {
+					state.Set("count", 0)
+				}),
 				component.WithActivationFunc(func(this *component.Component) error {
 					count := this.State().Get("count").(int)
 					count++
 					this.State().Set("count", count)
 					return this.OutputByName("count").PutSignals(signal.New(count))
-				})).SetDescription("Increments internal counter on each activation").
-				WithInitialState(func(state component.State) {
-					state.Set("count", 0)
-				}),
+				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("counter").InputByName("trigger").PutSignals(signal.New("go")))

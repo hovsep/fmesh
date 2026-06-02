@@ -25,11 +25,12 @@ func Test_WaitingForInputs(t *testing.T) {
 					return mustComponent(name,
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component just doubles the input"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 							return this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 						}),
-					).SetDescription("This component just doubles the input")
+					)
 				}
 
 				d1 := getDoubler("d1")
@@ -41,6 +42,7 @@ func Test_WaitingForInputs(t *testing.T) {
 				s := mustComponent("sum",
 					component.WithInputs("i1", "i2"),
 					component.WithOutputs("o1"),
+					component.WithDescription("This component just sums 2 inputs"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return component.ErrWaitingForInputsKeep
@@ -51,7 +53,7 @@ func Test_WaitingForInputs(t *testing.T) {
 
 						return this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
 					}),
-				).SetDescription("This component just sums 2 inputs")
+				)
 
 				// This chain consists of 3 components: d1->d2->d3
 				if err := d1.OutputByName("o1").PipeTo(d2.InputByName("i1")); err != nil {

@@ -54,12 +54,6 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// SetDescription sets the component description.
-func (c *Component) SetDescription(description string) *Component {
-	c.description = description
-	return c
-}
-
 // Labels returns the component's labels collection.
 func (c *Component) Labels() *meta.Labels {
 	return c.labels
@@ -130,31 +124,52 @@ func (c *Component) RemoveScalars(names ...string) *Component {
 	return c
 }
 
-// WithLabelOption is a component constructor option that adds or updates a single label.
-func WithLabelOption(name, value string) Option {
+// WithDescription is a component constructor option that sets the description.
+func WithDescription(description string) Option {
+	return func(c *Component) error {
+		c.description = description
+		return nil
+	}
+}
+
+// WithLabel is a component constructor option that adds or updates a single label.
+func WithLabel(name, value string) Option {
 	return func(c *Component) error {
 		c.labels.Set(name, value)
 		return nil
 	}
 }
 
-// WithScalarOption is a component constructor option that adds or updates a single scalar.
-func WithScalarOption(name string, value float64) Option {
+// WithScalar is a component constructor option that adds or updates a single scalar.
+func WithScalar(name string, value float64) Option {
 	return func(c *Component) error {
 		c.scalars.Set(name, value)
 		return nil
 	}
 }
 
-// WithLogger creates a new logger prefixed with component name.
-func (c *Component) WithLogger(logger *log.Logger) *Component {
+// WithLogger is a component constructor option that creates a new logger prefixed with component name.
+func WithLogger(logger *log.Logger) Option {
+	return func(c *Component) error {
+		c.setLogger(logger)
+		return nil
+	}
+}
+
+// SetLogger creates a new logger prefixed with component name and sets it on the component.
+func (c *Component) SetLogger(logger *log.Logger) *Component {
+	c.setLogger(logger)
+	return c
+}
+
+// setLogger is the shared implementation for logger setup with nil-guard and prefix logic.
+func (c *Component) setLogger(logger *log.Logger) {
 	if logger == nil {
-		return c
+		return
 	}
 
 	prefix := fmt.Sprintf("%s: %s ", c.Name(), logger.Prefix())
 	c.logger = log.New(logger.Writer(), prefix, logger.Flags())
-	return c
 }
 
 // Logger returns the component's logger.

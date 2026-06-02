@@ -20,12 +20,8 @@ func TestComponent_AddInputs(t *testing.T) {
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name: "happy path",
-			component: func() *Component {
-				c := mustNew("c1")
-				c.SetActivationFunc(func(this *Component) error { return nil })
-				return c
-			}(),
+			name:      "happy path",
+			component: mustNew("c1", WithActivationFunc(func(this *Component) error { return nil })),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -74,12 +70,8 @@ func TestComponent_AddOutputs(t *testing.T) {
 		assertions func(t *testing.T, component *Component)
 	}{
 		{
-			name: "happy path",
-			component: func() *Component {
-				c := mustNew("c1")
-				c.SetActivationFunc(func(this *Component) error { return nil })
-				return c
-			}(),
+			name:      "happy path",
+			component: mustNew("c1", WithActivationFunc(func(this *Component) error { return nil })),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},

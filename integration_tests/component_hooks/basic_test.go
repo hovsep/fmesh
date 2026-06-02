@@ -34,6 +34,9 @@ func TestComponentHooks_AllTypes(t *testing.T) {
 	c := mustComponent("processor",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return c.OutputByName("out").PutSignals(signal.New(42))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			executionLog = append(executionLog, "before")
@@ -49,8 +52,6 @@ func TestComponentHooks_AllTypes(t *testing.T) {
 			executionLog = append(executionLog, "after")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return c.OutputByName("out").PutSignals(signal.New(42))
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
@@ -68,6 +69,9 @@ func TestComponentHooks_OnError(t *testing.T) {
 
 	c := mustComponent("processor",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return testErr
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnError(func(ctx *component.ActivationContext) error {
 			errorCaught = true
@@ -80,8 +84,6 @@ func TestComponentHooks_OnError(t *testing.T) {
 			afterFired = true
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return testErr
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
@@ -99,6 +101,9 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 
 	c := mustComponent("processor",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			panic("oh no!")
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnPanic(func(ctx *component.ActivationContext) error {
 			panicCaught = true
@@ -111,8 +116,6 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 			afterFired = true
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		panic("oh no!")
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
@@ -129,18 +132,19 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 
 	c := mustComponent("processor",
 		component.WithInputs("data", "config"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			// Wait for config input
+			if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
+				return component.ErrWaitingForInputs
+			}
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnWaitingForInputs(func(ctx *component.ActivationContext) error {
 			waitingCaught = true
 			assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		// Wait for config input
-		if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
-			return component.ErrWaitingForInputs
-		}
-		return nil
 	})
 
 	// Only provide data input, not config
@@ -156,6 +160,9 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 
 	c := mustComponent("processor",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log = append(log, "before1")
@@ -173,8 +180,6 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 			log = append(log, "success2")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return nil
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
@@ -188,13 +193,14 @@ func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 
 	c := mustComponent("processor",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			beforeFired = true
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return nil
 	})
 
 	// No input signals provided
@@ -212,6 +218,9 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 	c := mustComponent("test-component",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return c.OutputByName("out").PutSignals(signal.New(100))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.AfterActivation(func(ctx *component.ActivationContext) error {
 			componentName = ctx.Component.Name()
@@ -219,8 +228,6 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 			assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return c.OutputByName("out").PutSignals(signal.New(100))
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
@@ -236,24 +243,26 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	c1 := mustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return c.OutputByName("out").PutSignals(signal.New(1))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log.add(c.Name())
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return c.OutputByName("out").PutSignals(signal.New(1))
 	})
 
 	c2 := mustComponent("c2",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log.add(c.Name())
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return nil
 	})
 
 	require.NoError(t, c1.OutputByName("out").PipeTo(c2.InputByName("in")))
@@ -278,6 +287,9 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	c1 := mustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return c.OutputByName("out").PutSignals(signal.New(1))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log.add("c1:before")
@@ -291,13 +303,14 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c1:after")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return c.OutputByName("out").PutSignals(signal.New(1))
 	})
 
 	c2 := mustComponent("c2",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return c.OutputByName("out").PutSignals(signal.New(2))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log.add("c2:before")
@@ -311,12 +324,13 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c2:after")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return c.OutputByName("out").PutSignals(signal.New(2))
 	})
 
 	c3 := mustComponent("c3",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log.add("c3:before")
@@ -330,8 +344,6 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 			log.add("c3:after")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return nil
 	})
 
 	// Wire: c1, c2 -> c3 (both feed into c3)
@@ -377,6 +389,9 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 	// Multiple SetupHooks calls should accumulate hooks
 	c := mustComponent("processor",
 		component.WithInputs("in"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			log = append(log, "setup1")
@@ -392,8 +407,6 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 			log = append(log, "setup3")
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		return nil
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))

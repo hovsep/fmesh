@@ -768,7 +768,7 @@ func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to each signal", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		_, err := group.ForEach(func(s *Signal) error {
+		err := group.ForEach(func(s *Signal) error {
 			count++
 			return nil
 		})
@@ -778,7 +778,7 @@ func TestGroup_ForEach(t *testing.T) {
 
 	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
-		_, err := group.ForEach(func(s *Signal) error {
+		err := group.ForEach(func(s *Signal) error {
 			return assert.AnError
 		})
 		assert.Error(t, err)
@@ -789,7 +789,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action only to matching signals", func(t *testing.T) {
 		group := NewGroup(1, 2, 3, 4)
 		count := 0
-		_, err := group.ForEachIf(
+		err := group.ForEachIf(
 			func(s *Signal) bool {
 				payload, _ := s.Payload()
 				return payload.(int)%2 == 0
@@ -806,7 +806,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action to all when predicate always true", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		_, err := group.ForEachIf(
+		err := group.ForEachIf(
 			func(s *Signal) bool { return true },
 			func(s *Signal) error { count++; return nil },
 		)
@@ -817,7 +817,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action to none when predicate always false", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		count := 0
-		_, err := group.ForEachIf(
+		err := group.ForEachIf(
 			func(s *Signal) bool { return false },
 			func(s *Signal) error { count++; return nil },
 		)
@@ -827,7 +827,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 
 	t.Run("stops on error", func(t *testing.T) {
 		group := NewGroup(2, 4, 6)
-		_, err := group.ForEachIf(
+		err := group.ForEachIf(
 			func(s *Signal) bool { return true },
 			func(s *Signal) error { return assert.AnError },
 		)
