@@ -102,14 +102,14 @@ func TestGroup_Add_does_not_poison_receiver_on_nil_signal(t *testing.T) {
 
 func TestGroup_ForEach_does_not_poison_receiver_on_error(t *testing.T) {
 	g := NewGroup(1, 2, 3)
-	_, _ = g.ForEach(func(*Signal) error { return errors.New("stop") })
+	_ = g.ForEach(func(*Signal) error { return errors.New("stop") })
 
 	assert.Equal(t, 3, g.Len())
 }
 
 func TestGroup_ForEachIf_does_not_poison_receiver_on_error(t *testing.T) {
 	g := NewGroup(1, 2, 3)
-	_, _ = g.ForEachIf(
+	_ = g.ForEachIf(
 		func(*Signal) bool { return true },
 		func(*Signal) error { return errors.New("stop") },
 	)

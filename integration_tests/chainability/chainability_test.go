@@ -32,8 +32,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 		c := mustComponent("processor",
 			component.WithInputs("in1", "in2"),
 			component.WithOutputs("out1", "out2"),
+			component.WithDescription("main processor"),
 		).
-			SetDescription("main processor").
 			AddLabel("env", "prod").
 			AddLabel("tier", "backend").
 			SetLabels(map[string]string{"reset": "true"}). // Reset all labels
@@ -78,8 +78,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 		c := mustComponent("worker",
 			component.WithInputs("tasks"),
 			component.WithOutputs("results"),
+			component.WithDescription("background worker"),
 		).
-			SetDescription("background worker").
 			AddLabels(map[string]string{
 				"env":      "prod",
 				"team":     "backend",
@@ -147,8 +147,8 @@ func TestChainability_CrossPackage(t *testing.T) {
 		c := mustComponent("api-handler",
 			component.WithInputs("request"),
 			component.WithOutputs("response", "errors"),
+			component.WithDescription("HTTP API handler"),
 		).
-			SetDescription("HTTP API handler").
 			AddLabels(map[string]string{
 				"env":  "dev",
 				"team": "platform",

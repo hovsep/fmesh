@@ -24,6 +24,14 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 
 	c := mustComponent("validator",
 		component.WithInputs("data"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			// Simulate validation logic
+			inputVal := c.InputByName("data").Signals().First().PayloadOrDefault(0).(int)
+			if inputVal < 0 {
+				return validationErr
+			}
+			return nil
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnError(func(ctx *component.ActivationContext) error {
 			// Access the error and log it with component context
@@ -34,13 +42,6 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 			}
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		// Simulate validation logic
-		inputVal := c.InputByName("data").Signals().First().PayloadOrDefault(0).(int)
-		if inputVal < 0 {
-			return validationErr
-		}
-		return nil
 	})
 
 	require.NoError(t, c.InputByName("data").PutSignals(signal.New(-5)))
@@ -60,6 +61,12 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 	c := mustComponent("calculator",
 		component.WithInputs("x", "y"),
 		component.WithOutputs("result"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			x := c.InputByName("x").Signals().First().PayloadOrDefault(0).(int)
+			y := c.InputByName("y").Signals().First().PayloadOrDefault(0).(int)
+			result := x + y
+			return c.OutputByName("result").PutSignals(signal.New(result))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnSuccess(func(ctx *component.ActivationContext) error {
 			// Access and validate output signals
@@ -71,11 +78,6 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 			}
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		x := c.InputByName("x").Signals().First().PayloadOrDefault(0).(int)
-		y := c.InputByName("y").Signals().First().PayloadOrDefault(0).(int)
-		result := x + y
-		return c.OutputByName("result").PutSignals(signal.New(result))
 	})
 
 	require.NoError(t, c.InputByName("x").PutSignals(signal.New(30)))
@@ -103,6 +105,13 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 	c := mustComponent("processor",
 		component.WithInputs("in"),
 		component.WithOutputs("success", "failure"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
+			if val > 0 {
+				return c.OutputByName("success").PutSignals(signal.New(val * 2))
+			}
+			return errors.New("invalid input")
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnSuccess(func(ctx *component.ActivationContext) error {
 			metrics.SuccessCount++
@@ -131,12 +140,6 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 			metrics.TotalActivations++
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
-		if val > 0 {
-			return c.OutputByName("success").PutSignals(signal.New(val * 2))
-		}
-		return errors.New("invalid input")
 	})
 
 	// First activation: success
@@ -163,10 +166,18 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 	c := mustComponent("enricher",
 		component.WithInputs("raw"),
 		component.WithOutputs("enriched"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			// Process and output data
+			err := c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
+				processed := s.PayloadOrDefault(0).(int) * 10
+				return c.OutputByName("enriched").PutSignals(signal.New(processed))
+			})
+			return err
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnSuccess(func(ctx *component.ActivationContext) error {
 			// Access output and create enriched version with metadata
-			_, err := ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
+			err := ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
 				enriched := map[string]any{
 					"value":         s.PayloadOrDefault(nil),
 					"component":     ctx.Component.Name(),
@@ -178,13 +189,6 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 			})
 			return err
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		// Process and output data
-		_, err := c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
-			processed := s.PayloadOrDefault(0).(int) * 10
-			return c.OutputByName("enriched").PutSignals(signal.New(processed))
-		})
-		return err
 	})
 
 	require.NoError(t, c.InputByName("raw").PutSignals(signal.New(3), signal.New(7)))
@@ -205,6 +209,13 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 	c := mustComponent("resilient",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
+			if val == 0 {
+				return errors.New("division by zero")
+			}
+			return c.OutputByName("out").PutSignals(signal.New(100 / val))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.OnError(func(ctx *component.ActivationContext) error {
 			recoveryAttempted = true
@@ -219,12 +230,6 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 			}
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
-		if val == 0 {
-			return errors.New("division by zero")
-		}
-		return c.OutputByName("out").PutSignals(signal.New(100 / val))
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(0)))
@@ -248,11 +253,21 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 	c := mustComponent("aggregator",
 		component.WithInputs("numbers"),
 		component.WithOutputs("sum"),
+		component.WithActivationFunc(func(c *component.Component) error {
+			sum := 0
+			if err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
+				sum += s.PayloadOrDefault(0).(int)
+				return nil
+			}); err != nil {
+				return err
+			}
+			return c.OutputByName("sum").PutSignals(signal.New(sum))
+		}),
 	).SetupHooks(func(h *component.Hooks) {
 		h.BeforeActivation(func(c *component.Component) error {
 			// Capture input state
 			trace.InputCount = c.InputByName("numbers").Signals().Len()
-			_, err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
+			err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
 				trace.InputValues = append(trace.InputValues, s.PayloadOrDefault(0).(int))
 				return nil
 			})
@@ -268,15 +283,6 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 			}
 			return nil
 		})
-	}).SetActivationFunc(func(c *component.Component) error {
-		sum := 0
-		if _, err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
-			sum += s.PayloadOrDefault(0).(int)
-			return nil
-		}); err != nil {
-			return err
-		}
-		return c.OutputByName("sum").PutSignals(signal.New(sum))
 	})
 
 	require.NoError(t, c.InputByName("numbers").PutSignals(signal.New(10), signal.New(20), signal.New(30)))

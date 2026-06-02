@@ -12,13 +12,14 @@ func NewState() State {
 	return make(State)
 }
 
-// WithInitialState initializes the component state and returns the component for chaining.
-func (c *Component) WithInitialState(init func(state State)) *Component {
-	if init != nil {
-		init(c.state)
+// WithInitialState is a component constructor option that initializes the component state.
+func WithInitialState(init func(state State)) Option {
+	return func(c *Component) error {
+		if init != nil {
+			init(c.state)
+		}
+		return nil
 	}
-
-	return c
 }
 
 // State returns the component's state.

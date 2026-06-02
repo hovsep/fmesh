@@ -42,6 +42,7 @@ func Test_State(t *testing.T) {
 				producer := mustComponent("producer",
 					component.WithInputs("demand_rate"),
 					component.WithOutputs("signal_out"),
+					component.WithDescription("produces some signals"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
@@ -53,11 +54,15 @@ func Test_State(t *testing.T) {
 						}
 						return nil
 					}),
-				).SetDescription("produces some signals")
+				)
 
 				counter := mustComponent("stateful_counter",
 					component.WithInputs("bypass_in"),
 					component.WithOutputs("bypass_out"),
+					component.WithDescription("counts all observed signals and bypasses them down the stream"),
+					component.WithInitialState(func(state component.State) {
+						state.Set("observed_signals_count", 0)
+					}),
 					component.WithActivationFunc(func(this *component.Component) error {
 						count := this.State().Get("observed_signals_count").(int)
 
@@ -72,14 +77,16 @@ func Test_State(t *testing.T) {
 
 						return nil
 					}),
-				).SetDescription("counts all observed signals and bypasses them down the stream").
-					WithInitialState(func(state component.State) {
-						state.Set("observed_signals_count", 0)
-					})
+				)
 
 				consumer := mustComponent("consumer",
 					component.WithInputs("signal_in", "start"),
 					component.WithOutputs("consumed_signals", "demand_rate"),
+					component.WithDescription("consumes signals"),
+					component.WithInitialState(func(state component.State) {
+						// Simulate uneven demand
+						state.Set("demand_shape", []int{3, 70, 22, 1350})
+					}),
 					component.WithActivationFunc(func(this *component.Component) error {
 						demandShape := this.State().Get("demand_shape").([]int)
 						defer func() {
@@ -99,11 +106,7 @@ func Test_State(t *testing.T) {
 						// Consume signals
 						return port.ForwardSignals(this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
 					}),
-				).SetDescription("consumes signals").
-					WithInitialState(func(state component.State) {
-						// Simulate uneven demand
-						state.Set("demand_shape", []int{3, 70, 22, 1350})
-					})
+				)
 
 				if err := producer.OutputByName("signal_out").PipeTo(counter.InputByName("bypass_in")); err != nil {
 					panic(err)

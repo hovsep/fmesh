@@ -3,8 +3,6 @@ package component
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/meta"
-	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,39 +36,20 @@ func TestNewComponent(t *testing.T) {
 }
 
 func TestComponent_WithDescription(t *testing.T) {
-	type args struct {
-		description string
-	}
-	tests := []struct {
-		name      string
-		component *Component
-		args      args
-		want      *Component
-	}{
-		{
-			name:      "happy path",
-			component: mustNew("c1"),
-			args: args{
-				description: "descr",
-			},
-			want: &Component{
-				name:        "c1",
-				description: "descr",
-				labels:      meta.NewLabels(),
-				scalars:     meta.NewScalars(),
-				inputPorts:  port.NewCollection(),
-				outputPorts: port.NewCollection(),
-				f:           nil,
-				state:       NewState(),
-				hooks:       NewHooks(),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.component.SetDescription(tt.args.description))
-		})
-	}
+	t.Run("sets description via option", func(t *testing.T) {
+		c := mustNew("c1", WithDescription("descr"))
+		assert.Equal(t, "descr", c.Description())
+	})
+
+	t.Run("empty by default", func(t *testing.T) {
+		c := mustNew("c1")
+		assert.Empty(t, c.Description())
+	})
+
+	t.Run("WithDescription replaces previous value", func(t *testing.T) {
+		c := mustNew("c1", WithDescription("first"), WithDescription("second"))
+		assert.Equal(t, "second", c.Description())
+	})
 }
 
 func TestComponent_SetLabels(t *testing.T) {
@@ -373,10 +352,7 @@ func TestComponent_Chainability(t *testing.T) {
 	})
 
 	t.Run("WithDescription replaces previous value", func(t *testing.T) {
-		c := mustNew("c1").
-			SetDescription("first").
-			SetDescription("second")
-
+		c := mustNew("c1", WithDescription("first"), WithDescription("second"))
 		assert.Equal(t, "second", c.Description())
 	})
 

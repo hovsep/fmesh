@@ -19,12 +19,12 @@ func TestComponent_WithInitialState(t *testing.T) {
 		},
 		{
 			name: "with initial state",
-			component: mustNew("c1").WithInitialState(func(state State) {
+			component: mustNew("c1", WithInitialState(func(state State) {
 				state.Set("battery", 100.00)
 				state.Set("speed", 200)
 				state.Set("data", []byte{1, 2, 3})
 				state.Set("secret", "LEON")
-			}),
+			})),
 			wantState: State{
 				"battery": 100.00,
 				"speed":   200,
@@ -34,7 +34,7 @@ func TestComponent_WithInitialState(t *testing.T) {
 		},
 		{
 			name:      "with nil state initializer",
-			component: mustNew("c1").WithInitialState(nil),
+			component: mustNew("c1", WithInitialState(nil)),
 			wantState: NewState(),
 		},
 	}
@@ -90,7 +90,7 @@ func TestComponent_ResetState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := mustNew("comp").WithInitialState(tt.initState)
+			c := mustNew("comp", WithInitialState(tt.initState))
 			if tt.assertions != nil {
 				tt.assertions(t, c)
 			}

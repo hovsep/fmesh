@@ -19,14 +19,10 @@ Use `With` **only** when the method is one of:
 - **Builder that does real work beyond field assignment**: e.g. nil guard + prefix logic, iteration over child objects, appending to a slice
 
 Use `Set` for **everything else** that is a plain `field = value; return receiver` mutating method, whether exported or unexported:
-- Exported example: `component.SetDescription`, `cycle.SetNumber`, `component.SetActivationFunc` (method)
+- Exported example: `cycle.SetNumber`, `component.SetLogger` (method needed post-construction for mesh logger inheritance)
 - Unexported example: `port.setSignals`, `port.setPorts`
 
-**Key distinction for dual-form APIs** (method + functional option):
-```
-component.WithActivationFunc(f)  // free Option constructor — stays With
-c.SetActivationFunc(f)           // method setter on *Component — Set
-```
+**No dual-form duplication**: if a capability has a `With*` constructor option, do **not** also add a `Set*` method for the same capability. Keep one form: `With*` for options inside `New(...)`, `Set*` only when genuine post-construction mutation is needed (e.g. `SetLogger` called by `fmesh.AddComponents`).
 
 ## Label operations by type
 
@@ -64,15 +60,19 @@ For other groups/collections (mutating): `WithLabel`/`WithScalar` mutate the rec
 
 ## Constructor options
 
-`WithLabelOption(k, v)` and `WithScalarOption(k, v)` are `Option` functions available for all
+`WithLabel(k, v)` and `WithScalar(k, v)` are `Option` functions available for all
 constructors that accept options (`fmesh.New`, `component.New`, `port.NewInput`, `port.NewOutput`).
 
-Some capabilities exist in **two forms** — a functional `Option` constructor (used inside `New(...)`) and a fluent method (used after construction). The naming rule differs by form:
+Constructor options use the `With` prefix and are passed to `New(...)`:
 
-| Form | Prefix | Example |
-|---|---|---|
-| Free `Option` constructor | `With` | `component.WithActivationFunc(f)`, `port.WithDescription(s)` |
-| Fluent method on receiver | `Set` | `c.SetActivationFunc(f)`, `c.SetDescription(s)` |
+| Capability | Option |
+|---|---|
+| Activation function | `component.WithActivationFunc(f)` |
+| Component description | `component.WithDescription(s)` |
+| Initial state | `component.WithInitialState(fn)` |
+| Logger | `component.WithLogger(l)` |
+
+Post-construction `Set*` methods exist only where mutation is genuinely required after `New()` returns — currently `SetLogger` (called by `fmesh.AddComponents` to inherit the mesh logger) and `SetParentMesh`.
 
 ## Collection/group operations
 
@@ -86,7 +86,6 @@ infallible (e.g. `Filter`, `Map`, `signal.Signal` builders) keep their fluent re
 need to wrap `error` where nothing can go wrong.
 
 `ForEach` on all collection types returns `error` (stops on first).
-`signal.Group.ForEach` returns `(*Group, error)` — the processed group plus any error.
 
 ## Predicates
 

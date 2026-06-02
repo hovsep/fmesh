@@ -265,27 +265,26 @@ func (g *Group) Len() int {
 	return len(g.signals)
 }
 
-// ForEach applies the action to each signal.
-// Returns the processed group and the first error encountered (if any).
-func (g *Group) ForEach(action func(*Signal) error) (*Group, error) {
+// ForEach applies the action to each signal. Returns the first error encountered (if any).
+func (g *Group) ForEach(action func(*Signal) error) error {
 	for _, s := range g.signals {
 		if err := action(s); err != nil {
-			return newGroupFromSignals(g.signals), err
+			return err
 		}
 	}
-	return newGroupFromSignals(g.signals), nil
+	return nil
 }
 
 // ForEachIf applies the action only to signals that match the predicate.
-func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) (*Group, error) {
+func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) error {
 	for _, s := range g.signals {
 		if predicate(s) {
 			if err := action(s); err != nil {
-				return newGroupFromSignals(g.signals), err
+				return err
 			}
 		}
 	}
-	return newGroupFromSignals(g.signals), nil
+	return nil
 }
 
 // Filter returns a new group with signals that pass the predicate.

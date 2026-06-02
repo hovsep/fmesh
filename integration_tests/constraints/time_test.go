@@ -40,6 +40,7 @@ func Test_TimeConstraint(t *testing.T) {
 				ticker := mustComponent("ticker",
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
+					component.WithDescription("simple clock ticking for 10 seconds"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
@@ -53,7 +54,7 @@ func Test_TimeConstraint(t *testing.T) {
 
 						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
 					}),
-				).SetDescription("simple clock ticking for 10 seconds")
+				)
 
 				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
 					panic(err)
@@ -62,8 +63,7 @@ func Test_TimeConstraint(t *testing.T) {
 				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
 					TimeLimit: 2 * time.Second,
-				}))
-				fm.SetDescription("this mesh ticks every second for 10 seconds")
+				}), fmesh.WithDescription("this mesh ticks every second for 10 seconds"))
 				if err := fm.AddComponents(ticker); err != nil {
 					panic(err)
 				}
@@ -86,6 +86,7 @@ func Test_TimeConstraint(t *testing.T) {
 				ticker := mustComponent("ticker",
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
+					component.WithDescription("simple clock ticking for 3 seconds"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
@@ -99,7 +100,7 @@ func Test_TimeConstraint(t *testing.T) {
 
 						return this.OutputByName("tick_out").PutSignals(signal.New(ticksCount + 1))
 					}),
-				).SetDescription("simple clock ticking for 3 seconds")
+				)
 
 				if err := ticker.LoopbackPipe("tick_out", "tick_in"); err != nil {
 					panic(err)
@@ -108,8 +109,7 @@ func Test_TimeConstraint(t *testing.T) {
 				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
 					TimeLimit: 0,
-				}))
-				fm.SetDescription("this mesh ticks every second for 10 seconds")
+				}), fmesh.WithDescription("this mesh ticks every second for 10 seconds"))
 				if err := fm.AddComponents(ticker); err != nil {
 					panic(err)
 				}

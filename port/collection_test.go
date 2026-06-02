@@ -528,21 +528,23 @@ func TestCollection_Filter(t *testing.T) {
 func TestCollection_Map(t *testing.T) {
 	t.Run("transforms ports", func(t *testing.T) {
 		collection := mustNewCollection(NewGroup("p1", "p2").All()...)
-		mapped := collection.Map(func(p *Port) *Port {
+		mapped, err := collection.Map(func(p *Port) *Port {
 			return mustOutput("mapped_" + p.Name())
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 2, mapped.Len())
 		assert.NotNil(t, mapped.ByName("mapped_p1"))
 	})
 
 	t.Run("filters out nil results", func(t *testing.T) {
 		collection := mustNewCollection(NewGroup("p1", "p2", "p3").All()...)
-		mapped := collection.Map(func(p *Port) *Port {
+		mapped, err := collection.Map(func(p *Port) *Port {
 			if p.Name() == "p2" {
 				return nil
 			}
 			return p
 		})
+		require.NoError(t, err)
 		assert.Equal(t, 2, mapped.Len())
 	})
 }

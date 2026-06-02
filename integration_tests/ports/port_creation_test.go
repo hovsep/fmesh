@@ -50,8 +50,32 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		processor := mustComponent("data-processor",
 			component.WithInputs("raw_data", "filter"),
 			component.WithOutputs("processed", "metrics"),
-		).
-			SetDescription("Demonstrates all port creation and manipulation features")
+			component.WithDescription("Demonstrates all port creation and manipulation features"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				// Wait for required inputs
+				if !this.InputByName("raw_data").HasSignals() ||
+					!this.InputByName("config").HasSignals() {
+					return nil
+				}
+
+				// Read inputs
+				data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("").(string)
+				config := this.InputByName("config").Signals().FirstPayloadOrDefault("").(string)
+				filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("").(string)
+				metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none").(string)
+
+				// Process data
+				result := fmt.Sprintf("[%s:%s] %s (meta: %s)", config, filter, data, metadata)
+
+				// Write outputs
+				if err := this.OutputByName("processed").PutSignals(signal.New(result)); err != nil {
+					return err
+				}
+				return this.OutputByName("metrics").PutSignals(
+					signal.New(fmt.Sprintf("processed %d chars", len(result))),
+				)
+			}),
+		)
 
 		// Advanced API: attach ports with descriptions and labels
 		require.NoError(t, processor.AttachInputPorts(
@@ -66,30 +90,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				AddLabel("severity", "high").
 				AddLabel("format", "structured"),
 		))
-		processor.SetActivationFunc(func(this *component.Component) error {
-			// Wait for required inputs
-			if !this.InputByName("raw_data").HasSignals() ||
-				!this.InputByName("config").HasSignals() {
-				return nil
-			}
-
-			// Read inputs
-			data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("").(string)
-			config := this.InputByName("config").Signals().FirstPayloadOrDefault("").(string)
-			filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("").(string)
-			metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none").(string)
-
-			// Process data
-			result := fmt.Sprintf("[%s:%s] %s (meta: %s)", config, filter, data, metadata)
-
-			// Write outputs
-			if err := this.OutputByName("processed").PutSignals(signal.New(result)); err != nil {
-				return err
-			}
-			return this.OutputByName("metrics").PutSignals(
-				signal.New(fmt.Sprintf("processed %d chars", len(result))),
-			)
-		})
 
 		// Put signals on all inputs
 		require.NoError(t, processor.InputByName("raw_data").PutSignals(signal.New("test data")))
@@ -158,6 +158,30 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Create a component and manipulate port labels
 		c := mustComponent("label-demo",
 			component.WithOutputs("output"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				if !this.InputByName("input").HasSignals() {
+					return nil
+				}
+
+				// Manipulate port labels during processing
+				inputPort := this.InputByName("input")
+
+				// Add a single label
+				inputPort.AddLabel("processed", "true")
+
+				// Remove specific labels
+				inputPort.RemoveLabels("version")
+
+				// Update labels
+				inputPort.AddLabels(map[string]string{
+					"env":   "prod", // update
+					"build": "123",  // add new
+				})
+
+				// Forward signal to output
+				sig, _ := inputPort.Signals().FirstPayload()
+				return this.OutputByName("output").PutSignals(signal.New(sig))
+			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
 			mustInputPort("input").
@@ -165,30 +189,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				AddLabel("version", "1.0").
 				AddLabel("owner", "team-a"),
 		))
-		c.SetActivationFunc(func(this *component.Component) error {
-			if !this.InputByName("input").HasSignals() {
-				return nil
-			}
-
-			// Manipulate port labels during processing
-			inputPort := this.InputByName("input")
-
-			// Add a single label
-			inputPort.AddLabel("processed", "true")
-
-			// Remove specific labels
-			inputPort.RemoveLabels("version")
-
-			// Update labels
-			inputPort.AddLabels(map[string]string{
-				"env":   "prod", // update
-				"build": "123",  // add new
-			})
-
-			// Forward signal to output
-			sig, _ := inputPort.Signals().FirstPayload()
-			return this.OutputByName("output").PutSignals(signal.New(sig))
-		})
 
 		// Set up and run
 		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
@@ -213,23 +213,23 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Demonstrate adding ports one by one
 		c := mustComponent("incremental",
 			component.WithOutputs("result"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				if !this.Inputs().AllHaveSignals() {
+					return nil
+				}
+
+				a := this.InputByName("a").Signals().FirstPayloadOrDefault(0).(int)
+				b := this.InputByName("b").Signals().FirstPayloadOrDefault(0).(int)
+				cv := this.InputByName("c").Signals().FirstPayloadOrDefault(0).(int)
+
+				return this.OutputByName("result").PutSignals(signal.New(a + b + cv))
+			}),
 		)
 		require.NoError(t, c.AddInputs("a"))   // Add first input
 		require.NoError(t, c.AddInputs("b"))   // Add second input
 		require.NoError(t, c.AttachInputPorts( // Add with details
 			mustInputPort("c", port.WithDescription("Third input")),
 		))
-		c.SetActivationFunc(func(this *component.Component) error {
-			if !this.Inputs().AllHaveSignals() {
-				return nil
-			}
-
-			a := this.InputByName("a").Signals().FirstPayloadOrDefault(0).(int)
-			b := this.InputByName("b").Signals().FirstPayloadOrDefault(0).(int)
-			cv := this.InputByName("c").Signals().FirstPayloadOrDefault(0).(int)
-
-			return this.OutputByName("result").PutSignals(signal.New(a + b + cv))
-		})
 
 		// Verify all ports exist and work
 		require.NoError(t, c.InputByName("a").PutSignals(signal.New(1)))
@@ -254,39 +254,39 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		c := mustComponent("collection-demo",
 			component.WithInputs("i1", "i2", "i3"),
 			component.WithOutputs("summary"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				inputs := this.Inputs()
+
+				// Count ports with signals
+				portsWithSignals := inputs.Filter(func(p *port.Port) bool {
+					return p.HasSignals()
+				}).Len()
+
+				// Find high priority ports
+				highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
+					lbls := p.Labels().All()
+					return lbls["priority"] == "high"
+				})
+
+				// Apply operation to all ports (add processing label)
+				if err := inputs.ForEach(func(p *port.Port) error {
+					p.AddLabel("checked", "true")
+					return nil
+				}); err != nil {
+					return err
+				}
+
+				highPriorityCount := highPriorityPorts.All()
+				summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
+					inputs.Len(), portsWithSignals, len(highPriorityCount))
+
+				return this.OutputByName("summary").PutSignals(signal.New(summary))
+			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
 			mustInputPort("i4").AddLabel("priority", "high"),
 			mustInputPort("i5").AddLabel("priority", "low"),
 		))
-		c.SetActivationFunc(func(this *component.Component) error {
-			inputs := this.Inputs()
-
-			// Count ports with signals
-			portsWithSignals := inputs.Filter(func(p *port.Port) bool {
-				return p.HasSignals()
-			}).Len()
-
-			// Find high priority ports
-			highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
-				lbls := p.Labels().All()
-				return lbls["priority"] == "high"
-			})
-
-			// Apply operation to all ports (add processing label)
-			if err := inputs.ForEach(func(p *port.Port) error {
-				p.AddLabel("checked", "true")
-				return nil
-			}); err != nil {
-				return err
-			}
-
-			highPriorityCount := highPriorityPorts.All()
-			summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
-				inputs.Len(), portsWithSignals, len(highPriorityCount))
-
-			return this.OutputByName("summary").PutSignals(signal.New(summary))
-		})
 
 		// Put signals on some ports
 		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))

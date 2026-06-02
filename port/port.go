@@ -184,8 +184,8 @@ func (p *Port) RemoveScalars(names ...string) *Port {
 	return p
 }
 
-// WithScalarOption is a port constructor option that adds or updates a single scalar.
-func WithScalarOption(name string, value float64) Option {
+// WithScalar is a port constructor option that adds or updates a single scalar.
+func WithScalar(name string, value float64) Option {
 	return func(p *Port) error {
 		p.scalars.Set(name, value)
 		return nil

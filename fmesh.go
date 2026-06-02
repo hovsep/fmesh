@@ -65,10 +65,12 @@ func (fm *FMesh) ComponentByName(name string) *component.Component {
 	return fm.Components().ByName(name)
 }
 
-// SetDescription sets a description.
-func (fm *FMesh) SetDescription(description string) *FMesh {
-	fm.description = description
-	return fm
+// WithDescription is a constructor option that sets a description on the mesh.
+func WithDescription(description string) Option {
+	return func(fm *FMesh) error {
+		fm.description = description
+		return nil
+	}
 }
 
 // Labels returns the mesh's labels store.
@@ -141,16 +143,16 @@ func (fm *FMesh) RemoveScalars(names ...string) *FMesh {
 	return fm
 }
 
-// WithLabelOption is a constructor option that adds or updates a single label on the mesh.
-func WithLabelOption(name, value string) Option {
+// WithLabel is a constructor option that adds or updates a single label on the mesh.
+func WithLabel(name, value string) Option {
 	return func(fm *FMesh) error {
 		fm.labels.Set(name, value)
 		return nil
 	}
 }
 
-// WithScalarOption is a constructor option that adds or updates a single scalar on the mesh.
-func WithScalarOption(name string, value float64) Option {
+// WithScalar is a constructor option that adds or updates a single scalar on the mesh.
+func WithScalar(name string, value float64) Option {
 	return func(fm *FMesh) error {
 		fm.scalars.Set(name, value)
 		return nil
@@ -166,7 +168,7 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 
 		// Inherit logger from fm if the component does not have its own
 		if c.Logger() == nil {
-			c.WithLogger(fm.Logger())
+			c.SetLogger(fm.Logger())
 		}
 
 		c.SetParentMesh(fm)

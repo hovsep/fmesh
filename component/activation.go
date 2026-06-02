@@ -15,13 +15,6 @@ func WithActivationFunc(f ActivationFunc) Option {
 	}
 }
 
-// SetActivationFunc sets the activation function on the component and returns the component for chaining.
-// This method can be called after construction; the option form is preferred when building inside New().
-func (c *Component) SetActivationFunc(f ActivationFunc) *Component {
-	c.f = f
-	return c
-}
-
 // MaybeActivate tries to run the activation function if all required conditions are met.
 func (c *Component) MaybeActivate() *ActivationResult {
 	if !c.Inputs().AnyHasSignals() {

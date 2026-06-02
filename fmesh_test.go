@@ -91,37 +91,20 @@ func TestNew(t *testing.T) {
 }
 
 func TestFMesh_WithDescription(t *testing.T) {
-	tests := []struct {
-		name        string
-		fm          *FMesh
-		description string
-		assertions  func(t *testing.T, fm *FMesh)
-	}{
-		{
-			name:        "empty description",
-			fm:          mustNewFMesh("fm1"),
-			description: "",
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Empty(t, fm.Description())
-			},
-		},
-		{
-			name:        "with description",
-			fm:          mustNewFMesh("fm1"),
-			description: "descr",
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, "descr", fm.Description())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.fm.SetDescription(tt.description)
-			if tt.assertions != nil {
-				tt.assertions(t, got)
-			}
-		})
-	}
+	t.Run("empty description", func(t *testing.T) {
+		fm := mustNewFMesh("fm1")
+		assert.Empty(t, fm.Description())
+	})
+
+	t.Run("with description", func(t *testing.T) {
+		fm := mustNewFMesh("fm1", WithDescription("descr"))
+		assert.Equal(t, "descr", fm.Description())
+	})
+
+	t.Run("WithDescription replaces previous value", func(t *testing.T) {
+		fm := mustNewFMesh("fm1", WithDescription("first"), WithDescription("second"))
+		assert.Equal(t, "second", fm.Description())
+	})
 }
 
 func TestFMesh_WithConfig(t *testing.T) {
@@ -365,7 +348,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -378,8 +361,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
-					mustNewComponent("c2").SetActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
+					mustNewComponent("c2", component.WithActivationFunc(noOpActivationFunc)),
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -393,8 +376,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
-					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),
+					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
+					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
 				},
 			},
 			wantErr:    true,
@@ -405,8 +388,8 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").SetActivationFunc(noOpActivationFunc),                                                          // Must get default logger
-					mustNewComponent("c2").SetActivationFunc(noOpActivationFunc).WithLogger(log.New(io.Discard, "custom", log.LstdFlags)), // Must not be overridden by fmesh
+					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),                                                                     // Must get default logger
+					mustNewComponent("c2", component.WithActivationFunc(noOpActivationFunc), component.WithLogger(log.New(io.Discard, "custom", log.LstdFlags))), // Must not be overridden by fmesh
 				},
 			},
 			assertions: func(t *testing.T, fm *FMesh) {
@@ -426,7 +409,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 			fm:   mustNewFMesh("fm1"),
 			args: args{
 				components: []*component.Component{
-					mustNewComponent("c1").SetDescription("No AF"),
+					mustNewComponent("c1", component.WithDescription("No AF")),
 				},
 			},
 			wantErr:    true,
@@ -473,11 +456,14 @@ func TestFMesh_Run(t *testing.T) {
 					CyclesLimit:           0,
 				}))
 				require.NoError(t, fm.AddComponents(
-					mustAddOutputs(mustAddInputs(mustNewComponent("c1").
-						SetDescription("This component simply puts a constant on o1"), "i1"), "o1").
-						SetActivationFunc(func(this *component.Component) error {
+					mustNewComponent("c1",
+						component.WithInputs("i1"),
+						component.WithOutputs("o1"),
+						component.WithDescription("This component simply puts a constant on o1"),
+						component.WithActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(77))
 						}),
+					),
 				))
 				return fm
 			},
@@ -500,11 +486,13 @@ func TestFMesh_Run(t *testing.T) {
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 				}))
 				require.NoError(t, fm.AddComponents(
-					mustAddInputs(mustNewComponent("c1").
-						SetDescription("This component just returns an unexpected error"), "i1").
-						SetActivationFunc(func(this *component.Component) error {
+					mustNewComponent("c1",
+						component.WithInputs("i1"),
+						component.WithDescription("This component just returns an unexpected error"),
+						component.WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
 						}),
+					),
 				))
 				return fm
 			},
@@ -532,12 +520,13 @@ func TestFMesh_Run(t *testing.T) {
 					mustNewComponent("c1",
 						component.WithInputs("i1", "i2"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component waits until it gets signals on both inputs"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 								return component.ErrWaitingForInputs
 							}
 							return this.OutputByName("o1").PutSignals(signal.New("done"))
-						})).SetDescription("This component waits until it gets signals on both inputs"),
+						})),
 				))
 				return fm
 			},
@@ -577,6 +566,7 @@ func TestFMesh_Run(t *testing.T) {
 					mustNewComponent("c1",
 						component.WithInputs("trigger", "loop_in"),
 						component.WithOutputs("loop_out", "num1", "num2"),
+						component.WithDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							count := this.InputByName("loop_in").Signals().FirstPayloadOrDefault(0).(int)
 							count++
@@ -597,10 +587,11 @@ func TestFMesh_Run(t *testing.T) {
 								}
 							}
 							return nil
-						})).SetDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
+						})),
 					mustNewComponent("c2",
 						component.WithInputs("in1", "in2"),
 						component.WithOutputs("result"),
+						component.WithDescription("Waits for both inputs (keeping signals) then multiplies them"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							if !this.Inputs().ByNames("in1", "in2").AllHaveSignals() {
 								return component.ErrWaitingForInputsKeep
@@ -608,7 +599,7 @@ func TestFMesh_Run(t *testing.T) {
 							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
 							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
 							return this.OutputByName("result").PutPayloads(a * b)
-						})).SetDescription("Waits for both inputs (keeping signals) then multiplies them"),
+						})),
 				))
 				return fm
 			},
@@ -658,27 +649,31 @@ func TestFMesh_Run(t *testing.T) {
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component just sends a number to c2"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
-						})).SetDescription("This component just sends a number to c2"),
+						})),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component receives a number from c1 and passes it to c4"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						})).SetDescription("This component receives a number from c1 and passes it to c4"),
+						})),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
-						})).SetDescription("This component returns an error, but the mesh is configured to ignore errors"),
+						})),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component receives a number from c2 and panics"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							panic("no way")
-						})).SetDescription("This component receives a number from c2 and panics"),
+						})),
 				))
 				return fm
 			},
@@ -753,38 +748,43 @@ func TestFMesh_Run(t *testing.T) {
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component just sends a number to c2"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
-						})).SetDescription("This component just sends a number to c2"),
+						})),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component receives a number from c1 and passes it to c4"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
-						})).SetDescription("This component receives a number from c1 and passes it to c4"),
+						})),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return errors.New("boom")
-						})).SetDescription("This component returns an error, but the mesh is configured to ignore errors"),
+						})),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 
 							// Even component panicked, it managed to set some data on output "o1"
 							// so that data will be available in next cycle
 							panic("no way")
-						})).SetDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics"),
+						})),
 					mustNewComponent("c5",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
+						component.WithDescription("This component receives a number from c4"),
 						component.WithActivationFunc(func(this *component.Component) error {
 							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
-						})).SetDescription("This component receives a number from c4"),
+						})),
 				))
 				return fm
 			},

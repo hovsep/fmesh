@@ -304,14 +304,18 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 }
 
 // Map returns a new collection with ports transformed by the mapper function.
-func (c *Collection) Map(mapper Mapper) *Collection {
+// Returns an error if a mapped port has a duplicate name.
+func (c *Collection) Map(mapper Mapper) (*Collection, error) {
 	mapped := NewCollection()
 	for _, port := range c.ports {
-		if result := mapper(port); result != nil {
-			_ = mapped.Add(result) // mapper is responsible for returning uniquely-named ports
+		transformedPort := mapper(port)
+		if transformedPort != nil {
+			if err := mapped.Add(transformedPort); err != nil {
+				return nil, err
+			}
 		}
 	}
-	return mapped
+	return mapped, nil
 }
 
 // WithParentComponent sets the parent component on all ports in the collection and returns the collection.
