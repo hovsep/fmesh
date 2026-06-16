@@ -247,10 +247,12 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 				// Access actual signal data
 				for _, sig := range ctx.SignalsAdded {
 					payload, err := sig.Payload()
-					if err == nil {
-						if val, ok := payload.(int); ok {
-							signalPayloads = append(signalPayloads, val)
-						}
+					if err != nil {
+						continue
+					}
+
+					if val, ok := payload.(int); ok {
+						signalPayloads = append(signalPayloads, val)
 					}
 				}
 				return nil
