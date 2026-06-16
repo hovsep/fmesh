@@ -30,8 +30,8 @@ func TestScalars_Set(t *testing.T) {
 			setValue: 36.6,
 			assertions: func(t *testing.T, result *Scalars) {
 				assert.Equal(t, 1, result.Len())
-				v, ok := result.Get("temp")
-				require.True(t, ok)
+				v, err := result.Value("temp")
+				require.NoError(t, err)
 				assert.InDelta(t, 36.6, v, 1e-9)
 			},
 		},
@@ -53,8 +53,8 @@ func TestScalars_Set(t *testing.T) {
 			setValue: 99.0,
 			assertions: func(t *testing.T, result *Scalars) {
 				assert.Equal(t, 1, result.Len())
-				v, ok := result.Get("x")
-				require.True(t, ok)
+				v, err := result.Value("x")
+				require.NoError(t, err)
 				assert.InDelta(t, 99.0, v, 1e-9)
 			},
 		},
@@ -77,7 +77,8 @@ func TestScalars_SetMany(t *testing.T) {
 	t.Run("upsert semantics", func(t *testing.T) {
 		s := NewScalars().Set("a", 1.0).SetMany(map[string]float64{"a": 100.0, "b": 2.0})
 		assert.Equal(t, 2, s.Len())
-		v, _ := s.Get("a")
+		v, err := s.Value("a")
+		require.NoError(t, err)
 		assert.InDelta(t, 100.0, v, 1e-9)
 	})
 }
@@ -86,13 +87,13 @@ func TestScalars_Get(t *testing.T) {
 	s := NewScalars().Set("x", 42.0)
 
 	t.Run("found", func(t *testing.T) {
-		v, ok := s.Get("x")
-		assert.True(t, ok)
+		v, err := s.Value("x")
+		require.NoError(t, err)
 		assert.InDelta(t, 42.0, v, 1e-9)
 	})
 	t.Run("not found returns zero and false", func(t *testing.T) {
-		v, ok := s.Get("missing")
-		assert.False(t, ok)
+		v, err := s.Value("missing")
+		require.Error(t, err)
 		assert.InDelta(t, 0.0, v, 1e-9)
 	})
 }
@@ -101,10 +102,10 @@ func TestScalars_GetOrDefault(t *testing.T) {
 	s := NewScalars().Set("x", 7.0)
 
 	t.Run("found returns actual value", func(t *testing.T) {
-		assert.InDelta(t, 7.0, s.GetOrDefault("x", -1.0), 1e-9)
+		assert.InDelta(t, 7.0, s.ValueOrDefault("x", -1.0), 1e-9)
 	})
 	t.Run("not found returns default", func(t *testing.T) {
-		assert.InDelta(t, -1.0, s.GetOrDefault("missing", -1.0), 1e-9)
+		assert.InDelta(t, -1.0, s.ValueOrDefault("missing", -1.0), 1e-9)
 	})
 }
 
@@ -152,7 +153,7 @@ func TestScalars_All(t *testing.T) {
 		s := NewScalars().Set("x", 5.0)
 		got := s.All()
 		got["x"] = 999.0 // mutate the copy
-		v, _ := s.Get("x")
+		v, _ := s.Value("x")
 		assert.InDelta(t, 5.0, v, 1e-9, "original must not be affected")
 	})
 }
@@ -244,7 +245,7 @@ func TestScalars_Average(t *testing.T) {
 func TestScalars_Scale(t *testing.T) {
 	t.Run("scales existing entry", func(t *testing.T) {
 		s := NewScalars().Set("x", 5.0).Scale("x", 3.0)
-		v, _ := s.Get("x")
+		v, _ := s.Value("x")
 		assert.InDelta(t, 15.0, v, 1e-9)
 	})
 	t.Run("missing name is no-op", func(t *testing.T) {
@@ -259,15 +260,15 @@ func TestScalars_Merge(t *testing.T) {
 		b := NewScalars().SetMany(map[string]float64{"y": 99, "z": 3})
 		merged := a.Merge(b)
 		assert.Equal(t, 3, merged.Len())
-		v, _ := merged.Get("y")
+		v, _ := merged.Value("y")
 		assert.InDelta(t, 99.0, v, 1e-9, "other wins on conflict")
 	})
 	t.Run("neither input is modified", func(t *testing.T) {
 		a := NewScalars().Set("k", 1.0)
 		b := NewScalars().Set("k", 2.0)
 		_ = a.Merge(b)
-		va, _ := a.Get("k")
-		vb, _ := b.Get("k")
+		va, _ := a.Value("k")
+		vb, _ := b.Value("k")
 		assert.InDelta(t, 1.0, va, 1e-9)
 		assert.InDelta(t, 2.0, vb, 1e-9)
 	})
@@ -374,7 +375,7 @@ func TestScalars_Chainable(t *testing.T) {
 			Scale("a", 10.0)
 
 		assert.Equal(t, 3, s.Len())
-		v, _ := s.Get("a")
+		v, _ := s.Value("a")
 		assert.InDelta(t, 10.0, v, 1e-9)
 		assert.False(t, s.Has("d"))
 	})
