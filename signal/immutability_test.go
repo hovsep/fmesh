@@ -197,7 +197,7 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 			// produces its own annotated copy without touching the original.
 			results[idx] = shared.
 				WithLabel("processed-by", "component").
-				WithScalar("adjusted", shared.Scalars().GetOrDefault("temp", 0)+float64(idx))
+				WithScalar("adjusted", shared.Scalars().ValueOrDefault("temp", 0)+float64(idx))
 		}(i)
 	}
 	wg.Wait()
@@ -208,8 +208,8 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 	assert.False(t, shared.Labels().Has("processed-by"))
 
 	assert.Equal(t, 1, shared.Scalars().Len(), "shared signal scalars must not grow")
-	v, ok := shared.Scalars().Get("temp")
-	assert.True(t, ok)
+	v, err := shared.Scalars().Value("temp")
+	require.NoError(t, err)
 	assert.InDelta(t, 36.6, v, 1e-9)
 	assert.False(t, shared.Scalars().Has("adjusted"))
 
@@ -219,9 +219,7 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 			"goroutine %d: inherited label must be present", i)
 		assert.True(t, s.Labels().Has("processed-by"),
 			"goroutine %d: own label must be present", i)
-
-		_, hasScalar := s.Scalars().Get("adjusted")
-		assert.True(t, hasScalar, "goroutine %d: own scalar must be present", i)
+		assert.True(t, s.Scalars().Has("adjusted"), "goroutine %d: own scalar must be present", i)
 	}
 }
 

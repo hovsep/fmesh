@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"errors"
 	"reflect"
 	"slices"
 
@@ -368,65 +369,64 @@ func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 // SumScalar returns the sum of the named scalar across all signals in the group.
 // Signals that do not have the scalar contribute 0. Returns 0 for an empty group.
 func (g *Group) SumScalar(name string) float64 {
-	var total float64
-	for _, s := range g.signals {
-		v, ok := s.scalars.Get(name)
-		if ok {
-			total += v
-		}
-	}
-	return total
+	return g.Reduce(New(0.0), func(acc *Signal, s *Signal) *Signal {
+		return New(acc.PayloadOrDefault(0.0).(float64) + s.Scalars().ValueOrDefault(name, 0.0))
+	}).PayloadOrDefault(0.0).(float64)
 }
 
 // MinScalar returns the minimum value of the named scalar across all signals.
-// ok is false when no signal in the group has that scalar.
-func (g *Group) MinScalar(name string) (float64, bool) {
-	found := false
-	var minVal float64
-	for _, s := range g.signals {
-		v, ok := s.scalars.Get(name)
-		if !ok {
-			continue
-		}
-		if !found || v < minVal {
-			minVal, found = v, true
-		}
+func (g *Group) MinScalar(name string) (float64, error) {
+	signalsWithScalar := g.Filter(func(signal *Signal) bool {
+		return signal.scalars.Has(name)
+	})
+
+	if signalsWithScalar.IsEmpty() {
+		return 0, errors.New("no signal in group has scalar")
 	}
-	return minVal, found
+
+	minValue := signalsWithScalar.Reduce(signalsWithScalar.First(), func(acc *Signal, s *Signal) *Signal {
+		if s.Scalars().ValueOrDefault(name, 0.0) < acc.Scalars().ValueOrDefault(name, 0.0) {
+			return s
+		}
+		return acc
+	}).Scalars().ValueOrDefault(name, 0.0)
+
+	return minValue, nil
 }
 
 // MaxScalar returns the maximum value of the named scalar across all signals.
 // ok is false when no signal in the group has that scalar.
-func (g *Group) MaxScalar(name string) (float64, bool) {
-	found := false
-	var maxVal float64
-	for _, s := range g.signals {
-		v, ok := s.scalars.Get(name)
-		if !ok {
-			continue
-		}
-		if !found || v > maxVal {
-			maxVal, found = v, true
-		}
+func (g *Group) MaxScalar(name string) (float64, error) {
+	signalsWithScalar := g.Filter(func(signal *Signal) bool {
+		return signal.scalars.Has(name)
+	})
+
+	if signalsWithScalar.IsEmpty() {
+		return 0, errors.New("no signal in group has scalar")
 	}
-	return maxVal, found
+
+	maxValue := signalsWithScalar.Reduce(signalsWithScalar.First(), func(acc *Signal, s *Signal) *Signal {
+		if s.Scalars().ValueOrDefault(name, 0.0) > acc.Scalars().ValueOrDefault(name, 0.0) {
+			return s
+		}
+		return acc
+	}).Scalars().ValueOrDefault(name, 0.0)
+
+	return maxValue, nil
 }
 
 // AvgScalar returns the mean value of the named scalar across all signals that have it.
 // ok is false when no signal in the group has that scalar.
-func (g *Group) AvgScalar(name string) (float64, bool) {
-	var sum float64
-	count := 0
-	for _, s := range g.signals {
-		v, ok := s.scalars.Get(name)
-		if !ok {
-			continue
-		}
-		sum += v
-		count++
+func (g *Group) AvgScalar(name string) (float64, error) {
+	signalsWithScalar := g.Filter(func(signal *Signal) bool {
+		return signal.scalars.Has(name)
+	})
+
+	if signalsWithScalar.IsEmpty() {
+		return 0, errors.New("no signal in the group has the scalar")
 	}
-	if count == 0 {
-		return 0, false
-	}
-	return sum / float64(count), true
+	sum := signalsWithScalar.Reduce(New(0.0), func(acc *Signal, s *Signal) *Signal {
+		return New(acc.PayloadOrDefault(0.0).(float64) + s.Scalars().ValueOrDefault(name, 0.0))
+	}).PayloadOrDefault(0.0).(float64)
+	return sum / float64(signalsWithScalar.Len()), nil
 }
