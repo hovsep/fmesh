@@ -268,6 +268,7 @@ func (fm *FMesh) drainComponents() error {
 	return nil
 }
 
+// @TODO: we can inline this into drainComponents
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs() error {
 	components := fm.Components().All()
