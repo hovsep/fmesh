@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"fmt"
 	"maps"
 	"math"
 	"slices"
@@ -49,14 +50,23 @@ func (s *Scalars) SetMany(scalars map[string]float64) *Scalars {
 	return s
 }
 
-// Get returns the value for name and true, or 0 and false if not present.
-func (s *Scalars) Get(name string) (float64, bool) {
+// ValueIs returns true when a collection has given scalar with a given value.
+func (s *Scalars) ValueIs(name string, value float64) bool {
 	v, ok := s.scalars[name]
-	return v, ok
+	return ok && v == value
 }
 
-// GetOrDefault returns the value for name, or def if name is not present.
-func (s *Scalars) GetOrDefault(name string, def float64) float64 {
+// Value returns the value for name and true, or 0 and false if not present.
+func (s *Scalars) Value(name string) (float64, error) {
+	value, ok := s.scalars[name]
+	if !ok {
+		return 0.0, fmt.Errorf("scalar %s not found", name)
+	}
+	return value, nil
+}
+
+// ValueOrDefault returns the value for name, or def if name is not present.
+func (s *Scalars) ValueOrDefault(name string, def float64) float64 {
 	if v, ok := s.scalars[name]; ok {
 		return v
 	}
