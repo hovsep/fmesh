@@ -10,7 +10,9 @@ type ActivationContext struct {
 
 // Hooks is a registry of all hook types for Component.
 type Hooks struct {
+	onCreation         *hook.Group[*Component]
 	beforeActivation   *hook.Group[*Component]
+	onActivation       *hook.Group[*Component]
 	onSuccess          *hook.Group[*ActivationContext]
 	onError            *hook.Group[*ActivationContext]
 	onPanic            *hook.Group[*ActivationContext]
@@ -21,7 +23,9 @@ type Hooks struct {
 // NewHooks creates a new hooks registry.
 func NewHooks() *Hooks {
 	return &Hooks{
+		onCreation:         hook.NewGroup[*Component](),
 		beforeActivation:   hook.NewGroup[*Component](),
+		onActivation:       hook.NewGroup[*Component](),
 		onSuccess:          hook.NewGroup[*ActivationContext](),
 		onError:            hook.NewGroup[*ActivationContext](),
 		onPanic:            hook.NewGroup[*ActivationContext](),
@@ -30,10 +34,22 @@ func NewHooks() *Hooks {
 	}
 }
 
+// OnCreation registers a hook called on state initialization.
+func (h *Hooks) OnCreation(fn func(*Component) error) *Hooks {
+	h.onCreation.Add(fn)
+	return h
+}
+
 // BeforeActivation registers a hook called before activation.
 // Returns the Hooks registry for method chaining.
 func (h *Hooks) BeforeActivation(fn func(*Component) error) *Hooks {
 	h.beforeActivation.Add(fn)
+	return h
+}
+
+// OnActivation allows injecting activation functions in a component.
+func (h *Hooks) OnActivation(fn ActivationFunc) *Hooks {
+	h.onActivation.Add(fn)
 	return h
 }
 
