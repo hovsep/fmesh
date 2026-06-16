@@ -89,16 +89,16 @@ func Test_ScalarsOnSignals(t *testing.T) {
 		require.NotNil(t, collectedGroup)
 		assert.Equal(t, 4, collectedGroup.Len())
 
-		avg, ok := collectedGroup.AvgScalar("temp")
-		require.True(t, ok)
+		avg, err := collectedGroup.AvgScalar("temp")
+		require.NoError(t, err)
 		assert.InDelta(t, 37.2, avg, 0.01)
 
-		minTemp, ok := collectedGroup.MinScalar("temp")
-		require.True(t, ok)
+		minTemp, err := collectedGroup.MinScalar("temp")
+		require.NoError(t, err)
 		assert.InDelta(t, 36.6, minTemp, 1e-9)
 
-		maxTemp, ok := collectedGroup.MaxScalar("temp")
-		require.True(t, ok)
+		maxTemp, err := collectedGroup.MaxScalar("temp")
+		require.NoError(t, err)
 		assert.InDelta(t, 38.2, maxTemp, 1e-9)
 
 		sum := collectedGroup.SumScalar("temp")
@@ -111,8 +111,8 @@ func Test_ScalarsOnSignals(t *testing.T) {
 
 		signals := grp.All()
 		for _, s := range signals {
-			v, ok := s.Scalars().Get("priority")
-			require.True(t, ok)
+			v, err := s.Scalars().Value("priority")
+			require.NoError(t, err)
 			assert.InDelta(t, 5.0, v, 1e-9)
 		}
 	})
@@ -132,8 +132,8 @@ func Test_ScalarsOnSignals(t *testing.T) {
 
 	t.Run("AvgScalar returns ok=false when no signal has the scalar", func(t *testing.T) {
 		grp := signal.NewGroup(1, 2, 3)
-		_, ok := grp.AvgScalar("nonexistent")
-		assert.False(t, ok)
+		_, err := grp.AvgScalar("nonexistent")
+		require.Error(t, err)
 	})
 }
 
@@ -143,21 +143,22 @@ func Test_ScalarsOnComponents(t *testing.T) {
 		c := mustComponent("proc",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
+			component.WithLabel("tier", "premium"),
 			component.WithScalar("version", 2.0),
 		)
 
-		v, ok := c.Scalars().Get("version")
-		require.True(t, ok)
+		v, err := c.Scalars().Value("version")
+		require.NoError(t, err)
 		assert.InDelta(t, 2.0, v, 1e-9)
 
 		// Signal scalars are separate
 		sig := signal.New("data").WithScalar("weight", 1.5)
-		sv, ok := sig.Scalars().Get("weight")
-		require.True(t, ok)
+		sv, err := sig.Scalars().Value("weight")
+		require.NoError(t, err)
 		assert.InDelta(t, 1.5, sv, 1e-9)
 
-		_, ok = c.Scalars().Get("weight")
-		assert.False(t, ok, "component must not have signal's scalar")
+		_, err = c.Scalars().Value("weight")
+		require.Error(t, err, "component must not have signal's scalar")
 	})
 }
 
@@ -169,8 +170,8 @@ func Test_ScalarGroupMetadata(t *testing.T) {
 			WithScalarOnEach("temp", 37.0)
 
 		// Group's own scalar
-		v, ok := grp.Scalars().Get("batch_id")
-		require.True(t, ok)
+		v, err := grp.Scalars().Value("batch_id")
+		require.NoError(t, err)
 		assert.InDelta(t, 42.0, v, 1e-9)
 
 		// Elements have "temp" but not "batch_id"
@@ -186,15 +187,15 @@ func Test_ScalarGroupMetadata(t *testing.T) {
 func Test_PortScalarsWithOptions(t *testing.T) {
 	t.Run("port scalars set via constructor option", func(t *testing.T) {
 		p := mustInput("sensor-in", port.WithScalar("sample_rate", 100.0))
-		v, ok := p.Scalars().Get("sample_rate")
-		require.True(t, ok)
+		v, err := p.Scalars().Value("sample_rate")
+		require.NoError(t, err)
 		assert.InDelta(t, 100.0, v, 1e-9)
 	})
 
 	t.Run("port WithScalar mutating method", func(t *testing.T) {
 		p := mustOutput("data-out").AddScalar("bandwidth", 1e6)
-		v, ok := p.Scalars().Get("bandwidth")
-		require.True(t, ok)
+		v, err := p.Scalars().Value("bandwidth")
+		require.NoError(t, err)
 		assert.InDelta(t, 1e6, v, 1e-9)
 	})
 }
