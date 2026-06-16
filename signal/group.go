@@ -395,7 +395,6 @@ func (g *Group) MinScalar(name string) (float64, error) {
 }
 
 // MaxScalar returns the maximum value of the named scalar across all signals.
-// ok is false when no signal in the group has that scalar.
 func (g *Group) MaxScalar(name string) (float64, error) {
 	signalsWithScalar := g.Filter(func(signal *Signal) bool {
 		return signal.scalars.Has(name)
@@ -416,7 +415,6 @@ func (g *Group) MaxScalar(name string) (float64, error) {
 }
 
 // AvgScalar returns the mean value of the named scalar across all signals that have it.
-// ok is false when no signal in the group has that scalar.
 func (g *Group) AvgScalar(name string) (float64, error) {
 	signalsWithScalar := g.Filter(func(signal *Signal) bool {
 		return signal.scalars.Has(name)
