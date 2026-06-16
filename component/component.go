@@ -41,6 +41,11 @@ func New(name string, opts ...Option) (*Component, error) {
 			return nil, fmt.Errorf("component %q option failed: %w", name, err)
 		}
 	}
+
+	if err := c.hooks.onCreation.Trigger(c); err != nil {
+		return nil, fmt.Errorf("component %q on creation hook failed: %w", name, err)
+	}
+
 	return c, nil
 }
 

@@ -40,11 +40,33 @@ func (c *Component) activate() (result *ActivationResult) {
 		}
 	}()
 
-	err := c.f(c)
+	// Create func slice
+	allActivationFunctions := make([]ActivationFunc, 0)
+	// Add main activation function
+	allActivationFunctions = append(allActivationFunctions, c.f)
+
+	// Add onActivation hooks
+	for _, onActivationHook := range c.hooks.onActivation.All() {
+		allActivationFunctions = append(allActivationFunctions, onActivationHook)
+	}
+	// Execute all activation functions sequentially
+	err := sequentialActivationFunc(allActivationFunctions...)(c)
 	result = c.buildResultAndTriggerHook(err)
 	c.triggerAfterActivation(result)
 
 	return result
+}
+
+// sequentialActivationFunc creates an activation function that executes a sequence of activation functions.
+func sequentialActivationFunc(funcs ...ActivationFunc) ActivationFunc {
+	return func(this *Component) error {
+		for _, f := range funcs {
+			if err := f(this); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
