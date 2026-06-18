@@ -302,7 +302,7 @@ func TestWithLogger(t *testing.T) {
 			assertions: func(t *testing.T, fm *FMesh, err error) {
 				require.NoError(t, err)
 				assert.NotNil(t, fm)
-				assert.Equal(t, customLogger, fm.config.Logger)
+				assert.Equal(t, customLogger, fm.logger)
 			},
 		},
 		{

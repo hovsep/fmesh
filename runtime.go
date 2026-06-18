@@ -13,8 +13,8 @@ type RuntimeInfo struct {
 	StoppedAt time.Time
 }
 
-// NewRuntimeInfo constructor.
-func NewRuntimeInfo() *RuntimeInfo {
+// newRuntimeInfo constructor.
+func newRuntimeInfo() *RuntimeInfo {
 	return &RuntimeInfo{
 		Cycles: cycle.NewGroup(),
 	}

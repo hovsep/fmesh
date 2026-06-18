@@ -19,8 +19,8 @@ type Hooks struct {
 	cycleEnd   *hook.Group[*CycleContext]
 }
 
-// NewHooks creates a new hooks registry with empty hook groups.
-func NewHooks() *Hooks {
+// newHooks creates a new hooks registry with empty hook groups.
+func newHooks() *Hooks {
 	return &Hooks{
 		beforeRun:  hook.NewGroup[*FMesh](),
 		afterRun:   hook.NewGroup[*FMesh](),
