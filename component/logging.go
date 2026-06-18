@@ -1,14 +1,14 @@
 package component
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"os"
 )
 
 // newDefaultLogger creates a new logger prefixed with component name.
 func newDefaultLogger(componentName string) *log.Logger {
-	return log.New(os.Stdout, fmt.Sprintf("%s: ", componentName), log.LstdFlags|log.Lmsgprefix)
+	return log.New(os.Stdout, componentName+": ", log.LstdFlags|log.Lmsgprefix)
 }
 
 // Logger returns the component's logger.
@@ -19,6 +19,9 @@ func (c *Component) Logger() *log.Logger {
 // WithLogger is a component constructor option that creates a new logger prefixed with component name.
 func WithLogger(logger *log.Logger) Option {
 	return func(c *Component) error {
+		if logger == nil {
+			return errors.New("logger cannot be nil")
+		}
 		c.logger = logger
 		return nil
 	}
