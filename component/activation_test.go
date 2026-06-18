@@ -3,7 +3,6 @@ package component
 import (
 	"bytes"
 	"errors"
-	"log"
 	"testing"
 
 	"github.com/hovsep/fmesh/port"
@@ -215,7 +214,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				c, err := New("c1",
 					WithInputs("i1"),
 					WithActivationFunc(func(this *Component) error {
-						this.logger.Println("This line must be logged")
+						this.Logger().Println("This line must be logged")
 						return errors.New("test error")
 					}),
 				)
@@ -228,18 +227,19 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				SetActivationCode(ActivationCodeReturnedError).
 				WithActivationError(errors.New("component returned an error: test error")),
 			loggerAssertions: func(t *testing.T, output []byte) {
-				assert.Len(t, output, 2+3+21+24) // lengths of component name, prefix, flags and logged message
+				assert.NotEmpty(t, output)
+				assert.Contains(t, string(output), "c1: This line must be logged")
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := log.Default()
-
 			var loggerOutput bytes.Buffer
-			logger.SetOutput(&loggerOutput)
 
-			gotActivationResult := tt.getComponent().SetLogger(logger).MaybeActivate()
+			component := tt.getComponent()
+			component.Logger().SetOutput(&loggerOutput)
+
+			gotActivationResult := component.MaybeActivate()
 			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
 			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())

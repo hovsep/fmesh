@@ -107,8 +107,7 @@ func WithDebug(enabled bool) Option {
 func WithLogger(logger *log.Logger) Option {
 	return func(fm *FMesh) error {
 		if logger == nil {
-			fm.config.Logger = getDefaultLogger()
-			return nil
+			return errors.New("logger cannot be nil")
 		}
 		fm.config.Logger = logger
 		return nil

@@ -166,11 +166,6 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 			return fmt.Errorf("failed to add component %q: %w", c.Name(), err)
 		}
 
-		// Inherit logger from fm if the component does not have its own
-		if c.Logger() == nil {
-			c.SetLogger(fm.Logger())
-		}
-
 		c.SetParentMesh(fm)
 
 		if err := fm.components.Add(c); err != nil {
