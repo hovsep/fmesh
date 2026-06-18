@@ -48,6 +48,25 @@ func TestComponent_Plugin(t *testing.T) {
 		assert.True(t, c.Labels().ValueIs("plugin/price/version", "v1.2.4"))
 		assert.True(t, c.Scalars().ValueIs("plugin/price/threshold", 105.54))
 	})
+
+	t.Run("plugins can be registered only once", func(t *testing.T) {
+		// Build component
+		c, err := New("dummy",
+			WithInputs("i1"),
+			WithOutputs("o1"),
+			WithDescription("Bypass int from i1 to o1"),
+			WithActivationFunc(func(this *Component) error {
+				i1, _ := this.InputByName("i1").Signals().FirstPayloadOrNil().(int)
+
+				return this.OutputByName("o1").PutPayloads(i1)
+			}),
+			// Attach plugins
+			WithPlugins(PricePlugin{}, PricePlugin{}))
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "plugin PricePlugin already registered")
+		assert.Nil(t, c)
+	})
 }
 
 type PricePlugin struct {

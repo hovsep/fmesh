@@ -22,6 +22,7 @@ type Component struct {
 	state       State
 	parentMesh  ParentMesh
 	hooks       *Hooks
+	plugins     Plugins
 }
 
 // New creates a new component with the given name and options.
@@ -35,10 +36,17 @@ func New(name string, opts ...Option) (*Component, error) {
 		outputPorts: port.NewCollection(),
 		state:       NewState(),
 		hooks:       NewHooks(),
+		plugins:     NewPlugins(),
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, fmt.Errorf("component %q option failed: %w", name, err)
+		}
+	}
+
+	for pluginName, plugin := range c.plugins {
+		if err := plugin.Init(c); err != nil {
+			return nil, fmt.Errorf("component %q plugin %s initialization failed: %w", name, pluginName, err)
 		}
 	}
 
