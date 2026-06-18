@@ -1,6 +1,8 @@
 package component
 
 import (
+	"io"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,27 +12,72 @@ import (
 func TestNewComponent(t *testing.T) {
 	type args struct {
 		name string
+		opts []Option
 	}
 	tests := []struct {
-		name string
-		args args
+		name       string
+		args       args
+		assertions func(t *testing.T, c *Component, err error)
 	}{
 		{
 			name: "empty name is valid",
 			args: args{name: ""},
+			assertions: func(t *testing.T, c *Component, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+				assert.Empty(t, c.Name())
+			},
 		},
 		{
 			name: "with name",
 			args: args{name: "multiplier"},
+			assertions: func(t *testing.T, c *Component, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+				assert.Equal(t, "multiplier", c.Name())
+			},
+		},
+		{
+			name: "with custom logger",
+			args: args{
+				name: "with-logger",
+				opts: []Option{
+					WithLogger(log.New(io.Discard, "custom-prefix:", log.LstdFlags|log.Lmsgprefix)),
+				},
+			},
+			assertions: func(t *testing.T, c *Component, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+				assert.NotNil(t, c.Logger())
+				assert.Equal(t, "custom-prefix:", c.Logger().Prefix())
+			},
+		},
+		{
+			name: "with onCreation hook",
+			args: args{
+				name: "with-hook",
+				opts: []Option{
+					WithHooks(func(hooks *Hooks) {
+						hooks.OnCreation(func(component *Component) error {
+							component.AddLabel("tagging-source", "hook")
+							return nil
+						})
+					}),
+				},
+			},
+			assertions: func(t *testing.T, c *Component, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+				assert.Equal(t, "hook", c.Labels().ValueOrDefault("tagging-source", "default"))
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c1, err := New(tt.args.name)
-			require.NoError(t, err)
-			c2, err := New(tt.args.name)
-			require.NoError(t, err)
-			assert.Equal(t, c1, c2)
+			c, err := New(tt.args.name, tt.args.opts...)
+			if tt.assertions != nil {
+				tt.assertions(t, c, err)
+			}
 		})
 	}
 }

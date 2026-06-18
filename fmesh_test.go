@@ -294,28 +294,31 @@ func TestWithLogger(t *testing.T) {
 	tests := []struct {
 		name       string
 		logger     *log.Logger
-		assertions func(t *testing.T, fm *FMesh)
+		assertions func(t *testing.T, fm *FMesh, err error)
 	}{
 		{
 			name:   "sets custom logger",
 			logger: customLogger,
-			assertions: func(t *testing.T, fm *FMesh) {
+			assertions: func(t *testing.T, fm *FMesh, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, fm)
 				assert.Equal(t, customLogger, fm.config.Logger)
 			},
 		},
 		{
-			name:   "nil falls back to default logger",
+			name:   "logger must not be nil",
 			logger: nil,
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.NotNil(t, fm.config.Logger)
+			assertions: func(t *testing.T, fm *FMesh, err error) {
+				require.Error(t, err)
+				assert.Nil(t, fm)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mustNewFMesh("fm1", WithLogger(tt.logger))
+			got, err := New("fm1", WithLogger(tt.logger))
 			if tt.assertions != nil {
-				tt.assertions(t, got)
+				tt.assertions(t, got, err)
 			}
 		})
 	}
@@ -382,27 +385,6 @@ func TestFMesh_AddComponents(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: `component with name "c1" already exists`,
-		},
-		{
-			name: "components inherit logger from fmesh when custom one is not set",
-			fm:   mustNewFMesh("fm1"),
-			args: args{
-				components: []*component.Component{
-					mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),                                                                     // Must get default logger
-					mustNewComponent("c2", component.WithActivationFunc(noOpActivationFunc), component.WithLogger(log.New(io.Discard, "custom", log.LstdFlags))), // Must not be overridden by fmesh
-				},
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, 2, fm.Components().Len())
-				assert.NotNil(t, fm.ComponentByName("c1"))
-				assert.NotNil(t, fm.ComponentByName("c2"))
-
-				assert.Equal(t, "c1:  ", fm.ComponentByName("c1").Logger().Prefix())
-				assert.NotEqual(t, io.Discard, fm.ComponentByName("c1").Logger().Writer())
-
-				assert.Equal(t, "c2: custom ", fm.ComponentByName("c2").Logger().Prefix())
-				assert.Equal(t, io.Discard, fm.ComponentByName("c2").Logger().Writer())
-			},
 		},
 		{
 			name: "adding invalid component",

@@ -15,7 +15,7 @@ func TestComponent_WithInitialState(t *testing.T) {
 		{
 			name:      "no initial state",
 			component: mustNew("c1"),
-			wantState: NewState(),
+			wantState: newState(),
 		},
 		{
 			name: "with initial state",
@@ -35,7 +35,7 @@ func TestComponent_WithInitialState(t *testing.T) {
 		{
 			name:      "with nil state initializer",
 			component: mustNew("c1", WithInitialState(nil)),
-			wantState: NewState(),
+			wantState: newState(),
 		},
 	}
 
@@ -123,7 +123,7 @@ func TestState_Has(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			assert.Equal(t, tt.want, s.Has(tt.key))
 		})
@@ -155,7 +155,7 @@ func TestState_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			assert.Equal(t, tt.want, s.Get(tt.key))
 		})
@@ -190,7 +190,7 @@ func TestState_GetOrDefault(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			assert.Equal(t, tt.want, s.GetOrDefault(tt.key, tt.defVal))
 		})
@@ -223,7 +223,7 @@ func TestState_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			s.Delete(tt.key)
 			assert.Equal(t, tt.wantExists, s.Has(tt.key))
@@ -272,7 +272,7 @@ func TestState_GetTyped(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 
 			fn := func() {
@@ -330,7 +330,7 @@ func TestState_SetIfAbsent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			got := s.SetIfAbsent(tt.key, tt.value)
 			assert.Equal(t, tt.wantSet, got)
@@ -375,7 +375,7 @@ func TestState_Upsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			s.Upsert(tt.key, tt.fn)
 			assert.Equal(t, tt.want, s.Get(tt.key))
@@ -412,7 +412,7 @@ func TestState_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewState()
+			s := newState()
 			tt.initState(s)
 			got := s.Update(tt.key, tt.fn)
 			assert.Equal(t, tt.wantBool, got)

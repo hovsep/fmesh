@@ -103,3 +103,12 @@ func (c *Component) triggerAfterActivation(result *ActivationResult) {
 			WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
 	}
 }
+
+// ValidateBeforeActivating checks if the component is good to be activated.
+func (c *Component) ValidateBeforeActivating() error {
+	if c.ParentMesh() == nil {
+		return errors.New("parent mesh is not set")
+	}
+
+	return nil
+}
