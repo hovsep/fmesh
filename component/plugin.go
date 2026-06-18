@@ -8,14 +8,28 @@ type Plugin interface {
 	Init(*Component) error
 }
 
-// WithPlugins is a component constructor option that initializes plugins.
+// Plugins defines a container of component plugins.
+type Plugins map[string]Plugin
+
+// NewPlugins is a constructor for Plugins.
+func NewPlugins() Plugins {
+	return make(Plugins)
+}
+
+// WithPlugins is a component constructor option that adds plugins.
 func WithPlugins(plugins ...Plugin) Option {
 	return func(c *Component) error {
 		for _, plugin := range plugins {
-			if err := plugin.Init(c); err != nil {
-				return fmt.Errorf("failed to initialize plugin %s: %w", plugin.GetName(), err)
+			if _, exists := c.plugins[plugin.GetName()]; exists {
+				return fmt.Errorf("plugin %s already registered", plugin.GetName())
 			}
+			c.plugins[plugin.GetName()] = plugin
 		}
 		return nil
 	}
+}
+
+// PluginRegistered returns true if the plugin is registered.
+func (c *Component) PluginRegistered(name string) bool {
+	return c.plugins[name] != nil
 }
