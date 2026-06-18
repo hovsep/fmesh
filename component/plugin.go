@@ -11,8 +11,8 @@ type Plugin interface {
 // Plugins defines a container of component plugins.
 type Plugins map[string]Plugin
 
-// NewPlugins is a constructor for Plugins.
-func NewPlugins() Plugins {
+// newPlugins is a constructor for Plugins.
+func newPlugins() Plugins {
 	return make(Plugins)
 }
 

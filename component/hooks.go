@@ -20,8 +20,8 @@ type Hooks struct {
 	afterActivation    *hook.Group[*ActivationContext]
 }
 
-// NewHooks creates a new hooks registry.
-func NewHooks() *Hooks {
+// newHooks creates a new hooks registry.
+func newHooks() *Hooks {
 	return &Hooks{
 		onCreation:         hook.NewGroup[*Component](),
 		beforeActivation:   hook.NewGroup[*Component](),
@@ -88,4 +88,19 @@ func (h *Hooks) OnWaitingForInputs(fn func(*ActivationContext) error) *Hooks {
 func (h *Hooks) AfterActivation(fn func(*ActivationContext) error) *Hooks {
 	h.afterActivation.Add(fn)
 	return h
+}
+
+// SetupHooks configures hooks for the component using a closure.
+// All hook registration happens inside the provided function.
+func (c *Component) SetupHooks(configure func(*Hooks)) *Component {
+	configure(c.hooks)
+	return c
+}
+
+// WithHooks allows setting hooks during component creation.
+func WithHooks(configure func(*Hooks)) Option {
+	return func(c *Component) error {
+		c.SetupHooks(configure)
+		return nil
+	}
 }

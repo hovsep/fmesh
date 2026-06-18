@@ -34,10 +34,12 @@ func New(name string, opts ...Option) (*Component, error) {
 		scalars:     meta.NewScalars(),
 		inputPorts:  port.NewCollection(),
 		outputPorts: port.NewCollection(),
-		state:       NewState(),
-		hooks:       NewHooks(),
-		plugins:     NewPlugins(),
+		logger:      newDefaultLogger(name),
+		state:       newState(),
+		hooks:       newHooks(),
+		plugins:     newPlugins(),
 	}
+
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, fmt.Errorf("component %q option failed: %w", name, err)
@@ -161,35 +163,6 @@ func WithScalar(name string, value float64) Option {
 	}
 }
 
-// WithLogger is a component constructor option that creates a new logger prefixed with component name.
-func WithLogger(logger *log.Logger) Option {
-	return func(c *Component) error {
-		c.setLogger(logger)
-		return nil
-	}
-}
-
-// SetLogger creates a new logger prefixed with component name and sets it on the component.
-func (c *Component) SetLogger(logger *log.Logger) *Component {
-	c.setLogger(logger)
-	return c
-}
-
-// setLogger is the shared implementation for logger setup with nil-guard and prefix logic.
-func (c *Component) setLogger(logger *log.Logger) {
-	if logger == nil {
-		return
-	}
-
-	prefix := fmt.Sprintf("%s: %s ", c.Name(), logger.Prefix())
-	c.logger = log.New(logger.Writer(), prefix, logger.Flags())
-}
-
-// Logger returns the component's logger.
-func (c *Component) Logger() *log.Logger {
-	return c.logger
-}
-
 // ParentMesh returns the component's parent mesh.
 func (c *Component) ParentMesh() ParentMesh {
 	return c.parentMesh
@@ -201,26 +174,10 @@ func (c *Component) SetParentMesh(parentMesh ParentMesh) *Component {
 	return c
 }
 
-// SetupHooks configures hooks for the component using a closure.
-// All hook registration happens inside the provided function.
-func (c *Component) SetupHooks(configure func(*Hooks)) *Component {
-	configure(c.hooks)
-	return c
-}
-
 // ValidateBeforeAddingToMesh checks if the component is good to be added into mesh.
 func (c *Component) ValidateBeforeAddingToMesh() error {
 	if c.f == nil {
 		return errors.New("activation function is not set")
-	}
-
-	return nil
-}
-
-// ValidateBeforeActivating checks if the component is good to be activated.
-func (c *Component) ValidateBeforeActivating() error {
-	if c.ParentMesh() == nil {
-		return errors.New("parent mesh is not set")
 	}
 
 	return nil
