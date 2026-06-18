@@ -2,7 +2,6 @@ package fmesh
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 )
@@ -14,7 +13,7 @@ func (fm *FMesh) Logger() *log.Logger {
 
 // newDefaultLogger creates a new logger prefixed with mesh name.
 func newDefaultLogger(meshName string) *log.Logger {
-	return log.New(os.Stdout, fmt.Sprintf("%s: ", meshName), log.LstdFlags|log.Lmsgprefix)
+	return log.New(os.Stdout, meshName+": ", log.LstdFlags|log.Lmsgprefix)
 }
 
 // IsDebug returns true when debug mode is enabled.
