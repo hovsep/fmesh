@@ -2,7 +2,6 @@ package fmesh
 
 import (
 	"errors"
-	"log"
 	"time"
 )
 
@@ -13,8 +12,6 @@ type Config struct {
 
 	// Debug enables debug mode, which logs additional detailed information for troubleshooting and analysis.
 	Debug bool
-
-	Logger *log.Logger
 
 	// CyclesLimit defines the maximum number of activation cycles.
 	// 0 means no limit (use WithUnlimitedCycles to express this explicitly).
@@ -31,7 +28,6 @@ func newDefaultConfig() Config {
 		ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 		CyclesLimit:           1000,
 		Debug:                 false,
-		Logger:                getDefaultLogger(),
 		TimeLimit:             5 * time.Second,
 	}
 }
@@ -40,9 +36,6 @@ func newDefaultConfig() Config {
 func WithConfig(config Config) Option {
 	return func(fm *FMesh) error {
 		fm.config = config
-		if fm.config.Logger == nil {
-			fm.config.Logger = getDefaultLogger()
-		}
 		return nil
 	}
 }
@@ -99,17 +92,6 @@ func WithUnlimitedTime() Option {
 func WithDebug(enabled bool) Option {
 	return func(fm *FMesh) error {
 		fm.config.Debug = enabled
-		return nil
-	}
-}
-
-// WithLogger is an FMesh option that sets a custom logger.
-func WithLogger(logger *log.Logger) Option {
-	return func(fm *FMesh) error {
-		if logger == nil {
-			return errors.New("logger cannot be nil")
-		}
-		fm.config.Logger = logger
 		return nil
 	}
 }

@@ -3,6 +3,7 @@ package fmesh
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/hovsep/fmesh/component"
@@ -21,6 +22,7 @@ type FMesh struct {
 	scalars     *meta.Scalars
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
+	logger      *log.Logger
 	config      Config
 	hooks       *Hooks
 }
@@ -33,9 +35,10 @@ func New(name string, opts ...Option) (*FMesh, error) {
 		labels:      meta.NewLabels(),
 		scalars:     meta.NewScalars(),
 		components:  component.NewCollection(),
-		runtimeInfo: NewRuntimeInfo(),
+		runtimeInfo: newRuntimeInfo(),
+		logger:      newDefaultLogger(name),
 		config:      newDefaultConfig(),
-		hooks:       NewHooks(),
+		hooks:       newHooks(),
 	}
 	for _, opt := range opts {
 		if err := opt(fm); err != nil {
@@ -299,7 +302,7 @@ func (fm *FMesh) cleanUpPreviousRun() error {
 	}
 
 	// Init runtime info
-	fm.runtimeInfo = NewRuntimeInfo()
+	fm.runtimeInfo = newRuntimeInfo()
 	fm.runtimeInfo.MarkStarted()
 	return nil
 }

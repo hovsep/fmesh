@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// newDefaultLogger creates a new logger prefixed with component name.
 func newDefaultLogger(componentName string) *log.Logger {
 	return log.New(os.Stdout, fmt.Sprintf("%s: ", componentName), log.LstdFlags|log.Lmsgprefix)
 }
