@@ -43,9 +43,11 @@ func newHooks() *Hooks {
 }
 
 func getDefaultBeforeRunHook() func(*FMesh) error {
-	var once sync.Once
+	var (
+		once          sync.Once
+		validationErr error
+	)
 	return func(fm *FMesh) error {
-		var validationErr error
 		once.Do(func() {
 			validationErr = validateMeshStructure(fm)
 		})
@@ -59,6 +61,9 @@ func validateMeshStructure(fm *FMesh) error {
 			return fmt.Errorf("component %q has wrong parent mesh", c.Name())
 		}
 		return c.Outputs().ForEach(func(p *port.Port) error {
+			if p.ParentComponent() != c {
+				return fmt.Errorf("output port %q has wrong parent component in component %q", p.Name(), c.Name())
+			}
 			return p.Pipes().ForEach(func(dest *port.Port) error {
 				parent := dest.ParentComponent()
 				destComponent, ok := parent.(*component.Component)

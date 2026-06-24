@@ -38,10 +38,15 @@ func TestHooks_AllTypes(t *testing.T) {
 		}),
 	)
 
-	// Create a mesh with all hook types
+	// Create a mesh with all hook types.
+	// Hooks are registered before AddComponents so OnComponentAdded fires.
 	fm := mustFMesh("test-mesh")
-	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.OnComponentAdded(func(ctx *fmesh.ComponentAddedContext) error {
+			executionLog = append(executionLog, "componentAdded")
+			return nil
+		})
+
 		h.BeforeRun(func(fm *fmesh.FMesh) error {
 			executionLog = append(executionLog, "beforeRun")
 			return nil
@@ -62,6 +67,7 @@ func TestHooks_AllTypes(t *testing.T) {
 			return nil
 		})
 	})
+	require.NoError(t, fm.AddComponents(c))
 
 	// Add initial input
 	require.NoError(t, fm.ComponentByName("processor").InputByName("in").PutSignals(signal.New(1)))
@@ -70,9 +76,11 @@ func TestHooks_AllTypes(t *testing.T) {
 	_, err := fm.Run()
 	require.NoError(t, err)
 
-	// Verify the exact execution order: beforeRun -> cycles -> afterRun
+	// Verify the exact execution order: componentAdded -> beforeRun -> cycles -> afterRun
+	// OnComponentAdded fires during AddComponents, before BeforeRun.
 	// Cycle hooks fire twice: once for processing, once for completion
 	assert.Equal(t, []string{
+		"componentAdded",
 		"beforeRun",
 		"beforeCycle",
 		"afterCycle",
