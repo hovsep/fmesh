@@ -52,13 +52,13 @@ func TestHooks_AllTypes(t *testing.T) {
 			return nil
 		})
 
-		h.CycleBegin(func(ctx *fmesh.CycleContext) error {
-			executionLog = append(executionLog, "cycleBegin")
+		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
+			executionLog = append(executionLog, "beforeCycle")
 			return nil
 		})
 
-		h.CycleEnd(func(ctx *fmesh.CycleContext) error {
-			executionLog = append(executionLog, "cycleEnd")
+		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
+			executionLog = append(executionLog, "afterCycle")
 			return nil
 		})
 	})
@@ -74,10 +74,10 @@ func TestHooks_AllTypes(t *testing.T) {
 	// Cycle hooks fire twice: once for processing, once for completion
 	assert.Equal(t, []string{
 		"beforeRun",
-		"cycleBegin",
-		"cycleEnd",
-		"cycleBegin",
-		"cycleEnd",
+		"beforeCycle",
+		"afterCycle",
+		"beforeCycle",
+		"afterCycle",
 		"afterRun",
 	}, executionLog)
 }
@@ -96,7 +96,7 @@ func TestHooks_CycleContext(t *testing.T) {
 	fm := mustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.CycleBegin(func(ctx *fmesh.CycleContext) error {
+		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
 			cycleNumbers = append(cycleNumbers, ctx.Cycle.Number())
 			return nil
 		})
@@ -169,7 +169,7 @@ func TestHooks_ContextAccess(t *testing.T) {
 	fm := mustFMesh("my-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.CycleEnd(func(ctx *fmesh.CycleContext) error {
+		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
 			// Access both FMesh and Cycle through context
 			meshName = ctx.FMesh.Name()
 			cycleNumber = ctx.Cycle.Number()
@@ -204,11 +204,11 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 	fm := mustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.CycleBegin(func(ctx *fmesh.CycleContext) error {
+		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
 			beginCount++
 			return nil
 		})
-		h.CycleEnd(func(ctx *fmesh.CycleContext) error {
+		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
 			endCount++
 			return nil
 		})
@@ -223,8 +223,8 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 
 	// Verify hooks fire exactly once per cycle
 	actualCycles := runtimeInfo.Cycles.Len()
-	assert.Equal(t, actualCycles, beginCount, "CycleBegin should fire once per cycle")
-	assert.Equal(t, actualCycles, endCount, "CycleEnd should fire once per cycle")
+	assert.Equal(t, actualCycles, beginCount, "BeforeCycle should fire once per cycle")
+	assert.Equal(t, actualCycles, endCount, "AfterCycle should fire once per cycle")
 	assert.Equal(t, beginCount, endCount, "Begin and End should fire same number of times")
 }
 

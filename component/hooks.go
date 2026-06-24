@@ -1,6 +1,8 @@
 package component
 
-import "github.com/hovsep/fmesh/hook"
+import (
+	"github.com/hovsep/fmesh/hook"
+)
 
 // ActivationContext provides context for activation hooks.
 type ActivationContext struct {
@@ -20,7 +22,7 @@ type Hooks struct {
 	afterActivation    *hook.Group[*ActivationContext]
 }
 
-// newHooks creates a new hooks registry.
+// newHooks creates a new hook registry.
 func newHooks() *Hooks {
 	return &Hooks{
 		onCreation:         hook.NewGroup[*Component](),

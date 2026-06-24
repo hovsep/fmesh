@@ -181,8 +181,8 @@ func Test_MultipleRun(t *testing.T) {
 	t.Run("hooks execute correctly across multiple runs", func(t *testing.T) {
 		beforeRunCount := 0
 		afterRunCount := 0
-		cycleBeginCount := 0
-		cycleEndCount := 0
+		beforeCycleCount := 0
+		afterCycleCount := 0
 
 		fm := mustNewFMesh("test fm")
 		fm.SetupHooks(func(h *Hooks) {
@@ -194,12 +194,12 @@ func Test_MultipleRun(t *testing.T) {
 				afterRunCount++
 				return nil
 			})
-			h.CycleBegin(func(ctx *CycleContext) error {
-				cycleBeginCount++
+			h.BeforeCycle(func(ctx *CycleContext) error {
+				beforeCycleCount++
 				return nil
 			})
-			h.CycleEnd(func(ctx *CycleContext) error {
-				cycleEndCount++
+			h.AfterCycle(func(ctx *CycleContext) error {
+				afterCycleCount++
 				return nil
 			})
 		})
@@ -226,8 +226,8 @@ func Test_MultipleRun(t *testing.T) {
 
 		assert.Equal(t, 3, beforeRunCount, "BeforeRun should be called 3 times")
 		assert.Equal(t, 3, afterRunCount, "AfterRun should be called 3 times")
-		assert.Equal(t, 6, cycleBeginCount, "CycleBegin should be called 6 times (2 per run)")
-		assert.Equal(t, 6, cycleEndCount, "CycleEnd should be called 6 times (2 per run)")
+		assert.Equal(t, 6, beforeCycleCount, "BeforeCycle should be called 6 times (2 per run)")
+		assert.Equal(t, 6, afterCycleCount, "AfterCycle should be called 6 times (2 per run)")
 	})
 
 	t.Run("mesh with error handling strategy stops on error", func(t *testing.T) {

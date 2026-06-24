@@ -1114,7 +1114,7 @@ func TestFMesh_mustStop(t *testing.T) {
 	}
 }
 
-func TestFMesh_validate(t *testing.T) {
+func TestFMesh_validateMeshStructure(t *testing.T) {
 	tests := []struct {
 		name    string
 		getFM   func() *FMesh
@@ -1143,7 +1143,7 @@ func TestFMesh_validate(t *testing.T) {
 				require.NoError(t, fm.components.Add(c))
 				return fm
 			},
-			wantErr: "parent mesh is not set",
+			wantErr: "wrong parent mesh",
 		},
 		{
 			name: "component has invalid parent mesh",
@@ -1157,7 +1157,7 @@ func TestFMesh_validate(t *testing.T) {
 				require.NoError(t, fm.components.Add(c))
 				return fm
 			},
-			wantErr: "invalid parent mesh",
+			wantErr: "wrong parent mesh",
 		},
 		{
 			name: "pipe leads to unregistered port",
@@ -1197,7 +1197,7 @@ func TestFMesh_validate(t *testing.T) {
 				require.NoError(t, fm.AddComponents(c1)) // Only add c1, not c2
 				return fm
 			},
-			wantErr: "parent mesh is not set",
+			wantErr: "different mesh",
 		},
 		{
 			name: "pipe leads to component with invalid parent mesh",
@@ -1225,14 +1225,14 @@ func TestFMesh_validate(t *testing.T) {
 
 				return fm
 			},
-			wantErr: "invalid parent mesh",
+			wantErr: "different mesh",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFM()
-			err := fm.validateBeforeRun()
+			_, err := fm.Run()
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
