@@ -174,6 +174,10 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 		if err := fm.components.Add(c); err != nil {
 			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
 		}
+
+		if err := fm.hooks.onComponentAdded.Trigger(&ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
+			return fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err)
+		}
 	}
 
 	fm.LogDebug("%d components added to mesh", fm.Components().Len())
@@ -192,8 +196,8 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 func (fm *FMesh) runCycle() error {
 	newCycle := cycle.New().SetNumber(fm.runtimeInfo.Cycles.Len() + 1)
 
-	if err := fm.hooks.cycleBegin.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("cycleBegin hook failed: %w", err))
+	if err := fm.hooks.beforeCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("beforeCycle hook failed: %w", err))
 		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
@@ -226,8 +230,8 @@ func (fm *FMesh) runCycle() error {
 		})
 	}
 
-	if err := fm.hooks.cycleEnd.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("cycleEnd hook failed: %w", err))
+	if err := fm.hooks.afterCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("afterCycle hook failed: %w", err))
 		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
@@ -329,11 +333,6 @@ func (fm *FMesh) Run() (ri *RuntimeInfo, runErr error) {
 		return ri, runErr
 	}
 
-	if err := fm.validateBeforeRun(); err != nil {
-		runErr = err
-		return ri, runErr
-	}
-
 	for {
 		cycleErr := fm.runCycle()
 		if cycleErr != nil {
@@ -401,53 +400,4 @@ func (fm *FMesh) mustStop() (bool, error) {
 		fm.LogDebug("going to stop: %s", ErrUnsupportedErrorHandlingStrategy)
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
-}
-
-// validateBeforeRun does pre-run checks using plain loops (no nested ForEach chains).
-func (fm *FMesh) validateBeforeRun() error {
-	components := fm.Components().All()
-
-	for _, c := range components {
-		if err := c.ValidateBeforeActivating(); err != nil {
-			return fmt.Errorf("invalid component %q: %w", c.Name(), err)
-		}
-
-		if c.ParentMesh() != fm {
-			return fmt.Errorf("component %q has invalid parent mesh", c.Name())
-		}
-
-		outputPorts := c.Outputs().All()
-
-		for _, p := range outputPorts {
-			if err := p.ValidateBeforeActivation(); err != nil {
-				return fmt.Errorf("invalid port %q in component %q: %w", p.Name(), c.Name(), err)
-			}
-
-			if p.ParentComponent() != c {
-				return fmt.Errorf("port %q in component %q has invalid parent component", p.Name(), c.Name())
-			}
-
-			destPorts := p.Pipes().All()
-			for _, destPort := range destPorts {
-				if err := destPort.ValidateBeforeActivation(); err != nil {
-					return fmt.Errorf("invalid pipe destination port %q from port %q: %w", destPort.Name(), p.Name(), err)
-				}
-
-				parent := destPort.ParentComponent()
-				destComponent, ok := parent.(*component.Component)
-				if !ok || destComponent == nil {
-					return fmt.Errorf("destination port %q has invalid parent component", destPort.Name())
-				}
-
-				if err := destComponent.ValidateBeforeActivating(); err != nil {
-					return fmt.Errorf("invalid component %q (destination): %w", destComponent.Name(), err)
-				}
-
-				if destComponent.ParentMesh() != fm {
-					return fmt.Errorf("component %q has invalid parent mesh", destComponent.Name())
-				}
-			}
-		}
-	}
-	return nil
 }

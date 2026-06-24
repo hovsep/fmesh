@@ -1,8 +1,13 @@
 package fmesh
 
 import (
+	"fmt"
+	"sync"
+
+	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/hook"
+	"github.com/hovsep/fmesh/port"
 )
 
 // CycleContext provides context for cycle-level hooks.
@@ -11,22 +16,69 @@ type CycleContext struct {
 	Cycle *cycle.Cycle
 }
 
-// Hooks is a registry of all hook types for FMesh.
-type Hooks struct {
-	beforeRun  *hook.Group[*FMesh]
-	afterRun   *hook.Group[*FMesh]
-	cycleBegin *hook.Group[*CycleContext]
-	cycleEnd   *hook.Group[*CycleContext]
+// ComponentAddedContext provides context when a component is added to the mesh.
+type ComponentAddedContext struct {
+	FMesh     *FMesh
+	Component *component.Component
 }
 
-// newHooks creates a new hooks registry with empty hook groups.
+// Hooks is a registry of all hook types for FMesh.
+type Hooks struct {
+	onComponentAdded *hook.Group[*ComponentAddedContext]
+	beforeRun        *hook.Group[*FMesh]
+	afterRun         *hook.Group[*FMesh]
+	beforeCycle      *hook.Group[*CycleContext]
+	afterCycle       *hook.Group[*CycleContext]
+}
+
+// newHooks creates a new hooks registry with default hooks.
 func newHooks() *Hooks {
 	return &Hooks{
-		beforeRun:  hook.NewGroup[*FMesh](),
-		afterRun:   hook.NewGroup[*FMesh](),
-		cycleBegin: hook.NewGroup[*CycleContext](),
-		cycleEnd:   hook.NewGroup[*CycleContext](),
+		onComponentAdded: hook.NewGroup[*ComponentAddedContext](),
+		beforeRun:        hook.NewGroup[*FMesh]().Add(getDefaultBeforeRunHook()),
+		afterRun:         hook.NewGroup[*FMesh](),
+		beforeCycle:      hook.NewGroup[*CycleContext](),
+		afterCycle:       hook.NewGroup[*CycleContext](),
 	}
+}
+
+func getDefaultBeforeRunHook() func(*FMesh) error {
+	var once sync.Once
+	return func(fm *FMesh) error {
+		var validationErr error
+		once.Do(func() {
+			validationErr = validateMeshStructure(fm)
+		})
+		return validationErr
+	}
+}
+
+func validateMeshStructure(fm *FMesh) error {
+	return fm.Components().ForEach(func(c *component.Component) error {
+		if c.ParentMesh() != fm {
+			return fmt.Errorf("component %q has wrong parent mesh", c.Name())
+		}
+		return c.Outputs().ForEach(func(p *port.Port) error {
+			return p.Pipes().ForEach(func(dest *port.Port) error {
+				parent := dest.ParentComponent()
+				destComponent, ok := parent.(*component.Component)
+				if !ok || destComponent == nil {
+					return fmt.Errorf("destination port %q has invalid parent component", dest.Name())
+				}
+				if destComponent.ParentMesh() != fm {
+					return fmt.Errorf("destination component %q belongs to a different mesh", destComponent.Name())
+				}
+				return nil
+			})
+		})
+	})
+}
+
+// OnComponentAdded registers a hook called after each component is successfully added to the mesh.
+// Returns the Hooks registry for method chaining.
+func (h *Hooks) OnComponentAdded(fn func(*ComponentAddedContext) error) *Hooks {
+	h.onComponentAdded.Add(fn)
+	return h
 }
 
 // BeforeRun registers a hook to be called before the mesh starts running.
@@ -43,16 +95,16 @@ func (h *Hooks) AfterRun(fn func(*FMesh) error) *Hooks {
 	return h
 }
 
-// CycleBegin registers a hook to be called at the beginning of each cycle.
+// BeforeCycle registers a hook to be called at the beginning of each cycle.
 // Returns the Hooks registry for method chaining.
-func (h *Hooks) CycleBegin(fn func(*CycleContext) error) *Hooks {
-	h.cycleBegin.Add(fn)
+func (h *Hooks) BeforeCycle(fn func(*CycleContext) error) *Hooks {
+	h.beforeCycle.Add(fn)
 	return h
 }
 
-// CycleEnd registers a hook to be called at the end of each cycle.
+// AfterCycle registers a hook to be called at the end of each cycle.
 // Returns the Hooks registry for method chaining.
-func (h *Hooks) CycleEnd(fn func(*CycleContext) error) *Hooks {
-	h.cycleEnd.Add(fn)
+func (h *Hooks) AfterCycle(fn func(*CycleContext) error) *Hooks {
+	h.afterCycle.Add(fn)
 	return h
 }
