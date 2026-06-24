@@ -3,7 +3,6 @@ package component
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -78,10 +77,8 @@ func (pp PricePlugin) GetName() string {
 
 func (pp PricePlugin) Init(c *Component) error {
 	// Modify component interface (ports)
-	priceIn, _ := port.NewInput("price_in", port.WithDescription("plugins can dynamically add ports"))
-	priceOut, _ := port.NewOutput("price_out")
-	_ = c.Inputs().Add(priceIn)
-	_ = c.Outputs().Add(priceOut)
+	_ = c.AddInputs("price_in")
+	_ = c.AddOutputs("price_out")
 
 	// Plug in to component via hooks
 	c.SetupHooks(func(hooks *Hooks) {
