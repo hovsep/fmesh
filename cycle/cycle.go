@@ -71,8 +71,10 @@ func (c *Cycle) HasActivatedComponents() bool {
 }
 
 // AddActivationResults adds multiple activation results.
+// Safe for concurrent use: the underlying collection is mutex-protected and
+// the field is never reassigned.
 func (c *Cycle) AddActivationResults(activationResults ...*component.ActivationResult) *Cycle {
-	c.activationResults = c.ActivationResults().Add(activationResults...)
+	c.ActivationResults().Add(activationResults...)
 	return c
 }
 

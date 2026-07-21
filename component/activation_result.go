@@ -125,8 +125,8 @@ func (ar *ActivationResult) SetActivationCode(code ActivationResultCode) *Activa
 	return ar
 }
 
-// WithActivationError appends an error to the activation result's error list and returns the activation result.
-func (ar *ActivationResult) WithActivationError(activationError error) *ActivationResult {
+// AddActivationError appends an error to the activation result's error list and returns the activation result.
+func (ar *ActivationResult) AddActivationError(activationError error) *ActivationResult {
 	ar.activationErrors = append(ar.activationErrors, activationError)
 	return ar
 }
@@ -147,14 +147,14 @@ func (c *Component) newActivationResultReturnedError(err error) *ActivationResul
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		SetActivationCode(ActivationCodeReturnedError).
-		WithActivationError(fmt.Errorf("component returned an error: %w", err))
+		AddActivationError(fmt.Errorf("component returned an error: %w", err))
 }
 
 func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		SetActivationCode(ActivationCodePanicked).
-		WithActivationError(err)
+		AddActivationError(err)
 }
 
 // newActivationResultHookFailed builds a specific activation result for when a hook fails.
@@ -162,7 +162,7 @@ func (c *Component) newActivationResultHookFailed(err error) *ActivationResult {
 	return NewActivationResult(c.Name()).
 		SetActivated(false).
 		SetActivationCode(ActivationCodeHookFailed).
-		WithActivationError(err)
+		AddActivationError(err)
 }
 
 func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
@@ -173,7 +173,7 @@ func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationRe
 	return NewActivationResult(c.Name()).
 		SetActivated(true).
 		SetActivationCode(activationCode).
-		WithActivationError(err)
+		AddActivationError(err)
 }
 
 // IsWaitingForInput returns true if the component was waiting for inputs.

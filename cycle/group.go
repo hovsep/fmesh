@@ -74,12 +74,7 @@ func (g *Group) RemoveScalarOnEach(names ...string) *Group {
 // because cycles represent historical execution records - users need to access
 // cycles that had errors to understand what happened.
 func (g *Group) Add(cycles ...*Cycle) *Group {
-	newCycles := make([]*Cycle, len(g.cycles)+len(cycles))
-	copy(newCycles, g.cycles)
-	for i, c := range cycles {
-		newCycles[len(g.cycles)+i] = c
-	}
-	g.cycles = newCycles
+	g.cycles = append(g.cycles, cycles...)
 	return g
 }
 
@@ -150,9 +145,10 @@ func (g *Group) First() *Cycle {
 	return g.cycles[0]
 }
 
-// All returns all cycles as a slice.
+// All returns a cloned slice of cycles. The slice is independent of the group;
+// the *Cycle pointers inside are shared.
 func (g *Group) All() []*Cycle {
-	return g.cycles
+	return slices.Clone(g.cycles)
 }
 
 // Every returns true if all cycles match the predicate.

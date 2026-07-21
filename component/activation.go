@@ -3,6 +3,7 @@ package component
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/hovsep/fmesh/hook"
 )
@@ -34,7 +35,7 @@ func (c *Component) activate() (result *ActivationResult) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			result = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v", r))
+			result = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v, stack: %s", r, debug.Stack()))
 			c.triggerHooksForResult(result, c.hooks.onPanic)
 			c.triggerAfterActivation(result)
 		}
@@ -92,7 +93,7 @@ func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
 func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
 	if err := hookGroup.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
-			WithActivationError(fmt.Errorf("activation hook failed: %w", err))
+			AddActivationError(fmt.Errorf("activation hook failed: %w", err))
 	}
 }
 
@@ -100,6 +101,6 @@ func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *h
 func (c *Component) triggerAfterActivation(result *ActivationResult) {
 	if err := c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
-			WithActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
+			AddActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
 	}
 }

@@ -161,9 +161,10 @@ func (g *Group) setPorts(ports []*Port) *Group {
 	return g
 }
 
-// All returns all ports as a slice.
+// All returns a cloned slice of ports. The slice is independent of the group;
+// the *Port pointers inside are shared.
 func (g *Group) All() []*Port {
-	return g.ports
+	return slices.Clone(g.ports)
 }
 
 // Len returns the number of ports in a group.

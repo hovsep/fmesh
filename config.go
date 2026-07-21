@@ -17,7 +17,10 @@ type Config struct {
 	// 0 means no limit (use WithUnlimitedCycles to express this explicitly).
 	CyclesLimit int
 
-	// TimeLimit defines the maximum duration F-Mesh can run before being forcefully stopped.
+	// TimeLimit defines the maximum duration F-Mesh can run.
+	// The limit is checked between activation cycles: a cycle that is already
+	// running is never interrupted, so a long or blocking activation function
+	// can exceed the limit.
 	// 0 means no limit (use WithUnlimitedTime to express this explicitly).
 	TimeLimit time.Duration
 }
