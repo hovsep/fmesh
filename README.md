@@ -47,46 +47,71 @@ import (
 )
 
 func main() {
-	// Create the mesh
-	fm := fmesh.New("hello world").
-		AddComponents(
-			component.New("concat").
-				AddInputs("i1", "i2").
-				AddOutputs("res").
-				WithActivationFunc(func(c *component.Component) error {
-					word1 := c.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-					word2 := c.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
-					c.OutputByName("res").PutSignals(signal.New(word1 + word2))
-					return nil
-				}),
-			component.New("uppercase").
-				AddInputs("i1").
-				AddOutputs("res").
-				WithActivationFunc(func(c *component.Component) error {
-					str := c.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-					c.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
-					return nil
-				}),
-		)
-
-	// Connect components via pipes
-	fm.ComponentByName("concat").OutputByName("res").
-		PipeTo(fm.ComponentByName("uppercase").InputByName("i1"))
-
-	// Set initial inputs
-	fm.ComponentByName("concat").InputByName("i1").PutSignals(signal.New("hello "))
-	fm.ComponentByName("concat").InputByName("i2").PutSignals(signal.New("world!"))
-
-	// Run the mesh
-	_, err := fm.Run()
-	if err != nil {
+	if err := run(); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
+}
 
-	// Get results
-	results := fm.ComponentByName("uppercase").OutputByName("res").Signals().FirstPayloadOrNil()
-	fmt.Printf("Result: %v\n", results) // Output: HELLO WORLD!
+func run() error {
+	// Create the components
+	concat, err := component.New("concat",
+		component.WithInputs("i1", "i2"),
+		component.WithOutputs("res"),
+		component.WithActivationFunc(func(this *component.Component) error {
+			word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+			word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
+			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
+		}))
+	if err != nil {
+		return err
+	}
+
+	uppercase, err := component.New("uppercase",
+		component.WithInputs("i1"),
+		component.WithOutputs("res"),
+		component.WithActivationFunc(func(this *component.Component) error {
+			str := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
+			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
+		}))
+	if err != nil {
+		return err
+	}
+
+	// Create the mesh
+	fm, err := fmesh.New("hello world")
+	if err != nil {
+		return err
+	}
+	if err = fm.AddComponents(concat, uppercase); err != nil {
+		return err
+	}
+
+	// Connect components via a pipe
+	if err = concat.OutputByName("res").PipeTo(uppercase.InputByName("i1")); err != nil {
+		return err
+	}
+
+	// Set initial inputs
+	if err = concat.InputByName("i1").PutSignals(signal.New("hello ")); err != nil {
+		return err
+	}
+	if err = concat.InputByName("i2").PutSignals(signal.New("world!")); err != nil {
+		return err
+	}
+
+	// Run the mesh
+	if _, err = fm.Run(); err != nil {
+		return err
+	}
+
+	// Get the result
+	result, err := uppercase.OutputByName("res").Signals().FirstPayload()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Result: %v\n", result) // Result: HELLO WORLD!
+	return nil
 }
 ```
 
@@ -106,7 +131,7 @@ fm.SetupHooks(func(h *fmesh.Hooks) {
         fmt.Println("Starting mesh...")
         return nil
     })
-    h.CycleEnd(func(ctx *fmesh.CycleContext) error {
+    h.AfterCycle(func(ctx *fmesh.CycleContext) error {
         fmt.Printf("Cycle #%d complete\n", ctx.Cycle.Number())
         return nil
     })

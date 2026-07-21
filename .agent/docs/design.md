@@ -25,7 +25,7 @@
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
-**No generics.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group.
+**No generics in data flow.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group. Approved generics elsewhere: `hook.Group[T]` (typed hook registry) and `component.MustGetTyped[T]` (state accessor). Do not add more without approval.
 
 **Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
 
@@ -34,20 +34,21 @@
 - **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach` returns `(*Group, error)`.
 - **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
 - **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time.
-- **`component`** — `State` is `map[string]any`, persistent across cycles. Constructors use functional options: `component.New(name, opts...) (*Component, error)`.
+- **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitingForInputsKeep` are scheduler control-flow sentinels, not failures.
+- **`hook`** — generic `hook.Group[T]`, ordered, fail-fast `Trigger`. Three hook levels (mesh/component/port); see [hooks.md](hooks.md).
 - **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
 
 ## Metadata tiers on groups/collections
 
-Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Scalars` (Tier 1), plus batch mutation of its **contents** (Tier 2a). `signal.Group` and `port.Group` additionally expose cross-entity scalar aggregation (Tier 2b).
+Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Scalars` (Tier 1), plus batch mutation of its **contents** (Tier 2a). `signal.Group` additionally exposes cross-entity scalar aggregation (Tier 2b).
 
 | Tier | Methods | Where |
 |---|---|---|
 | 1 — entity's own | `Labels()`, `Scalars()`, `WithLabel(k,v)`, `WithScalar(k,v)` | all groups/collections |
 | 2a — batch on contents | `WithLabelOnEach(k,v)`, `WithScalarOnEach(k,v)`, `RemoveLabelOnEach(names...)`, `RemoveScalarOnEach(names...)` | all groups/collections |
-| 2b — cross-entity aggregation | `MinScalar(name)`, `MaxScalar(name)`, `AvgScalar(name)`, `SumScalar(name)` | `signal.Group`, `port.Group` only |
+| 2b — cross-entity aggregation | `MinScalar(name)`, `MaxScalar(name)`, `AvgScalar(name)`, `SumScalar(name)` | `signal.Group` only |
 
-`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`. Cross-entity aggregation returns `(float64, bool)` where `bool` is false when no element has the named scalar; `SumScalar` always returns `float64` (0 when absent).
+`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`. `MinScalar`/`MaxScalar`/`AvgScalar` return `(float64, error)` with the sentinel `signal.ErrScalarNotFoundInGroup` when no element has the named scalar; `SumScalar` always returns `float64` (0 when absent).
 
 ## Comment hygiene
 
