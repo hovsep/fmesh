@@ -199,16 +199,6 @@ func (c *Collection) Without(names ...string) *Collection {
 	return c
 }
 
-// AddIndexed creates ports with names like "o1","o2","o3" and so on.
-func (c *Collection) AddIndexed(prefix string, startIndex, endIndex int) error {
-	indexedPorts, err := NewIndexedGroup(prefix, startIndex, endIndex)
-	if err != nil {
-		return err
-	}
-	ports := indexedPorts.All()
-	return c.Add(ports...)
-}
-
 // Signals returns all signals of all ports in the collection.
 func (c *Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
