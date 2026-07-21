@@ -81,7 +81,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodeReturnedError).
-				WithActivationError(errors.New("component returned an error: test error")),
+				AddActivationError(errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -118,7 +118,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodePanicked).
-				WithActivationError(errors.New("panicked with: oh shrimps")),
+				AddActivationError(errors.New("panicked with: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -137,7 +137,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodePanicked).
-				WithActivationError(errors.New("panicked with: oh shrimps")),
+				AddActivationError(errors.New("panicked with: oh shrimps")),
 		},
 		{
 			name: "component is waiting for inputs",
@@ -225,7 +225,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodeReturnedError).
-				WithActivationError(errors.New("component returned an error: test error")),
+				AddActivationError(errors.New("component returned an error: test error")),
 			loggerAssertions: func(t *testing.T, output []byte) {
 				assert.NotEmpty(t, output)
 				assert.Contains(t, string(output), "c1: This line must be logged")
