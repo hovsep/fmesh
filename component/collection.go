@@ -119,9 +119,10 @@ func (c *Collection) Any() *Component {
 	return nil
 }
 
-// All returns all components as a map.
+// All returns a shallow copy of all components as a map.
+// A copy is returned so the caller cannot mutate the internal state.
 func (c *Collection) All() map[string]*Component {
-	return c.components
+	return maps.Clone(c.components)
 }
 
 // AllOrdered returns all components sorted by name.

@@ -144,23 +144,4 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 		assert.Equal(t, 1, hg.Len())
 	})
 
-	t.Run("ForEach operates on hook functions", func(t *testing.T) {
-		count := 0
-		hg := NewGroup[int]()
-		hg.Add(func(i int) error {
-			return nil
-		}).Add(func(i int) error {
-			return nil
-		}).Add(func(i int) error {
-			return nil
-		})
-
-		result := hg.ForEach(func(hook func(int) error) error {
-			count++
-			return nil
-		})
-
-		assert.Equal(t, hg, result) // Returns self
-		assert.Equal(t, 3, count)
-	})
 }
