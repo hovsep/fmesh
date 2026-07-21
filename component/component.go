@@ -11,18 +11,19 @@ import (
 
 // Component defines a main building block of FMesh.
 type Component struct {
-	name        string
-	description string
-	labels      *meta.Labels
-	scalars     *meta.Scalars
-	inputPorts  *port.Collection
-	outputPorts *port.Collection
-	f           ActivationFunc
-	logger      *log.Logger
-	state       State
-	parentMesh  ParentMesh
-	hooks       *Hooks
-	plugins     Plugins
+	name         string
+	description  string
+	labels       *meta.Labels
+	scalars      *meta.Scalars
+	inputPorts   *port.Collection
+	outputPorts  *port.Collection
+	f            ActivationFunc
+	logger       *log.Logger
+	customLogger bool // true when the logger was set explicitly and must not be inherited from the mesh
+	state        State
+	parentMesh   ParentMesh
+	hooks        *Hooks
+	plugins      Plugins
 }
 
 // New creates a new component with the given name and options.
