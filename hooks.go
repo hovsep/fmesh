@@ -2,7 +2,6 @@ package fmesh
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -42,39 +41,41 @@ func newHooks() *Hooks {
 	}
 }
 
+// getDefaultBeforeRunHook validates the mesh structure on every run,
+// so components added between runs are validated too.
 func getDefaultBeforeRunHook() func(*FMesh) error {
-	var (
-		once          sync.Once
-		validationErr error
-	)
-	return func(fm *FMesh) error {
-		once.Do(func() {
-			validationErr = validateMeshStructure(fm)
-		})
-		return validationErr
-	}
+	return validateMeshStructure
 }
 
+// validateMeshStructure validates components in name order so validation
+// errors are deterministic.
 func validateMeshStructure(fm *FMesh) error {
-	return fm.Components().ForEach(func(c *component.Component) error {
-		if c.ParentMesh() != fm {
-			return fmt.Errorf("component %q has wrong parent mesh", c.Name())
+	for _, c := range fm.Components().AllOrdered() {
+		if err := validateComponentStructure(fm, c); err != nil {
+			return err
 		}
-		return c.Outputs().ForEach(func(p *port.Port) error {
-			if p.ParentComponent() != c {
-				return fmt.Errorf("output port %q has wrong parent component in component %q", p.Name(), c.Name())
+	}
+	return nil
+}
+
+func validateComponentStructure(fm *FMesh, c *component.Component) error {
+	if c.ParentMesh() != fm {
+		return fmt.Errorf("component %q has wrong parent mesh", c.Name())
+	}
+	return c.Outputs().ForEach(func(p *port.Port) error {
+		if p.ParentComponent() != c {
+			return fmt.Errorf("output port %q has wrong parent component in component %q", p.Name(), c.Name())
+		}
+		return p.Pipes().ForEach(func(dest *port.Port) error {
+			parent := dest.ParentComponent()
+			destComponent, ok := parent.(*component.Component)
+			if !ok || destComponent == nil {
+				return fmt.Errorf("destination port %q has invalid parent component", dest.Name())
 			}
-			return p.Pipes().ForEach(func(dest *port.Port) error {
-				parent := dest.ParentComponent()
-				destComponent, ok := parent.(*component.Component)
-				if !ok || destComponent == nil {
-					return fmt.Errorf("destination port %q has invalid parent component", dest.Name())
-				}
-				if destComponent.ParentMesh() != fm {
-					return fmt.Errorf("destination component %q belongs to a different mesh", destComponent.Name())
-				}
-				return nil
-			})
+			if destComponent.ParentMesh() != fm {
+				return fmt.Errorf("destination component %q belongs to a different mesh", destComponent.Name())
+			}
+			return nil
 		})
 	})
 }

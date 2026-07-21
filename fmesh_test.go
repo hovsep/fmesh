@@ -1429,3 +1429,76 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestFMesh_Run_FanInOrderIsDeterministic(t *testing.T) {
+	// Two producers pipe into one consumer input; the consumer joins the
+	// payloads in arrival order. Drain order is sorted by component name,
+	// so the result must be stable across runs.
+	buildAndRun := func(t *testing.T) string {
+		fm := mustNewFMesh("fan-in")
+
+		newProducer := func(name, payload string) *component.Component {
+			return mustNewComponent(name,
+				component.WithInputs("in"),
+				component.WithOutputs("out"),
+				component.WithActivationFunc(func(this *component.Component) error {
+					return this.OutputByName("out").PutSignals(signal.New(payload))
+				}))
+		}
+		producerA := newProducer("a_producer", "a")
+		producerZ := newProducer("z_producer", "z")
+
+		consumer := mustNewComponent("consumer",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				joined := this.InputByName("in").Signals().ReducePayloads("", func(acc any, payload any) any {
+					return acc.(string) + payload.(string)
+				})
+				return this.OutputByName("out").PutSignals(signal.New(joined))
+			}))
+
+		require.NoError(t, fm.AddComponents(producerA, producerZ, consumer))
+		require.NoError(t, producerA.OutputByName("out").PipeTo(consumer.InputByName("in")))
+		require.NoError(t, producerZ.OutputByName("out").PipeTo(consumer.InputByName("in")))
+
+		require.NoError(t, producerA.InputByName("in").PutSignals(signal.New("go")))
+		require.NoError(t, producerZ.InputByName("in").PutSignals(signal.New("go")))
+
+		_, err := fm.Run()
+		require.NoError(t, err)
+
+		result, err := consumer.OutputByName("out").Signals().FirstPayload()
+		require.NoError(t, err)
+		return result.(string)
+	}
+
+	for range 20 {
+		assert.Equal(t, "az", buildAndRun(t))
+	}
+}
+
+func TestFMesh_Run_ValidatesOnEveryRun(t *testing.T) {
+	fm := mustNewFMesh("revalidation")
+	c1 := mustNewComponent("c1",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+		component.WithActivationFunc(noOpActivationFunc))
+	require.NoError(t, fm.AddComponents(c1))
+
+	require.NoError(t, c1.InputByName("in").PutSignals(signal.New("go")))
+	_, err := fm.Run()
+	require.NoError(t, err)
+
+	// Sneak in an invalid component (wrong parent mesh) after the first run
+	badComponent := mustNewComponent("c2",
+		component.WithInputs("in"),
+		component.WithActivationFunc(noOpActivationFunc)).
+		SetParentMesh(mustNewFMesh("other"))
+	require.NoError(t, fm.components.Add(badComponent))
+
+	require.NoError(t, c1.InputByName("in").PutSignals(signal.New("go")))
+	_, err = fm.Run()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "wrong parent mesh")
+}
