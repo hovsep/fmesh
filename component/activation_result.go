@@ -103,8 +103,9 @@ func (ar *ActivationResult) Code() ActivationResultCode {
 }
 
 // IsError returns true when an activation result has an error.
+// Hook failures count as errors so they surface through the error handling strategy.
 func (ar *ActivationResult) IsError() bool {
-	return ar.code == ActivationCodeReturnedError && len(ar.activationErrors) > 0
+	return (ar.code == ActivationCodeReturnedError || ar.code == ActivationCodeHookFailed) && len(ar.activationErrors) > 0
 }
 
 // IsPanic returns true when an activation result is derived from panic.

@@ -1373,3 +1373,59 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 		require.ErrorIs(t, err, ErrUnsupportedErrorHandlingStrategy)
 	})
 }
+
+func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
+	newMeshWithFailingHook := func(strategy ErrorHandlingStrategy, configureHooks func(*component.Hooks)) *FMesh {
+		fm := mustNewFMesh("hook-failures", WithErrorHandlingStrategy(strategy))
+		c := mustNewComponent("c1",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				return this.OutputByName("out").PutSignals(signal.New("done"))
+			}),
+			component.WithHooks(configureHooks),
+		)
+		require.NoError(t, fm.AddComponents(c))
+		require.NoError(t, c.InputByName("in").PutSignals(signal.New("start")))
+		return fm
+	}
+
+	errHookFailed := errors.New("hook failed on purpose")
+
+	t.Run("failing BeforeActivation hook surfaces in Run error", func(t *testing.T) {
+		fm := newMeshWithFailingHook(StopOnFirstErrorOrPanic, func(h *component.Hooks) {
+			h.BeforeActivation(func(*component.Component) error {
+				return errHookFailed
+			})
+		})
+
+		_, err := fm.Run()
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
+		require.ErrorIs(t, err, errHookFailed)
+	})
+
+	t.Run("failing OnSuccess hook surfaces in Run error", func(t *testing.T) {
+		fm := newMeshWithFailingHook(StopOnFirstErrorOrPanic, func(h *component.Hooks) {
+			h.OnSuccess(func(*component.ActivationContext) error {
+				return errHookFailed
+			})
+		})
+
+		_, err := fm.Run()
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
+		require.ErrorIs(t, err, errHookFailed)
+	})
+
+	t.Run("IgnoreAll strategy still ignores hook failures", func(t *testing.T) {
+		fm := newMeshWithFailingHook(IgnoreAll, func(h *component.Hooks) {
+			h.OnSuccess(func(*component.ActivationContext) error {
+				return errHookFailed
+			})
+		})
+
+		_, err := fm.Run()
+		require.NoError(t, err)
+	})
+}
