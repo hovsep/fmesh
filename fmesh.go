@@ -199,27 +199,28 @@ func (fm *FMesh) runCycle() error {
 
 	if err := fm.hooks.beforeCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("beforeCycle hook failed: %w", err))
-		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
 
 	fm.LogDebug("starting activation cycle #%d", newCycle.Number())
 
-	components := fm.Components().All()
-	if len(components) == 0 {
-		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+	if fm.Components().IsEmpty() {
+		fm.runtimeInfo.Cycles.Add(newCycle)
 		return errors.Join(errFailedToRunCycle, errNoComponents)
 	}
 
 	var wg sync.WaitGroup
 
-	for _, c := range components {
+	// ForEach avoids cloning the component map on every cycle (hot path)
+	_ = fm.Components().ForEach(func(c *component.Component) error {
 		wg.Add(1)
 		go func(comp *component.Component, cyc *cycle.Cycle) {
 			defer wg.Done()
-			cyc.ActivationResults().Add(comp.MaybeActivate())
+			cyc.AddActivationResults(comp.MaybeActivate())
 		}(c, newCycle)
-	}
+		return nil
+	})
 
 	wg.Wait()
 
@@ -233,11 +234,11 @@ func (fm *FMesh) runCycle() error {
 
 	if err := fm.hooks.afterCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("afterCycle hook failed: %w", err))
-		fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
 
-	fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(newCycle)
+	fm.runtimeInfo.Cycles.Add(newCycle)
 	return nil
 }
 
@@ -272,7 +273,6 @@ func (fm *FMesh) drainComponents() error {
 	return nil
 }
 
-// @TODO: we can inline this into drainComponents
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs(components []*component.Component) error {
 	lastCycle := fm.runtimeInfo.Cycles.Last()

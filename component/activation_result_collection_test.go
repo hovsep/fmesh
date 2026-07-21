@@ -272,7 +272,7 @@ func TestActivationResultCollection_Without(t *testing.T) {
 
 func TestActivationResult_ActivationErrorWithComponentName(t *testing.T) {
 	err := errors.New("activation failed")
-	r := NewActivationResult("my-component").WithActivationError(err)
+	r := NewActivationResult("my-component").AddActivationError(err)
 
 	t.Run("returns error with component name", func(t *testing.T) {
 		wrappedErr := r.ActivationErrorWithComponentName()
@@ -398,7 +398,7 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 	err3 := errors.New("third error")
 
 	t.Run("single error", func(t *testing.T) {
-		r := NewActivationResult("c").WithActivationError(err1)
+		r := NewActivationResult("c").AddActivationError(err1)
 		assert.Len(t, r.ActivationErrors(), 1)
 		require.Error(t, r.ActivationError())
 		assert.ErrorIs(t, r.ActivationError(), err1)
@@ -406,9 +406,9 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 
 	t.Run("multiple errors accumulate", func(t *testing.T) {
 		r := NewActivationResult("c").
-			WithActivationError(err1).
-			WithActivationError(err2).
-			WithActivationError(err3)
+			AddActivationError(err1).
+			AddActivationError(err2).
+			AddActivationError(err3)
 		assert.Len(t, r.ActivationErrors(), 3)
 		require.ErrorIs(t, r.ActivationError(), err1)
 		require.ErrorIs(t, r.ActivationError(), err2)

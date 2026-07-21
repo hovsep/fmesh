@@ -2,6 +2,7 @@ package port
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
@@ -180,7 +181,7 @@ func (c *Collection) PipeTo(destPorts ...*Port) error {
 	return nil
 }
 
-// Add adds ports to a collection and returns it. Overwrites on name conflict.
+// Add adds ports to the collection. Returns an error on name conflict.
 func (c *Collection) Add(ports ...*Port) error {
 	for _, p := range ports {
 		if _, exists := c.ports[p.Name()]; exists {
@@ -209,9 +210,10 @@ func (c *Collection) Signals() *signal.Group {
 	return group
 }
 
-// All returns all ports as a map.
+// All returns a shallow copy of all ports as a map.
+// A copy is returned so the caller cannot mutate the internal state.
 func (c *Collection) All() map[string]*Port {
-	return c.ports
+	return maps.Clone(c.ports)
 }
 
 // Any returns any arbitrary port from the collection.

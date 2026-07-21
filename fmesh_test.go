@@ -487,7 +487,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeReturnedError).
-							WithActivationError(errors.New("component returned an error: boom")),
+							AddActivationError(errors.New("component returned an error: boom")),
 					),
 			),
 			wantErr: true,
@@ -522,7 +522,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeWaitingForInputsClear).
-							WithActivationError(component.ErrWaitingForInputs),
+							AddActivationError(component.ErrWaitingForInputs),
 					),
 				// Mesh stops naturally in the next cycle because nothing is activated
 				cycle.New().
@@ -600,7 +600,7 @@ func TestFMesh_Run(t *testing.T) {
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitingForInputsKeep),
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
@@ -608,7 +608,7 @@ func TestFMesh_Run(t *testing.T) {
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).WithActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitingForInputsKeep),
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
@@ -681,7 +681,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeReturnedError).
-							WithActivationError(errors.New("component returned an error: boom")),
+							AddActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
 							SetActivationCode(component.ActivationCodeNoInput),
@@ -715,7 +715,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodePanicked).
-							WithActivationError(errors.New("panicked with: no way")),
+							AddActivationError(errors.New("panicked with: no way")),
 					),
 			),
 			wantErr: true,
@@ -794,7 +794,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeReturnedError).
-							WithActivationError(errors.New("component returned an error: boom")),
+							AddActivationError(errors.New("component returned an error: boom")),
 						component.NewActivationResult("c4").
 							SetActivated(false).
 							SetActivationCode(component.ActivationCodeNoInput),
@@ -836,7 +836,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodePanicked).
-							WithActivationError(errors.New("panicked with: no way")),
+							AddActivationError(errors.New("panicked with: no way")),
 						component.NewActivationResult("c5").
 							SetActivated(false).
 							SetActivationCode(component.ActivationCodeNoInput),
@@ -1072,7 +1072,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						SetActivationCode(component.ActivationCodeReturnedError).
-						WithActivationError(errors.New("c1 activation finished with error")),
+						AddActivationError(errors.New("c1 activation finished with error")),
 				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
@@ -1090,7 +1090,7 @@ func TestFMesh_mustStop(t *testing.T) {
 					component.NewActivationResult("c1").
 						SetActivated(true).
 						SetActivationCode(component.ActivationCodePanicked).
-						WithActivationError(errors.New("c1 panicked")),
+						AddActivationError(errors.New("c1 panicked")),
 				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
