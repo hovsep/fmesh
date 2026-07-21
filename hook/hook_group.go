@@ -38,17 +38,6 @@ func (g *Group[T]) Trigger(arg T) error {
 	return nil
 }
 
-// ForEach applies an action to each hook function.
-// Note: Most users should use Trigger() instead.
-func (g *Group[T]) ForEach(action func(func(T) error) error) *Group[T] {
-	for _, hook := range g.hooks {
-		if err := action(hook); err != nil {
-			return g
-		}
-	}
-	return g
-}
-
 // Clear removes all hooks from the group.
 func (g *Group[T]) Clear() *Group[T] {
 	g.hooks = make([]func(T) error, 0)
@@ -56,7 +45,6 @@ func (g *Group[T]) Clear() *Group[T] {
 }
 
 // Len returns the number of hooks in the group.
-// Returns 0 if the group has a chainable error.
 func (g *Group[T]) Len() int {
 	return len(g.hooks)
 }
