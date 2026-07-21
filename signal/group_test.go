@@ -952,3 +952,35 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 		assert.False(t, found2)
 	})
 }
+
+func TestGroup_MapDropsNilResults(t *testing.T) {
+	dropOdd := func(s *Signal) *Signal {
+		if s.PayloadOrDefault(0).(int)%2 != 0 {
+			return nil
+		}
+		return s
+	}
+
+	t.Run("Map drops nil mapper results", func(t *testing.T) {
+		g := NewGroup(1, 2, 3, 4).Map(dropOdd)
+		assert.Equal(t, 2, g.Len())
+		require.NoError(t, g.ForEach(func(s *Signal) error {
+			_, err := s.Payload()
+			return err
+		}))
+	})
+
+	t.Run("MapIf drops nil mapper results and keeps non-matching signals", func(t *testing.T) {
+		isOdd := func(s *Signal) bool {
+			return s.PayloadOrDefault(0).(int)%2 != 0
+		}
+		g := NewGroup(1, 2, 3, 4).MapIf(isOdd, func(*Signal) *Signal {
+			return nil
+		})
+		assert.Equal(t, 2, g.Len())
+
+		payloads, err := g.AllPayloads()
+		require.NoError(t, err)
+		assert.Equal(t, []any{2, 4}, payloads)
+	})
+}
