@@ -30,6 +30,9 @@ type OutboundPipeContext struct {
 }
 
 // Hooks is a registry of all hook types for Port.
+// Port hooks may fire from concurrent activation goroutines (components call
+// PutSignals on their own ports while activating), so hook functions must be
+// safe for concurrent use when they touch shared state.
 type Hooks struct {
 	onSignalsAdded *hook.Group[*SignalsAddedContext]
 	onClear        *hook.Group[*ClearContext]
