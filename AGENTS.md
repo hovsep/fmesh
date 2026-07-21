@@ -16,6 +16,8 @@ labels/        hook/          integration_tests/
 ## Reference docs
 
 - [Design](.agent/docs/design.md) — architecture, invariants, package rules
+- [Runtime](.agent/docs/runtime.md) — run loop, activation lifecycle, stop conditions, state
+- [Hooks](.agent/docs/hooks.md) — hook levels, semantics, plugins
 - [Naming](.agent/docs/naming.md) — CoW vs mutating, method naming
 - [Testing](.agent/docs/testing.md) — style, what to cover
 - [Workflow](.agent/docs/workflow.md) — how to work safely
