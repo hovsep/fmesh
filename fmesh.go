@@ -170,6 +170,7 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 		}
 
 		c.SetParentMesh(fm)
+		c.InheritLogger(fm.logger)
 
 		if err := fm.components.Add(c); err != nil {
 			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
