@@ -19,10 +19,10 @@ Use `With` **only** when the method is one of:
 - **Builder that does real work beyond field assignment**: e.g. nil guard + prefix logic, iteration over child objects, appending to a slice
 
 Use `Set` for **everything else** that is a plain `field = value; return receiver` mutating method, whether exported or unexported:
-- Exported example: `cycle.SetNumber`, `component.SetLogger` (method needed post-construction for mesh logger inheritance)
+- Exported example: `cycle.SetNumber`, `component.SetLogger` (marks the logger as custom so the mesh never overrides it)
 - Unexported example: `port.setSignals`, `port.setPorts`
 
-**No dual-form duplication**: if a capability has a `With*` constructor option, do **not** also add a `Set*` method for the same capability. Keep one form: `With*` for options inside `New(...)`, `Set*` only when genuine post-construction mutation is needed (e.g. `SetLogger` called by `fmesh.AddComponents`).
+**No dual-form duplication**: if a capability has a `With*` constructor option, do **not** also add a `Set*` method for the same capability, unless genuine post-construction mutation is needed. Logger is the one exception: `component.WithLogger`/`component.SetLogger` mark the logger custom, and `component.InheritLogger` (called by `fmesh.AddComponents`) sets the mesh logger only on components without a custom one.
 
 ## Label operations by type
 
@@ -72,7 +72,9 @@ Constructor options use the `With` prefix and are passed to `New(...)`:
 | Initial state | `component.WithInitialState(fn)` |
 | Logger | `component.WithLogger(l)` |
 
-Post-construction `Set*` methods exist only where mutation is genuinely required after `New()` returns — currently `SetLogger` (called by `fmesh.AddComponents` to inherit the mesh logger) and `SetParentMesh`.
+Post-construction `Set*` methods exist only where mutation is genuinely required after `New()` returns — currently `SetLogger`, `SetParentMesh`, and `InheritLogger` (called by `fmesh.AddComponents`; sets the mesh logger unless a custom one was set).
+
+Mutating methods that *append* use `Add*` even on result types: `ActivationResult.AddActivationError` (appends to the error list).
 
 ## Collection/group operations
 
