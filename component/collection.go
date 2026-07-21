@@ -2,6 +2,8 @@ package component
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/hovsep/fmesh/meta"
 )
@@ -120,6 +122,17 @@ func (c *Collection) Any() *Component {
 // All returns all components as a map.
 func (c *Collection) All() map[string]*Component {
 	return c.components
+}
+
+// AllOrdered returns all components sorted by name.
+// Use this when iteration order must be deterministic (e.g. the drain phase).
+func (c *Collection) AllOrdered() []*Component {
+	names := slices.Sorted(maps.Keys(c.components))
+	ordered := make([]*Component, len(names))
+	for i, name := range names {
+		ordered[i] = c.components[name]
+	}
+	return ordered
 }
 
 // Every returns true if all components match the predicate.
