@@ -1,6 +1,7 @@
 package port
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hovsep/fmesh/meta"
@@ -207,30 +208,28 @@ func (p *Port) Signals() *signal.Group {
 }
 
 // PutSignals adds signals to the port.
+// When the OnSignalsAdded hook fails, the port is restored to its previous state.
 func (p *Port) PutSignals(signals ...*signal.Signal) error {
-	p.setSignals(p.Signals().With(signals...))
+	return p.putSignals(signals)
+}
 
-	// Trigger OnSignalsAdded hook
+// PutPayloads creates signals from given payloads.
+// When the OnSignalsAdded hook fails, the port is restored to its previous state.
+func (p *Port) PutPayloads(payloads ...any) error {
+	return p.putSignals(signal.NewGroup(payloads...).All())
+}
+
+// putSignals adds signals to the port and triggers the OnSignalsAdded hook,
+// rolling the port back when the hook fails.
+func (p *Port) putSignals(signals []*signal.Signal) error {
+	previousSignals := p.Signals()
+	p.setSignals(previousSignals.With(signals...))
+
 	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: signals,
 	}); err != nil {
-		return fmt.Errorf("onSignalsAdded hook failed: %w", err)
-	}
-
-	return nil
-}
-
-// PutPayloads creates signals from given payloads.
-func (p *Port) PutPayloads(payloads ...any) error {
-	newSignals := signal.NewGroup(payloads...).All()
-	p.setSignals(p.Signals().With(newSignals...))
-
-	// Trigger OnSignalsAdded hook
-	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
-		Port:         p,
-		SignalsAdded: newSignals,
-	}); err != nil {
+		p.setSignals(previousSignals)
 		return fmt.Errorf("onSignalsAdded hook failed: %w", err)
 	}
 
@@ -265,6 +264,12 @@ func (p *Port) Clear() error {
 }
 
 // Flush pushes signals to pipes and clears the port (output ports only).
+// Fan-out forwards the same *Signal pointers to every destination — payloads
+// must be treated as immutable by all receivers.
+// Delivery to every pipe is attempted even when some fail; the errors are
+// joined and the port is cleared only when all deliveries succeeded, so
+// successfully delivered signals are never lost, but a retry after a partial
+// failure re-delivers to the destinations that already received them.
 func (p *Port) Flush() error {
 	if p.IsInput() {
 		return fmt.Errorf("cannot flush input port %q: only output ports can be flushed", p.Name())
@@ -274,12 +279,17 @@ func (p *Port) Flush() error {
 		return nil
 	}
 
-	pipes := p.pipes.All()
-	for _, outboundPort := range pipes {
+	var deliveryErrs error
+	// ForEach avoids cloning the pipe slice on every flush (hot path)
+	_ = p.pipes.ForEach(func(outboundPort *Port) error {
 		// Fan-Out
 		if err := ForwardSignals(p, outboundPort); err != nil {
-			return err
+			deliveryErrs = errors.Join(deliveryErrs, err)
 		}
+		return nil
+	})
+	if deliveryErrs != nil {
+		return deliveryErrs
 	}
 	return p.Clear()
 }
@@ -295,6 +305,8 @@ func (p *Port) HasPipes() bool {
 }
 
 // PipeTo connects this port to destination ports.
+// Flushing fans out the same *Signal pointers to every destination, so
+// payloads must be treated as immutable by all receiving components.
 func (p *Port) PipeTo(destPorts ...*Port) error {
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
@@ -335,6 +347,8 @@ func validatePipe(srcPort, dstPort *Port) error {
 }
 
 // ForwardSignals copies all signals from source to destination port without clearing source.
+// The same *Signal pointers are shared with the destination; payloads must be
+// treated as immutable because downstream components activate concurrently.
 func ForwardSignals(source, dest *Port) error {
 	signals := source.Signals().All()
 	return dest.PutSignals(signals...)
@@ -365,12 +379,4 @@ func (p *Port) setParentComponent(parentComponent ParentComponent) {
 func (p *Port) SetupHooks(configure func(*Hooks)) *Port {
 	configure(p.hooks)
 	return p
-}
-
-// ValidateBeforeActivation checks if the port is valid before parent component activation.
-func (p *Port) ValidateBeforeActivation() error {
-	if p.ParentComponent() == nil {
-		return fmt.Errorf("port %q has no parent component", p.name)
-	}
-	return nil
 }
