@@ -15,18 +15,39 @@ type Group struct {
 	scalars *meta.Scalars
 }
 
-// NewGroup creates multiple output ports.
-func NewGroup(names ...string) *Group {
-	newGroup := &Group{
+// NewGroup creates an empty group.
+func NewGroup() *Group {
+	return &Group{
 		labels:  meta.NewLabels(),
 		scalars: meta.NewScalars(),
 	}
+}
+
+// NewInputGroup creates a group of input ports with the given names.
+func NewInputGroup(names ...string) *Group {
+	return newGroupOfDirection(DirectionIn, names...)
+}
+
+// NewOutputGroup creates a group of output ports with the given names.
+func NewOutputGroup(names ...string) *Group {
+	return newGroupOfDirection(DirectionOut, names...)
+}
+
+func newGroupOfDirection(direction Direction, names ...string) *Group {
 	ports := make([]*Port, len(names))
 	for i, name := range names {
-		p, _ := NewOutput(name) // no opts, never fails
-		ports[i] = p
+		ports[i] = newPortOfDirection(direction, name)
 	}
-	return newGroup.setPorts(ports)
+	return NewGroup().setPorts(ports)
+}
+
+func newPortOfDirection(direction Direction, name string) *Port {
+	if direction == DirectionIn {
+		p, _ := NewInput(name) // no opts, never fails
+		return p
+	}
+	p, _ := NewOutput(name) // no opts, never fails
+	return p
 }
 
 // Labels returns the group's own labels store.
@@ -76,17 +97,26 @@ func (g *Group) RemoveScalarOnEach(names ...string) *Group {
 	return g
 }
 
-// NewIndexedGroup creates a group of output ports with the same prefix.
-// NOTE: endIndex is inclusive, e.g. NewIndexedGroup("p", 0, 0) will create one port with name "p0".
-func NewIndexedGroup(prefix string, startIndex, endIndex int) (*Group, error) {
+// NewIndexedInputGroup creates a group of input ports with the same prefix.
+// NOTE: endIndex is inclusive, e.g. NewIndexedInputGroup("p", 0, 0) will create one port with name "p0".
+func NewIndexedInputGroup(prefix string, startIndex, endIndex int) (*Group, error) {
+	return newIndexedGroupOfDirection(DirectionIn, prefix, startIndex, endIndex)
+}
+
+// NewIndexedOutputGroup creates a group of output ports with the same prefix.
+// NOTE: endIndex is inclusive, e.g. NewIndexedOutputGroup("p", 0, 0) will create one port with name "p0".
+func NewIndexedOutputGroup(prefix string, startIndex, endIndex int) (*Group, error) {
+	return newIndexedGroupOfDirection(DirectionOut, prefix, startIndex, endIndex)
+}
+
+func newIndexedGroupOfDirection(direction Direction, prefix string, startIndex, endIndex int) (*Group, error) {
 	if startIndex > endIndex {
 		return nil, ErrInvalidRangeForIndexedGroup
 	}
 
 	ports := make([]*Port, endIndex-startIndex+1)
 	for i := startIndex; i <= endIndex; i++ {
-		p, _ := NewOutput(fmt.Sprintf("%s%d", prefix, i)) // no opts, never fails
-		ports[i-startIndex] = p
+		ports[i-startIndex] = newPortOfDirection(direction, fmt.Sprintf("%s%d", prefix, i))
 	}
 
 	return NewGroup().setPorts(ports), nil
