@@ -144,8 +144,13 @@ func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 }
 
 // Payload returns the signal's payload. The value is shallow: if the payload is
-// a pointer, slice, or map, the caller must not mutate it.
+// a pointer, slice, or map, the caller must not mutate it — after fan-out the
+// same payload may be shared by components activating concurrently.
+// Returns ErrNoPayload for a zero-value Signal (use New to create signals).
 func (s *Signal) Payload() (any, error) {
+	if len(s.payload) == 0 {
+		return nil, ErrNoPayload
+	}
 	return s.payload[0], nil
 }
 
