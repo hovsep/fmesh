@@ -370,13 +370,9 @@ func (fm *FMesh) mustStop() (bool, error) {
 		}
 	}
 
-	// Check if the mesh finished naturally (no component activated during the last cycle)
-	if !lastCycle.HasActivatedComponents() {
-		fm.LogDebug("going to stop naturally")
-		return true, nil
-	}
-
-	// Check if mesh must stop because of the configured error handling strategy
+	// Check if mesh must stop because of the configured error handling strategy.
+	// This is evaluated before the natural stop check so activation and hook errors
+	// are never silently swallowed when nothing activated in the last cycle.
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
@@ -385,7 +381,6 @@ func (fm *FMesh) mustStop() (bool, error) {
 			fm.LogDebug("going to stop: %s", runError)
 			return true, runError
 		}
-		return false, nil
 	case StopOnFirstPanic:
 		if lastCycle.HasActivationPanics() {
 			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w",
@@ -393,11 +388,17 @@ func (fm *FMesh) mustStop() (bool, error) {
 			fm.LogDebug("going to stop: %s", runError)
 			return true, runError
 		}
-		return false, nil
 	case IgnoreAll:
-		return false, nil
 	default:
 		fm.LogDebug("going to stop: %s", ErrUnsupportedErrorHandlingStrategy)
 		return true, ErrUnsupportedErrorHandlingStrategy
 	}
+
+	// Check if the mesh finished naturally (no component activated during the last cycle)
+	if !lastCycle.HasActivatedComponents() {
+		fm.LogDebug("going to stop naturally")
+		return true, nil
+	}
+
+	return false, nil
 }
