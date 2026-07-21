@@ -241,12 +241,13 @@ func (fm *FMesh) runCycle() error {
 }
 
 // drainComponents drains the data from activated components.
+// Components are processed in name order so fan-in signal order is deterministic.
 func (fm *FMesh) drainComponents() error {
-	if err := fm.clearInputs(); err != nil {
+	components := fm.Components().AllOrdered()
+
+	if err := fm.clearInputs(components); err != nil {
 		return errors.Join(ErrFailedToDrain, err)
 	}
-
-	components := fm.Components().All()
 
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
@@ -272,9 +273,7 @@ func (fm *FMesh) drainComponents() error {
 
 // @TODO: we can inline this into drainComponents
 // clearInputs clears all the input ports of all components activated in the latest cycle.
-func (fm *FMesh) clearInputs() error {
-	components := fm.Components().All()
-
+func (fm *FMesh) clearInputs(components []*component.Component) error {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
