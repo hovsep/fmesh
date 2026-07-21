@@ -533,3 +533,12 @@ func TestSignal_NilPayloadInvariant(t *testing.T) {
 		})
 	}
 }
+
+func TestSignal_ZeroValueHasNoPayload(t *testing.T) {
+	var s Signal
+
+	_, err := s.Payload()
+	require.ErrorIs(t, err, ErrNoPayload)
+	assert.Nil(t, s.PayloadOrNil())
+	assert.Equal(t, "fallback", s.PayloadOrDefault("fallback"))
+}
