@@ -1502,3 +1502,20 @@ func TestFMesh_Run_ValidatesOnEveryRun(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorContains(t, err, "wrong parent mesh")
 }
+
+func TestFMesh_AddComponents_LoggerInheritance(t *testing.T) {
+	meshLogger := log.New(io.Discard, "mesh: ", 0)
+	customLogger := log.New(io.Discard, "custom: ", 0)
+
+	fm := mustNewFMesh("logger-inheritance", WithLogger(meshLogger))
+
+	defaultLoggerComponent := mustNewComponent("plain", component.WithActivationFunc(noOpActivationFunc))
+	customLoggerComponent := mustNewComponent("custom",
+		component.WithActivationFunc(noOpActivationFunc),
+		component.WithLogger(customLogger))
+
+	require.NoError(t, fm.AddComponents(defaultLoggerComponent, customLoggerComponent))
+
+	assert.Same(t, meshLogger, defaultLoggerComponent.Logger(), "component without custom logger must inherit the mesh logger")
+	assert.Same(t, customLogger, customLoggerComponent.Logger(), "custom logger must not be overridden")
+}
