@@ -143,5 +143,4 @@ func TestHookGroup_AdditionalMethods(t *testing.T) {
 		assert.True(t, executed)
 		assert.Equal(t, 1, hg.Len())
 	})
-
 }
