@@ -13,6 +13,7 @@ duplicate or contradict it here:
 - `.agent/docs/hooks.md` — hook levels (mesh/component/port), semantics, plugins
 - `.agent/docs/naming.md` — `With`/`Set`/`Add` conventions, CoW vs mutating
 - `.agent/docs/testing.md` — test style and required coverage
+- `.agent/docs/benchmarking.md` — benchmark best-practices, size sweeps, fuzzing, benchstat CI
 - `.agent/docs/workflow.md` — safe editing/rename practices
 - `.agent/plans/` — historical implementation plans (reference only)
 

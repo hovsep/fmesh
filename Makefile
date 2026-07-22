@@ -16,6 +16,10 @@ fix:
 bench:
 	go test -run=^$$ -bench=. -benchmem ./...
 
+fuzz:
+	go test -run=^$$ -fuzz=FuzzSignalCoW -fuzztime=30s ./signal/
+	go test -run=^$$ -fuzz=FuzzGroupOps -fuzztime=30s ./signal/
+
 check: race lint
 
 deps:

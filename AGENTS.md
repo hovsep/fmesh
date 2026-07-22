@@ -20,6 +20,7 @@ labels/        hook/          integration_tests/
 - [Hooks](.agent/docs/hooks.md) — hook levels, semantics, plugins
 - [Naming](.agent/docs/naming.md) — CoW vs mutating, method naming
 - [Testing](.agent/docs/testing.md) — style, what to cover
+- [Benchmarking](.agent/docs/benchmarking.md) — benchmarks, size sweeps, fuzzing, benchstat CI
 - [Workflow](.agent/docs/workflow.md) — how to work safely
 
 ## Before starting

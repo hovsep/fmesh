@@ -1,0 +1,82 @@
+name: Benchmarks
+
+# Reports performance deltas (PR head vs. base branch) as a sticky PR comment.
+# Advisory only: this workflow never fails the check — GitHub-hosted runners are
+# noisy shared VMs, so benchmark numbers are guidance, not a merge gate.
+# See .agent/docs/benchmarking.md for how to read the output.
+
+on:
+  pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# Cancel superseded runs when the PR is updated (e.g. force-push).
+concurrency:
+  group: bench-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Compare benchmarks (benchstat)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need base + head commits to benchmark both
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      # -count=8 lets benchstat estimate variance and mark insignificant deltas as "~".
+      - name: Benchmark base branch
+        continue-on-error: true
+        run: |
+          git checkout --quiet ${{ github.event.pull_request.base.sha }}
+          go test -run='^$' -bench=. -benchmem -count=8 ./... | tee base.txt
+
+      - name: Benchmark PR head
+        continue-on-error: true
+        run: |
+          git checkout --quiet ${{ github.event.pull_request.head.sha }}
+          go test -run='^$' -bench=. -benchmem -count=8 ./... | tee pr.txt
+
+      - name: Compare with benchstat
+        continue-on-error: true
+        run: benchstat base.txt pr.txt | tee bench.txt
+
+      # Upsert a single sticky comment (identified by the marker) with the
+      # benchstat table. Dependency-free: uses the gh CLI shipped on the runner.
+      - name: Post results as sticky PR comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          MARKER='<!-- fmesh-benchstat -->'
+          {
+            echo "$MARKER"
+            echo '## Benchmark report (advisory)'
+            echo
+            echo 'PR head vs. base branch. `~` = no statistically significant change.'
+            echo 'CI runners are noisy — treat `sec/op` as guidance and trust `allocs/op` most.'
+            echo
+            echo '```'
+            cat bench.txt
+            echo '```'
+          } > comment.md
+
+          existing=$(gh pr view "$PR_NUMBER" --json comments \
+            --jq '.comments[] | select(.body | contains("'"$MARKER"'")) | .url' | tail -n1)
+          if [ -n "$existing" ]; then
+            gh pr comment "$PR_NUMBER" --edit-last --body-file comment.md
+          else
+            gh pr comment "$PR_NUMBER" --body-file comment.md
+          fi
