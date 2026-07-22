@@ -12,7 +12,7 @@ How a mesh actually runs. Source: `fmesh.go` (`Run`, `runCycle`, `drainComponent
 3. Loop: `runCycle` → `mustStop` → `drainComponents`. Note the order — stop conditions are checked **before** draining, so the final cycle's outputs are not flushed.
 4. `afterRun` hooks fire in a defer; an afterRun hook error is only surfaced when the run itself did not already fail.
 
-`Run` returns `(*RuntimeInfo, error)`. `RuntimeInfo.Cycles` holds every executed cycle with all activation results — the primary observability surface.
+`Run` returns `(*RuntimeInfo, error)`. `RuntimeInfo.Cycles` holds every executed cycle with all activation results — the primary observability surface. Note this history is retained for the whole run and grows without bound — see "Scaling characteristics" below.
 
 ## One cycle (`runCycle`)
 
@@ -59,6 +59,27 @@ with no signals or no pipes is a no-op, not an error.
 4. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
 
 When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first.
+
+## Scaling characteristics (measured)
+
+Empirical envelope from stress experiments (July 2026, 8-core/16 GiB arm64 laptop). The
+absolute numbers are machine-specific; the complexity classes are the durable part.
+
+- **Width scales near-linearly.** ~1.5–4 µs of scheduler overhead per component per cycle
+  and ~300 B of heap per component: a 10⁶-component mesh builds in ~2 s and runs a
+  one-wave computation in ~10 s. But `runCycle` spawns one goroutine per component per
+  cycle — ready or not — so at 10⁷ components the goroutine stacks alone (tens of GiB)
+  are an OOM risk before speed becomes the problem.
+- **Fan-in is O(N²).** `ForwardSignals` appends one signal at a time, and each append
+  copies the destination port's whole signal group (`port.putSignals` →
+  `signal.Group.With`). N outputs converging on a single input port become impractical
+  around N ≈ 10⁵ (tens of seconds spent in one drain). Guarded by `BenchmarkMeshFanIn`.
+- **Long-running meshes are memory-bound, not time-bound.** Per-cycle cost stays flat as
+  cycle count grows (~10³–10⁴ cycles/s depending on width), but `RuntimeInfo.Cycles`
+  retains an `ActivationResult` for every component in every cycle (~100 B × components ×
+  cycles) and nothing is freed during `Run` — even though the run loop itself only reads
+  `Cycles.Last()`. 100 components × 10⁵ cycles already holds ~1 GiB. Rule of thumb: keep
+  components × cycles per `Run` under ~10⁸ on a 16 GiB machine.
 
 ## Component state
 
