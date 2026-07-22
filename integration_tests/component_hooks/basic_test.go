@@ -430,8 +430,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		b.ResetTimer()
-		for range b.N {
+		for b.Loop() {
 			c.MaybeActivate()
 			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
 				b.Fatal(err)
@@ -455,8 +454,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		b.ResetTimer()
-		for range b.N {
+		for b.Loop() {
 			c.MaybeActivate()
 			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
 				b.Fatal(err)

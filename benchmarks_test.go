@@ -31,7 +31,7 @@ func buildPipelineMesh(b *testing.B, componentsCount int) *FMesh {
 	}
 	require.NoError(b, fm.AddComponents(components...))
 
-	for i := 0; i < componentsCount-1; i++ {
+	for i := range componentsCount - 1 {
 		require.NoError(b, components[i].OutputByName("out").PipeTo(components[i+1].InputByName("in")))
 	}
 
@@ -45,8 +45,7 @@ func BenchmarkMeshRunPipeline(b *testing.B) {
 	firstInput := fm.ComponentByName("c0").InputByName("in")
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		if err := firstInput.PutSignals(signal.New(0)); err != nil {
 			b.Fatal(err)
 		}
@@ -89,8 +88,7 @@ func BenchmarkMeshRunFanOut(b *testing.B) {
 	producerInput := producer.InputByName("in")
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		if err := producerInput.PutSignals(signal.New(42)); err != nil {
 			b.Fatal(err)
 		}
@@ -104,7 +102,7 @@ func BenchmarkMeshRunFanOut(b *testing.B) {
 // and pipes (mesh manipulation path).
 func BenchmarkMeshConstruction(b *testing.B) {
 	b.ReportAllocs()
-	for range b.N {
+	for b.Loop() {
 		buildPipelineMesh(b, 10)
 	}
 }
