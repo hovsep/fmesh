@@ -82,7 +82,7 @@ This is how `BenchmarkGroupBuild` exposes that building a group via repeated `Wi
 O(n²) (each `With` allocates a fresh slice), and how `BenchmarkMeshRunWide` exercises the
 run loop's one-goroutine-per-component-per-cycle cost at scale.
 
-Two mesh-scale gotchas:
+Mesh-scale gotchas:
 
 - **Wide, not deep.** A linear pipeline of N components needs N cycles; N > `CyclesLimit`
   (default 1000) or wall time > `TimeLimit` (default 5s) stops the mesh early. Scale
@@ -90,6 +90,14 @@ Two mesh-scale gotchas:
 - **Shallow copy is payload-size independent.** `Signal` CoW copies the interface header,
   not the pointed-to payload. `BenchmarkGroupPayloadSize` asserts this by keeping `ns/op`
   flat as payload grows — a tripwire for an accidental deep copy.
+- **Fan-in is quadratic.** Pipe forwarding appends to the destination port one signal at a
+  time, and each append copies the destination's whole signal group (`port.putSignals` →
+  `signal.Group.With`) — so N outputs converging on one input port cost O(N²) in the drain.
+  `BenchmarkMeshFanIn` sweeps this curve; it flattens to linear only if forwarding ever
+  batches appends. See "Scaling characteristics" in `runtime.md` for the practical limits.
+- **Long benchmarks accumulate runtime history.** `RuntimeInfo.Cycles` retains every cycle's
+  activation results for the whole `Run` (~100 B × components × cycles), so `B/op` in
+  sustained-cycle benchmarks includes history growth, not just the signal path.
 
 ## When to add one
 

@@ -71,6 +71,62 @@ func BenchmarkMeshRunWide(b *testing.B) {
 	}
 }
 
+// buildFanInMesh builds componentsCount source components whose outputs all pipe into a
+// single collector input. Draining cycle 1 forwards one signal per source into the same
+// destination port, and each append copies the collector's whole signal group
+// (port.putSignals → signal.Group.With), so the drain is O(N²) in the number of sources.
+func buildFanInMesh(b *testing.B, componentsCount int) *FMesh {
+	b.Helper()
+
+	fm, err := New("bench-fan-in")
+	require.NoError(b, err)
+
+	collector, err := component.New("collector",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(*component.Component) error {
+			// Consume silently: the measured cost is the fan-in drain, not the collector.
+			return nil
+		}))
+	require.NoError(b, err)
+
+	sources := make([]*component.Component, componentsCount)
+	for i := range componentsCount {
+		c, err := component.New("c"+strconv.Itoa(i),
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(this *component.Component) error {
+				num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+				return this.OutputByName("out").PutSignals(signal.New(num + 1))
+			}))
+		require.NoError(b, err)
+		require.NoError(b, c.OutputByName("out").PipeTo(collector.InputByName("in")))
+		sources[i] = c
+	}
+	require.NoError(b, fm.AddComponents(sources...))
+	require.NoError(b, fm.AddComponents(collector))
+
+	return fm
+}
+
+// BenchmarkMeshFanIn measures full mesh execution when N sources all pipe into one
+// collector input — the fan-in topology. Sweeping N is the tripwire for the drain's
+// per-signal-append group copying: today the curve is quadratic; if pipe forwarding
+// ever batches appends into the destination port, it flattens to linear.
+func BenchmarkMeshFanIn(b *testing.B) {
+	for _, n := range benchSizes {
+		b.Run(strconv.Itoa(n), func(b *testing.B) {
+			fm := buildFanInMesh(b, n)
+			b.ReportAllocs()
+			for b.Loop() {
+				seedWideMesh(b, fm, n)
+				if _, err := fm.Run(); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 // BenchmarkMeshConstructionScale measures building a linear mesh of N components and
 // pipes. Sweeping N should show construction staying linear.
 func BenchmarkMeshConstructionScale(b *testing.B) {
