@@ -31,6 +31,7 @@ F-Mesh follows semantic versioning. See [releases page](https://github.com/hovse
 | Inspecting a run | [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run) |
 | Hooks | [501. Hooks](https://github.com/hovsep/fmesh/wiki/501.-Hooks) |
 | Configuration & tips | [601. Tips & tricks](https://github.com/hovsep/fmesh/wiki/601.-Tips-&-tricks) |
+| Patterns & recipes | [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes) |
 | Export / visualization | [701. Export](https://github.com/hovsep/fmesh/wiki/701.-Export) |
 
 # API reference (user-facing packages)
@@ -45,4 +46,18 @@ The `cycle` package surfaces in the run-time report — see [402. Inspecting a r
 
 # Examples
 
-[fmesh-examples](https://github.com/hovsep/fmesh-examples) — including [nested meshes](https://github.com/hovsep/fmesh-examples/tree/main/nesting), pipelines, filters, and more.
+[fmesh-examples](https://github.com/hovsep/fmesh-examples) — runnable programs, from single-file demos to full applications. Highlights:
+
+- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/pipeline) — text-processing pipeline with a generic stage-chaining builder
+- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter) — label-based content routing
+- [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/fibonacci) — feedback-loop generator via loopback pipes
+- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/electric_circuit) — stateful two-component feedback loop with natural termination
+- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/load_balancer) — round-robin dispatch/collect with indexed ports
+- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/async_input) — driving a mesh from live external input (HTTP crawler)
+- [nesting](https://github.com/hovsep/fmesh-examples/tree/main/nesting) — a mesh running inside a component
+- [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/can_bus) — broadcast bus topology; the advanced variant models a full CAN protocol stack
+- [simulation](https://github.com/hovsep/fmesh-examples/tree/main/simulation) — interactive REPL-driven step simulation harness
+- [life](https://github.com/hovsep/fmesh-examples/tree/main/life) — large tick-driven physiological simulation with nested meshes and a live TUI
+- [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphviz) — static and per-cycle graph export
+
+The techniques these examples demonstrate are cataloged in [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes).
