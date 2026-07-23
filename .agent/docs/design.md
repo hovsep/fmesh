@@ -1,17 +1,7 @@
 # Design
 
-## Architecture
-
-| Concept | Type | Package |
-|---|---|---|
-| Data packet | `*Signal` | `signal` |
-| Ordered signal collection | `*signal.Group` | `signal` |
-| String metadata | `*meta.Labels` | `meta` |
-| Numeric metadata | `*meta.Scalars` | `meta` |
-| Component | `*component.Component` | `component` |
-| Data endpoint | `*port.Port` | `port` |
-| Connection | pipe via `PipeTo` (output→input only) | `port` |
-| Execution tick | `*cycle.Cycle` | `cycle` |
+Architecture overview (the concept → type → package table and the execution loop) lives in
+`CLAUDE.md`; this doc covers the invariants and per-package rules behind it.
 
 ## Invariants
 
@@ -63,6 +53,11 @@ Comments must add information beyond the signature. Omit a comment entirely rath
 - Exported types and functions (required by Go doc convention)
 - Non-obvious invariants, edge cases, or design constraints
 - Anything that would surprise a reader unfamiliar with the decision
+
+**Style:**
+- Type and package-level comments state **what the type is**, not how its methods work — method names go stale
+- No usage guidance ("Use X to do Y") or examples in type definition comments; those belong in method godocs or external docs
+- Method comments: one line where possible
 
 ## Dead code policy
 

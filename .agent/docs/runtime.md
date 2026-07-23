@@ -12,12 +12,50 @@ How a mesh actually runs. Source: `fmesh.go` (`Run`, `runCycle`, `drainComponent
 3. Loop: `runCycle` → `mustStop` → `drainComponents`. Note the order — stop conditions are checked **before** draining, so the final cycle's outputs are not flushed.
 4. `afterRun` hooks fire in a defer; an afterRun hook error is only surfaced when the run itself did not already fail.
 
-`Run` returns `(*RuntimeInfo, error)`. `RuntimeInfo.Cycles` holds every executed cycle with all activation results — the primary observability surface. Note this history is retained for the whole run and grows without bound — see "Scaling characteristics" below.
+`Run` returns `(*RuntimeInfo, error)`. `RuntimeInfo.Cycles` holds every executed cycle — the
+primary observability surface. Note this history is retained for the whole run and grows
+without bound by default — see "Scaling characteristics" below. Retention is configurable:
+`config.CyclesHistoryLimit` (0 = unlimited, the default) keeps only a sliding window of the
+most recent cycles; this is opt-in and backward-compatible with the default. The cap is
+enforced by the container itself (`cycle.Group.SetLenLimit`, applied in `newRuntimeInfo`):
+`Add` evicts the oldest cycles beyond the limit, so the run loop just adds cycles and cannot
+bypass retention. Cycle *numbers* keep counting regardless of eviction (numbering derives
+from the last cycle, not the group length).
+
+### Retention policies other than "last N" — use hooks
+
+The built-in limit is a flight recorder: it always keeps the *most recent* cycles. Any other
+policy (first N, every k-th, errors-only, head+tail) is user code via a mesh-level
+`AfterCycle` hook, which receives every cycle as it completes — combine it with
+`CyclesHistoryLimit(1)` to keep the engine's own memory minimal. Keeping the first N cycles:
+
+```go
+var startup []*cycle.Cycle
+fm.SetupHooks(func(h *fmesh.Hooks) {
+    h.AfterCycle(func(ctx *fmesh.CycleContext) error {
+        if ctx.Cycle.Number() <= N {
+            startup = append(startup, ctx.Cycle)
+        }
+        return nil
+    })
+})
+```
+
+The hook runs synchronously in the run loop — keep it cheap, or hand the cycle to a buffered
+channel drained by your own goroutine (same pattern for streaming history to disk or an
+external store).
 
 ## One cycle (`runCycle`)
 
 - Every component gets `MaybeActivate()` called in **its own goroutine**; the cycle waits on a `WaitGroup`. There is no per-cycle ordering between components.
 - `MaybeActivate` returns `ActivationCodeNoInput` without running `f` when **no input port has signals**. A single signal on any one input makes the component "ready" — the activation function must handle partial inputs itself (or return `ErrWaitingForInputs*`).
+- A cycle's activation results are recorded only for components that were ready (had at
+  least one input signal that cycle) — `ActivationCodeNoInput` results are never added to
+  `Cycle.ActivationResults()`. A missing `ByName(name)` entry means "component had no input
+  that cycle"; consumers of `RuntimeInfo` (including custom hooks) must treat a nil result
+  the same as not-activated. `WaitingForInputs*`, errors, panics, and `HookFailed` results
+  are always recorded. This keeps runtime info free of noise in sparse meshes (pipelines,
+  rings) where most components sit idle most cycles.
 - The cycle is always appended to `RuntimeInfo.Cycles`, even when it errored.
 - An empty mesh (`Run` with zero components) is a cycle error (`errNoComponents`).
 
@@ -76,10 +114,14 @@ absolute numbers are machine-specific; the complexity classes are the durable pa
   around N ≈ 10⁵ (tens of seconds spent in one drain). Guarded by `BenchmarkMeshFanIn`.
 - **Long-running meshes are memory-bound, not time-bound.** Per-cycle cost stays flat as
   cycle count grows (~10³–10⁴ cycles/s depending on width), but `RuntimeInfo.Cycles`
-  retains an `ActivationResult` for every component in every cycle (~100 B × components ×
-  cycles) and nothing is freed during `Run` — even though the run loop itself only reads
-  `Cycles.Last()`. 100 components × 10⁵ cycles already holds ~1 GiB. Rule of thumb: keep
-  components × cycles per `Run` under ~10⁸ on a 16 GiB machine.
+  retains an `ActivationResult` for every component that had input in every cycle (~100 B ×
+  components × cycles — `NoInput` results are never recorded, see "One cycle" above, which
+  already trims sparse meshes) and, by default, nothing is freed during `Run` — even though
+  the run loop itself only reads `Cycles.Last()`. 100 components × 10⁵ cycles already holds
+  ~1 GiB in a dense mesh. Rule of thumb: keep components × cycles per `Run` under ~10⁸ on a
+  16 GiB machine, or bound memory explicitly with `config.CyclesHistoryLimit`, which caps
+  `RuntimeInfo.Cycles` to a sliding window of the most recent cycles (older cycles are
+  evicted, GC-eligible), fixing the long-run memory bound.
 
 ## Component state
 

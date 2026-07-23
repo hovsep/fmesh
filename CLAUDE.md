@@ -7,15 +7,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo already carries detailed agent guidance. Read it before making changes — do not
 duplicate or contradict it here:
 
-- `AGENTS.md` — top-level agent guide (layout, priorities, git rules)
-- `.agent/docs/design.md` — architecture, invariants, per-package rules
+- `.agent/docs/design.md` — invariants, per-package rules, comment/dead-code policy
 - `.agent/docs/runtime.md` — run loop, activation lifecycle, stop conditions, component state
 - `.agent/docs/hooks.md` — hook levels (mesh/component/port), semantics, plugins
 - `.agent/docs/naming.md` — `With`/`Set`/`Add` conventions, CoW vs mutating
 - `.agent/docs/testing.md` — test style and required coverage
 - `.agent/docs/benchmarking.md` — benchmark best-practices, size sweeps, fuzzing, benchstat CI
 - `.agent/docs/workflow.md` — safe editing/rename practices
-- `.agent/plans/` — historical implementation plans (reference only)
+- `docs/wiki/` — user-facing wiki source. Synced (overwrite) to the GitHub wiki on every push
+  to `main` by `.github/workflows/wiki.yml` — edit pages here, never in the wiki UI.
 
 ## Commands
 
@@ -34,14 +34,18 @@ Single test: `go test ./signal/ -run TestSignal_WithLabel -v`
 Single package: `go test ./component/...`
 Integration suites live in `integration_tests/<topic>/` and run as normal `go test`.
 
+Before starting, run `make test` to confirm the baseline is green.
 Verify before finishing: `make test && make lint && make fmt`. Key linters enforced:
 `errcheck`, `govet` (shadow), `prealloc`, `dupl`, `gocyclo` (min-complexity 15), `testifylint`,
 `gosec`. Config: `.golangci.yml`. Go 1.26.
 
 ## Hard rules
 
-- **Never `git commit`/`git push`, amend, or rewrite history.**
-- **Public API changes require explicit user approval.** Adapting internal callers does not.
+- **Never `git commit`/`git push`, amend, or rewrite history.** Committing and pushing is
+  always the user's job — leave changes in the working tree and don't worry about them.
+- **API compatibility is not a concern.** F-Mesh is not used in production; any public API may
+  be freely changed or broken, until this doc says otherwise. (No deprecation shims or
+  backward-compat layers needed.)
 - Ask before relaxing a constraint or introducing a new pattern/helper/abstraction.
 
 ## Architecture in one pass
