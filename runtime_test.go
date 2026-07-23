@@ -281,4 +281,130 @@ func Test_MultipleRun(t *testing.T) {
 		assert.GreaterOrEqual(t, duration2, int64(50*time.Millisecond))
 		assert.Less(t, duration2, int64(100*time.Millisecond), "Run 2 duration should not be accumulated from Run 1")
 	})
+
+	t.Run("cycles history limit trims retained cycles to a sliding window", func(t *testing.T) {
+		newRepeaterMesh := func(opts ...Option) *FMesh {
+			fm := mustNewFMesh("test fm", opts...)
+			require.NoError(t, fm.AddComponents(
+				mustNewComponent("repeater",
+					component.WithInputs("in"),
+					component.WithOutputs("out"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+						if count > 0 {
+							return this.OutputByName("out").PutSignals(signal.New(count - 1))
+						}
+						return nil
+					})),
+			))
+			require.NoError(t, fm.ComponentByName("repeater").OutputByName("out").
+				PipeTo(fm.ComponentByName("repeater").InputByName("in")))
+			return fm
+		}
+
+		t.Run("limit smaller than run length", func(t *testing.T) {
+			fm := newRepeaterMesh(WithCyclesHistoryLimit(3))
+
+			// Observe retention during the run, not only in the returned result:
+			// the retained history must never exceed the limit between cycles.
+			var maxObservedLen int
+			var observedCycles int
+			fm.SetupHooks(func(h *Hooks) {
+				h.AfterCycle(func(ctx *CycleContext) error {
+					observedCycles++
+					if l := ctx.FMesh.runtimeInfo.Cycles.Len(); l > maxObservedLen {
+						maxObservedLen = l
+					}
+					return nil
+				})
+			})
+
+			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(5)))
+			runResult, err := fm.Run()
+			require.NoError(t, err)
+
+			// 5 -> 4 -> 3 -> 2 -> 1 -> 0 (6 activated cycles) + 1 empty cycle = 7 total cycles (M = 7)
+			const totalCycles = 7
+			assert.Equal(t, 3, runResult.Cycles.Len())
+			assert.Equal(t, totalCycles, runResult.Cycles.Last().Number())
+			assert.Equal(t, totalCycles-3+1, runResult.Cycles.First().Number())
+
+			// The mesh executed more cycles than it retained, and retention never exceeded the limit mid-run.
+			assert.Equal(t, totalCycles, observedCycles)
+			assert.LessOrEqual(t, maxObservedLen, 3)
+		})
+
+		t.Run("limit larger than run length retains full history", func(t *testing.T) {
+			fm := newRepeaterMesh(WithCyclesHistoryLimit(100))
+			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(2)))
+			runResult, err := fm.Run()
+			require.NoError(t, err)
+
+			assert.Equal(t, 4, runResult.Cycles.Len())
+			assert.Equal(t, 1, runResult.Cycles.First().Number())
+			assert.Equal(t, 4, runResult.Cycles.Last().Number())
+		})
+	})
+
+	t.Run("NoInput activation results are never recorded", func(t *testing.T) {
+		newMeshWithIdleComponent := func(opts ...Option) *FMesh {
+			fm := mustNewFMesh("test fm", opts...)
+			require.NoError(t, fm.AddComponents(
+				mustNewComponent("repeater",
+					component.WithInputs("in"),
+					component.WithOutputs("out"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+						if count > 0 {
+							return this.OutputByName("out").PutSignals(signal.New(count - 1))
+						}
+						return nil
+					})),
+				// idle never receives any input, so it always reports ActivationCodeNoInput
+				mustNewComponent("idle",
+					component.WithInputs("in"),
+					component.WithOutputs("out"),
+					component.WithActivationFunc(func(this *component.Component) error {
+						return nil
+					})),
+			))
+			require.NoError(t, fm.ComponentByName("repeater").OutputByName("out").
+				PipeTo(fm.ComponentByName("repeater").InputByName("in")))
+			return fm
+		}
+
+		t.Run("idle component's results never appear, mesh still drains and stops correctly", func(t *testing.T) {
+			fm := newMeshWithIdleComponent()
+			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(2)))
+			runResult, err := fm.Run()
+			require.NoError(t, err)
+
+			// 2 -> 1 -> 0 (3 activated cycles) + 1 empty cycle = 4 total cycles
+			assert.Equal(t, 4, runResult.Cycles.Len())
+
+			for _, c := range runResult.Cycles.All() {
+				assert.Nil(t, c.ActivationResults().ByName("idle"), "cycle #%d", c.Number())
+
+				repeaterResult := c.ActivationResults().ByName("repeater")
+				if repeaterResult == nil {
+					// repeater itself had no input in the final cycle: its NoInput result is not recorded either.
+					continue
+				}
+				assert.True(t, repeaterResult.Activated())
+				assert.NotEqual(t, component.ActivationCodeNoInput, repeaterResult.Code())
+			}
+		})
+
+		t.Run("combined with a cycles history limit", func(t *testing.T) {
+			fm := newMeshWithIdleComponent(WithCyclesHistoryLimit(2))
+			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(5)))
+			runResult, err := fm.Run()
+			require.NoError(t, err)
+
+			assert.Equal(t, 2, runResult.Cycles.Len())
+			for _, c := range runResult.Cycles.All() {
+				assert.Nil(t, c.ActivationResults().ByName("idle"), "cycle #%d", c.Number())
+			}
+		})
+	})
 }

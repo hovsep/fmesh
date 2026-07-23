@@ -35,7 +35,6 @@ func New(name string, opts ...Option) (*FMesh, error) {
 		labels:      meta.NewLabels(),
 		scalars:     meta.NewScalars(),
 		components:  component.NewCollection(),
-		runtimeInfo: newRuntimeInfo(),
 		logger:      newDefaultLogger(name),
 		config:      newDefaultConfig(),
 		hooks:       newHooks(),
@@ -45,6 +44,9 @@ func New(name string, opts ...Option) (*FMesh, error) {
 			return nil, fmt.Errorf("fmesh %q option failed: %w", name, err)
 		}
 	}
+	// Built after the options so the runtime info picks up the configured
+	// history limit (Run rebuilds it the same way).
+	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
 	return fm, nil
 }
 
@@ -195,7 +197,11 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 // Returns any error that occurred.
 // The cycle is always added to runtimeInfo even if an error occurred.
 func (fm *FMesh) runCycle() error {
-	newCycle := cycle.New().SetNumber(fm.runtimeInfo.Cycles.Len() + 1)
+	nextNumber := 1
+	if lastCycle := fm.runtimeInfo.Cycles.Last(); lastCycle != nil {
+		nextNumber = lastCycle.Number() + 1
+	}
+	newCycle := cycle.New().SetNumber(nextNumber)
 
 	if err := fm.hooks.beforeCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("beforeCycle hook failed: %w", err))
@@ -217,7 +223,16 @@ func (fm *FMesh) runCycle() error {
 		wg.Add(1)
 		go func(comp *component.Component, cyc *cycle.Cycle) {
 			defer wg.Done()
-			cyc.AddActivationResults(comp.MaybeActivate())
+			ar := comp.MaybeActivate()
+			// Components with no input produce pure noise in runtime info (in sparse
+			// meshes it's most of the history), so their result is never recorded. A
+			// missing result means "had no input"; the run loop treats absent results
+			// as not-activated. Only NoInput is skipped here — WaitingForInputs*,
+			// errors, panics, and HookFailed results are still recorded.
+			if ar.Code() == component.ActivationCodeNoInput {
+				return
+			}
+			cyc.AddActivationResults(ar)
 		}(c, newCycle)
 		return nil
 	})
@@ -256,7 +271,7 @@ func (fm *FMesh) drainComponents() error {
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 
-		if !activationResult.Activated() {
+		if activationResult == nil || !activationResult.Activated() {
 			// Component did not activate, so it did not create new output signals, hence nothing to drain
 			continue
 		}
@@ -280,7 +295,7 @@ func (fm *FMesh) clearInputs(components []*component.Component) error {
 	for _, c := range components {
 		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 
-		if !activationResult.Activated() {
+		if activationResult == nil || !activationResult.Activated() {
 			// Component did not activate hence its inputs must be clear
 			continue
 		}
@@ -306,7 +321,7 @@ func (fm *FMesh) cleanUpPreviousRun() error {
 	}
 
 	// Init runtime info
-	fm.runtimeInfo = newRuntimeInfo()
+	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
 	fm.runtimeInfo.MarkStarted()
 	return nil
 }
