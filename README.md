@@ -184,6 +184,7 @@ F-Mesh excels at:
 
 - **[Wiki](https://github.com/hovsep/fmesh/wiki)** - Full documentation (source lives in [`docs/wiki`](docs/wiki) — edit via PR, it is auto-synced to the wiki)
 - **[Examples Repository](https://github.com/hovsep/fmesh-examples)** - Working examples and patterns
+- **[Generated Go API](https://hovsep.github.io/fmesh/)** - Searchable, source-linked API reference
 - **[API Reference](https://pkg.go.dev/github.com/hovsep/fmesh)** - Complete API docs
 - **[Flow-Based Programming](https://jpaulm.github.io/fbp/)** - Learn about FBP (by J. Paul Morrison)
 ---
