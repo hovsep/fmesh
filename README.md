@@ -122,7 +122,7 @@ func run() error {
 ### **Component-Based Architecture**
 Build complex workflows from simple, reusable components. Each component is independent and testable.
 
-### **Hooks System** _(New in v1.4.0)_
+### **Hooks System**
 Extend behavior at any execution point - mesh lifecycle, cycles, component activations, and port operations:
 
 ```go
@@ -138,14 +138,17 @@ fm.SetupHooks(func(h *fmesh.Hooks) {
 })
 ```
 
-### **Labels & Filtering**
-Tag signals and components with labels, then filter and process them with powerful collection APIs.
+### **Runtime Observability**
+`Run()` returns a `RuntimeInfo` report with per-cycle activation results and timing — history retention is configurable for long runs.
+
+### **Metadata & Filtering**
+Tag signals, components, and ports with labels (string) and scalars (numeric), then filter, route, and aggregate them with consistent collection APIs.
 
 ### **Discrete Time Model**
 Components activate in cycles (artificial "time"), allowing multiple components to process simultaneously - like lighting multiple lamps at once.
 
-### **Chainable API**
-Fluent interface for building meshes with readable, declarative code.
+### **Simple, Predictable API**
+Fluent, consistent interfaces with direct error returns — no hidden error state, no surprises.
 
 ### **Concurrency Out of the Box**
 All components in a single activation cycle run concurrently - no need to manage goroutines or other concurrency primitives yourself.
@@ -156,11 +159,11 @@ All components in a single activation cycle run concurrently - no need to manage
 
 | Concept | Description |
 |---------|-------------|
-| **[Component](https://github.com/hovsep/fmesh/wiki/5.-Component)** | The main building block - has inputs, outputs, and an activation function |
-| **[Port](https://github.com/hovsep/fmesh/wiki/3.-Ports)** | Entry/exit points on components. Unlimited inputs and outputs per component |
-| **[Pipe](https://github.com/hovsep/fmesh/wiki/4.-Pipes)** | Connects an output port to an input port to transfer data |
-| **[Signal](https://github.com/hovsep/fmesh/wiki/2.-Signals)** | Data packets flowing through pipes. Type-agnostic with optional labels |
-| **[Cycle](https://github.com/hovsep/fmesh/wiki/6.-Scheduling-rules)** | One "tick" of execution where all ready components activate |
+| **[Component](https://github.com/hovsep/fmesh/wiki/301.-Component)** | The main building block - has inputs, outputs, and an activation function |
+| **[Port](https://github.com/hovsep/fmesh/wiki/302.-Ports)** | Entry/exit points on components. Unlimited inputs and outputs per component |
+| **[Pipe](https://github.com/hovsep/fmesh/wiki/303.-Pipes)** | Connects an output port to an input port to transfer data |
+| **[Signal](https://github.com/hovsep/fmesh/wiki/201.-Signals)** | Data packets flowing through pipes. Type-agnostic with optional labels |
+| **[Cycle](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules)** | One "tick" of execution where all ready components activate |
 
 ---
 
@@ -179,7 +182,7 @@ F-Mesh excels at:
 
 ## Documentation
 
-- **[Wiki](https://github.com/hovsep/fmesh/wiki)** - Full documentation
+- **[Wiki](https://github.com/hovsep/fmesh/wiki)** - Full documentation (source lives in [`docs/wiki`](docs/wiki) — edit via PR, it is auto-synced to the wiki)
 - **[Examples Repository](https://github.com/hovsep/fmesh-examples)** - Working examples and patterns
 - **[API Reference](https://pkg.go.dev/github.com/hovsep/fmesh)** - Complete API docs
 - **[Flow-Based Programming](https://jpaulm.github.io/fbp/)** - Learn about FBP (by J. Paul Morrison)

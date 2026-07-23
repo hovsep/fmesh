@@ -90,11 +90,9 @@ Mesh-scale gotchas:
 - **Shallow copy is payload-size independent.** `Signal` CoW copies the interface header,
   not the pointed-to payload. `BenchmarkGroupPayloadSize` asserts this by keeping `ns/op`
   flat as payload grows — a tripwire for an accidental deep copy.
-- **Fan-in is quadratic.** Pipe forwarding appends to the destination port one signal at a
-  time, and each append copies the destination's whole signal group (`port.putSignals` →
-  `signal.Group.With`) — so N outputs converging on one input port cost O(N²) in the drain.
-  `BenchmarkMeshFanIn` sweeps this curve; it flattens to linear only if forwarding ever
-  batches appends. See "Scaling characteristics" in `runtime.md` for the practical limits.
+- **Fan-in is quadratic** — see "Scaling characteristics" in `runtime.md` for the mechanism
+  and practical limits. `BenchmarkMeshFanIn` sweeps this curve; it flattens to linear only
+  if forwarding ever batches appends.
 - **Long benchmarks accumulate runtime history.** `RuntimeInfo.Cycles` retains every cycle's
   activation results for the whole `Run` (~100 B × components × cycles), so `B/op` in
   sustained-cycle benchmarks includes history growth, not just the signal path.
