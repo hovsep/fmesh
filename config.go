@@ -23,6 +23,10 @@ type Config struct {
 	// can exceed the limit.
 	// 0 means no limit (use WithUnlimitedTime to express this explicitly).
 	TimeLimit time.Duration
+
+	// CyclesHistoryLimit defines the maximum number of past cycles retained in
+	// RuntimeInfo.Cycles; 0 means unlimited (the default).
+	CyclesHistoryLimit int
 }
 
 // newDefaultConfig returns a safe default configuration.
@@ -32,6 +36,7 @@ func newDefaultConfig() Config {
 		CyclesLimit:           1000,
 		Debug:                 false,
 		TimeLimit:             5 * time.Second,
+		CyclesHistoryLimit:    0,
 	}
 }
 
@@ -95,6 +100,27 @@ func WithUnlimitedTime() Option {
 func WithDebug(enabled bool) Option {
 	return func(fm *FMesh) error {
 		fm.config.Debug = enabled
+		return nil
+	}
+}
+
+// WithCyclesHistoryLimit is an FMesh option that sets the maximum number of past cycles
+// retained in RuntimeInfo.Cycles. limit must be greater than 0. Use WithUnlimitedCyclesHistory
+// to remove the limit.
+func WithCyclesHistoryLimit(limit int) Option {
+	return func(fm *FMesh) error {
+		if limit <= 0 {
+			return errors.New("cycles history limit must be greater than 0, use WithUnlimitedCyclesHistory() to remove the limit")
+		}
+		fm.config.CyclesHistoryLimit = limit
+		return nil
+	}
+}
+
+// WithUnlimitedCyclesHistory is an FMesh option that removes the cycles history retention limit.
+func WithUnlimitedCyclesHistory() Option {
+	return func(fm *FMesh) error {
+		fm.config.CyclesHistoryLimit = 0
 		return nil
 	}
 }

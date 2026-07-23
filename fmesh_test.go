@@ -289,6 +289,52 @@ func TestWithDebug(t *testing.T) {
 	}
 }
 
+func TestWithCyclesHistoryLimit(t *testing.T) {
+	tests := []struct {
+		name       string
+		limit      int
+		wantErr    bool
+		assertions func(t *testing.T, fm *FMesh)
+	}{
+		{
+			name:  "sets custom limit",
+			limit: 42,
+			assertions: func(t *testing.T, fm *FMesh) {
+				assert.Equal(t, 42, fm.config.CyclesHistoryLimit)
+			},
+		},
+		{
+			name:    "zero is rejected",
+			limit:   0,
+			wantErr: true,
+		},
+		{
+			name:    "negative is rejected",
+			limit:   -1,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm, err := New("fm1", WithCyclesHistoryLimit(tt.limit))
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, fm)
+				return
+			}
+			require.NoError(t, err)
+			if tt.assertions != nil {
+				tt.assertions(t, fm)
+			}
+		})
+	}
+}
+
+func TestWithUnlimitedCyclesHistory(t *testing.T) {
+	fm := mustNewFMesh("fm1", WithUnlimitedCyclesHistory())
+	assert.Equal(t, 0, fm.config.CyclesHistoryLimit)
+}
+
 func TestWithLogger(t *testing.T) {
 	customLogger := log.New(io.Discard, "test", log.LstdFlags)
 	tests := []struct {
@@ -524,13 +570,9 @@ func TestFMesh_Run(t *testing.T) {
 							SetActivationCode(component.ActivationCodeWaitingForInputsClear).
 							AddActivationError(component.ErrWaitingForInputs),
 					),
-				// Mesh stops naturally in the next cycle because nothing is activated
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-					),
+				// Mesh stops naturally in the next cycle because nothing is activated.
+				// c1's NoInput result is not recorded.
+				cycle.New(),
 			),
 			wantErr: false,
 		},
@@ -594,9 +636,9 @@ func TestFMesh_Run(t *testing.T) {
 				mustPutSignals(c1.InputByName("trigger"), signal.New("start"))
 			},
 			wantCycles: cycle.NewGroup().Add(
+				// c2's NoInput result is not recorded (c1 activated).
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
@@ -610,14 +652,12 @@ func TestFMesh_Run(t *testing.T) {
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
 					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitingForInputsKeep),
 				),
+				// c1's NoInput result is not recorded (c2 activated).
 				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
 					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
 				),
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
-					component.NewActivationResult("c2").SetActivated(false).SetActivationCode(component.ActivationCodeNoInput),
-				),
+				// Neither component activated: no results are recorded.
+				cycle.New(),
 			),
 			wantErr: false,
 		},
@@ -670,48 +710,27 @@ func TestFMesh_Run(t *testing.T) {
 				mustPutSignals(c3.InputByName("i1"), signal.New("start c3"))
 			},
 			wantCycles: cycle.NewGroup().Add(
+				// c2 and c4 had no input this cycle, so their NoInput results are not recorded.
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeReturnedError).
 							AddActivationError(errors.New("component returned an error: boom")),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 					),
+				// Only c2 activated; c1, c3, c4 had no input.
 				cycle.New().
 					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 					),
+				// Only c4 activated (and panicked); c1, c2, c3 had no input.
 				cycle.New().
 					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodePanicked).
@@ -782,103 +801,42 @@ func TestFMesh_Run(t *testing.T) {
 				mustPutSignals(c3.InputByName("i1"), signal.New("start c3"))
 			},
 			wantCycles: cycle.NewGroup().Add(
-				// c1 and c3 activated, c3 finishes with error
+				// c1 and c3 activated, c3 finishes with error; c2, c4, c5 had no input.
 				cycle.New().
 					AddActivationResults(
 						component.NewActivationResult("c1").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c3").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeReturnedError).
 							AddActivationError(errors.New("component returned an error: boom")),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c5").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 					),
-				// Only c2 is activated
+				// Only c2 is activated; c1, c3, c4, c5 had no input.
 				cycle.New().
 					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c2").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c5").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 					),
-				// Only c4 is activated and panicked
+				// Only c4 is activated and panicked; c1, c2, c3, c5 had no input.
 				cycle.New().
 					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c4").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodePanicked).
 							AddActivationError(errors.New("panicked with: no way")),
-						component.NewActivationResult("c5").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 					),
-				// Only c5 is activated (after c4 panicked in the previous cycle)
+				// Only c5 is activated (after c4 panicked in the previous cycle); the rest had no input.
 				cycle.New().
 					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
 						component.NewActivationResult("c5").
 							SetActivated(true).
 							SetActivationCode(component.ActivationCodeOK),
 					),
-				// Last (control) cycle, no component activated, so f-mesh stops naturally
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c2").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c3").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c4").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-						component.NewActivationResult("c5").
-							SetActivated(false).
-							SetActivationCode(component.ActivationCodeNoInput),
-					),
+				// Last (control) cycle: no component activated, so f-mesh stops naturally.
+				// No results are recorded.
+				cycle.New(),
 			),
 			wantErr: false,
 		},

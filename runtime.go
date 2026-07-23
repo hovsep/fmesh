@@ -13,10 +13,11 @@ type RuntimeInfo struct {
 	StoppedAt time.Time
 }
 
-// newRuntimeInfo constructor.
-func newRuntimeInfo() *RuntimeInfo {
+// newRuntimeInfo constructor. historyLimit caps how many past cycles are
+// retained in Cycles (0 means unlimited); the group itself enforces the cap.
+func newRuntimeInfo(historyLimit int) *RuntimeInfo {
 	return &RuntimeInfo{
-		Cycles: cycle.NewGroup(),
+		Cycles: cycle.NewGroup().SetLenLimit(historyLimit),
 	}
 }
 

@@ -76,6 +76,144 @@ func TestGroup_With(t *testing.T) {
 	}
 }
 
+func TestGroup_RemoveOldest(t *testing.T) {
+	newFourCycles := func() *Group {
+		return NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
+	}
+
+	tests := []struct {
+		name       string
+		group      *Group
+		count      int
+		assertions func(t *testing.T, group *Group)
+	}{
+		{
+			name:  "remove some",
+			group: newFourCycles(),
+			count: 2,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 2, group.Len())
+				assert.Equal(t, 3, group.First().Number())
+				assert.Equal(t, 4, group.Last().Number())
+			},
+		},
+		{
+			name:  "remove zero",
+			group: newFourCycles(),
+			count: 0,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 4, group.Len())
+				assert.Equal(t, 1, group.First().Number())
+			},
+		},
+		{
+			name:  "remove negative is a no-op",
+			group: newFourCycles(),
+			count: -1,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 4, group.Len())
+			},
+		},
+		{
+			name:  "remove all",
+			group: newFourCycles(),
+			count: 4,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Zero(t, group.Len())
+				assert.Nil(t, group.Last())
+			},
+		},
+		{
+			name:  "count greater than length is clamped",
+			group: newFourCycles(),
+			count: 100,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Zero(t, group.Len())
+			},
+		},
+		{
+			name:  "empty group",
+			group: NewGroup(),
+			count: 2,
+			assertions: func(t *testing.T, group *Group) {
+				assert.Zero(t, group.Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.group.RemoveOldest(tt.count)
+			assert.Same(t, tt.group, result, "RemoveOldest mutates and returns the receiver")
+			if tt.assertions != nil {
+				tt.assertions(t, result)
+			}
+		})
+	}
+}
+
+func TestGroup_SetLenLimit(t *testing.T) {
+	tests := []struct {
+		name       string
+		group      *Group
+		assertions func(t *testing.T, group *Group)
+	}{
+		{
+			name:  "no limit by default",
+			group: NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3)),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 3, group.Len())
+			},
+		},
+		{
+			name:  "add beyond the limit evicts the oldest",
+			group: NewGroup().SetLenLimit(2).Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3)),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 2, group.Len())
+				assert.Equal(t, 2, group.First().Number())
+				assert.Equal(t, 3, group.Last().Number())
+			},
+		},
+		{
+			name: "limit of 1 keeps only the most recent cycle",
+			group: NewGroup().SetLenLimit(1).
+				Add(New().SetNumber(1)).
+				Add(New().SetNumber(2)).
+				Add(New().SetNumber(3)),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 1, group.Len())
+				assert.Equal(t, 3, group.Last().Number())
+			},
+		},
+		{
+			name:  "setting a limit on an oversized group evicts immediately",
+			group: NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3)).SetLenLimit(2),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 2, group.Len())
+				assert.Equal(t, 2, group.First().Number())
+			},
+		},
+		{
+			name:  "zero limit means unlimited",
+			group: NewGroup().SetLenLimit(0).Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3)),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 3, group.Len())
+			},
+		},
+		{
+			name:  "negative limit means unlimited",
+			group: NewGroup().SetLenLimit(-5).Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3)),
+			assertions: func(t *testing.T, group *Group) {
+				assert.Equal(t, 3, group.Len())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.assertions(t, tt.group)
+		})
+	}
+}
+
 func TestGroup_Without(t *testing.T) {
 	c1 := New().SetNumber(1)
 	c2 := New().SetNumber(2)

@@ -195,7 +195,8 @@ func TestHooks_ContextAccess(t *testing.T) {
 	// Values are from the last cycle (completion cycle)
 	assert.Equal(t, "my-mesh", meshName)
 	assert.Equal(t, 2, cycleNumber)
-	assert.Equal(t, 1, activationCount)
+	// "test" had no input in the completion cycle, so its NoInput result is not recorded.
+	assert.Equal(t, 0, activationCount)
 }
 
 func TestHooks_FireOncePerCycle(t *testing.T) {
