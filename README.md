@@ -202,7 +202,7 @@ For real-time streaming or long-running processes, consider alternatives like tr
 
 ## Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md), then:
 
 1. Check existing [issues](https://github.com/hovsep/fmesh/issues) or create a new one
 2. Fork the repository
