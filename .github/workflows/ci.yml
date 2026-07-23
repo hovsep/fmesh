@@ -1,7 +1,11 @@
 name: Run tests and upload coverage
 
+# push on main only + pull_request: avoids double runs on PR branches while
+# still producing the required status check on fork PRs.
 on:
-  push
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   test:
