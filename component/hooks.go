@@ -1,7 +1,7 @@
 package component
 
 import (
-	"github.com/hovsep/fmesh/hook"
+	"github.com/hovsep/fmesh/internal/hook"
 )
 
 // ActivationContext provides context for activation hooks.

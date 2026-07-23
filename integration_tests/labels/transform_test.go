@@ -4,28 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hovsep/fmesh"
-	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/signal"
+	"github.com/hovsep/fmesh/internal/testutil"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/signal"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 // Test_LabelTransformation demonstrates real-world use cases for labels.Labels.Map().
 func Test_LabelTransformation(t *testing.T) {
@@ -51,7 +37,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("add namespace prefix to labels", func(t *testing.T) {
 		// Scenario: You want to namespace all labels to avoid conflicts
-		c := mustComponent("processor",
+		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
 		).SetLabels(map[string]string{
@@ -104,7 +90,7 @@ func Test_LabelTransformation(t *testing.T) {
 
 	t.Run("transform labels in mesh processing", func(t *testing.T) {
 		// Scenario: Process signals and normalize their labels during mesh execution
-		normalizer := mustComponent("normalizer",
+		normalizer := testutil.MustComponent("normalizer",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -129,7 +115,7 @@ func Test_LabelTransformation(t *testing.T) {
 			}),
 		)
 
-		fm := mustFMesh("label-transform-mesh")
+		fm := testutil.MustFMesh("label-transform-mesh")
 		require.NoError(t, fm.AddComponents(normalizer))
 
 		// Input signal with mixed-case labels

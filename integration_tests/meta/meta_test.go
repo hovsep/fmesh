@@ -3,45 +3,15 @@ package meta
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh"
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
-
-func mustInput(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewInput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustOutput(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewOutput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
 
 // Test_ScalarsOnSignals verifies that scalars can be attached to signals and
 // aggregate methods on signal.Group work as expected.
@@ -52,7 +22,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 
 		var collectedGroup *signal.Group
 
-		sensor := mustComponent("sensor",
+		sensor := testutil.MustComponent("sensor",
 			component.WithInputs("trigger"),
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -67,7 +37,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 			}),
 		)
 
-		monitor := mustComponent("monitor",
+		monitor := testutil.MustComponent("monitor",
 			component.WithInputs("in"),
 			component.WithActivationFunc(func(this *component.Component) error {
 				grp := this.Inputs().ByName("in").Signals()
@@ -76,7 +46,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 			}),
 		)
 
-		fm := mustFMesh("temp-mesh")
+		fm := testutil.MustFMesh("temp-mesh")
 		require.NoError(t, fm.AddComponents(sensor, monitor))
 		require.NoError(t, sensor.Outputs().ByName("out").PipeTo(monitor.Inputs().ByName("in")))
 
@@ -140,7 +110,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 // Test_ScalarsOnComponents verifies scalar metadata on components.
 func Test_ScalarsOnComponents(t *testing.T) {
 	t.Run("component scalars are independent of signal scalars", func(t *testing.T) {
-		c := mustComponent("proc",
+		c := testutil.MustComponent("proc",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
 			component.WithLabel("tier", "premium"),
@@ -186,14 +156,14 @@ func Test_ScalarGroupMetadata(t *testing.T) {
 // Test_PortScalarsWithOptions verifies the WithScalar port constructor option.
 func Test_PortScalarsWithOptions(t *testing.T) {
 	t.Run("port scalars set via constructor option", func(t *testing.T) {
-		p := mustInput("sensor-in", port.WithScalar("sample_rate", 100.0))
+		p := testutil.MustInputPort("sensor-in", port.WithScalar("sample_rate", 100.0))
 		v, err := p.Scalars().Value("sample_rate")
 		require.NoError(t, err)
 		assert.InDelta(t, 100.0, v, 1e-9)
 	})
 
 	t.Run("port WithScalar mutating method", func(t *testing.T) {
-		p := mustOutput("data-out").AddScalar("bandwidth", 1e6)
+		p := testutil.MustOutputPort("data-out").AddScalar("bandwidth", 1e6)
 		v, err := p.Scalars().Value("bandwidth")
 		require.NoError(t, err)
 		assert.InDelta(t, 1e6, v, 1e-9)

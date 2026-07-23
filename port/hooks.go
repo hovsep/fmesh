@@ -1,7 +1,7 @@
 package port
 
 import (
-	"github.com/hovsep/fmesh/hook"
+	"github.com/hovsep/fmesh/internal/hook"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -40,8 +40,8 @@ type Hooks struct {
 	onOutboundPipe *hook.Group[*OutboundPipeContext]
 }
 
-// NewHooks creates a new hooks registry.
-func NewHooks() *Hooks {
+// newHooks creates a new hooks registry.
+func newHooks() *Hooks {
 	return &Hooks{
 		onSignalsAdded: hook.NewGroup[*SignalsAddedContext](),
 		onClear:        hook.NewGroup[*ClearContext](),

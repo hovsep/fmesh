@@ -322,7 +322,7 @@ func (fm *FMesh) cleanUpPreviousRun() error {
 
 	// Init runtime info
 	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
-	fm.runtimeInfo.MarkStarted()
+	fm.runtimeInfo.markStarted()
 	return nil
 }
 
@@ -335,7 +335,7 @@ func (fm *FMesh) Run() (ri *RuntimeInfo, runErr error) {
 	ri = fm.runtimeInfo
 
 	defer func() {
-		fm.runtimeInfo.MarkStopped()
+		fm.runtimeInfo.markStopped()
 		if err := fm.hooks.afterRun.Trigger(fm); err != nil {
 			if runErr == nil {
 				runErr = fmt.Errorf("afterRun hook failed: %w", err)

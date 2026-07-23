@@ -3,12 +3,15 @@ package ports
 import (
 	"testing"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_WaitingForInputs(t *testing.T) {
@@ -22,7 +25,7 @@ func Test_WaitingForInputs(t *testing.T) {
 			name: "waiting for longer chain",
 			setupFM: func() *fmesh.FMesh {
 				getDoubler := func(name string) *component.Component {
-					return mustComponent(name,
+					return testutil.MustComponent(name,
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component just doubles the input"),
@@ -39,7 +42,7 @@ func Test_WaitingForInputs(t *testing.T) {
 				d4 := getDoubler("d4")
 				d5 := getDoubler("d5")
 
-				s := mustComponent("sum",
+				s := testutil.MustComponent("sum",
 					component.WithInputs("i1", "i2"),
 					component.WithOutputs("o1"),
 					component.WithDescription("This component just sums 2 inputs"),
@@ -76,7 +79,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           5,
 				}))

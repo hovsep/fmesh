@@ -18,6 +18,8 @@ import (
 
 var noOpActivationFunc = func(this *component.Component) error { return nil }
 
+// Local helpers: this in-package test cannot import internal/testutil
+// (testutil imports fmesh).
 func mustNewFMesh(name string, opts ...Option) *FMesh {
 	fm, err := New(name, opts...)
 	if err != nil {
@@ -29,20 +31,6 @@ func mustNewFMesh(name string, opts ...Option) *FMesh {
 func mustNewComponent(name string, opts ...component.Option) *component.Component {
 	c, err := component.New(name, opts...)
 	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustAddInputs(c *component.Component, names ...string) *component.Component {
-	if err := c.AddInputs(names...); err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustAddOutputs(c *component.Component, names ...string) *component.Component {
-	if err := c.AddOutputs(names...); err != nil {
 		panic(err)
 	}
 	return c
@@ -952,7 +940,7 @@ func TestFMesh_runCycle(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(fm)
 			}
-			fm.runtimeInfo.MarkStarted()
+			fm.runtimeInfo.markStarted()
 			cycleErr := fm.runCycle()
 			gotCycleResult := fm.runtimeInfo.Cycles.Last()
 			if tt.wantError {

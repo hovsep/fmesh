@@ -21,15 +21,15 @@ func newRuntimeInfo(historyLimit int) *RuntimeInfo {
 	}
 }
 
-// MarkStarted sets when fmesh is started running.
-func (r *RuntimeInfo) MarkStarted() {
+// markStarted sets when fmesh is started running.
+func (r *RuntimeInfo) markStarted() {
 	if r.StartedAt.IsZero() {
 		r.StartedAt = time.Now()
 	}
 }
 
-// MarkStopped sets when the fmesh is stopped running.
-func (r *RuntimeInfo) MarkStopped() {
+// markStopped sets when the fmesh is stopped running.
+func (r *RuntimeInfo) markStopped() {
 	if r.StoppedAt.IsZero() {
 		r.StoppedAt = time.Now()
 	}

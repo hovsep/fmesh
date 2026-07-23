@@ -4,11 +4,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
@@ -22,7 +25,7 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 
 	validationErr := errors.New("validation failed: negative value")
 
-	c := mustComponent("validator",
+	c := testutil.MustComponent("validator",
 		component.WithInputs("data"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			// Simulate validation logic
@@ -58,7 +61,7 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 	var outputIsValid bool
 	var outputValue int
 
-	c := mustComponent("calculator",
+	c := testutil.MustComponent("calculator",
 		component.WithInputs("x", "y"),
 		component.WithOutputs("result"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -102,7 +105,7 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 		OutputSignalCounts: make(map[string]int),
 	}
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithOutputs("success", "failure"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -163,7 +166,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 	// Practical example: Transform or enrich output data in hooks
 	var enrichedOutput []map[string]any
 
-	c := mustComponent("enricher",
+	c := testutil.MustComponent("enricher",
 		component.WithInputs("raw"),
 		component.WithOutputs("enriched"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -206,7 +209,7 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 	var recoveryAttempted bool
 	var fallbackValueProvided bool
 
-	c := mustComponent("resilient",
+	c := testutil.MustComponent("resilient",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -250,7 +253,7 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 	}
 	var trace ActivationTrace
 
-	c := mustComponent("aggregator",
+	c := testutil.MustComponent("aggregator",
 		component.WithInputs("numbers"),
 		component.WithOutputs("sum"),
 		component.WithActivationFunc(func(c *component.Component) error {

@@ -23,7 +23,7 @@ type Component struct {
 	state        State
 	parentMesh   ParentMesh
 	hooks        *Hooks
-	plugins      Plugins
+	plugins      plugins
 }
 
 // New creates a new component with the given name and options.

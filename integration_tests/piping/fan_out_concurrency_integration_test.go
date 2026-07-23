@@ -6,12 +6,15 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestFanOut_threeConsumers_seeSameSignalPointer asserts fan-out wiring: one
@@ -20,7 +23,7 @@ import (
 func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 	var ptrs sync.Map
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(this *component.Component) error {
@@ -28,7 +31,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 		}))
 
 	makeConsumer := func(name, slot string) *component.Component {
-		return mustComponent(name,
+		return testutil.MustComponent(name,
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -44,7 +47,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 	c2 := makeConsumer("consumer2", "2")
 	c3 := makeConsumer("consumer3", "3")
 
-	fm := mustFMesh("fan-out-same-pointer")
+	fm := testutil.MustFMesh("fan-out-same-pointer")
 	require.NoError(t, fm.AddComponents(producer, c1, c2, c3))
 	require.NoError(t, fm.Components().ByName("producer").OutputByName("o1").PipeTo(
 		fm.Components().ByName("consumer1").InputByName("i1"),
@@ -74,7 +77,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 
 	var ptrs sync.Map
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(this *component.Component) error {
@@ -82,7 +85,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 		}))
 
 	makeConsumer := func(name string, mode int) *component.Component {
-		return mustComponent(name,
+		return testutil.MustComponent(name,
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
 			component.WithActivationFunc(func(this *component.Component) error {

@@ -4,50 +4,20 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hovsep/fmesh"
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustInputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewInput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustOutputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewOutput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 func Test_PortCreationAndManipulation(t *testing.T) {
 	t.Run("mixed port creation with all features", func(t *testing.T) {
 		// Create a component using both simple and advanced port creation APIs
-		processor := mustComponent("data-processor",
+		processor := testutil.MustComponent("data-processor",
 			component.WithInputs("raw_data", "filter"),
 			component.WithOutputs("processed", "metrics"),
 			component.WithDescription("Demonstrates all port creation and manipulation features"),
@@ -79,14 +49,14 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		// Advanced API: attach ports with descriptions and labels
 		require.NoError(t, processor.AttachInputPorts(
-			mustInputPort("config", port.WithDescription("Configuration parameters")).
+			testutil.MustInputPort("config", port.WithDescription("Configuration parameters")).
 				AddLabel("required", "true").
 				AddLabel("type", "json"),
-			mustInputPort("metadata", port.WithDescription("Request metadata")).
+			testutil.MustInputPort("metadata", port.WithDescription("Request metadata")).
 				AddLabel("required", "false"),
 		))
 		require.NoError(t, processor.AttachOutputPorts(
-			mustOutputPort("errors", port.WithDescription("Error details if processing fails")).
+			testutil.MustOutputPort("errors", port.WithDescription("Error details if processing fails")).
 				AddLabel("severity", "high").
 				AddLabel("format", "structured"),
 		))
@@ -98,7 +68,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, processor.InputByName("metadata").PutSignals(signal.New("user123")))
 
 		// Create and run mesh
-		fm := mustFMesh("test-mesh")
+		fm := testutil.MustFMesh("test-mesh")
 		require.NoError(t, fm.AddComponents(processor))
 		_, err := fm.Run()
 		require.NoError(t, err)
@@ -156,7 +126,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 	t.Run("port label manipulation", func(t *testing.T) {
 		// Create a component and manipulate port labels
-		c := mustComponent("label-demo",
+		c := testutil.MustComponent("label-demo",
 			component.WithOutputs("output"),
 			component.WithActivationFunc(func(this *component.Component) error {
 				if !this.InputByName("input").HasSignals() {
@@ -184,7 +154,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
-			mustInputPort("input").
+			testutil.MustInputPort("input").
 				AddLabel("env", "dev").
 				AddLabel("version", "1.0").
 				AddLabel("owner", "team-a"),
@@ -192,7 +162,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		// Set up and run
 		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
-		fm := mustFMesh("label-mesh")
+		fm := testutil.MustFMesh("label-mesh")
 		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)
@@ -211,7 +181,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 	t.Run("incremental port addition", func(t *testing.T) {
 		// Demonstrate adding ports one by one
-		c := mustComponent("incremental",
+		c := testutil.MustComponent("incremental",
 			component.WithOutputs("result"),
 			component.WithActivationFunc(func(this *component.Component) error {
 				if !this.Inputs().AllHaveSignals() {
@@ -228,7 +198,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, c.AddInputs("a"))   // Add first input
 		require.NoError(t, c.AddInputs("b"))   // Add second input
 		require.NoError(t, c.AttachInputPorts( // Add with details
-			mustInputPort("c", port.WithDescription("Third input")),
+			testutil.MustInputPort("c", port.WithDescription("Third input")),
 		))
 
 		// Verify all ports exist and work
@@ -236,7 +206,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, c.InputByName("b").PutSignals(signal.New(2)))
 		require.NoError(t, c.InputByName("c").PutSignals(signal.New(3)))
 
-		fm := mustFMesh("incremental-mesh")
+		fm := testutil.MustFMesh("incremental-mesh")
 		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)
@@ -251,7 +221,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 	t.Run("port collection operations", func(t *testing.T) {
 		// Demonstrate port collection methods
-		c := mustComponent("collection-demo",
+		c := testutil.MustComponent("collection-demo",
 			component.WithInputs("i1", "i2", "i3"),
 			component.WithOutputs("summary"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -284,8 +254,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
-			mustInputPort("i4").AddLabel("priority", "high"),
-			mustInputPort("i5").AddLabel("priority", "low"),
+			testutil.MustInputPort("i4").AddLabel("priority", "high"),
+			testutil.MustInputPort("i5").AddLabel("priority", "low"),
 		))
 
 		// Put signals on some ports
@@ -293,7 +263,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, c.InputByName("i2").PutSignals(signal.New(2)))
 		require.NoError(t, c.InputByName("i4").PutSignals(signal.New(4)))
 
-		fm := mustFMesh("collection-mesh")
+		fm := testutil.MustFMesh("collection-mesh")
 		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run()
 		require.NoError(t, err)

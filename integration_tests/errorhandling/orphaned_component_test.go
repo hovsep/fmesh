@@ -3,10 +3,11 @@ package errorhandling
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_AllComponentsMustBeRegistered(t *testing.T) {

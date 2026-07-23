@@ -1,10 +1,11 @@
 # Hooks & plugins — extension points
 
-Source: `hooks.go`, `component/hooks.go`, `port/hooks.go`, `hook/hook_group.go`, `component/plugin.go`.
+Source: `hooks.go`, `component/hooks.go`, `port/hooks.go`, `internal/hook/hook_group.go`, `component/plugin.go`.
 
 ## The hook primitive
 
-`hook.Group[T]` (package `hook`) — the **one approved generic type** in the codebase. An ordered
+`hook.Group[T]` (package `internal/hook` — not part of the public API) — the **one approved
+generic type** in the codebase. An ordered
 slice of `func(T) error`; `Trigger(arg)` runs all in insertion order, **fail-fast** on first error.
 Registration is chainable and happens through `SetupHooks(func(*Hooks))` closures (or the
 `WithHooks` constructor option on components) — the `Hooks` structs' fields are unexported, so

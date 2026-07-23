@@ -8,12 +8,12 @@ type Plugin interface {
 	Init(*Component) error
 }
 
-// Plugins defines a container of component plugins.
-type Plugins map[string]Plugin
+// plugins defines a container of component plugins.
+type plugins map[string]Plugin
 
-// newPlugins is a constructor for Plugins.
-func newPlugins() Plugins {
-	return make(Plugins)
+// newPlugins is a constructor for plugins.
+func newPlugins() plugins {
+	return make(plugins)
 }
 
 // WithPlugins is a component constructor option that adds plugins.
