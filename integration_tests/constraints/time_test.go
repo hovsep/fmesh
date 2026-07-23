@@ -4,28 +4,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 func Test_TimeConstraint(t *testing.T) {
 	tests := []struct {
@@ -37,7 +24,7 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops by time constraint",
 			setupFM: func() *fmesh.FMesh {
-				ticker := mustComponent("ticker",
+				ticker := testutil.MustComponent("ticker",
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
 					component.WithDescription("simple clock ticking for 10 seconds"),
@@ -60,7 +47,7 @@ func Test_TimeConstraint(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
 					TimeLimit: 2 * time.Second,
 				}), fmesh.WithDescription("this mesh ticks every second for 10 seconds"))
@@ -83,7 +70,7 @@ func Test_TimeConstraint(t *testing.T) {
 		{
 			name: "mesh stops naturally",
 			setupFM: func() *fmesh.FMesh {
-				ticker := mustComponent("ticker",
+				ticker := testutil.MustComponent("ticker",
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
 					component.WithDescription("simple clock ticking for 3 seconds"),
@@ -106,7 +93,7 @@ func Test_TimeConstraint(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					Debug:     true,
 					TimeLimit: 0,
 				}), fmesh.WithDescription("this mesh ticks every second for 10 seconds"))

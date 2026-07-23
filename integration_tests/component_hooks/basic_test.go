@@ -5,33 +5,19 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hovsep/fmesh"
-	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/signal"
+	"github.com/hovsep/fmesh/internal/testutil"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/signal"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 func TestComponentHooks_AllTypes(t *testing.T) {
 	var executionLog []string
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -67,7 +53,7 @@ func TestComponentHooks_OnError(t *testing.T) {
 	var afterFired bool
 	testErr := errors.New("test error")
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return testErr
@@ -99,7 +85,7 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 	var panicCaught bool
 	var afterFired bool
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			panic("oh no!")
@@ -130,7 +116,7 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 	var waitingCaught bool
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("data", "config"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			// Wait for config input
@@ -158,7 +144,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 	var log []string
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return nil
@@ -191,7 +177,7 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 	var beforeFired bool
 
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return nil
@@ -215,7 +201,7 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 	var componentName string
 	var activationCode component.ActivationResultCode
 
-	c := mustComponent("test-component",
+	c := testutil.MustComponent("test-component",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -240,7 +226,7 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	var log hookLog
 
-	c1 := mustComponent("c1",
+	c1 := testutil.MustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -253,7 +239,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 		})
 	})
 
-	c2 := mustComponent("c2",
+	c2 := testutil.MustComponent("c2",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return nil
@@ -267,7 +253,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 
 	require.NoError(t, c1.OutputByName("out").PipeTo(c2.InputByName("in")))
 
-	fm := mustFMesh("test")
+	fm := testutil.MustFMesh("test")
 	require.NoError(t, fm.AddComponents(c1, c2))
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
 
@@ -284,7 +270,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	var log hookLog
 
 	// Create three components with hooks
-	c1 := mustComponent("c1",
+	c1 := testutil.MustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -305,7 +291,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		})
 	})
 
-	c2 := mustComponent("c2",
+	c2 := testutil.MustComponent("c2",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(c *component.Component) error {
@@ -326,7 +312,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 		})
 	})
 
-	c3 := mustComponent("c3",
+	c3 := testutil.MustComponent("c3",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return nil
@@ -350,7 +336,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	require.NoError(t, c1.OutputByName("out").PipeTo(c3.InputByName("in")))
 	require.NoError(t, c2.OutputByName("out").PipeTo(c3.InputByName("in")))
 
-	fm := mustFMesh("test")
+	fm := testutil.MustFMesh("test")
 	require.NoError(t, fm.AddComponents(c1, c2, c3))
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
 	require.NoError(t, c2.InputByName("in").PutSignals(signal.New(0)))
@@ -387,7 +373,7 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 	var log []string
 
 	// Multiple SetupHooks calls should accumulate hooks
-	c := mustComponent("processor",
+	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithActivationFunc(func(c *component.Component) error {
 			return nil
@@ -419,7 +405,7 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 func BenchmarkComponentHooks_Overhead(b *testing.B) {
 	// Measure overhead of hooks vs no hooks
 	b.Run("WithoutHooks", func(b *testing.B) {
-		c := mustComponent("processor",
+		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
 			component.WithActivationFunc(func(c *component.Component) error {
 				return nil
@@ -439,7 +425,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 	})
 
 	b.Run("WithHooks", func(b *testing.B) {
-		c := mustComponent("processor",
+		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
 			component.WithActivationFunc(func(c *component.Component) error {
 				return nil

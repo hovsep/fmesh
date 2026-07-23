@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/hovsep/fmesh/hook"
+	"github.com/hovsep/fmesh/internal/hook"
 )
 
 // WithActivationFunc is a component option that sets the activation function.

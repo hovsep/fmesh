@@ -45,7 +45,7 @@ func NewInput(name string, opts ...Option) (*Port, error) {
 		scalars:   meta.NewScalars(),
 		pipes:     NewGroup(),
 		signals:   signal.NewGroup(),
-		hooks:     NewHooks(),
+		hooks:     newHooks(),
 	}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -64,7 +64,7 @@ func NewOutput(name string, opts ...Option) (*Port, error) {
 		scalars:   meta.NewScalars(),
 		pipes:     NewGroup(),
 		signals:   signal.NewGroup(),
-		hooks:     NewHooks(),
+		hooks:     newHooks(),
 	}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {

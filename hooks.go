@@ -5,7 +5,7 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/hook"
+	"github.com/hovsep/fmesh/internal/hook"
 	"github.com/hovsep/fmesh/port"
 )
 

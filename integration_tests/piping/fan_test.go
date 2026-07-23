@@ -5,30 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 func Test_Fan(t *testing.T) {
 	tests := []struct {
@@ -40,28 +27,28 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-out (3 pipes from 1 source port)",
 			setupFM: func() *fmesh.FMesh {
-				producer := mustComponent("producer",
+				producer := testutil.MustComponent("producer",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(time.Now()))
 					}))
 
-				consumer1 := mustComponent("consumer1",
+				consumer1 := testutil.MustComponent("consumer1",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
-				consumer2 := mustComponent("consumer2",
+				consumer2 := testutil.MustComponent("consumer2",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
-				consumer3 := mustComponent("consumer3",
+				consumer3 := testutil.MustComponent("consumer3",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
@@ -75,7 +62,7 @@ func Test_Fan(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fan-out")
+				fm := testutil.MustFMesh("fan-out")
 				if err := fm.AddComponents(producer, consumer1, consumer2, consumer3); err != nil {
 					panic(err)
 				}
@@ -109,28 +96,28 @@ func Test_Fan(t *testing.T) {
 		{
 			name: "fan-in (3 pipes coming into 1 destination port)",
 			setupFM: func() *fmesh.FMesh {
-				producer1 := mustComponent("producer1",
+				producer1 := testutil.MustComponent("producer1",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
-				producer2 := mustComponent("producer2",
+				producer2 := testutil.MustComponent("producer2",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
-				producer3 := mustComponent("producer3",
+				producer3 := testutil.MustComponent("producer3",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
-				consumer := mustComponent("consumer",
+				consumer := testutil.MustComponent("consumer",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
 					component.WithActivationFunc(func(this *component.Component) error {
@@ -147,7 +134,7 @@ func Test_Fan(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("multiplexer")
+				fm := testutil.MustFMesh("multiplexer")
 				if err := fm.AddComponents(producer1, producer2, producer3, consumer); err != nil {
 					panic(err)
 				}

@@ -25,7 +25,7 @@ Architecture overview (the concept → type → package table and the execution 
 - **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
 - **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time.
 - **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitingForInputsKeep` are scheduler control-flow sentinels, not failures.
-- **`hook`** — generic `hook.Group[T]`, ordered, fail-fast `Trigger`. Three hook levels (mesh/component/port); see [hooks.md](hooks.md).
+- **`hook`** — lives at `internal/hook` (not public API). Generic `hook.Group[T]`, ordered, fail-fast `Trigger`. Three hook levels (mesh/component/port); see [hooks.md](hooks.md).
 - **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
 
 ## Metadata tiers on groups/collections

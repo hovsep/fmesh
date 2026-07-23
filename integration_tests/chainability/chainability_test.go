@@ -3,33 +3,20 @@ package chainability
 import (
 	"testing"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustInputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewInput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
 
 // TestChainability_CrossPackage verifies realistic cross-package chaining scenarios.
 func TestChainability_CrossPackage(t *testing.T) {
 	t.Run("full component setup", func(t *testing.T) {
-		c := mustComponent("processor",
+		c := testutil.MustComponent("processor",
 			component.WithInputs("in1", "in2"),
 			component.WithOutputs("out1", "out2"),
 			component.WithDescription("main processor"),
@@ -50,7 +37,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 	})
 
 	t.Run("port with signals and labels", func(t *testing.T) {
-		p := mustInputPort("data", port.WithDescription("data input")).
+		p := testutil.MustInputPort("data", port.WithDescription("data input")).
 			AddLabel("type", "data")
 		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
 		p.AddLabel("count", "2")
@@ -75,7 +62,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("component with label cleanup", func(t *testing.T) {
 		// Simulate component lifecycle: setup with debug labels, then clean them up
-		c := mustComponent("worker",
+		c := testutil.MustComponent("worker",
 			component.WithInputs("tasks"),
 			component.WithOutputs("results"),
 			component.WithDescription("background worker"),
@@ -97,7 +84,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("port with label reset workflow", func(t *testing.T) {
 		// Port initially configured with temporary setup labels, then cleared for production
-		p := mustInputPort("input").
+		p := testutil.MustInputPort("input").
 			AddLabels(map[string]string{
 				"setup": "true",
 				"test":  "mode",
@@ -144,7 +131,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("complex label lifecycle", func(t *testing.T) {
 		// Realistic scenario: component setup -> debug -> cleanup -> finalize
-		c := mustComponent("api-handler",
+		c := testutil.MustComponent("api-handler",
 			component.WithInputs("request"),
 			component.WithOutputs("response", "errors"),
 			component.WithDescription("HTTP API handler"),
@@ -183,7 +170,7 @@ func TestChainability_CrossPackage(t *testing.T) {
 			WithNoLabels().
 			WithLabels(map[string]string{"priority": "high", "source": "validated"})
 
-		p := mustInputPort("validated-input").
+		p := testutil.MustInputPort("validated-input").
 			AddLabel("type", "input")
 		require.NoError(t, p.PutSignals(s1, s2))
 		p.AddLabel("count", "2").

@@ -3,12 +3,13 @@ package errorhandling_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestErrorReturns_DuplicateComponent(t *testing.T) {

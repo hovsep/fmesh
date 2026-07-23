@@ -8,6 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Local helpers: this in-package test cannot import internal/testutil
+// (testutil imports port).
+
 // mustInput is a test helper that panics if NewInput returns an error.
 func mustInput(name string) *Port {
 	p, err := NewInput(name)

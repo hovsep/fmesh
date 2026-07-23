@@ -6,58 +6,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustInputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewInput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustOutputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewOutput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
-
-func mustPutSignals(p *port.Port, signals ...*signal.Signal) {
-	if err := p.PutSignals(signals...); err != nil {
-		panic(err)
-	}
-}
-
-func mustPipeTo(src *port.Port, dsts ...*port.Port) {
-	if err := src.PipeTo(dsts...); err != nil {
-		panic(err)
-	}
-}
 
 func Test_Math(t *testing.T) {
 	tests := []struct {
@@ -69,7 +28,7 @@ func Test_Math(t *testing.T) {
 		{
 			name: "add and multiply",
 			setupFM: func() *fmesh.FMesh {
-				c1 := mustComponent("c1",
+				c1 := testutil.MustComponent("c1",
 					component.WithInputs("num"),
 					component.WithOutputs("res"),
 					component.WithDescription("adds 2 to the input"),
@@ -79,7 +38,7 @@ func Test_Math(t *testing.T) {
 					}),
 				)
 
-				c2 := mustComponent("c2",
+				c2 := testutil.MustComponent("c2",
 					component.WithInputs("num"),
 					component.WithOutputs("res"),
 					component.WithDescription("multiplies by 3"),
@@ -92,7 +51,7 @@ func Test_Math(t *testing.T) {
 				if err := c1.OutputByName("res").PipeTo(c2.InputByName("num")); err != nil {
 					panic(err)
 				}
-				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
 				}))
@@ -121,7 +80,7 @@ func Test_Math(t *testing.T) {
 			name: "mixed port creation - simple and advanced",
 			setupFM: func() *fmesh.FMesh {
 				// Component with mixed port creation
-				processor := mustComponent("processor",
+				processor := testutil.MustComponent("processor",
 					component.WithInputs("raw_data", "metadata"),
 					component.WithOutputs("logs"),
 					component.WithDescription("processes data using mixed ports"),
@@ -150,7 +109,7 @@ func Test_Math(t *testing.T) {
 
 				// Add advanced ports
 				if err := processor.AttachInputPorts(
-					mustInputPort("config",
+					testutil.MustInputPort("config",
 						port.WithDescription("Configuration parameters"),
 						port.WithLabel("required", "true"),
 						port.WithLabel("type", "config"),
@@ -159,11 +118,11 @@ func Test_Math(t *testing.T) {
 					panic(err)
 				}
 				if err := processor.AttachOutputPorts(
-					mustOutputPort("result",
+					testutil.MustOutputPort("result",
 						port.WithDescription("Processed result"),
 						port.WithLabel("format", "json"),
 					),
-					mustOutputPort("error",
+					testutil.MustOutputPort("error",
 						port.WithDescription("Error details if any"),
 						port.WithLabel("status", "error"),
 					),
@@ -172,7 +131,7 @@ func Test_Math(t *testing.T) {
 				}
 
 				// Verifier component with simple ports
-				verifier := mustComponent("verifier",
+				verifier := testutil.MustComponent("verifier",
 					component.WithInputs("value", "log"),
 					component.WithOutputs("verified"),
 					component.WithActivationFunc(func(this *component.Component) error {
@@ -198,7 +157,7 @@ func Test_Math(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("mixed_ports_fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("mixed_ports_fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10,
 				}))
@@ -210,10 +169,10 @@ func Test_Math(t *testing.T) {
 			setInputs: func(fm *fmesh.FMesh) {
 				proc := fm.Components().ByName("processor")
 				// Send data to simple ports
-				mustPutSignals(proc.InputByName("raw_data"), signal.New(10))
-				mustPutSignals(proc.InputByName("metadata"), signal.New("test"))
+				testutil.MustPutSignals(proc.InputByName("raw_data"), signal.New(10))
+				testutil.MustPutSignals(proc.InputByName("metadata"), signal.New("test"))
 				// Send data to advanced port
-				mustPutSignals(proc.InputByName("config"), signal.New(5))
+				testutil.MustPutSignals(proc.InputByName("config"), signal.New(5))
 			},
 			assertions: func(t *testing.T, fm *fmesh.FMesh, cycles []*cycle.Cycle, err error) {
 				require.NoError(t, err)
@@ -257,12 +216,12 @@ func Test_Math(t *testing.T) {
 
 func Test_Readme(t *testing.T) {
 	t.Run("readme test", func(t *testing.T) {
-		fm := mustFMesh("hello world", fmesh.WithConfig(fmesh.Config{
+		fm := testutil.MustFMesh("hello world", fmesh.WithConfig(fmesh.Config{
 			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 			CyclesLimit:           10,
 		}))
 
-		concat := mustComponent("concat",
+		concat := testutil.MustComponent("concat",
 			component.WithInputs("i1", "i2"),
 			component.WithOutputs("res"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -272,7 +231,7 @@ func Test_Readme(t *testing.T) {
 			}),
 		)
 
-		caseC := mustComponent("case",
+		caseC := testutil.MustComponent("case",
 			component.WithInputs("i1"),
 			component.WithOutputs("res"),
 			component.WithActivationFunc(func(this *component.Component) error {
@@ -292,8 +251,8 @@ func Test_Readme(t *testing.T) {
 		}
 
 		// Init inputs
-		mustPutSignals(fm.Components().ByName("concat").InputByName("i1"), signal.New("hello "))
-		mustPutSignals(fm.Components().ByName("concat").InputByName("i2"), signal.New("world !"))
+		testutil.MustPutSignals(fm.Components().ByName("concat").InputByName("i1"), signal.New("hello "))
+		testutil.MustPutSignals(fm.Components().ByName("concat").InputByName("i2"), signal.New("world !"))
 
 		// Run the mesh
 		_, err := fm.Run()

@@ -4,34 +4,21 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/port"
-	"github.com/hovsep/fmesh/signal"
+	"github.com/hovsep/fmesh/internal/testutil"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hovsep/fmesh/port"
+	"github.com/hovsep/fmesh/signal"
 )
-
-func mustInputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewInput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustOutputPort(name string, opts ...port.Option) *port.Port {
-	p, err := port.NewOutput(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
 
 func TestPortHooks_OnSignalsAdded(t *testing.T) {
 	var hookFired bool
 	var portName string
 	var signalsAdded int
 
-	p := mustInputPort("data").
+	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				hookFired = true
@@ -53,7 +40,7 @@ func TestPortHooks_OnSignalsAdded_MultipleCalls(t *testing.T) {
 	var callCount int
 	var totalSignalsHistory []int
 
-	p := mustOutputPort("result").
+	p := testutil.MustOutputPort("result").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				callCount++
@@ -74,7 +61,7 @@ func TestPortHooks_OnClear(t *testing.T) {
 	var clearFired bool
 	var signalsCleared int
 
-	p := mustInputPort("data").
+	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnClear(func(ctx *port.ClearContext) error {
 				clearFired = true
@@ -95,7 +82,7 @@ func TestPortHooks_OnClear_EmptyPort(t *testing.T) {
 	var clearFired bool
 	var signalsCleared int
 
-	p := mustInputPort("data").
+	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnClear(func(ctx *port.ClearContext) error {
 				clearFired = true
@@ -115,7 +102,7 @@ func TestPortHooks_OnOutboundPipe(t *testing.T) {
 	var sourceName string
 	var destName string
 
-	outPort := mustOutputPort("out").
+	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundFired = true
@@ -125,7 +112,7 @@ func TestPortHooks_OnOutboundPipe(t *testing.T) {
 			})
 		})
 
-	inPort := mustInputPort("in")
+	inPort := testutil.MustInputPort("in")
 
 	require.NoError(t, outPort.PipeTo(inPort))
 
@@ -139,9 +126,9 @@ func TestPortHooks_OnInboundPipe(t *testing.T) {
 	var sourceName string
 	var destName string
 
-	outPort := mustOutputPort("out")
+	outPort := testutil.MustOutputPort("out")
 
-	inPort := mustInputPort("in").
+	inPort := testutil.MustInputPort("in").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
 				inboundFired = true
@@ -162,7 +149,7 @@ func TestPortHooks_OnOutboundAndInbound_BothFire(t *testing.T) {
 	var outboundFired bool
 	var inboundFired bool
 
-	outPort := mustOutputPort("out").
+	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundFired = true
@@ -170,7 +157,7 @@ func TestPortHooks_OnOutboundAndInbound_BothFire(t *testing.T) {
 			})
 		})
 
-	inPort := mustInputPort("in").
+	inPort := testutil.MustInputPort("in").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
 				inboundFired = true
@@ -188,7 +175,7 @@ func TestPortHooks_OnOutboundPipe_MultipleDest(t *testing.T) {
 	var outboundCount int
 	var destNames []string
 
-	outPort := mustOutputPort("out").
+	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				outboundCount++
@@ -197,9 +184,9 @@ func TestPortHooks_OnOutboundPipe_MultipleDest(t *testing.T) {
 			})
 		})
 
-	in1 := mustInputPort("in1")
-	in2 := mustInputPort("in2")
-	in3 := mustInputPort("in3")
+	in1 := testutil.MustInputPort("in1")
+	in2 := testutil.MustInputPort("in2")
+	in3 := testutil.MustInputPort("in3")
 
 	require.NoError(t, outPort.PipeTo(in1, in2, in3))
 
@@ -210,7 +197,7 @@ func TestPortHooks_OnOutboundPipe_MultipleDest(t *testing.T) {
 func TestPortHooks_MultipleHooksPerType(t *testing.T) {
 	var log []string
 
-	p := mustInputPort("data").
+	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				log = append(log, "put1")
@@ -240,7 +227,7 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 	var portName string
 	var signalPayloads []int
 
-	p := mustInputPort("sensor").
+	p := testutil.MustInputPort("sensor").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				portName = ctx.Port.Name()
@@ -275,7 +262,7 @@ func TestPortHooks_PracticalVolumeMonitoring(t *testing.T) {
 	}
 	metrics := VolumeMetrics{}
 
-	p := mustOutputPort("stream").
+	p := testutil.MustOutputPort("stream").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				metrics.TotalPuts++
@@ -313,7 +300,7 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 		Connections: make(map[string][]string),
 	}
 
-	out1 := mustOutputPort("out1").
+	out1 := testutil.MustOutputPort("out1").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
@@ -323,7 +310,7 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 			})
 		})
 
-	out2 := mustOutputPort("out2").
+	out2 := testutil.MustOutputPort("out2").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
@@ -333,9 +320,9 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 			})
 		})
 
-	in1 := mustInputPort("in1")
-	in2 := mustInputPort("in2")
-	in3 := mustInputPort("in3")
+	in1 := testutil.MustInputPort("in1")
+	in2 := testutil.MustInputPort("in2")
+	in3 := testutil.MustInputPort("in3")
 
 	// Create topology: out1 -> in1, in2; out2 -> in2, in3
 	require.NoError(t, out1.PipeTo(in1, in2))
@@ -347,7 +334,7 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 
 func TestPortHooks_PracticalDataValidation(t *testing.T) {
 	// Practical example: Validate incoming data
-	p := mustInputPort("validated").
+	p := testutil.MustInputPort("validated").
 		SetupHooks(func(h *port.Hooks) {
 			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
 				// Validate: must receive exactly 3 signals

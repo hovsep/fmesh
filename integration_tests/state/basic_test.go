@@ -4,30 +4,17 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/hovsep/fmesh/internal/testutil"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func mustComponent(name string, opts ...component.Option) *component.Component {
-	c, err := component.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func mustFMesh(name string, opts ...fmesh.Option) *fmesh.FMesh {
-	fm, err := fmesh.New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return fm
-}
 
 func Test_State(t *testing.T) {
 	tests := []struct {
@@ -39,7 +26,7 @@ func Test_State(t *testing.T) {
 		{
 			name: "stateful counter",
 			setupFM: func() *fmesh.FMesh {
-				producer := mustComponent("producer",
+				producer := testutil.MustComponent("producer",
 					component.WithInputs("demand_rate"),
 					component.WithOutputs("signal_out"),
 					component.WithDescription("produces some signals"),
@@ -56,7 +43,7 @@ func Test_State(t *testing.T) {
 					}),
 				)
 
-				counter := mustComponent("stateful_counter",
+				counter := testutil.MustComponent("stateful_counter",
 					component.WithInputs("bypass_in"),
 					component.WithOutputs("bypass_out"),
 					component.WithDescription("counts all observed signals and bypasses them down the stream"),
@@ -79,7 +66,7 @@ func Test_State(t *testing.T) {
 					}),
 				)
 
-				consumer := mustComponent("consumer",
+				consumer := testutil.MustComponent("consumer",
 					component.WithInputs("signal_in", "start"),
 					component.WithOutputs("consumed_signals", "demand_rate"),
 					component.WithDescription("consumes signals"),
@@ -118,7 +105,7 @@ func Test_State(t *testing.T) {
 					panic(err)
 				}
 
-				fm := mustFMesh("fm", fmesh.WithConfig(fmesh.Config{
+				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
 					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
 					CyclesLimit:           10000,
 				}))
