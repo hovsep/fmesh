@@ -30,9 +30,9 @@ benchstat old.txt new.txt
 
 `-count=8` gives benchstat enough samples to estimate variance. In the output, `~`
 means "no statistically significant change" (high p-value) — do not act on it. CI runs
-this automatically per PR (`.github/workflows/bench.yml`) and posts the table as a
-sticky comment. It is **advisory and never fails the check** — don't gate merges on
-runner noise.
+this automatically per PR (`.github/workflows/bench.yml`) and posts a sticky comment:
+a summary of statistically significant deltas up top, the full benchstat table collapsed
+below. It is **advisory and never fails the check** — don't gate merges on runner noise.
 
 ## Writing a benchmark
 

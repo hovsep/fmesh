@@ -52,8 +52,9 @@ jobs:
         continue-on-error: true
         run: benchstat base.txt pr.txt | tee bench.txt
 
-      # Upsert a single sticky comment (identified by the marker) with the
-      # benchstat table. Dependency-free: uses the gh CLI shipped on the runner.
+      # Upsert a single sticky comment (identified by the marker): a short
+      # summary of statistically significant deltas up top, the full benchstat
+      # table collapsed below. Dependency-free: gh CLI ships on the runner.
       - name: Post results as sticky PR comment
         continue-on-error: true
         env:
@@ -61,16 +62,47 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           MARKER='<!-- fmesh-benchstat -->'
+
+          # Rows benchstat marks statistically significant (no "~"). Columns are
+          # separated by 2+ spaces; the metric name carries over from the section header.
+          awk '
+            index($0, "vs base") { split($0, h, "│"); metric = h[2]; gsub(/ /, "", metric); next }
+            /\(p=/ && !/~/ {
+              split($0, col, /  +/)
+              split(col[4], d, " ")
+              printf "| `%s` | %s | %s | %s | %s |\n", col[1], metric, col[2], col[3], d[1]
+            }
+          ' bench.txt > significant.md
+
+          regressions=$(grep -c '| +' significant.md) || true
+          improvements=$(grep -c '| -' significant.md) || true
+
           {
             echo "$MARKER"
             echo '## Benchmark report (advisory)'
             echo
-            echo 'PR head vs. base branch. `~` = no statistically significant change.'
-            echo 'CI runners are noisy — treat `sec/op` as guidance and trust `allocs/op` most.'
+            if ! [ -s bench.txt ]; then
+              echo '⚠️ benchstat produced no output — see the workflow logs.'
+            elif ! [ -s significant.md ]; then
+              echo '**No statistically significant performance changes** (PR head vs. base branch).'
+            else
+              echo "**Statistically significant changes: ${regressions} regression(s), ${improvements} improvement(s)** (PR head vs. base branch)."
+              echo
+              echo '| Benchmark | Metric | Base | PR | Δ |'
+              echo '|---|---|---|---|---|'
+              cat significant.md
+              echo
+              echo 'Higher is worse on every metric. `allocs/op` is the most reliable signal on shared CI runners; treat `sec/op` as guidance.'
+            fi
+            echo
+            echo '<details>'
+            echo '<summary>Full benchstat table</summary>'
             echo
             echo '```'
             cat bench.txt
             echo '```'
+            echo
+            echo '</details>'
           } > comment.md
 
           existing=$(gh pr view "$PR_NUMBER" --json comments \
