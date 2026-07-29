@@ -30,6 +30,7 @@ F-Mesh follows semantic versioning. See [releases page](https://github.com/hovse
 | Running the mesh | [401. Scheduling rules](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules) |
 | Inspecting a run | [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run) |
 | Hooks | [501. Hooks](https://github.com/hovsep/fmesh/wiki/501.-Hooks) |
+| Plugins | [502. Plugins](https://github.com/hovsep/fmesh/wiki/502.-Plugins) |
 | Configuration & tips | [601. Tips & tricks](https://github.com/hovsep/fmesh/wiki/601.-Tips-&-tricks) |
 | Patterns & recipes | [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes) |
 | Export / visualization | [701. Export](https://github.com/hovsep/fmesh/wiki/701.-Export) |
@@ -41,6 +42,7 @@ F-Mesh follows semantic versioning. See [releases page](https://github.com/hovse
 * [Port](https://pkg.go.dev/github.com/hovsep/fmesh/port)
 * [Signal](https://pkg.go.dev/github.com/hovsep/fmesh/signal)
 * [Meta (labels & scalars)](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
+* [Plugin (bundled mesh plugins)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin)
 
 The `cycle` package surfaces in the run-time report — see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run); hooks are covered in [501. Hooks](https://github.com/hovsep/fmesh/wiki/501.-Hooks).
 

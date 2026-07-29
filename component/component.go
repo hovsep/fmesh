@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/hovsep/fmesh/internal/plugin"
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/port"
 )
@@ -23,7 +24,7 @@ type Component struct {
 	state        State
 	parentMesh   ParentMesh
 	hooks        *Hooks
-	plugins      plugins
+	plugins      *plugin.Registry[*Component]
 }
 
 // New creates a new component with the given name and options.
@@ -47,10 +48,8 @@ func New(name string, opts ...Option) (*Component, error) {
 		}
 	}
 
-	for pluginName, plugin := range c.plugins {
-		if err := plugin.Init(c); err != nil {
-			return nil, fmt.Errorf("component %q plugin %s initialization failed: %w", name, pluginName, err)
-		}
+	if err := c.initPlugins(); err != nil {
+		return nil, err
 	}
 
 	if err := c.hooks.onCreation.Trigger(c); err != nil {
