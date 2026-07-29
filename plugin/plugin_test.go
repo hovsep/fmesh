@@ -187,7 +187,7 @@ func TestAutowire(t *testing.T) {
 		// The consumer is added first, so it can only be wired by the second
 		// component's arrival -- which is the half that a one-directional
 		// implementation silently gets wrong.
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Prefixed("env_")))
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowirePrefixed("env_")))
 		require.NoError(t, err)
 
 		require.NoError(t, fm.AddComponents(
@@ -213,8 +213,8 @@ func TestAutowire(t *testing.T) {
 			"the sun reached the body with no wiring written")
 	})
 
-	t.Run("Broadcast feeds every same-named input", func(t *testing.T) {
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time")))
+	t.Run("AutowireBroadcast feeds every same-named input", func(t *testing.T) {
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowireBroadcast("time")))
 		require.NoError(t, err)
 
 		require.NoError(t, fm.AddComponents(
@@ -242,7 +242,7 @@ func TestAutowire(t *testing.T) {
 	})
 
 	t.Run("declining to name a port wires nothing", func(t *testing.T) {
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time")))
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowireBroadcast("time")))
 		require.NoError(t, err)
 
 		require.NoError(t, fm.AddComponents(
@@ -269,7 +269,7 @@ func TestAutowire(t *testing.T) {
 	t.Run("naming an input the destination does not have wires nothing", func(t *testing.T) {
 		// Distinct from declining: the rule does name a port, there is just no
 		// such input on this component.
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time")))
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowireBroadcast("time")))
 		require.NoError(t, err)
 
 		require.NoError(t, fm.AddComponents(
@@ -292,7 +292,7 @@ func TestAutowire(t *testing.T) {
 			Name:       func(*component.Component, *port.Port) string { return "time" },
 		}
 
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time"), everythingIsTime))
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowireBroadcast("time"), everythingIsTime))
 		require.NoError(t, err)
 
 		require.NoError(t, fm.AddComponents(
@@ -322,7 +322,7 @@ func TestAutowire(t *testing.T) {
 	})
 
 	t.Run("a failing pipe fails AddComponents", func(t *testing.T) {
-		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time")))
+		fm, err := fmesh.New("m", fmesh.WithPlugins(AutowireBroadcast("time")))
 		require.NoError(t, err)
 
 		heart := mustComponent("heart",
