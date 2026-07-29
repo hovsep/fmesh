@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,8 @@ func TestComponent_Plugin(t *testing.T) {
 		}), 0.0001)
 		assert.True(t, c.Labels().ValueIs("plugin/price/version", "v1.2.4"))
 		assert.True(t, c.Scalars().ValueIs("plugin/price/threshold", 105.54))
+		assert.True(t, c.PluginRegistered("PricePlugin"))
+		assert.False(t, c.PluginRegistered("nope"))
 	})
 
 	t.Run("plugins can be registered only once", func(t *testing.T) {
@@ -66,7 +69,47 @@ func TestComponent_Plugin(t *testing.T) {
 		require.ErrorContains(t, err, "plugin PricePlugin already registered")
 		assert.Nil(t, c)
 	})
+
+	t.Run("plugins initialize in name order", func(t *testing.T) {
+		// Same reasoning as at mesh level: plugins register hooks, hooks fire in
+		// registration order, so init order is observable behavior.
+		var order []string
+		record := func(name string) recordingPlugin {
+			return recordingPlugin{name: name, seen: &order}
+		}
+
+		c, err := New("dummy", WithPlugins(record("zulu"), record("alpha"), record("mike")))
+
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		assert.Equal(t, []string{"alpha", "mike", "zulu"}, order)
+	})
+
+	t.Run("a failing plugin fails construction", func(t *testing.T) {
+		c, err := New("dummy", WithPlugins(brokenPlugin{}))
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, `component "dummy" plugin brokenPlugin initialization failed`)
+		assert.Nil(t, c)
+	})
 }
+
+type recordingPlugin struct {
+	name string
+	seen *[]string
+}
+
+func (p recordingPlugin) GetName() string { return p.name }
+
+func (p recordingPlugin) Init(*Component) error {
+	*p.seen = append(*p.seen, p.name)
+	return nil
+}
+
+type brokenPlugin struct{}
+
+func (brokenPlugin) GetName() string       { return "brokenPlugin" }
+func (brokenPlugin) Init(*Component) error { return errors.New("no") }
 
 type PricePlugin struct {
 }

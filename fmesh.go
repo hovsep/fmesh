@@ -8,6 +8,7 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
+	"github.com/hovsep/fmesh/internal/plugin"
 	"github.com/hovsep/fmesh/meta"
 )
 
@@ -25,6 +26,7 @@ type FMesh struct {
 	logger      *log.Logger
 	config      Config
 	hooks       *Hooks
+	plugins     *plugin.Registry[*FMesh]
 }
 
 // New creates a new F-Mesh with the default configuration and applies any provided options.
@@ -38,6 +40,7 @@ func New(name string, opts ...Option) (*FMesh, error) {
 		logger:      newDefaultLogger(name),
 		config:      newDefaultConfig(),
 		hooks:       newHooks(),
+		plugins:     newPlugins(),
 	}
 	for _, opt := range opts {
 		if err := opt(fm); err != nil {
@@ -47,6 +50,12 @@ func New(name string, opts ...Option) (*FMesh, error) {
 	// Built after the options so the runtime info picks up the configured
 	// history limit (Run rebuilds it the same way).
 	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
+
+	// Last, so a plugin sees the fully configured mesh and can rely on anything
+	// the options set up.
+	if err := fm.initPlugins(); err != nil {
+		return nil, err
+	}
 	return fm, nil
 }
 
