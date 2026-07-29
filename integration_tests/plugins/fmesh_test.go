@@ -28,10 +28,10 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	fm := testutil.MustFMesh("habitat", fmesh.WithPlugins(
 		profiler,
 		// Everything that declared an input called "time" hears the clock.
-		plugin.BroadcastAs("tick", "time"),
+		plugin.AutowireBroadcastAs("tick", "time"),
 		// Everything that asked for a factor by name gets it:
 		// sun's "uvi" output reaches the input named "env_sun_uvi".
-		plugin.Prefixed("env_"),
+		plugin.AutowirePrefixed("env_"),
 	))
 
 	assert.True(t, fm.PluginRegistered("profiler"))

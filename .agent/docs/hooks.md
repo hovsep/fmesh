@@ -89,4 +89,4 @@ Package `plugin` ships mesh-level plugins built on exactly the pattern above. It
 | Plugin | What it does |
 |---|---|
 | `plugin.NewProfiler()` | Times whole runs, single cycles, and each component's activations. `Runs()`, `Cycles()`, `Components()`, `TopN(n)`, `Report()`, `Reset()`. One instance belongs to one mesh. |
-| `plugin.Prefixed(prefix)` / `Broadcast(name)` / `BroadcastAs(out, in)` / `&Autowire{Name: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |
+| `plugin.AutowirePrefixed(prefix)` / `AutowireBroadcast(name)` / `AutowireBroadcastAs(out, in)` / `&Autowire{Name: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |

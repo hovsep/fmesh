@@ -45,11 +45,11 @@ type Autowire struct {
 	PluginName string
 }
 
-// Prefixed wires an output to any input named "<prefix><component>_<port>".
+// AutowirePrefixed wires an output to any input named "<prefix><component>_<port>".
 //
 // It is the shape most meshes converge on: "habitat_gas_environmental_gas" is
 // the gas factor's environmental_gas output, and reads as one.
-func Prefixed(prefix string) *Autowire {
+func AutowirePrefixed(prefix string) *Autowire {
 	return &Autowire{
 		PluginName: "autowire:prefixed:" + prefix,
 		Name: func(source *component.Component, output *port.Port) string {
@@ -58,18 +58,19 @@ func Prefixed(prefix string) *Autowire {
 	}
 }
 
-// Broadcast wires every output named portName to every input of the same name.
-func Broadcast(portName string) *Autowire {
-	return BroadcastAs(portName, portName)
+// AutowireBroadcast wires every output named portName to every input of the
+// same name.
+func AutowireBroadcast(portName string) *Autowire {
+	return AutowireBroadcastAs(portName, portName)
 }
 
-// BroadcastAs wires every output named outputName to every input named
+// AutowireBroadcastAs wires every output named outputName to every input named
 // inputName.
 //
 // This is the clock case, where the two differ: a component emitting "tick"
 // feeds everything that declared an input called "time", including the
 // components added after it.
-func BroadcastAs(outputName, inputName string) *Autowire {
+func AutowireBroadcastAs(outputName, inputName string) *Autowire {
 	return &Autowire{
 		PluginName: "autowire:broadcast:" + outputName + "->" + inputName,
 		Name: func(_ *component.Component, output *port.Port) string {
