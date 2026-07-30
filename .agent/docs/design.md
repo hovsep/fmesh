@@ -13,6 +13,29 @@ Architecture overview (the concept → type → package table and the execution 
 
 **Errors are returned directly.** Methods that can fail return `error` as the last return value. Infallible methods (transformations like `Filter`, `Map`, `With*` on `signal.Signal`) return their type directly for fluency. There is no "poison object" or chainable error field on any type.
 
+**Runs are deterministic.** Given deterministic activation functions, a mesh produces identical
+output for identical input, every time. Three orderings uphold this, and nothing may introduce a
+fourth source of order:
+
+1. **Within one port** — signals keep insertion order (FIFO). `signal.Group` is an ordered slice.
+2. **Multiple upstreams into one port** — arrival follows upstream **component-name** order, because
+   `drainComponents` iterates `component.Collection.AllOrdered()`.
+3. **Across the ports of one component** — traversal follows **port-name** order, because every
+   `port.Collection` traversal goes through `AllOrdered()`.
+
+The third one was map iteration order until it was fixed: `Inputs().Signals()` returned four
+different orders across 200 identical runs, and the order output ports flush in decides what a
+shared downstream port receives. **Never range over `c.ports` directly** — inside the package range over `c.each` (allocation-free,
+no per-port map lookup), outside it use `AllOrdered()`. The collection keeps the sorted `[]*Port`
+alongside the name map and rebuilds it on membership change, not lazily on read: ports are read from
+activation goroutines, and a lazily filled cache would turn a read into a write. Traversal must stay
+allocation-free — `port/collection_bench_test.go` guards that.
+
+Note what this does *not* promise: components within a cycle activate concurrently, so the order
+their activation functions *run* in is unspecified and always will be. Determinism comes from the
+order signals are *collected and delivered*, which is why activation functions must not depend on
+shared mutable state.
+
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
 **No generics in data flow.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group. Approved generics elsewhere: `hook.Group[T]` (typed hook registry), `component.MustGetTyped[T]` (state accessor), and `signal.As[T]`/`signal.AsOrDefault[T]` (payload accessors — they read a payload out, they do not make the flow typed). Do not add more without approval.

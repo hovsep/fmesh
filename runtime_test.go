@@ -268,19 +268,30 @@ func Test_MultipleRun(t *testing.T) {
 		require.NoError(t, err)
 		duration1 := runResult1.Duration()
 		assert.Positive(t, duration1)
-		t.Logf("Run 1 duration (10ms sleep): %d nanoseconds", duration1)
+		t.Logf("Run 1 duration (10ms sleep): %s", duration1)
 
 		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(50*time.Millisecond)))
+		wallStart := time.Now()
 		runResult2, err := fm.Run(context.Background())
+		wall2 := time.Since(wallStart)
 		require.NoError(t, err)
 		duration2 := runResult2.Duration()
 		assert.Positive(t, duration2)
-		t.Logf("Run 2 duration (50ms sleep): %d nanoseconds", duration2)
+		t.Logf("Run 2 duration (50ms sleep): %s, measured wall time: %s", duration2, wall2)
 
 		assert.Greater(t, duration2, duration1)
-		assert.GreaterOrEqual(t, duration1, int64(10*time.Millisecond))
-		assert.GreaterOrEqual(t, duration2, int64(50*time.Millisecond))
-		assert.Less(t, duration2, int64(100*time.Millisecond), "Run 2 duration should not be accumulated from Run 1")
+		assert.GreaterOrEqual(t, duration1, 10*time.Millisecond)
+		assert.GreaterOrEqual(t, duration2, 50*time.Millisecond)
+
+		// "Per run" means run 2's clock starts after run 1's stopped, and its
+		// duration measures only run 2. Comparing against run 2's own measured
+		// wall time rather than a fixed ceiling keeps this meaningful on a loaded
+		// machine — a fixed bound close to the sleep is a flake waiting to happen
+		// under -race.
+		assert.True(t, runResult2.StartedAt.After(runResult1.StoppedAt),
+			"run 2 must start its own clock, not continue run 1's")
+		assert.LessOrEqual(t, duration2, wall2,
+			"run 2 duration must not exceed the wall time of run 2 itself")
 	})
 
 	t.Run("cycles history limit trims retained cycles to a sliding window", func(t *testing.T) {
