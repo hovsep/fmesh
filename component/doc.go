@@ -5,4 +5,7 @@
 // [New] and functional options (WithInputs, WithActivationFunc, ...); after a
 // run, each cycle exposes an [ActivationResult] per component describing
 // whether and how it activated. Component types mutate in place.
+//
+// One activation function can be composed from several with [Sequential],
+// [When], [RequireInputs] and [Pipeline].
 package component
