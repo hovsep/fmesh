@@ -5,4 +5,7 @@
 // port's signal buffer out through its pipes and clears the source. Unlike
 // the copy-on-write signal package, port types mutate in place: Set*, Add*
 // and Remove* methods modify the receiver.
+//
+// [MultiPipe] and [MultiForward] take a list of edges instead of one call per
+// edge, and name the edge that failed.
 package port
