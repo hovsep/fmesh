@@ -84,25 +84,39 @@ than as a time limit, `WithTimeLimit` interrupting a ctx-respecting activation f
 the context still working, and every hook level receiving the run context.
 `make test`, `make race` and `make lint` are clean; the README quick start compiles and runs.
 
-## Phase 2 — determinism
+## Phase 2 — determinism ✅ DONE
 
 Makes phases 3–5 testable: a nondeterministic runtime can't be refactored with confidence.
 
 Today `port.Collection` iterates a `map`, so `Inputs().Signals()` produced 4 distinct orderings
 across 200 identical runs. `component.Collection` already solves this with `AllOrdered()`.
 
-- [ ] `port.Collection` gains a cached sorted-name slice, invalidated on `Add`/`Remove`
+- [x] `port.Collection` gains a cached sorted `[]*Port`, invalidated on `Add`/`Remove`
       (ports are added at construction, so it is built once)
-- [ ] `Signals()`, `ForEach`, `Flush`, `PutSignals*` iterate in port-name order
-- [ ] Add `port.Collection.AllOrdered()` mirroring `component.Collection`
-- [ ] Document the three ordering guarantees in `design.md` + wiki 401:
+- [x] Every traversal iterates in port-name order — `Signals`, `ForEach`, `Flush`, `PutSignals`,
+      `PipeTo`, `Every`, `AnyMatch`, `Count`, `FindAny`, `Any`, `Filter`, `Map`, the `*OnEach` batch ops
+- [x] Add `port.Collection.AllOrdered()` mirroring `component.Collection`
+- [x] Document the three ordering guarantees in `design.md` + wiki 401:
       1. Within one port: FIFO
       2. Multiple upstreams → one port: upstream component-name order (already true)
       3. Across ports of one component: port-name order (new)
-- [ ] Determinism test: N identical runs of a fan-in mesh produce byte-identical output
+- [x] Determinism test: N identical runs of a fan-in mesh produce byte-identical output
 
-**Done when:** the 200-run probe yields exactly one ordering, and the README can claim
-*"identical input, identical output, every run."*
+**Done:** the 200-run probe went from 4 orderings to 1.
+`integration_tests/determinism/ordering_test.go` runs whole meshes 200x each and asserts a single
+result for fan-in across ports, flush order across output ports, and multiple upstreams into one
+port, plus FIFO within a port.
+
+Traversal is **faster** than the map iteration it replaced (-91% geomean, benchstat n=10) and stays
+allocation-free: the collection keeps the sorted `[]*Port` next to the name map, so traversal costs
+neither a slice copy nor a hash lookup per port. An intermediate version that stored sorted *names*
+was measurably slower at 8+ ports (+73%, p=0.000) — the map lookup per element. Guarded by
+`port/collection_bench_test.go`.
+
+Also fixed here: `Test_MultipleRun/runtime_info_duration_is_per_run` asserted a 50ms sleep finished
+within a fixed 100ms ceiling, which race overhead under load breached. It now compares against run
+2's own measured wall time and asserts `StartedAt`/`StoppedAt` ordering — testing "per run" instead
+of "fast enough". Pre-existing flake, unrelated to these phases.
 
 ## Phase 3 — livelock detection
 

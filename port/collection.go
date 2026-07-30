@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
@@ -12,8 +13,22 @@ import (
 // Collection is a port collection.
 // indexed by name; hence it cannot carry
 // 2 ports with the same name. Optimized for lookups.
+//
+// Every traversal goes in port-name order. Map iteration order would otherwise
+// leak into results: the order in which a component's output ports are flushed
+// decides the order their signals arrive at a shared downstream port, and
+// Signals() decides what a component reading all its inputs at once sees. Both
+// were observably random before — the same mesh, run twice, produced different
+// answers. See .agent/docs/design.md for the ordering guarantees this upholds.
 type Collection struct {
-	ports   map[string]*Port
+	// ports indexes by name, for ByName.
+	ports map[string]*Port
+	// ordered holds the same ports, sorted by name — traversal reads this, so it
+	// costs neither a per-element map lookup nor an allocation. It is rebuilt when
+	// membership changes rather than lazily on read: ports are read from
+	// activation goroutines, and a lazily filled cache would turn a read into a
+	// write.
+	ordered []*Port
 	labels  *meta.Labels
 	scalars *meta.Scalars
 }
@@ -24,6 +39,38 @@ func NewCollection() *Collection {
 		ports:   make(map[string]*Port),
 		labels:  meta.NewLabels(),
 		scalars: meta.NewScalars(),
+	}
+}
+
+// rebuildOrder refreshes the sorted port list. Called on every membership change,
+// which in practice means construction.
+func (c *Collection) rebuildOrder() {
+	c.ordered = make([]*Port, 0, len(c.ports))
+	for _, name := range slices.Sorted(maps.Keys(c.ports)) {
+		c.ordered = append(c.ordered, c.ports[name])
+	}
+}
+
+// AllOrdered returns all ports sorted by name.
+// This is the order every traversal on a Collection uses.
+// A copy is returned so the caller cannot reorder the collection's own state;
+// inside the package range over each instead.
+func (c *Collection) AllOrdered() []*Port {
+	return slices.Clone(c.ordered)
+}
+
+// each yields every port in name order, without allocating and without a map
+// lookup per port.
+//
+// This is the internal form of AllOrdered, and the one the traversals below use:
+// ClearInputs and FlushOutputs walk a collection for every component on every
+// cycle, so neither a slice copy nor a hash lookup per port belongs there.
+// Range over it: for p := range c.each.
+func (c *Collection) each(yield func(*Port) bool) {
+	for _, p := range c.ordered {
+		if !yield(p) {
+			return
+		}
 	}
 }
 
@@ -47,7 +94,7 @@ func (c *Collection) WithScalar(name string, value float64) *Collection {
 
 // WithLabelOnEach sets a label on every port in the collection.
 func (c *Collection) WithLabelOnEach(name, value string) *Collection {
-	for _, p := range c.ports {
+	for p := range c.each {
 		p.labels.Set(name, value)
 	}
 	return c
@@ -55,7 +102,7 @@ func (c *Collection) WithLabelOnEach(name, value string) *Collection {
 
 // WithScalarOnEach sets a scalar on every port in the collection.
 func (c *Collection) WithScalarOnEach(name string, value float64) *Collection {
-	for _, p := range c.ports {
+	for p := range c.each {
 		p.scalars.Set(name, value)
 	}
 	return c
@@ -63,7 +110,7 @@ func (c *Collection) WithScalarOnEach(name string, value float64) *Collection {
 
 // RemoveLabelOnEach removes a label from every port in the collection.
 func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
-	for _, p := range c.ports {
+	for p := range c.each {
 		p.labels.Remove(names...)
 	}
 	return c
@@ -71,7 +118,7 @@ func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
 
 // RemoveScalarOnEach removes a scalar from every port in the collection.
 func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
-	for _, p := range c.ports {
+	for p := range c.each {
 		p.scalars.Remove(names...)
 	}
 	return c
@@ -133,7 +180,7 @@ func (c *Collection) AllHaveSignals() bool {
 // PutSignals adds signals to every port in the collection.
 // Stops and returns the first error encountered.
 func (c *Collection) PutSignals(signals ...*signal.Signal) error {
-	for _, p := range c.ports {
+	for p := range c.each {
 		if err := p.PutSignals(signals...); err != nil {
 			return err
 		}
@@ -152,7 +199,7 @@ func (c *Collection) PutSignals(signals ...*signal.Signal) error {
 //	    return nil
 //	})
 func (c *Collection) ForEach(action func(*Port) error) error {
-	for _, p := range c.ports {
+	for p := range c.each {
 		if err := action(p); err != nil {
 			return err
 		}
@@ -163,7 +210,7 @@ func (c *Collection) ForEach(action func(*Port) error) error {
 // Flush flushes all ports in a collection.
 // Stops and returns the first error encountered.
 func (c *Collection) Flush(ctx context.Context) error {
-	for _, p := range c.ports {
+	for p := range c.each {
 		if err := p.Flush(ctx); err != nil {
 			return err
 		}
@@ -174,7 +221,7 @@ func (c *Collection) Flush(ctx context.Context) error {
 // PipeTo creates pipes from each port in a collection to given destination ports.
 // Stops and returns the first error encountered.
 func (c *Collection) PipeTo(destPorts ...*Port) error {
-	for _, p := range c.ports {
+	for p := range c.each {
 		if err := p.PipeTo(destPorts...); err != nil {
 			return err
 		}
@@ -190,6 +237,7 @@ func (c *Collection) Add(ports ...*Port) error {
 		}
 		c.ports[p.Name()] = p
 	}
+	c.rebuildOrder()
 	return nil
 }
 
@@ -198,13 +246,14 @@ func (c *Collection) Without(names ...string) *Collection {
 	for _, name := range names {
 		delete(c.ports, name)
 	}
+	c.rebuildOrder()
 	return c
 }
 
 // Signals returns all signals of all ports in the collection.
 func (c *Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
-	for _, p := range c.ports {
+	for p := range c.each {
 		signals := p.Signals().All()
 		group = group.With(signals...)
 	}
@@ -217,11 +266,12 @@ func (c *Collection) All() map[string]*Port {
 	return maps.Clone(c.ports)
 }
 
-// Any returns any arbitrary port from the collection.
+// Any returns the first port in the collection by name order.
 // Returns nil if the collection is empty.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
+// The name says "any" because callers should not depend on which one they get;
+// it is nonetheless stable across runs, like every traversal here.
 func (c *Collection) Any() *Port {
-	for _, port := range c.ports {
+	for port := range c.each {
 		return port
 	}
 	return nil
@@ -229,7 +279,7 @@ func (c *Collection) Any() *Port {
 
 // Every returns true if all ports match the predicate.
 func (c *Collection) Every(predicate Predicate) bool {
-	for _, port := range c.ports {
+	for port := range c.each {
 		if !predicate(port) {
 			return false
 		}
@@ -240,7 +290,7 @@ func (c *Collection) Every(predicate Predicate) bool {
 // AnyMatch returns true if any port matches the predicate.
 // Note: AnyMatch is used instead of Any to avoid conflict with the no-arg Any() *Port method.
 func (c *Collection) AnyMatch(predicate Predicate) bool {
-	for _, port := range c.ports {
+	for port := range c.each {
 		if predicate(port) {
 			return true
 		}
@@ -251,7 +301,7 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 // Count returns the number of ports that match the predicate.
 func (c *Collection) Count(predicate Predicate) int {
 	count := 0
-	for _, port := range c.ports {
+	for port := range c.each {
 		if predicate(port) {
 			count++
 		}
@@ -259,11 +309,10 @@ func (c *Collection) Count(predicate Predicate) int {
 	return count
 }
 
-// FindAny returns any arbitrary port that matches the predicate.
+// FindAny returns the first port matching the predicate, in name order.
 // Returns nil if no match found.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
 func (c *Collection) FindAny(predicate Predicate) *Port {
-	for _, port := range c.ports {
+	for port := range c.each {
 		if predicate(port) {
 			return port
 		}
@@ -288,7 +337,7 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 //	})
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
-	for _, port := range c.ports {
+	for port := range c.each {
 		if predicate(port) {
 			_ = filtered.Add(port) // port comes from existing collection — name is unique by construction
 		}
@@ -300,7 +349,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 // Returns an error if a mapped port has a duplicate name.
 func (c *Collection) Map(mapper Mapper) (*Collection, error) {
 	mapped := NewCollection()
-	for _, port := range c.ports {
+	for port := range c.each {
 		transformedPort := mapper(port)
 		if transformedPort != nil {
 			if err := mapped.Add(transformedPort); err != nil {
@@ -313,7 +362,7 @@ func (c *Collection) Map(mapper Mapper) (*Collection, error) {
 
 // WithParentComponent sets the parent component on all ports in the collection and returns the collection.
 func (c *Collection) WithParentComponent(comp ParentComponent) *Collection {
-	for _, p := range c.ports {
+	for p := range c.each {
 		p.setParentComponent(comp)
 	}
 	return c
