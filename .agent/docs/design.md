@@ -15,16 +15,17 @@ Architecture overview (the concept → type → package table and the execution 
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
-**No generics in data flow.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group. Approved generics elsewhere: `hook.Group[T]` (typed hook registry) and `component.MustGetTyped[T]` (state accessor). Do not add more without approval.
+**No generics in data flow.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group. Approved generics elsewhere: `hook.Group[T]` (typed hook registry), `component.MustGetTyped[T]` (state accessor), and `signal.As[T]`/`signal.AsOrDefault[T]` (payload accessors — they read a payload out, they do not make the flow typed). Do not add more without approval.
 
 **Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
 
 ## Package notes
 
-- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach` returns `(*Group, error)`.
+- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach`/`ForEachIf` return `error` only (as on every collection type — see [naming.md](naming.md)). Typed payload accessors live in `typed.go`: `As[T]` (error on nil signal / missing payload / wrong type), `AsOrDefault[T]`, fallible per-type shorthands over `As`, and `AsNumber` (loose `(float64, bool)` widening — `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None of them panic; that is the point of having them. There are deliberately **no** `AsIntOrDefault`-style shorthands: `AsOrDefault` infers `T` from the default and is shorter. The sole exception is `AsFloat64OrDefault`, which exists because an untyped `0` infers `int`, so `AsOrDefault(s, 0)` silently returns the default for a float64 payload — do not "restore symmetry" by adding the others back.
 - **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
-- **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time.
-- **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitingForInputsKeep` are scheduler control-flow sentinels, not failures.
+- **`port`** — `Flush()` fans out then clears source. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time. `wiring.go` holds the declarative multi-edge helpers: `Pipe`/`MultiPipe` (registers connections) and `Pair`/`MultiForward` (copies signals now); both name the failing edge and report nil ports instead of dereferencing them.
+- **Name lookups are silently forgiving — helpers taking port names must not be.** `Collection.ByName` returns `nil` for a name no port has, `Collection.ByNames` skips such names entirely, and `AllHaveSignals()`/`Every()` on the resulting empty collection is vacuously `true`. So `ByNames("typo").AllHaveSignals()` reports *ready*. Any helper that accepts port names as strings must resolve every name before asking anything about signals, and report the name it could not resolve.
+- **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitingForInputsKeep` are scheduler control-flow sentinels, not failures. `compose.go` holds the `ActivationFunc` combinators — `Sequential`, `When`+`HasSignalsOn`, `RequireInputs`, `Pipeline`+`PipelineStage` — which compose a component's *own* activation (contrast `OnActivation` hooks, which are for behavior added from outside; see [hooks.md](hooks.md)). `When` skips, `RequireInputs` suspends and keeps: never substitute one for the other, as skipping where waiting was meant drops the partial inputs at drain time.
 - **`hook`** — lives at `internal/hook` (not public API). Generic `hook.Group[T]`, ordered, fail-fast `Trigger`. Three hook levels (mesh/component/port); see [hooks.md](hooks.md).
 - **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
 
@@ -58,6 +59,23 @@ Comments must add information beyond the signature. Omit a comment entirely rath
 - Type and package-level comments state **what the type is**, not how its methods work — method names go stale
 - No usage guidance ("Use X to do Y") or examples in type definition comments; those belong in method godocs or external docs
 - Method comments: one line where possible
+
+**Length — short and on point:**
+
+One line is the default. A rationale that genuinely needs more gets a second short paragraph of
+two or three sentences, and that is the ceiling.
+
+- **State the constraint, not the story.** "A name no port has fails the activation instead of
+  suspending forever" beats a paragraph reconstructing how a reader might get it wrong.
+- **No file-header essays.** A file-level comment names what the file holds in a sentence. If a
+  file needs several paragraphs to introduce itself, the material is documentation, not a comment.
+- **A paragraph belongs in `docs/wiki/`.** The wiki teaches — narrative, examples, when-to-use-which
+  tables. Godoc reminds. Name the concept in the comment and let the page carry it; duplicating it
+  in source means two things to keep in sync, and the source copy is the one that rots.
+- **Cut the prose voice.** Comments that argue with the reader ("which is the right number", "and
+  that is the point", "the whole reason this exists") are essay, not documentation.
+- Explain the **non-obvious**: an invariant, a footgun, an ordering requirement, a reason the
+  obvious implementation is wrong. Never narrate what the next line plainly does.
 
 ## Dead code policy
 

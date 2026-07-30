@@ -26,6 +26,10 @@ closures are the only registration path.
 - **`OnActivation` is special**: its hooks are `ActivationFunc`s appended after the main
   activation function and run **sequentially in the same activation** — they share the error
   path (first error aborts the chain and becomes the activation error).
+- **`OnActivation` hooks vs activation combinators**: `component/compose.go` also chains
+  `ActivationFunc`s, but those are combinators — plain values passed to `WithActivationFunc`,
+  with no registry, no name, and no initialization step. Use a hook when something *outside*
+  the component adds behavior to it; use a combinator when the component composes its own.
 - **`AfterActivation` always runs** — success, error, panic, or waiting; a `finally` block.
 - Outcome hooks (`OnSuccess`/`OnError`/`OnPanic`/`OnWaitingForInputs`) fire before
   `AfterActivation`. Distinguish waiting modes via `ctx.Result.Code()`

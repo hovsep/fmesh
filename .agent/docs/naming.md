@@ -94,6 +94,16 @@ need to wrap `error` where nothing can go wrong.
 Prefer combinators over inline closures: `Not`, `And`, `Or`, `HasLabel`, `LabelEquals`,
 `LabelContains`, `HasAllLabels`, `HasAnyLabel`.
 
+Component-level: `component.HasSignalsOn(names...)` returns `func(*Component) bool`, the predicate
+`component.When` takes.
+
+## Combinators
+
+Functions that take and return an `ActivationFunc` are named after what they do to the activation,
+with no prefix: `Sequential`, `When`, `RequireInputs`, `Pipeline`. `With*` stays reserved for
+constructor options, so `WithActivationFunc(Sequential(...))` reads as option-wrapping-value rather
+than two options.
+
 ## Stuttering
 
 Do not repeat the package name in a type or function name. Within the `meta` package, use
