@@ -10,6 +10,7 @@
   Shared implementations live in `internal/testutil` (usable from `integration_tests/` and other
   external test packages); in-package tests of `fmesh` and `port` keep local copies (import cycle)
 - Use `assert.InDelta` for float64 comparisons (tolerance `1e-9` for exact values, larger for computed averages)
+- Comments explain why a case exists (the bug it pins down), never what the assertion does — one or two lines, same brevity rule as source (see [design.md](design.md))
 
 ## What to cover
 
@@ -19,3 +20,5 @@
 - Cross-entity aggregation on `signal.Group`: `AvgScalar`/`MinScalar`/`MaxScalar` return `signal.ErrScalarNotFoundInGroup` when no element has the named scalar; `SumScalar` returns 0
 - Group metadata separation: group's own Labels/Scalars must not bleed into element Labels/Scalars and vice versa
 - `signal.Group` batch methods (`WithLabelOnEach`, `WithScalarOnEach`, etc.) must preserve the group's own metadata on the returned group
+- Anything taking a port name as a string: cover the name that resolves to no port. An unresolved name reaches the assertion as an empty collection (vacuously ready) or a nil port (a panic at the first dereference), so the passing test proves nothing unless it names a port that does not exist
+- Typed payload accessors: a wrong payload type, a nil payload, and a nil signal must all return an error or the default — never panic
