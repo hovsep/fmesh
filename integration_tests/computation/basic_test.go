@@ -1,6 +1,7 @@
 package computation
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -32,7 +33,7 @@ func Test_Math(t *testing.T) {
 					component.WithInputs("num"),
 					component.WithOutputs("res"),
 					component.WithDescription("adds 2 to the input"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrNil()
 						return this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 					}),
@@ -42,7 +43,7 @@ func Test_Math(t *testing.T) {
 					component.WithInputs("num"),
 					component.WithOutputs("res"),
 					component.WithDescription("multiplies by 3"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 						return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 					}),
@@ -84,7 +85,7 @@ func Test_Math(t *testing.T) {
 					component.WithInputs("raw_data", "metadata"),
 					component.WithOutputs("logs"),
 					component.WithDescription("processes data using mixed ports"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						// Check if all required inputs have signals
 						if !this.Inputs().AllHaveSignals() {
 							return nil // Wait for all inputs
@@ -134,7 +135,7 @@ func Test_Math(t *testing.T) {
 				verifier := testutil.MustComponent("verifier",
 					component.WithInputs("value", "log"),
 					component.WithOutputs("verified"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						// Wait for all inputs
 						if !this.Inputs().AllHaveSignals() {
 							return nil
@@ -207,7 +208,7 @@ func Test_Math(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			cycles := runResult.Cycles.All()
 			tt.assertions(t, fm, cycles, err)
 		})
@@ -224,7 +225,7 @@ func Test_Readme(t *testing.T) {
 		concat := testutil.MustComponent("concat",
 			component.WithInputs("i1", "i2"),
 			component.WithOutputs("res"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 				word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
 				return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
@@ -234,7 +235,7 @@ func Test_Readme(t *testing.T) {
 		caseC := testutil.MustComponent("case",
 			component.WithInputs("i1"),
 			component.WithOutputs("res"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
 				return this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
 			}),
@@ -255,7 +256,7 @@ func Test_Readme(t *testing.T) {
 		testutil.MustPutSignals(fm.Components().ByName("concat").InputByName("i2"), signal.New("world !"))
 
 		// Run the mesh
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		// Check for errors
 		if err != nil {

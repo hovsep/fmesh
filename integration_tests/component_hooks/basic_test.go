@@ -1,6 +1,7 @@
 package componenthooks
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -20,28 +21,28 @@ func TestComponentHooks_AllTypes(t *testing.T) {
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return c.OutputByName("out").PutSignals(signal.New(42))
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			executionLog = append(executionLog, "before")
 			return nil
 		})
 
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			executionLog = append(executionLog, "success")
 			return nil
 		})
 
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			executionLog = append(executionLog, "after")
 			return nil
 		})
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	result := c.MaybeActivate()
+	result := c.MaybeActivate(context.Background())
 
 	require.True(t, result.Activated())
 	require.Equal(t, component.ActivationCodeOK, result.Code())
@@ -55,25 +56,25 @@ func TestComponentHooks_OnError(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return testErr
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.OnError(func(ctx *component.ActivationContext) error {
+		h.OnError(func(_ context.Context, ctx *component.ActivationContext) error {
 			errorCaught = true
 			assert.Equal(t, component.ActivationCodeReturnedError, ctx.Result.Code())
 			require.Error(t, ctx.Result.ActivationError())
 			return nil
 		})
 
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			afterFired = true
 			return nil
 		})
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	result := c.MaybeActivate()
+	result := c.MaybeActivate(context.Background())
 
 	require.True(t, result.Activated())
 	require.True(t, result.IsError())
@@ -87,25 +88,25 @@ func TestComponentHooks_OnPanic(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			panic("oh no!")
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.OnPanic(func(ctx *component.ActivationContext) error {
+		h.OnPanic(func(_ context.Context, ctx *component.ActivationContext) error {
 			panicCaught = true
 			assert.Equal(t, component.ActivationCodePanicked, ctx.Result.Code())
 			require.Error(t, ctx.Result.ActivationError())
 			return nil
 		})
 
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			afterFired = true
 			return nil
 		})
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	result := c.MaybeActivate()
+	result := c.MaybeActivate(context.Background())
 
 	require.True(t, result.Activated())
 	require.True(t, result.IsPanic())
@@ -118,7 +119,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("data", "config"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			// Wait for config input
 			if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
 				return component.ErrWaitingForInputs
@@ -126,7 +127,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.OnWaitingForInputs(func(ctx *component.ActivationContext) error {
+		h.OnWaitingForInputs(func(_ context.Context, ctx *component.ActivationContext) error {
 			waitingCaught = true
 			assert.Equal(t, component.ActivationCodeWaitingForInputsClear, ctx.Result.Code())
 			return nil
@@ -135,7 +136,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 
 	// Only provide data input, not config
 	require.NoError(t, c.InputByName("data").PutSignals(signal.New(1)))
-	result := c.MaybeActivate()
+	result := c.MaybeActivate(context.Background())
 
 	require.True(t, result.Activated())
 	assert.True(t, waitingCaught, "OnWaitingForInputs hook should fire")
@@ -146,30 +147,30 @@ func TestComponentHooks_MultipleHooksPerType(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log = append(log, "before1")
 			return nil
 		})
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log = append(log, "before2")
 			return nil
 		})
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			log = append(log, "success1")
 			return nil
 		})
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			log = append(log, "success2")
 			return nil
 		})
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	c.MaybeActivate()
+	c.MaybeActivate(context.Background())
 
 	assert.Equal(t, []string{"before1", "before2", "success1", "success2"}, log)
 }
@@ -179,18 +180,18 @@ func TestComponentHooks_NoHooksOnNoInput(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			beforeFired = true
 			return nil
 		})
 	})
 
 	// No input signals provided
-	result := c.MaybeActivate()
+	result := c.MaybeActivate(context.Background())
 
 	require.False(t, result.Activated())
 	require.Equal(t, component.ActivationCodeNoInput, result.Code())
@@ -204,11 +205,11 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 	c := testutil.MustComponent("test-component",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return c.OutputByName("out").PutSignals(signal.New(100))
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			componentName = ctx.Component.Name()
 			activationCode = ctx.Result.Code()
 			assert.Equal(t, 1, ctx.Component.Outputs().ByName("out").Signals().Len())
@@ -217,7 +218,7 @@ func TestComponentHooks_ContextAccess(t *testing.T) {
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	c.MaybeActivate()
+	c.MaybeActivate(context.Background())
 
 	assert.Equal(t, "test-component", componentName)
 	assert.Equal(t, component.ActivationCodeOK, activationCode)
@@ -229,11 +230,11 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	c1 := testutil.MustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return c.OutputByName("out").PutSignals(signal.New(1))
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log.add(c.Name())
 			return nil
 		})
@@ -241,11 +242,11 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 
 	c2 := testutil.MustComponent("c2",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log.add(c.Name())
 			return nil
 		})
@@ -257,7 +258,7 @@ func TestComponentHooks_IntegrationWithFMesh(t *testing.T) {
 	require.NoError(t, fm.AddComponents(c1, c2))
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Both components should have activated
@@ -273,19 +274,19 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	c1 := testutil.MustComponent("c1",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return c.OutputByName("out").PutSignals(signal.New(1))
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log.add("c1:before")
 			return nil
 		})
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c1:success")
 			return nil
 		})
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c1:after")
 			return nil
 		})
@@ -294,19 +295,19 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	c2 := testutil.MustComponent("c2",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return c.OutputByName("out").PutSignals(signal.New(2))
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log.add("c2:before")
 			return nil
 		})
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c2:success")
 			return nil
 		})
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c2:after")
 			return nil
 		})
@@ -314,19 +315,19 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 
 	c3 := testutil.MustComponent("c3",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log.add("c3:before")
 			return nil
 		})
-		h.OnSuccess(func(ctx *component.ActivationContext) error {
+		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c3:success")
 			return nil
 		})
-		h.AfterActivation(func(ctx *component.ActivationContext) error {
+		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
 			log.add("c3:after")
 			return nil
 		})
@@ -341,7 +342,7 @@ func TestComponentHooks_ExecutionOrderAcrossComponents(t *testing.T) {
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New(0)))
 	require.NoError(t, c2.InputByName("in").PutSignals(signal.New(0)))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	executionLog := log.snapshot()
@@ -375,28 +376,28 @@ func TestComponentHooks_MultipleSetupCalls(t *testing.T) {
 	// Multiple SetupHooks calls should accumulate hooks
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log = append(log, "setup1")
 			return nil
 		})
 	}).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log = append(log, "setup2")
 			return nil
 		})
 	}).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(c *component.Component) error {
+		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
 			log = append(log, "setup3")
 			return nil
 		})
 	})
 
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
-	c.MaybeActivate()
+	c.MaybeActivate(context.Background())
 
 	// All hooks from all SetupHooks calls should execute in order
 	assert.Equal(t, []string{"setup1", "setup2", "setup3"}, log)
@@ -407,7 +408,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 	b.Run("WithoutHooks", func(b *testing.B) {
 		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
-			component.WithActivationFunc(func(c *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 				return nil
 			}),
 		)
@@ -417,7 +418,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 		}
 
 		for b.Loop() {
-			c.MaybeActivate()
+			c.MaybeActivate(context.Background())
 			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
 				b.Fatal(err)
 			}
@@ -427,13 +428,13 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 	b.Run("WithHooks", func(b *testing.B) {
 		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
-			component.WithActivationFunc(func(c *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 				return nil
 			}),
 		).SetupHooks(func(h *component.Hooks) {
-			h.BeforeActivation(func(c *component.Component) error { return nil })
-			h.OnSuccess(func(ctx *component.ActivationContext) error { return nil })
-			h.AfterActivation(func(ctx *component.ActivationContext) error { return nil })
+			h.BeforeActivation(func(_ context.Context, c *component.Component) error { return nil })
+			h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error { return nil })
+			h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error { return nil })
 		})
 
 		if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
@@ -441,7 +442,7 @@ func BenchmarkComponentHooks_Overhead(b *testing.B) {
 		}
 
 		for b.Loop() {
-			c.MaybeActivate()
+			c.MaybeActivate(context.Background())
 			if err := c.InputByName("in").PutSignals(signal.New(1)); err != nil {
 				b.Fatal(err)
 			}

@@ -1,6 +1,7 @@
 package labels
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -93,7 +94,7 @@ func Test_LabelTransformation(t *testing.T) {
 		normalizer := testutil.MustComponent("normalizer",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				inPort := this.InputByName("in")
 				outPort := this.OutputByName("out")
 
@@ -127,7 +128,7 @@ func Test_LabelTransformation(t *testing.T) {
 			}),
 		))
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		// Check that output signal has normalized labels

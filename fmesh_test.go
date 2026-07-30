@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var noOpActivationFunc = func(this *component.Component) error { return nil }
+var noOpActivationFunc = func(_ context.Context, this *component.Component) error { return nil }
 
 // Local helpers: this in-package test cannot import internal/testutil
 // (testutil imports fmesh).
@@ -476,7 +477,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component simply puts a constant on o1"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(77))
 						}),
 					),
@@ -505,7 +506,7 @@ func TestFMesh_Run(t *testing.T) {
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
 						component.WithDescription("This component just returns an unexpected error"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return errors.New("boom")
 						}),
 					),
@@ -537,7 +538,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("i1", "i2"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component waits until it gets signals on both inputs"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 								return component.ErrWaitingForInputs
 							}
@@ -579,7 +580,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("trigger", "loop_in"),
 						component.WithOutputs("loop_out", "num1", "num2"),
 						component.WithDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							count := this.InputByName("loop_in").Signals().FirstPayloadOrDefault(0).(int)
 							count++
 
@@ -604,7 +605,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("in1", "in2"),
 						component.WithOutputs("result"),
 						component.WithDescription("Waits for both inputs (keeping signals) then multiplies them"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							if !this.Inputs().ByNames("in1", "in2").AllHaveSignals() {
 								return component.ErrWaitingForInputsKeep
 							}
@@ -660,28 +661,28 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component just sends a number to c2"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
 						})),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component receives a number from c1 and passes it to c4"),
-						component.WithActivationFunc(func(this *component.Component) error {
-							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+							return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 						})),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return errors.New("boom")
 						})),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component receives a number from c2 and panics"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							panic("no way")
 						})),
 				))
@@ -738,30 +739,30 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component just sends a number to c2"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return this.OutputByName("o1").PutSignals(signal.New(10))
 						})),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component receives a number from c1 and passes it to c4"),
-						component.WithActivationFunc(func(this *component.Component) error {
-							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+							_ = port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 							return nil
 						})),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component returns an error, but the mesh is configured to ignore errors"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							return errors.New("boom")
 						})),
 					mustNewComponent("c4",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component receives a number from c2 and panics, but the mesh is configured to ignore even panics"),
-						component.WithActivationFunc(func(this *component.Component) error {
-							_ = port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+							_ = port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 
 							// Even component panicked, it managed to set some data on output "o1"
 							// so that data will be available in next cycle
@@ -771,8 +772,8 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component receives a number from c4"),
-						component.WithActivationFunc(func(this *component.Component) error {
-							return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+							return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 						})),
 				))
 				return fm
@@ -835,7 +836,7 @@ func TestFMesh_Run(t *testing.T) {
 			if tt.initFM != nil {
 				tt.initFM(fm)
 			}
-			got, err := fm.Run()
+			got, err := fm.Run(context.Background())
 			assert.Equal(t, tt.wantCycles.Len(), got.Cycles.Len())
 			if tt.wantErr {
 				require.Error(t, err)
@@ -891,14 +892,14 @@ func TestFMesh_runCycle(t *testing.T) {
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							// No output
 							return nil
 						})),
 					mustNewComponent("c2",
 						component.WithInputs("i1"),
 						component.WithOutputs("o1", "o2"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							// Sets output
 							if err := this.OutputByName("o1").PutSignals(signal.New(1)); err != nil {
 								return err
@@ -909,7 +910,7 @@ func TestFMesh_runCycle(t *testing.T) {
 						})),
 					mustNewComponent("c3",
 						component.WithInputs("i1"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							// No output
 							return nil
 						})),
@@ -941,7 +942,7 @@ func TestFMesh_runCycle(t *testing.T) {
 				tt.initFM(fm)
 			}
 			fm.runtimeInfo.markStarted()
-			cycleErr := fm.runCycle()
+			cycleErr := fm.runCycle(context.Background())
 			gotCycleResult := fm.runtimeInfo.Cycles.Last()
 			if tt.wantError {
 				require.Error(t, cycleErr)
@@ -1048,7 +1049,7 @@ func TestFMesh_mustStop(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFMesh()
-			got, stopErr := fm.mustStop()
+			got, stopErr := fm.mustStop(context.Background())
 			if tt.wantErr != nil {
 				require.ErrorContains(t, stopErr, tt.wantErr.Error())
 			} else {
@@ -1178,7 +1179,7 @@ func TestFMesh_validateMeshStructure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.getFM()
-			_, err := fm.Run()
+			_, err := fm.Run(context.Background())
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -1194,20 +1195,20 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 	t.Run("beforeRun hook error causes Run to return error", func(t *testing.T) {
 		fm := mustNewFMesh("test fm")
 		fm.SetupHooks(func(h *Hooks) {
-			h.BeforeRun(func(fm *FMesh) error {
+			h.BeforeRun(func(_ context.Context, fm *FMesh) error {
 				return errors.New("beforeRun hook failed")
 			})
 		})
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("simple",
 				component.WithInputs("in"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return nil
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		assert.Contains(t, err.Error(), "beforeRun hook failed")
@@ -1222,8 +1223,8 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 			mustNewComponent("looper",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
-					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
 				})),
 		))
 
@@ -1231,7 +1232,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 			PipeTo(fm.ComponentByName("looper").InputByName("in")))
 
 		require.NoError(t, fm.ComponentByName("looper").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		require.ErrorIs(t, err, ErrReachedMaxAllowedCycles)
@@ -1246,9 +1247,9 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 			mustNewComponent("sleeper",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					time.Sleep(50 * time.Millisecond)
-					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
 				})),
 		))
 
@@ -1256,7 +1257,7 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 			PipeTo(fm.ComponentByName("sleeper").InputByName("in")))
 
 		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		require.ErrorIs(t, err, ErrTimeLimitExceeded)
@@ -1269,13 +1270,13 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("faulty",
 				component.WithInputs("in"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return errors.New("component failed")
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("faulty").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
@@ -1288,13 +1289,13 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("panicky",
 				component.WithInputs("in"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					panic("component panicked")
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("panicky").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		require.ErrorIs(t, err, ErrHitAPanic)
@@ -1307,13 +1308,13 @@ func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("simple",
 				component.WithInputs("in"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return nil
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 
 		require.Error(t, err, "Run should return error")
 		require.ErrorIs(t, err, ErrUnsupportedErrorHandlingStrategy)
@@ -1326,7 +1327,7 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 		c := mustNewComponent("c1",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				return this.OutputByName("out").PutSignals(signal.New("done"))
 			}),
 			component.WithHooks(configureHooks),
@@ -1340,12 +1341,12 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 
 	t.Run("failing BeforeActivation hook surfaces in Run error", func(t *testing.T) {
 		fm := newMeshWithFailingHook(StopOnFirstErrorOrPanic, func(h *component.Hooks) {
-			h.BeforeActivation(func(*component.Component) error {
+			h.BeforeActivation(func(context.Context, *component.Component) error {
 				return errHookFailed
 			})
 		})
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.Error(t, err)
 		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
 		require.ErrorIs(t, err, errHookFailed)
@@ -1353,12 +1354,12 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 
 	t.Run("failing OnSuccess hook surfaces in Run error", func(t *testing.T) {
 		fm := newMeshWithFailingHook(StopOnFirstErrorOrPanic, func(h *component.Hooks) {
-			h.OnSuccess(func(*component.ActivationContext) error {
+			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
 				return errHookFailed
 			})
 		})
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.Error(t, err)
 		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
 		require.ErrorIs(t, err, errHookFailed)
@@ -1366,12 +1367,12 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 
 	t.Run("IgnoreAll strategy still ignores hook failures", func(t *testing.T) {
 		fm := newMeshWithFailingHook(IgnoreAll, func(h *component.Hooks) {
-			h.OnSuccess(func(*component.ActivationContext) error {
+			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
 				return errHookFailed
 			})
 		})
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 	})
 }
@@ -1387,7 +1388,7 @@ func TestFMesh_Run_FanInOrderIsDeterministic(t *testing.T) {
 			return mustNewComponent(name,
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("out").PutSignals(signal.New(payload))
 				}))
 		}
@@ -1397,7 +1398,7 @@ func TestFMesh_Run_FanInOrderIsDeterministic(t *testing.T) {
 		consumer := mustNewComponent("consumer",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				joined := this.InputByName("in").Signals().ReducePayloads("", func(acc any, payload any) any {
 					return acc.(string) + payload.(string)
 				})
@@ -1411,7 +1412,7 @@ func TestFMesh_Run_FanInOrderIsDeterministic(t *testing.T) {
 		require.NoError(t, producerA.InputByName("in").PutSignals(signal.New("go")))
 		require.NoError(t, producerZ.InputByName("in").PutSignals(signal.New("go")))
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		result, err := consumer.OutputByName("out").Signals().FirstPayload()
@@ -1433,7 +1434,7 @@ func TestFMesh_Run_ValidatesOnEveryRun(t *testing.T) {
 	require.NoError(t, fm.AddComponents(c1))
 
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New("go")))
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Sneak in an invalid component (wrong parent mesh) after the first run
@@ -1444,7 +1445,7 @@ func TestFMesh_Run_ValidatesOnEveryRun(t *testing.T) {
 	require.NoError(t, fm.components.Add(badComponent))
 
 	require.NoError(t, c1.InputByName("in").PutSignals(signal.New("go")))
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.Error(t, err)
 	require.ErrorContains(t, err, "wrong parent mesh")
 }

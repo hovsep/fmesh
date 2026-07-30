@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hovsep/fmesh/port"
@@ -181,9 +182,9 @@ func (c *Component) InputByName(name string) *port.Port {
 }
 
 // FlushOutputs pushes signals out of the component outputs to pipes and clears outputs.
-func (c *Component) FlushOutputs() error {
+func (c *Component) FlushOutputs(ctx context.Context) error {
 	return c.Outputs().ForEach(func(out *port.Port) error {
-		if err := out.Flush(); err != nil {
+		if err := out.Flush(ctx); err != nil {
 			return fmt.Errorf("failed to flush output port %q: %w", out.Name(), err)
 		}
 		return nil
@@ -191,16 +192,16 @@ func (c *Component) FlushOutputs() error {
 }
 
 // ClearInputs clears all input ports.
-func (c *Component) ClearInputs() error {
+func (c *Component) ClearInputs(ctx context.Context) error {
 	return c.Inputs().ForEach(func(p *port.Port) error {
-		return p.Clear()
+		return p.Clear(ctx)
 	})
 }
 
 // ClearOutputs clears all output ports.
-func (c *Component) ClearOutputs() error {
+func (c *Component) ClearOutputs(ctx context.Context) error {
 	return c.Outputs().ForEach(func(p *port.Port) error {
-		return p.Clear()
+		return p.Clear(ctx)
 	})
 }
 

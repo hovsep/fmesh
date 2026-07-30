@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -26,12 +27,12 @@ func TestFMesh_Plugin(t *testing.T) {
 			mustNewComponent("c1",
 				component.WithInputs("i1"),
 				component.WithOutputs("o1"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("o1").PutPayloads(1)
 				})),
 			mustNewComponent("c2",
 				component.WithInputs("i1"),
-				component.WithActivationFunc(func(*component.Component) error { return nil })),
+				component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 		))
 		assert.Equal(t, 2, counter.instrumented, "both components instrumented on arrival")
 
@@ -39,7 +40,7 @@ func TestFMesh_Plugin(t *testing.T) {
 			fm.Components().ByName("c2").InputByName("i1"))
 		mustPutSignals(fm.Components().ByName("c1").InputByName("i1"), signal.New("go"))
 
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, counter.activations, "every activation observed without any component knowing")
 	})
@@ -90,10 +91,10 @@ func (p *activationCounter) Init(fm *FMesh) error {
 	fm.AddLabel("plugin/counter/version", "v1")
 
 	fm.SetupHooks(func(hooks *Hooks) {
-		hooks.OnComponentAdded(func(ctx *ComponentAddedContext) error {
+		hooks.OnComponentAdded(func(_ context.Context, ctx *ComponentAddedContext) error {
 			p.instrumented++
 			ctx.Component.SetupHooks(func(ch *component.Hooks) {
-				ch.AfterActivation(func(*component.ActivationContext) error {
+				ch.AfterActivation(func(context.Context, *component.ActivationContext) error {
 					p.activations++
 					return nil
 				})

@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	clock := testutil.MustComponent("clock",
 		component.WithInputs("i1"),
 		component.WithOutputs("tick", "beat"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			left, _ := this.State().GetOrDefault("left", 3).(int)
 			this.State().Set("left", left-1)
 
@@ -60,20 +61,20 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	sun := testutil.MustComponent("sun",
 		component.WithInputs("time"),
 		component.WithOutputs("uvi"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("uvi").PutPayloads(7)
 		}))
 
 	air := testutil.MustComponent("air",
 		component.WithInputs("time"),
 		component.WithOutputs("gas"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("gas").PutPayloads(21)
 		}))
 
 	body := testutil.MustComponent("body",
 		component.WithInputs("time", "env_sun_uvi", "env_air_gas"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			this.State().Upsert("uvi", func(old any) any {
 				prev, _ := old.(int)
 				return prev + sumInts(this, "env_sun_uvi")
@@ -104,7 +105,7 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	})
 
 	testutil.MustPutSignals(clock.InputByName("i1"), signal.New("start"))
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	t.Run("signals flowed over the derived pipes", func(t *testing.T) {
@@ -139,7 +140,7 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	t.Run("a second run pools into the same profile", func(t *testing.T) {
 		clock.State().Delete("left")
 		testutil.MustPutSignals(clock.InputByName("i1"), signal.New("start"))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, 2, profiler.Runs().Count)

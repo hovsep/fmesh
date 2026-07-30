@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"fmt"
 	"maps"
 
@@ -161,9 +162,9 @@ func (c *Collection) ForEach(action func(*Port) error) error {
 
 // Flush flushes all ports in a collection.
 // Stops and returns the first error encountered.
-func (c *Collection) Flush() error {
+func (c *Collection) Flush(ctx context.Context) error {
 	for _, p := range c.ports {
-		if err := p.Flush(); err != nil {
+		if err := p.Flush(ctx); err != nil {
 			return err
 		}
 	}

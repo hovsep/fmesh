@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -187,7 +188,8 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
 		}
 
-		if err := fm.hooks.onComponentAdded.Trigger(&ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
+		// Components are added outside a run, so there is no run context yet.
+		if err := fm.hooks.onComponentAdded.Trigger(context.Background(), &ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
 			return fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err)
 		}
 	}
@@ -205,14 +207,14 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 // runCycle runs one activation cycle (tries to activate ready components).
 // Returns any error that occurred.
 // The cycle is always added to runtimeInfo even if an error occurred.
-func (fm *FMesh) runCycle() error {
+func (fm *FMesh) runCycle(ctx context.Context) error {
 	nextNumber := 1
 	if lastCycle := fm.runtimeInfo.Cycles.Last(); lastCycle != nil {
 		nextNumber = lastCycle.Number() + 1
 	}
 	newCycle := cycle.New().SetNumber(nextNumber)
 
-	if err := fm.hooks.beforeCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+	if err := fm.hooks.beforeCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("beforeCycle hook failed: %w", err))
 		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
@@ -232,7 +234,7 @@ func (fm *FMesh) runCycle() error {
 		wg.Add(1)
 		go func(comp *component.Component, cyc *cycle.Cycle) {
 			defer wg.Done()
-			ar := comp.MaybeActivate()
+			ar := comp.MaybeActivate(ctx)
 			// Components with no input produce pure noise in runtime info (in sparse
 			// meshes it's most of the history), so their result is never recorded. A
 			// missing result means "had no input"; the run loop treats absent results
@@ -256,7 +258,7 @@ func (fm *FMesh) runCycle() error {
 		})
 	}
 
-	if err := fm.hooks.afterCycle.Trigger(&CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
+	if err := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("afterCycle hook failed: %w", err))
 		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
@@ -268,10 +270,10 @@ func (fm *FMesh) runCycle() error {
 
 // drainComponents drains the data from activated components.
 // Components are processed in name order so fan-in signal order is deterministic.
-func (fm *FMesh) drainComponents() error {
+func (fm *FMesh) drainComponents(ctx context.Context) error {
 	components := fm.Components().AllOrdered()
 
-	if err := fm.clearInputs(components); err != nil {
+	if err := fm.clearInputs(ctx, components); err != nil {
 		return errors.Join(ErrFailedToDrain, err)
 	}
 
@@ -290,7 +292,7 @@ func (fm *FMesh) drainComponents() error {
 			continue
 		}
 
-		if err := c.FlushOutputs(); err != nil {
+		if err := c.FlushOutputs(ctx); err != nil {
 			return errors.Join(ErrFailedToDrain, fmt.Errorf("failed to flush outputs of component %q: %w", c.Name(), err))
 		}
 	}
@@ -298,7 +300,7 @@ func (fm *FMesh) drainComponents() error {
 }
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
-func (fm *FMesh) clearInputs(components []*component.Component) error {
+func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Component) error {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	for _, c := range components {
@@ -314,17 +316,17 @@ func (fm *FMesh) clearInputs(components []*component.Component) error {
 			continue
 		}
 
-		if err := c.ClearInputs(); err != nil {
+		if err := c.ClearInputs(ctx); err != nil {
 			return errors.Join(errFailedToClearInputs, fmt.Errorf("component %q: %w", c.Name(), err))
 		}
 	}
 	return nil
 }
 
-func (fm *FMesh) cleanUpPreviousRun() error {
+func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 	// Clear all output ports to prevent signal accumulation between runs
 	if err := fm.Components().ForEach(func(c *component.Component) error {
-		return c.ClearOutputs()
+		return c.ClearOutputs(ctx)
 	}); err != nil {
 		return err
 	}
@@ -336,8 +338,23 @@ func (fm *FMesh) cleanUpPreviousRun() error {
 }
 
 // Run executes the mesh, activating components until completion or cycle limit.
-func (fm *FMesh) Run() (ri *RuntimeInfo, runErr error) {
-	if err := fm.cleanUpPreviousRun(); err != nil {
+//
+// The context is passed to every activation function and hook, and to the drain
+// that moves signals between cycles. Canceling it stops the mesh at the next
+// cycle boundary with ErrRunCanceled; a running cycle is never interrupted,
+// because Go cannot preempt a goroutine — an activation function that ignores
+// its context blocks the mesh for as long as it runs.
+//
+// A configured TimeLimit becomes a deadline on this context, so it reaches
+// activation functions instead of only being checked between cycles.
+func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
+	if fm.config.TimeLimit > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, fm.config.TimeLimit)
+		defer cancel()
+	}
+
+	if err := fm.cleanUpPreviousRun(ctx); err != nil {
 		return nil, err
 	}
 
@@ -345,39 +362,66 @@ func (fm *FMesh) Run() (ri *RuntimeInfo, runErr error) {
 
 	defer func() {
 		fm.runtimeInfo.markStopped()
-		if err := fm.hooks.afterRun.Trigger(fm); err != nil {
+		if err := fm.hooks.afterRun.Trigger(ctx, fm); err != nil {
 			if runErr == nil {
 				runErr = fmt.Errorf("afterRun hook failed: %w", err)
 			}
 		}
 	}()
 
-	if err := fm.hooks.beforeRun.Trigger(fm); err != nil {
+	if err := fm.hooks.beforeRun.Trigger(ctx, fm); err != nil {
 		runErr = fmt.Errorf("beforeRun hook failed: %w", err)
 		return ri, runErr
 	}
 
+	// An already-canceled context must not run a single cycle.
+	if err := fm.contextError(ctx); err != nil {
+		runErr = err
+		return ri, runErr
+	}
+
 	for {
-		cycleErr := fm.runCycle()
+		cycleErr := fm.runCycle(ctx)
 		if cycleErr != nil {
 			runErr = cycleErr
 			return ri, runErr
 		}
 
-		if mustStop, err := fm.mustStop(); mustStop {
+		if mustStop, err := fm.mustStop(ctx); mustStop {
 			runErr = err
 			return ri, runErr
 		}
 
-		if err := fm.drainComponents(); err != nil {
+		if err := fm.drainComponents(ctx); err != nil {
 			runErr = err
 			return ri, runErr
 		}
 	}
 }
 
+// contextError translates a canceled context into a mesh error.
+//
+// A deadline can come from two places: the mesh time limit, which Run turns into
+// a deadline of its own, and the caller's own context. They are told apart by the
+// elapsed time — the mesh's own limit cannot fire before it has elapsed — so a
+// caller passing a shorter deadline is reported as a cancellation rather than
+// being blamed on a time limit it did not hit.
+func (fm *FMesh) contextError(ctx context.Context) error {
+	err := ctx.Err()
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) &&
+		fm.config.TimeLimit > 0 && fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
+		return ErrTimeLimitExceeded
+	}
+
+	return fmt.Errorf("%w: %w", ErrRunCanceled, err)
+}
+
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
-func (fm *FMesh) mustStop() (bool, error) {
+func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
 	// Check if cycles limit is hit
@@ -392,6 +436,14 @@ func (fm *FMesh) mustStop() (bool, error) {
 			fm.LogDebug("going to stop: %s", ErrTimeLimitExceeded)
 			return true, ErrTimeLimitExceeded
 		}
+	}
+
+	// Check the context before the error strategy: when a run is canceled,
+	// activation functions typically return ctx.Err() and would otherwise be
+	// reported as ordinary activation errors, hiding why the mesh stopped.
+	if err := fm.contextError(ctx); err != nil {
+		fm.LogDebug("going to stop: %s", err)
+		return true, err
 	}
 
 	// Check if mesh must stop because of the configured error handling strategy.

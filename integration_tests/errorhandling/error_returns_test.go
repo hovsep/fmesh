@@ -1,6 +1,7 @@
 package errorhandling_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ import (
 func TestErrorReturns_DuplicateComponent(t *testing.T) {
 	fm, err := fmesh.New("fm")
 	require.NoError(t, err)
-	noop := component.WithActivationFunc(func(c *component.Component) error { return nil })
+	noop := component.WithActivationFunc(func(_ context.Context, c *component.Component) error { return nil })
 	c1, err := component.New("c", noop)
 	require.NoError(t, err)
 	c2, err := component.New("c", noop)
@@ -39,7 +40,7 @@ func TestErrorReturns_FMeshRun(t *testing.T) {
 	c, err := component.New("c",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			payload := this.InputByName("in").Signals().FirstPayloadOrNil()
 			return this.OutputByName("out").PutSignals(signal.New(payload))
 		}),
@@ -47,7 +48,7 @@ func TestErrorReturns_FMeshRun(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, fm.AddComponents(c))
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(42)))
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 42, c.OutputByName("out").Signals().FirstPayloadOrNil())
 }

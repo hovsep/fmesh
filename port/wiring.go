@@ -1,6 +1,9 @@
 package port
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // Pipe is a single wiring edge, from an output port to an input port.
 type Pipe struct {
@@ -36,12 +39,12 @@ type Pair struct {
 
 // MultiForward forwards signals across several 1:1 pairs, reporting nil ports
 // and naming the pair that failed, as MultiPipe does.
-func MultiForward(pairs ...Pair) error {
+func MultiForward(ctx context.Context, pairs ...Pair) error {
 	for _, pair := range pairs {
 		if pair.From == nil || pair.To == nil {
 			return fmt.Errorf("cannot forward: %s", pair)
 		}
-		if err := ForwardSignals(pair.From, pair.To); err != nil {
+		if err := ForwardSignals(ctx, pair.From, pair.To); err != nil {
 			return fmt.Errorf("forwarding %s: %w", pair, err)
 		}
 	}

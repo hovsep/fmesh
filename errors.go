@@ -28,7 +28,12 @@ var (
 	// ErrReachedMaxAllowedCycles is returned when the maximum number of allowed cycles is reached.
 	ErrReachedMaxAllowedCycles = errors.New("reached max allowed cycles")
 	// ErrTimeLimitExceeded is returned when the time limit is exceeded.
-	ErrTimeLimitExceeded   = errors.New("time limit exceeded")
+	ErrTimeLimitExceeded = errors.New("time limit exceeded")
+	// ErrRunCanceled is returned when the context passed to Run is canceled or
+	// hits a deadline of its own. It wraps the underlying context error, so
+	// errors.Is(err, context.Canceled) and context.DeadlineExceeded both work.
+	// A time limit configured on the mesh reports ErrTimeLimitExceeded instead.
+	ErrRunCanceled         = errors.New("run canceled")
 	errFailedToRunCycle    = errors.New("failed to run cycle")
 	errNoComponents        = errors.New("no components found")
 	errFailedToClearInputs = errors.New("failed to clear input ports")

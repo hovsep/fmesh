@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -21,7 +22,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			component.WithInputs("raw_data", "filter"),
 			component.WithOutputs("processed", "metrics"),
 			component.WithDescription("Demonstrates all port creation and manipulation features"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				// Wait for required inputs
 				if !this.InputByName("raw_data").HasSignals() ||
 					!this.InputByName("config").HasSignals() {
@@ -70,7 +71,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Create and run mesh
 		fm := testutil.MustFMesh("test-mesh")
 		require.NoError(t, fm.AddComponents(processor))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		// Verify input ports (both simple and advanced)
@@ -128,7 +129,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Create a component and manipulate port labels
 		c := testutil.MustComponent("label-demo",
 			component.WithOutputs("output"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				if !this.InputByName("input").HasSignals() {
 					return nil
 				}
@@ -164,7 +165,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
 		fm := testutil.MustFMesh("label-mesh")
 		require.NoError(t, fm.AddComponents(c))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		// Verify label manipulation results
@@ -183,7 +184,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		// Demonstrate adding ports one by one
 		c := testutil.MustComponent("incremental",
 			component.WithOutputs("result"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				if !this.Inputs().AllHaveSignals() {
 					return nil
 				}
@@ -208,7 +209,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		fm := testutil.MustFMesh("incremental-mesh")
 		require.NoError(t, fm.AddComponents(c))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		result, err := c.OutputByName("result").Signals().FirstPayload()
@@ -224,7 +225,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		c := testutil.MustComponent("collection-demo",
 			component.WithInputs("i1", "i2", "i3"),
 			component.WithOutputs("summary"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				inputs := this.Inputs()
 
 				// Count ports with signals
@@ -265,7 +266,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		fm := testutil.MustFMesh("collection-mesh")
 		require.NoError(t, fm.AddComponents(c))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		summary, err := c.OutputByName("summary").Signals().FirstPayload()

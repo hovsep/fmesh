@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -21,14 +22,14 @@ func Test_MultipleRun(t *testing.T) {
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
 				component.WithDescription("Bypasses all signals"),
-				component.WithActivationFunc(func(this *component.Component) error {
-					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
 				})),
 		))
 
 		for i := range 5 {
 			require.NoError(t, fm.ComponentByName("bypass").InputByName("in").PutSignals(signal.New(i)))
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			require.NoError(t, err)
 			assert.NotNil(t, runResult)
 			assert.Equal(t, 2, runResult.Cycles.Len())
@@ -48,7 +49,7 @@ func Test_MultipleRun(t *testing.T) {
 				component.WithInitialState(func(state component.State) {
 					state.Set("count", 0)
 				}),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					count := this.State().Get("count").(int)
 					count++
 					this.State().Set("count", count)
@@ -57,19 +58,19 @@ func Test_MultipleRun(t *testing.T) {
 		))
 
 		require.NoError(t, fm.ComponentByName("counter").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult1, err := fm.Run()
+		runResult1, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, runResult1.Cycles.Len())
 		assert.Equal(t, 1, fm.ComponentByName("counter").State().Get("count"))
 
 		require.NoError(t, fm.ComponentByName("counter").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult2, err := fm.Run()
+		runResult2, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, runResult2.Cycles.Len())
 		assert.Equal(t, 2, fm.ComponentByName("counter").State().Get("count"))
 
 		require.NoError(t, fm.ComponentByName("counter").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult3, err := fm.Run()
+		runResult3, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, runResult3.Cycles.Len())
 		assert.Equal(t, 3, fm.ComponentByName("counter").State().Get("count"))
@@ -81,13 +82,13 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("producer",
 				component.WithInputs("trigger"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("out").PutSignals(signal.New("data"))
 				})),
 			mustNewComponent("consumer",
 				component.WithInputs("in"),
 				component.WithOutputs("piped_out", "unpiped_out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					count := this.InputByName("in").Signals().Len()
 					if err := this.OutputByName("piped_out").PutSignals(signal.New(count)); err != nil {
 						return err
@@ -97,7 +98,7 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("final",
 				component.WithInputs("in"),
 				component.WithOutputs("result"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					count := this.InputByName("in").Signals().Len()
 					return this.OutputByName("result").PutSignals(signal.New(count))
 				})),
@@ -110,7 +111,7 @@ func Test_MultipleRun(t *testing.T) {
 
 		// Run 1
 		require.NoError(t, fm.ComponentByName("producer").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult1, err := fm.Run()
+		runResult1, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, runResult1)
 
@@ -125,7 +126,7 @@ func Test_MultipleRun(t *testing.T) {
 
 		// Run 2
 		require.NoError(t, fm.ComponentByName("producer").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult2, err := fm.Run()
+		runResult2, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, runResult2)
 
@@ -150,7 +151,7 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("repeater",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 					if count > 0 {
 						return this.OutputByName("out").PutSignals(signal.New(count - 1))
@@ -163,17 +164,17 @@ func Test_MultipleRun(t *testing.T) {
 			PipeTo(fm.ComponentByName("repeater").InputByName("in")))
 
 		require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(2)))
-		runResult1, err := fm.Run()
+		runResult1, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 4, runResult1.Cycles.Len(), "Run 1: expected 4 cycles (3 with activation + 1 empty)")
 
 		require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(4)))
-		runResult2, err := fm.Run()
+		runResult2, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 6, runResult2.Cycles.Len(), "Run 2: expected 6 cycles (5 with activation + 1 empty)")
 
 		require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(0)))
-		runResult3, err := fm.Run()
+		runResult3, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, runResult3.Cycles.Len(), "Run 3: expected 2 cycles (1 with activation + 1 empty)")
 	})
@@ -186,19 +187,19 @@ func Test_MultipleRun(t *testing.T) {
 
 		fm := mustNewFMesh("test fm")
 		fm.SetupHooks(func(h *Hooks) {
-			h.BeforeRun(func(fm *FMesh) error {
+			h.BeforeRun(func(_ context.Context, fm *FMesh) error {
 				beforeRunCount++
 				return nil
 			})
-			h.AfterRun(func(fm *FMesh) error {
+			h.AfterRun(func(_ context.Context, fm *FMesh) error {
 				afterRunCount++
 				return nil
 			})
-			h.BeforeCycle(func(ctx *CycleContext) error {
+			h.BeforeCycle(func(_ context.Context, ctx *CycleContext) error {
 				beforeCycleCount++
 				return nil
 			})
-			h.AfterCycle(func(ctx *CycleContext) error {
+			h.AfterCycle(func(_ context.Context, ctx *CycleContext) error {
 				afterCycleCount++
 				return nil
 			})
@@ -207,21 +208,21 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("simple",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
-					return port.ForwardSignals(this.InputByName("in"), this.OutputByName("out"))
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(2)))
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 
 		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(3)))
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, 3, beforeRunCount, "BeforeRun should be called 3 times")
@@ -238,13 +239,13 @@ func Test_MultipleRun(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("faulty",
 				component.WithInputs("trigger"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return errors.New("intentional error")
 				})),
 		))
 
 		require.NoError(t, fm.ComponentByName("faulty").InputByName("trigger").PutSignals(signal.New("go")))
-		runResult1, err := fm.Run()
+		runResult1, err := fm.Run(context.Background())
 		require.Error(t, err, "Run 1 should fail")
 		assert.True(t, runResult1.Cycles.Last().HasActivationErrors())
 	})
@@ -255,7 +256,7 @@ func Test_MultipleRun(t *testing.T) {
 			mustNewComponent("sleeper",
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					sleepDuration := this.InputByName("in").Signals().FirstPayloadOrDefault(time.Duration(0)).(time.Duration)
 					time.Sleep(sleepDuration)
 					return nil
@@ -263,14 +264,14 @@ func Test_MultipleRun(t *testing.T) {
 		))
 
 		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(10*time.Millisecond)))
-		runResult1, err := fm.Run()
+		runResult1, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		duration1 := runResult1.Duration()
 		assert.Positive(t, duration1)
 		t.Logf("Run 1 duration (10ms sleep): %d nanoseconds", duration1)
 
 		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(50*time.Millisecond)))
-		runResult2, err := fm.Run()
+		runResult2, err := fm.Run(context.Background())
 		require.NoError(t, err)
 		duration2 := runResult2.Duration()
 		assert.Positive(t, duration2)
@@ -289,7 +290,7 @@ func Test_MultipleRun(t *testing.T) {
 				mustNewComponent("repeater",
 					component.WithInputs("in"),
 					component.WithOutputs("out"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 						if count > 0 {
 							return this.OutputByName("out").PutSignals(signal.New(count - 1))
@@ -310,7 +311,7 @@ func Test_MultipleRun(t *testing.T) {
 			var maxObservedLen int
 			var observedCycles int
 			fm.SetupHooks(func(h *Hooks) {
-				h.AfterCycle(func(ctx *CycleContext) error {
+				h.AfterCycle(func(_ context.Context, ctx *CycleContext) error {
 					observedCycles++
 					if l := ctx.FMesh.runtimeInfo.Cycles.Len(); l > maxObservedLen {
 						maxObservedLen = l
@@ -320,7 +321,7 @@ func Test_MultipleRun(t *testing.T) {
 			})
 
 			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(5)))
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			require.NoError(t, err)
 
 			// 5 -> 4 -> 3 -> 2 -> 1 -> 0 (6 activated cycles) + 1 empty cycle = 7 total cycles (M = 7)
@@ -337,7 +338,7 @@ func Test_MultipleRun(t *testing.T) {
 		t.Run("limit larger than run length retains full history", func(t *testing.T) {
 			fm := newRepeaterMesh(WithCyclesHistoryLimit(100))
 			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(2)))
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			require.NoError(t, err)
 
 			assert.Equal(t, 4, runResult.Cycles.Len())
@@ -353,7 +354,7 @@ func Test_MultipleRun(t *testing.T) {
 				mustNewComponent("repeater",
 					component.WithInputs("in"),
 					component.WithOutputs("out"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 						if count > 0 {
 							return this.OutputByName("out").PutSignals(signal.New(count - 1))
@@ -364,7 +365,7 @@ func Test_MultipleRun(t *testing.T) {
 				mustNewComponent("idle",
 					component.WithInputs("in"),
 					component.WithOutputs("out"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						return nil
 					})),
 			))
@@ -376,7 +377,7 @@ func Test_MultipleRun(t *testing.T) {
 		t.Run("idle component's results never appear, mesh still drains and stops correctly", func(t *testing.T) {
 			fm := newMeshWithIdleComponent()
 			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(2)))
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			require.NoError(t, err)
 
 			// 2 -> 1 -> 0 (3 activated cycles) + 1 empty cycle = 4 total cycles
@@ -398,7 +399,7 @@ func Test_MultipleRun(t *testing.T) {
 		t.Run("combined with a cycles history limit", func(t *testing.T) {
 			fm := newMeshWithIdleComponent(WithCyclesHistoryLimit(2))
 			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(5)))
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			require.NoError(t, err)
 
 			assert.Equal(t, 2, runResult.Cycles.Len())

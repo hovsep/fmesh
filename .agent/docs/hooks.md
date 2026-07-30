@@ -8,10 +8,29 @@ Source: `hooks.go`, `component/hooks.go`, `port/hooks.go`, `internal/hook/hook_g
 `hook.Group[T]` (package `internal/hook` — not part of the public API). Generics are confined to
 `internal/` containers — `hook.Group[T]` and `plugin.Registry[T]` are **the only two approved
 generic types** in the codebase; nothing public is generic. An ordered
-slice of `func(T) error`; `Trigger(arg)` runs all in insertion order, **fail-fast** on first error.
+slice of `func(context.Context, T) error`; `Trigger(ctx, arg)` runs all in insertion order,
+**fail-fast** on first error.
 Registration is chainable and happens through `SetupHooks(func(*Hooks))` closures (or the
 `WithHooks` constructor option on components) — the `Hooks` structs' fields are unexported, so
 closures are the only registration path.
+
+## Context is the first argument, never a struct field
+
+Every hook takes `context.Context` first, exactly like an `ActivationFunc`. The per-event context
+structs (`*CycleContext`, `*ActivationContext`, the port ones) carry **data about the event**, never
+the context itself — a context stored in a struct is the `containedctx` anti-pattern, and these
+structs outlive no run anyway.
+
+Which context a hook receives depends on the path that fired it:
+
+| Fired from | Context |
+|---|---|
+| Anything inside `Run` — cycles, activations, drain | the run context (with the `TimeLimit` deadline applied) |
+| `component.New`, `fm.AddComponents`, `PipeTo` | `context.Background()` — there is no run to cancel yet |
+| `Port.PutSignals` / `PutPayloads` | `context.Background()` — seeding is a construction-time act, and requiring a context there would put `context.Background()` in every setup line and every activation function that writes an output |
+
+That last row is the one deliberate seam: `OnSignalsAdded` sees the run context when signals arrive
+through a pipe during drain, and `context.Background()` when a caller puts them directly.
 
 ## Three hook levels
 

@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -97,10 +98,10 @@ func (a *Autowire) Init(fm *fmesh.FMesh) error {
 	}
 
 	fm.SetupHooks(func(hooks *fmesh.Hooks) {
-		hooks.OnComponentAdded(func(ctx *fmesh.ComponentAddedContext) error {
-			arrived := ctx.Component
+		hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {
+			arrived := added.Component
 
-			return ctx.FMesh.Components().ForEach(func(existing *component.Component) error {
+			return added.FMesh.Components().ForEach(func(existing *component.Component) error {
 				if existing == arrived {
 					// Wiring a component to itself would be a loopback, which is
 					// never what a convention meant to express.

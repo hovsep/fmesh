@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ func Test_TimeConstraint(t *testing.T) {
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
 					component.WithDescription("simple clock ticking for 10 seconds"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 10 {
@@ -74,7 +75,7 @@ func Test_TimeConstraint(t *testing.T) {
 					component.WithInputs("tick_in", "start"),
 					component.WithOutputs("tick_out"),
 					component.WithDescription("simple clock ticking for 3 seconds"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						ticksCount := this.InputByName("tick_in").Signals().FirstPayloadOrDefault(0).(int)
 
 						if ticksCount == 3 {
@@ -118,7 +119,7 @@ func Test_TimeConstraint(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			tt.assertions(t, fm, runResult, err)
 		})
 	}

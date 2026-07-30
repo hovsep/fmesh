@@ -1,6 +1,7 @@
 package piping
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -30,29 +31,29 @@ func Test_Fan(t *testing.T) {
 				producer := testutil.MustComponent("producer",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(time.Now()))
 					}))
 
 				consumer1 := testutil.MustComponent("consumer1",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+						return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
 				consumer2 := testutil.MustComponent("consumer2",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+						return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
 				consumer3 := testutil.MustComponent("consumer3",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+						return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
 				if err := producer.OutputByName("o1").PipeTo(
@@ -99,29 +100,29 @@ func Test_Fan(t *testing.T) {
 				producer1 := testutil.MustComponent("producer1",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
 				producer2 := testutil.MustComponent("producer2",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
 				producer3 := testutil.MustComponent("producer3",
 					component.WithInputs("start"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						return this.OutputByName("o1").PutSignals(signal.New(rand.Int()))
 					}))
 
 				consumer := testutil.MustComponent("consumer",
 					component.WithInputs("i1"),
 					component.WithOutputs("o1"),
-					component.WithActivationFunc(func(this *component.Component) error {
-						return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+						return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 					}))
 
 				if err := producer1.OutputByName("o1").PipeTo(consumer.InputByName("i1")); err != nil {
@@ -178,7 +179,7 @@ func Test_Fan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			cycles := runResult.Cycles.All()
 			tt.assertions(t, fm, cycles, err)
 		})

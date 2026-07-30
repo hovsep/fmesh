@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -20,7 +21,7 @@ func TestPortHooks_OnSignalsAdded(t *testing.T) {
 
 	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				hookFired = true
 				portName = ctx.Port.Name()
 				signalsAdded = len(ctx.SignalsAdded)
@@ -42,7 +43,7 @@ func TestPortHooks_OnSignalsAdded_MultipleCalls(t *testing.T) {
 
 	p := testutil.MustOutputPort("result").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				callCount++
 				totalSignalsHistory = append(totalSignalsHistory, ctx.Port.Signals().Len())
 				return nil
@@ -63,7 +64,7 @@ func TestPortHooks_OnClear(t *testing.T) {
 
 	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnClear(func(ctx *port.ClearContext) error {
+			h.OnClear(func(_ context.Context, ctx *port.ClearContext) error {
 				clearFired = true
 				signalsCleared = ctx.SignalsCleared
 				return nil
@@ -71,7 +72,7 @@ func TestPortHooks_OnClear(t *testing.T) {
 		})
 
 	require.NoError(t, p.PutSignals(signal.New(1), signal.New(2), signal.New(3), signal.New(4)))
-	require.NoError(t, p.Clear())
+	require.NoError(t, p.Clear(context.Background()))
 
 	assert.True(t, clearFired)
 	assert.Equal(t, 4, signalsCleared)
@@ -84,14 +85,14 @@ func TestPortHooks_OnClear_EmptyPort(t *testing.T) {
 
 	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnClear(func(ctx *port.ClearContext) error {
+			h.OnClear(func(_ context.Context, ctx *port.ClearContext) error {
 				clearFired = true
 				signalsCleared = ctx.SignalsCleared
 				return nil
 			})
 		})
 
-	require.NoError(t, p.Clear())
+	require.NoError(t, p.Clear(context.Background()))
 
 	assert.True(t, clearFired)
 	assert.Equal(t, 0, signalsCleared)
@@ -104,7 +105,7 @@ func TestPortHooks_OnOutboundPipe(t *testing.T) {
 
 	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
+			h.OnOutboundPipe(func(_ context.Context, ctx *port.OutboundPipeContext) error {
 				outboundFired = true
 				sourceName = ctx.SourcePort.Name()
 				destName = ctx.DestinationPort.Name()
@@ -130,7 +131,7 @@ func TestPortHooks_OnInboundPipe(t *testing.T) {
 
 	inPort := testutil.MustInputPort("in").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
+			h.OnInboundPipe(func(_ context.Context, ctx *port.InboundPipeContext) error {
 				inboundFired = true
 				sourceName = ctx.SourcePort.Name()
 				destName = ctx.DestinationPort.Name()
@@ -151,7 +152,7 @@ func TestPortHooks_OnOutboundAndInbound_BothFire(t *testing.T) {
 
 	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
+			h.OnOutboundPipe(func(_ context.Context, ctx *port.OutboundPipeContext) error {
 				outboundFired = true
 				return nil
 			})
@@ -159,7 +160,7 @@ func TestPortHooks_OnOutboundAndInbound_BothFire(t *testing.T) {
 
 	inPort := testutil.MustInputPort("in").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnInboundPipe(func(ctx *port.InboundPipeContext) error {
+			h.OnInboundPipe(func(_ context.Context, ctx *port.InboundPipeContext) error {
 				inboundFired = true
 				return nil
 			})
@@ -177,7 +178,7 @@ func TestPortHooks_OnOutboundPipe_MultipleDest(t *testing.T) {
 
 	outPort := testutil.MustOutputPort("out").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
+			h.OnOutboundPipe(func(_ context.Context, ctx *port.OutboundPipeContext) error {
 				outboundCount++
 				destNames = append(destNames, ctx.DestinationPort.Name())
 				return nil
@@ -199,26 +200,26 @@ func TestPortHooks_MultipleHooksPerType(t *testing.T) {
 
 	p := testutil.MustInputPort("data").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				log = append(log, "put1")
 				return nil
 			})
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				log = append(log, "put2")
 				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) error {
+			h.OnClear(func(_ context.Context, ctx *port.ClearContext) error {
 				log = append(log, "clear1")
 				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) error {
+			h.OnClear(func(_ context.Context, ctx *port.ClearContext) error {
 				log = append(log, "clear2")
 				return nil
 			})
 		})
 
 	require.NoError(t, p.PutSignals(signal.New(1)))
-	require.NoError(t, p.Clear())
+	require.NoError(t, p.Clear(context.Background()))
 
 	assert.Equal(t, []string{"put1", "put2", "clear1", "clear2"}, log)
 }
@@ -229,7 +230,7 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 
 	p := testutil.MustInputPort("sensor").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				portName = ctx.Port.Name()
 				// Access actual signal data
 				for _, sig := range ctx.SignalsAdded {
@@ -264,7 +265,7 @@ func TestPortHooks_PracticalVolumeMonitoring(t *testing.T) {
 
 	p := testutil.MustOutputPort("stream").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				metrics.TotalPuts++
 				metrics.TotalSignalsAdded += len(ctx.SignalsAdded)
 				if len(ctx.SignalsAdded) > metrics.MaxSignalsAtOnce {
@@ -272,7 +273,7 @@ func TestPortHooks_PracticalVolumeMonitoring(t *testing.T) {
 				}
 				return nil
 			})
-			h.OnClear(func(ctx *port.ClearContext) error {
+			h.OnClear(func(_ context.Context, ctx *port.ClearContext) error {
 				metrics.TotalClears++
 				return nil
 			})
@@ -281,9 +282,9 @@ func TestPortHooks_PracticalVolumeMonitoring(t *testing.T) {
 	// Simulate data flow
 	require.NoError(t, p.PutSignals(signal.New(1)))
 	require.NoError(t, p.PutSignals(signal.New(2), signal.New(3)))
-	require.NoError(t, p.Clear())
+	require.NoError(t, p.Clear(context.Background()))
 	require.NoError(t, p.PutSignals(signal.New(4), signal.New(5), signal.New(6), signal.New(7)))
-	require.NoError(t, p.Clear())
+	require.NoError(t, p.Clear(context.Background()))
 
 	assert.Equal(t, 3, metrics.TotalPuts)
 	assert.Equal(t, 7, metrics.TotalSignalsAdded)
@@ -302,7 +303,7 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 
 	out1 := testutil.MustOutputPort("out1").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
+			h.OnOutboundPipe(func(_ context.Context, ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
 				destName := ctx.DestinationPort.Name()
 				topology.Connections[srcName] = append(topology.Connections[srcName], destName)
@@ -312,7 +313,7 @@ func TestPortHooks_PracticalTopologyTracking(t *testing.T) {
 
 	out2 := testutil.MustOutputPort("out2").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnOutboundPipe(func(ctx *port.OutboundPipeContext) error {
+			h.OnOutboundPipe(func(_ context.Context, ctx *port.OutboundPipeContext) error {
 				srcName := ctx.SourcePort.Name()
 				destName := ctx.DestinationPort.Name()
 				topology.Connections[srcName] = append(topology.Connections[srcName], destName)
@@ -336,7 +337,7 @@ func TestPortHooks_PracticalDataValidation(t *testing.T) {
 	// Practical example: Validate incoming data
 	p := testutil.MustInputPort("validated").
 		SetupHooks(func(h *port.Hooks) {
-			h.OnSignalsAdded(func(ctx *port.SignalsAddedContext) error {
+			h.OnSignalsAdded(func(_ context.Context, ctx *port.SignalsAddedContext) error {
 				// Validate: must receive exactly 3 signals
 				if len(ctx.SignalsAdded) != 3 {
 					return errors.New("expected 3 signals")

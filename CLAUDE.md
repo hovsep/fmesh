@@ -66,13 +66,18 @@ Root package `fmesh` orchestrates; the graph primitives live in subpackages:
 | Execution tick | `*cycle.Cycle` | `cycle` |
 | String / numeric metadata | `*meta.Labels` / `*meta.Scalars` | `meta` |
 
-**Execution loop** (`fmesh.go` `Run` → `runCycle` → `drainComponents`): each cycle activates all
+**Execution loop** (`fmesh.go` `Run(ctx)` → `runCycle` → `drainComponents`): each cycle activates all
 ready components concurrently (one goroutine each, `sync.WaitGroup`), collects `ActivationResult`s,
 then drains — clears inputs and flushes outputs through pipes to downstream inputs. The mesh stops
 naturally when no component activated in a cycle, or on cycle limit / time limit / error strategy.
 Components can signal "waiting for input" to keep their inputs for the next cycle. Config
 (`config.go`): `CyclesLimit` default 1000, `TimeLimit` default 5s, `ErrorHandlingStrategy` default
 `StopOnFirstErrorOrPanic` (see `errors.go` for the three strategies).
+
+**Context**: `Run(ctx)` threads a context through activation functions, hooks and the drain;
+`TimeLimit` is applied to it as a deadline. Context is always a first parameter, never a struct
+field. Construction and seeding (`New`, `PipeTo`, `PutSignals`) stay context-free and their hooks
+receive `context.Background()`. Cancellation is cooperative and checked between cycles.
 
 **The central invariant (`.agent/docs/design.md`):** `signal.Signal` and `signal.Group` are
 **copy-on-write** — mutating methods return a new value, never touch the receiver; payload is

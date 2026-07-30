@@ -9,6 +9,7 @@ package plugin
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -85,32 +86,32 @@ func (p *Profiler) GetName() string { return "profiler" }
 // Init implements fmesh.Plugin.
 func (p *Profiler) Init(fm *fmesh.FMesh) error {
 	fm.SetupHooks(func(hooks *fmesh.Hooks) {
-		hooks.BeforeRun(func(*fmesh.FMesh) error {
+		hooks.BeforeRun(func(context.Context, *fmesh.FMesh) error {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			p.runStarted = time.Now()
 			return nil
 		})
-		hooks.AfterRun(func(*fmesh.FMesh) error {
+		hooks.AfterRun(func(context.Context, *fmesh.FMesh) error {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			p.run = p.run.with(time.Since(p.runStarted))
 			return nil
 		})
-		hooks.BeforeCycle(func(*fmesh.CycleContext) error {
+		hooks.BeforeCycle(func(context.Context, *fmesh.CycleContext) error {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			p.cycleStarted = time.Now()
 			return nil
 		})
-		hooks.AfterCycle(func(*fmesh.CycleContext) error {
+		hooks.AfterCycle(func(context.Context, *fmesh.CycleContext) error {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			p.cycle = p.cycle.with(time.Since(p.cycleStarted))
 			return nil
 		})
-		hooks.OnComponentAdded(func(ctx *fmesh.ComponentAddedContext) error {
-			p.instrument(ctx.Component)
+		hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {
+			p.instrument(added.Component)
 			return nil
 		})
 	})
@@ -132,19 +133,19 @@ func (p *Profiler) Init(fm *fmesh.FMesh) error {
 // reported this way, ~180us with the start stamped early.
 func (p *Profiler) instrument(c *component.Component) {
 	c.SetupHooks(func(hooks *component.Hooks) {
-		hooks.BeforeActivation(func(this *component.Component) error {
+		hooks.BeforeActivation(func(_ context.Context, this *component.Component) error {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			p.started[this.Name()] = time.Now()
 			return nil
 		})
-		hooks.AfterActivation(func(ctx *component.ActivationContext) error {
+		hooks.AfterActivation(func(_ context.Context, activation *component.ActivationContext) error {
 			endedAt := time.Now()
 
 			p.mu.Lock()
 			defer p.mu.Unlock()
 
-			name := ctx.Component.Name()
+			name := activation.Component.Name()
 			startedAt, ok := p.started[name]
 			if !ok {
 				// AfterActivation is a finally block and can fire for an

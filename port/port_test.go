@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -120,7 +121,7 @@ func TestPort_Clear(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.before.Clear()
+			err := tt.before.Clear(context.Background())
 			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.before)
@@ -530,7 +531,7 @@ func TestPort_Flush(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.srcPort.Flush()
+			err := tt.srcPort.Flush(context.Background())
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "cannot flush input port")
@@ -900,7 +901,7 @@ func TestPort_ForwardSignals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ForwardSignals(tt.args.srcPort, tt.args.destPort)
+			err := ForwardSignals(context.Background(), tt.args.srcPort, tt.args.destPort)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
 			}
@@ -987,7 +988,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ForwardWithFilter(tt.args.srcPort, tt.args.destPort, tt.args.predicate)
+			err := ForwardWithFilter(context.Background(), tt.args.srcPort, tt.args.destPort, tt.args.predicate)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
 			}
@@ -1031,7 +1032,7 @@ func TestPort_ForwardWithMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ForwardWithMap(tt.args.srcPort, tt.args.destPort, tt.args.mapperFunc)
+			err := ForwardWithMap(context.Background(), tt.args.srcPort, tt.args.destPort, tt.args.mapperFunc)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.args.srcPort, tt.args.destPort, err)
 			}
@@ -1094,7 +1095,7 @@ func TestPort_Chainability(t *testing.T) {
 		p := mustOutput("p1")
 		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
 		require.NoError(t, p.PutSignals(signal.New(3)))
-		require.NoError(t, p.Clear())
+		require.NoError(t, p.Clear(context.Background()))
 		assert.Equal(t, 0, p.Signals().Len())
 		assert.False(t, p.HasSignals())
 	})

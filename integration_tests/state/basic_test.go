@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 
@@ -30,7 +31,7 @@ func Test_State(t *testing.T) {
 					component.WithInputs("demand_rate"),
 					component.WithOutputs("signal_out"),
 					component.WithDescription("produces some signals"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
 						this.Logger().Println("demand rate= ", demandRate)
 
@@ -50,7 +51,7 @@ func Test_State(t *testing.T) {
 					component.WithInitialState(func(state component.State) {
 						state.Set("observed_signals_count", 0)
 					}),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						count := this.State().Get("observed_signals_count").(int)
 
 						defer func() {
@@ -60,7 +61,7 @@ func Test_State(t *testing.T) {
 						count += this.InputByName("bypass_in").Signals().Len()
 						this.Logger().Println("so far signals observed ", count)
 
-						_ = port.ForwardSignals(this.InputByName("bypass_in"), this.OutputByName("bypass_out"))
+						_ = port.ForwardSignals(context.Background(), this.InputByName("bypass_in"), this.OutputByName("bypass_out"))
 
 						return nil
 					}),
@@ -74,7 +75,7 @@ func Test_State(t *testing.T) {
 						// Simulate uneven demand
 						state.Set("demand_shape", []int{3, 70, 22, 1350})
 					}),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						demandShape := this.State().Get("demand_shape").([]int)
 						defer func() {
 							this.State().Set("demand_shape", demandShape)
@@ -91,7 +92,7 @@ func Test_State(t *testing.T) {
 						}
 
 						// Consume signals
-						return port.ForwardSignals(this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
+						return port.ForwardSignals(context.Background(), this.InputByName("signal_in"), this.OutputByName("consumed_signals"))
 					}),
 				)
 
@@ -136,7 +137,7 @@ func Test_State(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			cycles := runResult.Cycles.All()
 			tt.assertions(t, fm, cycles, err)
 		})

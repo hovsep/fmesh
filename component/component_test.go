@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"io"
 	"log"
 	"testing"
@@ -58,7 +59,7 @@ func TestNewComponent(t *testing.T) {
 				name: "with-hook",
 				opts: []Option{
 					WithHooks(func(hooks *Hooks) {
-						hooks.OnCreation(func(component *Component) error {
+						hooks.OnCreation(func(_ context.Context, component *Component) error {
 							component.AddLabel("tagging-source", "hook")
 							return nil
 						})
