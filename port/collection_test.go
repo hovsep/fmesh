@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -20,7 +21,7 @@ func mustNewCollection(ports ...*Port) *Collection {
 func TestCollection_AllHaveSignals(t *testing.T) {
 	oneEmptyPorts := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
 	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
-	require.NoError(t, oneEmptyPorts.ByName("p2").Clear())
+	require.NoError(t, oneEmptyPorts.ByName("p2").Clear(context.Background()))
 
 	tests := []struct {
 		name  string
@@ -57,7 +58,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 func TestCollection_AnyHasSignals(t *testing.T) {
 	oneEmptyPorts := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
 	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
-	require.NoError(t, oneEmptyPorts.ByName("p2").Clear())
+	require.NoError(t, oneEmptyPorts.ByName("p2").Clear(context.Background()))
 
 	tests := []struct {
 		name  string
@@ -178,7 +179,7 @@ func TestCollection_ForEachClear(t *testing.T) {
 		require.NoError(t, ports.PutSignals(signal.New(1), signal.New(2), signal.New(3)))
 		assert.True(t, ports.AllHaveSignals())
 		err := ports.ForEach(func(p *Port) error {
-			return p.Clear()
+			return p.Clear(context.Background())
 		})
 		require.NoError(t, err)
 		assert.False(t, ports.AnyHasSignals())
@@ -277,7 +278,7 @@ func TestCollection_Flush(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.collection.Flush()
+			err := tt.collection.Flush(context.Background())
 			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
@@ -521,7 +522,7 @@ func TestCollection_IterationOperationsDoNotPoisonCollection(t *testing.T) {
 
 	t.Run("Flush does not fail on valid collection", func(t *testing.T) {
 		collection := mustNewCollection(mustOutput("p1"), mustOutput("p2"))
-		err := collection.Flush()
+		err := collection.Flush(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, collection.Len())
 	})

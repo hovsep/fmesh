@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/port"
@@ -21,7 +22,7 @@ func TestComponent_AddInputs(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: mustNew("c1", WithActivationFunc(func(this *Component) error { return nil })),
+			component: mustNew("c1", WithActivationFunc(func(_ context.Context, this *Component) error { return nil })),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -71,7 +72,7 @@ func TestComponent_AddOutputs(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			component: mustNew("c1", WithActivationFunc(func(this *Component) error { return nil })),
+			component: mustNew("c1", WithActivationFunc(func(_ context.Context, this *Component) error { return nil })),
 			args: args{
 				portNames: []string{"p1", "p2"},
 			},
@@ -359,7 +360,7 @@ func TestComponent_ClearInputs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.getComponent()
-			require.NoError(t, c.ClearInputs())
+			require.NoError(t, c.ClearInputs(context.Background()))
 			if tt.assertions != nil {
 				tt.assertions(t, c)
 			}
@@ -421,7 +422,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.getComponent()
-			require.NoError(t, c.FlushOutputs())
+			require.NoError(t, c.FlushOutputs(context.Background()))
 			tt.assertions(t, c)
 		})
 	}

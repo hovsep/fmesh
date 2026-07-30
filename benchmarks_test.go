@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
@@ -22,7 +23,7 @@ func buildPipelineMesh(b *testing.B, componentsCount int) *FMesh {
 		c, err := component.New("c"+strconv.Itoa(i),
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 				return this.OutputByName("out").PutSignals(signal.New(num + 1))
 			}))
@@ -49,7 +50,7 @@ func BenchmarkMeshRunPipeline(b *testing.B) {
 		if err := firstInput.PutSignals(signal.New(0)); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := fm.Run(); err != nil {
+		if _, err := fm.Run(context.Background()); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -66,7 +67,7 @@ func BenchmarkMeshRunFanOut(b *testing.B) {
 	producer, err := component.New("producer",
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("out").PutSignals(this.InputByName("in").Signals().All()...)
 		}))
 	require.NoError(b, err)
@@ -76,7 +77,7 @@ func BenchmarkMeshRunFanOut(b *testing.B) {
 		consumer, err := component.New("consumer"+strconv.Itoa(i),
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 				return this.OutputByName("out").PutSignals(signal.New(num * 2))
 			}))
@@ -92,7 +93,7 @@ func BenchmarkMeshRunFanOut(b *testing.B) {
 		if err := producerInput.PutSignals(signal.New(42)); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := fm.Run(); err != nil {
+		if _, err := fm.Run(context.Background()); err != nil {
 			b.Fatal(err)
 		}
 	}

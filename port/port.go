@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -209,23 +210,27 @@ func (p *Port) Signals() *signal.Group {
 
 // PutSignals adds signals to the port.
 // When the OnSignalsAdded hook fails, the port is restored to its previous state.
+//
+// Seeding a mesh happens before there is a run to cancel, so this takes no
+// context and the OnSignalsAdded hook receives context.Background(). Delivery
+// during a run goes through Flush, which passes the run context along.
 func (p *Port) PutSignals(signals ...*signal.Signal) error {
-	return p.putSignals(signals)
+	return p.putSignals(context.Background(), signals)
 }
 
 // PutPayloads creates signals from given payloads.
 // When the OnSignalsAdded hook fails, the port is restored to its previous state.
 func (p *Port) PutPayloads(payloads ...any) error {
-	return p.putSignals(signal.NewGroup(payloads...).All())
+	return p.putSignals(context.Background(), signal.NewGroup(payloads...).All())
 }
 
 // putSignals adds signals to the port and triggers the OnSignalsAdded hook,
 // rolling the port back when the hook fails.
-func (p *Port) putSignals(signals []*signal.Signal) error {
+func (p *Port) putSignals(ctx context.Context, signals []*signal.Signal) error {
 	previousSignals := p.Signals()
 	p.setSignals(previousSignals.With(signals...))
 
-	if err := p.hooks.onSignalsAdded.Trigger(&SignalsAddedContext{
+	if err := p.hooks.onSignalsAdded.Trigger(ctx, &SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: signals,
 	}); err != nil {
@@ -248,12 +253,12 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 }
 
 // Clear removes all signals.
-func (p *Port) Clear() error {
+func (p *Port) Clear(ctx context.Context) error {
 	signalsCleared := p.Signals().Len()
 	p.setSignals(signal.NewGroup())
 
 	// Trigger OnClear hook
-	if err := p.hooks.onClear.Trigger(&ClearContext{
+	if err := p.hooks.onClear.Trigger(ctx, &ClearContext{
 		Port:           p,
 		SignalsCleared: signalsCleared,
 	}); err != nil {
@@ -270,7 +275,7 @@ func (p *Port) Clear() error {
 // joined and the port is cleared only when all deliveries succeeded, so
 // successfully delivered signals are never lost, but a retry after a partial
 // failure re-delivers to the destinations that already received them.
-func (p *Port) Flush() error {
+func (p *Port) Flush(ctx context.Context) error {
 	if p.IsInput() {
 		return fmt.Errorf("cannot flush input port %q: only output ports can be flushed", p.Name())
 	}
@@ -283,7 +288,7 @@ func (p *Port) Flush() error {
 	// ForEach avoids cloning the pipe slice on every flush (hot path)
 	_ = p.pipes.ForEach(func(outboundPort *Port) error {
 		// Fan-Out
-		if err := ForwardSignals(p, outboundPort); err != nil {
+		if err := ForwardSignals(ctx, p, outboundPort); err != nil {
 			deliveryErrs = errors.Join(deliveryErrs, err)
 		}
 		return nil
@@ -291,7 +296,7 @@ func (p *Port) Flush() error {
 	if deliveryErrs != nil {
 		return deliveryErrs
 	}
-	return p.Clear()
+	return p.Clear(ctx)
 }
 
 // HasSignals returns true if the port has any signals.
@@ -314,8 +319,9 @@ func (p *Port) PipeTo(destPorts ...*Port) error {
 		}
 		p.pipes.add(destPort)
 
-		// Trigger OnOutboundPipe hook on source port (this port)
-		if err := p.hooks.onOutboundPipe.Trigger(&OutboundPipeContext{
+		// Wiring happens before there is a run to cancel, so the pipe hooks get
+		// context.Background() like every other construction-time hook.
+		if err := p.hooks.onOutboundPipe.Trigger(context.Background(), &OutboundPipeContext{
 			SourcePort:      p,
 			DestinationPort: destPort,
 		}); err != nil {
@@ -323,7 +329,7 @@ func (p *Port) PipeTo(destPorts ...*Port) error {
 		}
 
 		// Trigger OnInboundPipe hook on destination port
-		if err := destPort.hooks.onInboundPipe.Trigger(&InboundPipeContext{
+		if err := destPort.hooks.onInboundPipe.Trigger(context.Background(), &InboundPipeContext{
 			DestinationPort: destPort,
 			SourcePort:      p,
 		}); err != nil {
@@ -349,21 +355,21 @@ func validatePipe(srcPort, dstPort *Port) error {
 // ForwardSignals copies all signals from source to destination port without clearing source.
 // The same *Signal pointers are shared with the destination; payloads must be
 // treated as immutable because downstream components activate concurrently.
-func ForwardSignals(source, dest *Port) error {
+func ForwardSignals(ctx context.Context, source, dest *Port) error {
 	signals := source.Signals().All()
-	return dest.PutSignals(signals...)
+	return dest.putSignals(ctx, signals)
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
-func ForwardWithFilter(source, dest *Port, p signal.Predicate) error {
+func ForwardWithFilter(ctx context.Context, source, dest *Port, p signal.Predicate) error {
 	filteredSignals := source.Signals().Filter(p).All()
-	return dest.PutSignals(filteredSignals...)
+	return dest.putSignals(ctx, filteredSignals)
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
-func ForwardWithMap(source, dest *Port, mapperFunc signal.Mapper) error {
+func ForwardWithMap(ctx context.Context, source, dest *Port, mapperFunc signal.Mapper) error {
 	mappedSignals := source.Signals().Map(mapperFunc).All()
-	return dest.PutSignals(mappedSignals...)
+	return dest.putSignals(ctx, mappedSignals)
 }
 
 // ParentComponent returns the port's parent component.

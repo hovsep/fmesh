@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -19,7 +20,7 @@ func TestMultiPipe(t *testing.T) {
 		))
 
 		require.NoError(t, out1.PutSignals(signal.New(1)))
-		require.NoError(t, out1.Flush())
+		require.NoError(t, out1.Flush(context.Background()))
 		assert.True(t, in1.HasSignals())
 	})
 
@@ -46,14 +47,14 @@ func TestMultiForward(t *testing.T) {
 		require.NoError(t, src1.PutSignals(signal.New(1)))
 		require.NoError(t, src2.PutSignals(signal.New(2)))
 
-		require.NoError(t, MultiForward(Pair{From: src1, To: dst1}, Pair{From: src2, To: dst2}))
+		require.NoError(t, MultiForward(context.Background(), Pair{From: src1, To: dst1}, Pair{From: src2, To: dst2}))
 
 		assert.True(t, dst1.HasSignals())
 		assert.True(t, dst2.HasSignals())
 	})
 
 	t.Run("a missing port is reported, not panicked on", func(t *testing.T) {
-		err := MultiForward(Pair{From: nil, To: mustInput("d1")})
+		err := MultiForward(context.Background(), Pair{From: nil, To: mustInput("d1")})
 
 		require.ErrorContains(t, err, "<missing port> -> d1")
 	})

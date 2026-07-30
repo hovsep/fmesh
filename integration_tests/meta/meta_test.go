@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -25,7 +26,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 		sensor := testutil.MustComponent("sensor",
 			component.WithInputs("trigger"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				readings := []float64{36.6, 37.1, 38.2, 36.9}
 				for _, r := range readings {
 					sig := signal.New("reading").WithScalar("temp", r)
@@ -39,7 +40,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 
 		monitor := testutil.MustComponent("monitor",
 			component.WithInputs("in"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				grp := this.Inputs().ByName("in").Signals()
 				collectedGroup = grp
 				return nil
@@ -53,7 +54,7 @@ func Test_ScalarsOnSignals(t *testing.T) {
 		// Seed the sensor trigger to kick off activation
 		require.NoError(t, sensor.Inputs().ByName("trigger").PutSignals(signal.New("go")))
 
-		_, err := fm.Run()
+		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		require.NotNil(t, collectedGroup)

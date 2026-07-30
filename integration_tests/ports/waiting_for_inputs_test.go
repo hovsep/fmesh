@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -29,7 +30,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						component.WithInputs("i1"),
 						component.WithOutputs("o1"),
 						component.WithDescription("This component just doubles the input"),
-						component.WithActivationFunc(func(this *component.Component) error {
+						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 							return this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
 						}),
@@ -46,7 +47,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					component.WithInputs("i1", "i2"),
 					component.WithOutputs("o1"),
 					component.WithDescription("This component just sums 2 inputs"),
-					component.WithActivationFunc(func(this *component.Component) error {
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
 							return component.ErrWaitingForInputsKeep
 						}
@@ -109,7 +110,7 @@ func Test_WaitingForInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
-			runResult, err := fm.Run()
+			runResult, err := fm.Run(context.Background())
 			cycles := runResult.Cycles.All()
 			tt.assertions(t, fm, cycles, err)
 		})

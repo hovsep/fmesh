@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -52,7 +53,8 @@ func New(name string, opts ...Option) (*Component, error) {
 		return nil, err
 	}
 
-	if err := c.hooks.onCreation.Trigger(c); err != nil {
+	// Construction happens outside any run, so there is no run context to inherit.
+	if err := c.hooks.onCreation.Trigger(context.Background(), c); err != nil {
 		return nil, fmt.Errorf("component %q on creation hook failed: %w", name, err)
 	}
 

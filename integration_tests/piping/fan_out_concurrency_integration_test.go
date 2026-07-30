@@ -1,6 +1,7 @@
 package piping
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -26,7 +27,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 	producer := testutil.MustComponent("producer",
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("o1").PutSignals(signal.New(42).WithLabel("route", "fan"))
 		}))
 
@@ -34,12 +35,12 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 		return testutil.MustComponent(name,
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				first := this.InputByName("i1").Signals().First()
 				if first != nil {
 					ptrs.Store(slot, uintptr(unsafe.Pointer(first)))
 				}
-				return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+				return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 			}))
 	}
 
@@ -57,7 +58,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 
 	require.NoError(t, fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{})))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	p1, ok1 := ptrs.Load("1")
@@ -80,7 +81,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 	producer := testutil.MustComponent("producer",
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("o1").PutSignals(signal.New(1).WithLabel("seed", "x"))
 		}))
 
@@ -88,7 +89,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 		return testutil.MustComponent(name,
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				shared := this.InputByName("i1").Signals().First()
 				if shared == nil {
 					return nil
@@ -112,7 +113,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 						shared.WithLabel(fmt.Sprintf("w2_%d", i), "v")
 					}
 				}
-				return port.ForwardSignals(this.InputByName("i1"), this.OutputByName("o1"))
+				return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 			}))
 	}
 
@@ -135,7 +136,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 
 	require.NoError(t, fm.Components().ByName("producer").InputByName("start").PutSignals(signal.New(struct{}{})))
 
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.NoError(t, err)
 
 	pA, okA := ptrs.Load("consumerA")

@@ -37,6 +37,7 @@ Here's a simple mesh that concatenates two strings and converts them to uppercas
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -47,18 +48,18 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(context.Background()); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(ctx context.Context) error {
 	// Create the components
 	concat, err := component.New("concat",
 		component.WithInputs("i1", "i2"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
 			word1 := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
 			word2 := signal.AsOrDefault(this.InputByName("i2").Signals().First(), "")
 			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
@@ -70,7 +71,7 @@ func run() error {
 	uppercase, err := component.New("uppercase",
 		component.WithInputs("i1"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
 			str := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
 			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
 		}))
@@ -100,8 +101,8 @@ func run() error {
 		return err
 	}
 
-	// Run the mesh
-	if _, err = fm.Run(); err != nil {
+	// Run the mesh. Cancelling ctx stops it at the next cycle boundary.
+	if _, err = fm.Run(ctx); err != nil {
 		return err
 	}
 
@@ -127,12 +128,12 @@ Extend behavior at any execution point - mesh lifecycle, cycles, component activ
 
 ```go
 fm.SetupHooks(func(h *fmesh.Hooks) {
-    h.BeforeRun(func(fm *fmesh.FMesh) error {
+    h.BeforeRun(func(ctx context.Context, fm *fmesh.FMesh) error {
         fmt.Println("Starting mesh...")
         return nil
     })
-    h.AfterCycle(func(ctx *fmesh.CycleContext) error {
-        fmt.Printf("Cycle #%d complete\n", ctx.Cycle.Number())
+    h.AfterCycle(func(ctx context.Context, hookCtx *fmesh.CycleContext) error {
+        fmt.Printf("Cycle #%d complete\n", hookCtx.Cycle.Number())
         return nil
     })
 })
@@ -152,6 +153,23 @@ Fluent, consistent interfaces with direct error returns — no hidden error stat
 
 ### **Concurrency Out of the Box**
 All components in a single activation cycle run concurrently - no need to manage goroutines or other concurrency primitives yourself.
+
+### **Cancellation & Deadlines**
+`Run(ctx)` takes a context and passes it to every activation function and hook. Cancel it to stop the mesh at the next cycle boundary; a configured `TimeLimit` becomes a deadline on that context, so it reaches the HTTP calls and queries inside your components instead of only being checked between cycles.
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel()
+
+component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
+    req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+    ...
+})
+
+_, err := fm.Run(ctx) // errors.Is(err, fmesh.ErrRunCanceled) once cancel() lands
+```
+
+Cancellation is cooperative: Go cannot preempt a goroutine, so an activation function that ignores its context still runs to completion.
 
 ---
 

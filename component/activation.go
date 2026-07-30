@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime/debug"
@@ -17,27 +18,28 @@ func WithActivationFunc(f ActivationFunc) Option {
 }
 
 // MaybeActivate tries to run the activation function if all required conditions are met.
-func (c *Component) MaybeActivate() *ActivationResult {
+// The context is handed to the activation function and to every hook fired around it.
+func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 	if !c.Inputs().AnyHasSignals() {
 		return c.newActivationResultNoInput()
 	}
 
-	return c.activate()
+	return c.activate(ctx)
 }
 
 // activate executes the activation function and manages hooks.
-func (c *Component) activate() (result *ActivationResult) {
-	if err := c.hooks.beforeActivation.Trigger(c); err != nil {
+func (c *Component) activate(ctx context.Context) (result *ActivationResult) {
+	if err := c.hooks.beforeActivation.Trigger(ctx, c); err != nil {
 		result = c.newActivationResultHookFailed(fmt.Errorf("beforeActivation hook failed: %w", err))
-		c.triggerAfterActivation(result)
+		c.triggerAfterActivation(ctx, result)
 		return result
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
 			result = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v, stack: %s", r, debug.Stack()))
-			c.triggerHooksForResult(result, c.hooks.onPanic)
-			c.triggerAfterActivation(result)
+			c.triggerHooksForResult(ctx, result, c.hooks.onPanic)
+			c.triggerAfterActivation(ctx, result)
 		}
 	}()
 
@@ -51,18 +53,18 @@ func (c *Component) activate() (result *ActivationResult) {
 		allActivationFunctions = append(allActivationFunctions, onActivationHook)
 	}
 	// Execute all activation functions sequentially
-	err := sequentialActivationFunc(allActivationFunctions...)(c)
-	result = c.buildResultAndTriggerHook(err)
-	c.triggerAfterActivation(result)
+	err := sequentialActivationFunc(allActivationFunctions...)(ctx, c)
+	result = c.buildResultAndTriggerHook(ctx, err)
+	c.triggerAfterActivation(ctx, result)
 
 	return result
 }
 
 // sequentialActivationFunc creates an activation function that executes a sequence of activation functions.
 func sequentialActivationFunc(funcs ...ActivationFunc) ActivationFunc {
-	return func(this *Component) error {
+	return func(ctx context.Context, this *Component) error {
 		for _, f := range funcs {
-			if err := f(this); err != nil {
+			if err := f(ctx, this); err != nil {
 				return err
 			}
 		}
@@ -71,35 +73,35 @@ func sequentialActivationFunc(funcs ...ActivationFunc) ActivationFunc {
 }
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.
-func (c *Component) buildResultAndTriggerHook(err error) *ActivationResult {
+func (c *Component) buildResultAndTriggerHook(ctx context.Context, err error) *ActivationResult {
 	if errors.Is(err, ErrWaitingForInputs) {
 		result := c.newActivationResultWaitingForInputs(err)
-		c.triggerHooksForResult(result, c.hooks.onWaitingForInputs)
+		c.triggerHooksForResult(ctx, result, c.hooks.onWaitingForInputs)
 		return result
 	}
 
 	if err != nil {
 		result := c.newActivationResultReturnedError(err)
-		c.triggerHooksForResult(result, c.hooks.onError)
+		c.triggerHooksForResult(ctx, result, c.hooks.onError)
 		return result
 	}
 
 	result := c.newActivationResultOK()
-	c.triggerHooksForResult(result, c.hooks.onSuccess)
+	c.triggerHooksForResult(ctx, result, c.hooks.onSuccess)
 	return result
 }
 
 // triggerHooksForResult triggers the outcome-specific hook with the activation context.
-func (c *Component) triggerHooksForResult(result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
-	if err := hookGroup.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
+func (c *Component) triggerHooksForResult(ctx context.Context, result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
+	if err := hookGroup.Trigger(ctx, &ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
 			AddActivationError(fmt.Errorf("activation hook failed: %w", err))
 	}
 }
 
 // triggerAfterActivation triggers the AfterActivation hook.
-func (c *Component) triggerAfterActivation(result *ActivationResult) {
-	if err := c.hooks.afterActivation.Trigger(&ActivationContext{Component: c, Result: result}); err != nil {
+func (c *Component) triggerAfterActivation(ctx context.Context, result *ActivationResult) {
+	if err := c.hooks.afterActivation.Trigger(ctx, &ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
 			AddActivationError(fmt.Errorf("afterActivation hook failed: %w", err))
 	}

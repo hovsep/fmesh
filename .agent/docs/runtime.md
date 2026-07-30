@@ -5,8 +5,9 @@ How a mesh actually runs. Source: `fmesh.go` (`Run`, `runCycle`, `drainComponent
 
 ## Run loop
 
-`FMesh.Run()`:
+`FMesh.Run(ctx)`:
 
+0. **Context setup** — when `config.TimeLimit > 0`, `Run` derives `context.WithTimeout(ctx, TimeLimit)`, so the limit is a real deadline that reaches activation functions rather than only being checked between cycles. The derived context is passed to every activation function, every hook, and the drain.
 1. `cleanUpPreviousRun` — clears all output ports (prevents signal accumulation between runs), resets `RuntimeInfo`. A mesh is re-runnable.
 2. `beforeRun` hooks — includes a **default hook that validates mesh structure** (parent-mesh/parent-component wiring, pipe destinations belong to the same mesh). Validation runs on **every** `Run`, in component-name order (deterministic errors).
 3. Loop: `runCycle` → `mustStop` → `drainComponents`. Note the order — stop conditions are checked **before** draining, so the final cycle's outputs are not flushed.
@@ -89,12 +90,25 @@ with no signals or no pipes is a no-op, not an error.
 ## Stop conditions (`mustStop`, checked in order)
 
 1. Cycle limit hit (`config.CyclesLimit`, default **1000**; 0 = unlimited) → `ErrReachedMaxAllowedCycles`
-2. Time limit hit (`config.TimeLimit`, default **5s**; 0 = unlimited) → `ErrTimeLimitExceeded`. Checked between cycles only — a running activation function is never interrupted.
+2. Time limit hit (`config.TimeLimit`, default **5s**; 0 = unlimited) → `ErrTimeLimitExceeded`. The limit is also a deadline on the run context, so an activation function that respects its context is interrupted by it; one that ignores its context still runs to completion, and the mesh stops after it returns.
+2b. Context canceled → `ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works. Checked **before** the error strategy: a canceled run makes activation functions return `ctx.Err()`, which would otherwise be reported as ordinary activation errors and hide why the mesh stopped. A caller-supplied deadline that fires before the mesh's own `TimeLimit` is reported as `ErrRunCanceled`, not `ErrTimeLimitExceeded` — the two are told apart by elapsed time.
 3. Error strategy (`config.ErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked **before** the natural stop so errors are never swallowed:
    - `StopOnFirstErrorOrPanic` → stop with `ErrHitAnErrorOrPanic` (includes hook failures)
    - `StopOnFirstPanic` → errors ignored, panics stop with `ErrHitAPanic`
    - `IgnoreAll` → run until natural stop or a limit
 4. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
+
+### Cancellation is cooperative
+
+Go cannot preempt a goroutine, so cancellation has hard limits that must be stated rather than
+papered over:
+
+- The context is checked **between cycles**. A cycle that has started always runs to completion.
+- An activation function that ignores its context blocks the mesh for as long as it runs. `Run`
+  cannot return before `wg.Wait()`.
+- Therefore a mesh is only as interruptible as its slowest activation function. Pass the context
+  to anything that blocks; poll `ctx.Err()` inside long loops.
+- An already-canceled context runs **zero** cycles.
 
 When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first.
 

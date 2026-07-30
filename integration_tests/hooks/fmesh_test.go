@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -20,7 +21,7 @@ func TestHooks_AllTypes(t *testing.T) {
 	// Create a simple component
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -29,27 +30,27 @@ func TestHooks_AllTypes(t *testing.T) {
 	// Hooks are registered before AddComponents so OnComponentAdded fires.
 	fm := testutil.MustFMesh("test-mesh")
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.OnComponentAdded(func(ctx *fmesh.ComponentAddedContext) error {
+		h.OnComponentAdded(func(_ context.Context, ctx *fmesh.ComponentAddedContext) error {
 			executionLog = append(executionLog, "componentAdded")
 			return nil
 		})
 
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			executionLog = append(executionLog, "beforeRun")
 			return nil
 		})
 
-		h.AfterRun(func(fm *fmesh.FMesh) error {
+		h.AfterRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			executionLog = append(executionLog, "afterRun")
 			return nil
 		})
 
-		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
+		h.BeforeCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			executionLog = append(executionLog, "beforeCycle")
 			return nil
 		})
 
-		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
+		h.AfterCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			executionLog = append(executionLog, "afterCycle")
 			return nil
 		})
@@ -60,7 +61,7 @@ func TestHooks_AllTypes(t *testing.T) {
 	require.NoError(t, fm.ComponentByName("processor").InputByName("in").PutSignals(signal.New(1)))
 
 	// Run mesh
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Verify the exact execution order: componentAdded -> beforeRun -> cycles -> afterRun
@@ -83,7 +84,7 @@ func TestHooks_CycleContext(t *testing.T) {
 	// Create a simple component
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -91,7 +92,7 @@ func TestHooks_CycleContext(t *testing.T) {
 	fm := testutil.MustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
+		h.BeforeCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			cycleNumbers = append(cycleNumbers, ctx.Cycle.Number())
 			return nil
 		})
@@ -102,7 +103,7 @@ func TestHooks_CycleContext(t *testing.T) {
 		PutSignals(signal.New(1), signal.New(2), signal.New(3)))
 
 	// Run mesh
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Verify cycle numbers are sequential
@@ -116,7 +117,7 @@ func TestHooks_MultipleHooksPerType(t *testing.T) {
 
 	c := testutil.MustComponent("test",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -124,17 +125,17 @@ func TestHooks_MultipleHooksPerType(t *testing.T) {
 	fm := testutil.MustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			log = append(log, "first")
 			return nil
 		})
 
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			log = append(log, "second")
 			return nil
 		})
 
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			log = append(log, "third")
 			return nil
 		})
@@ -142,7 +143,7 @@ func TestHooks_MultipleHooksPerType(t *testing.T) {
 
 	require.NoError(t, fm.ComponentByName("test").InputByName("in").PutSignals(signal.New(1)))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Verify all hooks executed in order
@@ -156,7 +157,7 @@ func TestHooks_ContextAccess(t *testing.T) {
 
 	c := testutil.MustComponent("test",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -164,7 +165,7 @@ func TestHooks_ContextAccess(t *testing.T) {
 	fm := testutil.MustFMesh("my-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
+		h.AfterCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			// Access both FMesh and Cycle through context
 			meshName = ctx.FMesh.Name()
 			cycleNumber = ctx.Cycle.Number()
@@ -175,7 +176,7 @@ func TestHooks_ContextAccess(t *testing.T) {
 
 	require.NoError(t, fm.ComponentByName("test").InputByName("in").PutSignals(signal.New(1)))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Verify CycleContext provides access to both FMesh and Cycle
@@ -192,7 +193,7 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -200,11 +201,11 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 	fm := testutil.MustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeCycle(func(ctx *fmesh.CycleContext) error {
+		h.BeforeCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			beginCount++
 			return nil
 		})
-		h.AfterCycle(func(ctx *fmesh.CycleContext) error {
+		h.AfterCycle(func(_ context.Context, ctx *fmesh.CycleContext) error {
 			endCount++
 			return nil
 		})
@@ -214,7 +215,7 @@ func TestHooks_FireOncePerCycle(t *testing.T) {
 	require.NoError(t, fm.ComponentByName("processor").InputByName("in").
 		PutSignals(signal.New(1), signal.New(2), signal.New(3)))
 
-	runtimeInfo, err := fm.Run()
+	runtimeInfo, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// Verify hooks fire exactly once per cycle
@@ -231,17 +232,17 @@ func TestHooks_RunWithError(t *testing.T) {
 	// Create a mesh that will have no components (simulating a broken mesh)
 	fm := testutil.MustFMesh("test-mesh")
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			beforeRunFired = true
 			return nil
 		})
-		h.AfterRun(func(fm *fmesh.FMesh) error {
+		h.AfterRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			afterRunFired = true
 			return nil
 		})
 	})
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.Error(t, err)
 
 	// Empty mesh returns error; hooks may or may not fire depending on implementation
@@ -256,17 +257,17 @@ func TestHooks_EmptyMesh(t *testing.T) {
 	// Create mesh with no components - this will error
 	fm := testutil.MustFMesh("empty-mesh")
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			beforeRunFired = true
 			return nil
 		})
-		h.AfterRun(func(fm *fmesh.FMesh) error {
+		h.AfterRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			afterRunFired = true
 			return nil
 		})
 	})
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.Error(t, err) // Empty mesh returns error
 
 	// BeforeRun and AfterRun should still fire (defer behavior)
@@ -279,7 +280,7 @@ func TestHooks_MultipleSetupCalls(t *testing.T) {
 
 	c := testutil.MustComponent("test",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(c *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			return nil
 		}),
 	)
@@ -288,19 +289,19 @@ func TestHooks_MultipleSetupCalls(t *testing.T) {
 	fm := testutil.MustFMesh("test-mesh")
 	require.NoError(t, fm.AddComponents(c))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
-		h.BeforeRun(func(fm *fmesh.FMesh) error {
+		h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 			log = append(log, "first-setup")
 			return nil
 		})
 	}).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) error {
+			h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 				log = append(log, "second-setup")
 				return nil
 			})
 		}).
 		SetupHooks(func(h *fmesh.Hooks) {
-			h.BeforeRun(func(fm *fmesh.FMesh) error {
+			h.BeforeRun(func(_ context.Context, fm *fmesh.FMesh) error {
 				log = append(log, "third-setup")
 				return nil
 			})
@@ -308,7 +309,7 @@ func TestHooks_MultipleSetupCalls(t *testing.T) {
 
 	require.NoError(t, fm.ComponentByName("test").InputByName("in").PutSignals(signal.New(1)))
 
-	_, err := fm.Run()
+	_, err := fm.Run(context.Background())
 	require.NoError(t, err)
 
 	// All hooks from all SetupHooks calls should execute in order

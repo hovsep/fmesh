@@ -1,6 +1,7 @@
 package errorhandling
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			component.WithInputs("num"),
 			component.WithOutputs("res"),
 			component.WithDescription("adds 2 to the input"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrNil()
 				return this.OutputByName("res").PutSignals(signal.New(num.(int) + 2))
 			}),
@@ -27,7 +28,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 			component.WithInputs("num"),
 			component.WithOutputs("res"),
 			component.WithDescription("multiplies by 3"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
 				return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
 			}),
@@ -39,7 +40,7 @@ func Test_AllComponentsMustBeRegistered(t *testing.T) {
 		fm, err := fmesh.New("fm")
 		require.NoError(t, err)
 		require.NoError(t, fm.AddComponents(c1)) // Oops, we forgot to add c2
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.Error(t, err)
 	})
 }

@@ -1,6 +1,7 @@
 package fmesh_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -21,7 +22,7 @@ func Example() {
 	concat, err := component.New("concat",
 		component.WithInputs("i1", "i2"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			word1 := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
 			word2 := signal.AsOrDefault(this.InputByName("i2").Signals().First(), "")
 			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
@@ -31,7 +32,7 @@ func Example() {
 	uppercase, err := component.New("uppercase",
 		component.WithInputs("i1"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			str := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
 			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
 		}))
@@ -46,7 +47,7 @@ func Example() {
 	must(concat.InputByName("i1").PutSignals(signal.New("hello ")))
 	must(concat.InputByName("i2").PutSignals(signal.New("world!")))
 
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	must(err)
 
 	result, err := uppercase.OutputByName("res").Signals().FirstPayload()

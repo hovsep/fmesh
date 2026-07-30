@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -23,12 +24,12 @@ func TestProfiler(t *testing.T) {
 		mustComponent("producer",
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				return this.OutputByName("o1").PutPayloads(1)
 			})),
 		mustComponent("consumer",
 			component.WithInputs("i1"),
-			component.WithActivationFunc(func(*component.Component) error { return nil })),
+			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 	))
 
 	require.NoError(t, fm.Components().ByName("producer").OutputByName("o1").
@@ -36,7 +37,7 @@ func TestProfiler(t *testing.T) {
 	require.NoError(t, fm.Components().ByName("producer").InputByName("i1").
 		PutSignals(signal.New("go")))
 
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, p.Runs().Count)
@@ -100,7 +101,7 @@ func TestProfiler_RanksByActivationCount(t *testing.T) {
 	looper := mustComponent("looper",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
-		component.WithActivationFunc(func(this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			left, _ := this.State().GetOrDefault("left", 3).(int)
 			if left <= 1 {
 				return nil
@@ -112,13 +113,13 @@ func TestProfiler_RanksByActivationCount(t *testing.T) {
 
 	oneShot := mustComponent("one-shot",
 		component.WithInputs("i1"),
-		component.WithActivationFunc(func(*component.Component) error { return nil }))
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 
 	require.NoError(t, fm.AddComponents(looper, oneShot))
 	require.NoError(t, looper.InputByName("i1").PutSignals(signal.New("go")))
 	require.NoError(t, oneShot.InputByName("i1").PutSignals(signal.New("go")))
 
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.NoError(t, err)
 
 	top := p.TopN(2)
@@ -168,15 +169,15 @@ func TestProfiler_ActivationThatNeverBegan(t *testing.T) {
 	c := mustComponent("doomed",
 		component.WithInputs("i1"),
 		component.WithHooks(func(hooks *component.Hooks) {
-			hooks.BeforeActivation(func(*component.Component) error {
+			hooks.BeforeActivation(func(context.Context, *component.Component) error {
 				return errors.New("refused")
 			})
 		}),
-		component.WithActivationFunc(func(*component.Component) error { return nil }))
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 	require.NoError(t, fm.AddComponents(c))
 	require.NoError(t, c.InputByName("i1").PutSignals(signal.New("go")))
 
-	_, err = fm.Run()
+	_, err = fm.Run(context.Background())
 	require.NoError(t, err)
 
 	assert.Empty(t, p.Components(), "an activation that never began is not timed")
@@ -199,14 +200,14 @@ func TestAutowire(t *testing.T) {
 			mustComponent("sun",
 				component.WithInputs("i1"),
 				component.WithOutputs("uvi"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("uvi").PutPayloads(7)
 				})),
 		))
 
 		require.NoError(t, fm.Components().ByName("sun").InputByName("i1").
 			PutSignals(signal.New("go")))
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, 7, fm.Components().ByName("body").State().Get("arrived"),
@@ -221,7 +222,7 @@ func TestAutowire(t *testing.T) {
 			mustComponent("clock",
 				component.WithInputs("i1"),
 				component.WithOutputs("time"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("time").PutPayloads(1)
 				})),
 			mustComponent("heart",
@@ -234,7 +235,7 @@ func TestAutowire(t *testing.T) {
 
 		require.NoError(t, fm.Components().ByName("clock").InputByName("i1").
 			PutSignals(signal.New("go")))
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, fm.Components().ByName("heart").State().Get("arrived"))
@@ -248,7 +249,7 @@ func TestAutowire(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustComponent("clock",
 				component.WithOutputs("not_time"),
-				component.WithActivationFunc(func(*component.Component) error { return nil })),
+				component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 			mustComponent("heart",
 				component.WithInputs("time"),
 				component.WithActivationFunc(recordArrival("time"))),
@@ -275,10 +276,10 @@ func TestAutowire(t *testing.T) {
 		require.NoError(t, fm.AddComponents(
 			mustComponent("clock",
 				component.WithOutputs("time"),
-				component.WithActivationFunc(func(*component.Component) error { return nil })),
+				component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 			mustComponent("deaf",
 				component.WithInputs("not_time"),
-				component.WithActivationFunc(func(*component.Component) error { return nil })),
+				component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 		))
 
 		assert.Zero(t, fm.Components().ByName("clock").OutputByName("time").Pipes().Len())
@@ -299,12 +300,12 @@ func TestAutowire(t *testing.T) {
 			mustComponent("clock",
 				component.WithInputs("i1"),
 				component.WithOutputs("time"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("time").PutPayloads(1)
 				})),
 			mustComponent("heart",
 				component.WithInputs("time"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					this.State().Set("received", this.InputByName("time").Signals().Len())
 					return nil
 				})),
@@ -314,7 +315,7 @@ func TestAutowire(t *testing.T) {
 
 		require.NoError(t, fm.Components().ByName("clock").InputByName("i1").
 			PutSignals(signal.New("go")))
-		_, err = fm.Run()
+		_, err = fm.Run(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, fm.Components().ByName("heart").State().Get("received"),
@@ -327,9 +328,9 @@ func TestAutowire(t *testing.T) {
 
 		heart := mustComponent("heart",
 			component.WithInputs("time"),
-			component.WithActivationFunc(func(*component.Component) error { return nil }))
+			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 		heart.InputByName("time").SetupHooks(func(hooks *port.Hooks) {
-			hooks.OnInboundPipe(func(*port.InboundPipeContext) error {
+			hooks.OnInboundPipe(func(context.Context, *port.InboundPipeContext) error {
 				return errors.New("refused")
 			})
 		})
@@ -337,7 +338,7 @@ func TestAutowire(t *testing.T) {
 		err = fm.AddComponents(
 			mustComponent("clock",
 				component.WithOutputs("time"),
-				component.WithActivationFunc(func(*component.Component) error { return nil })),
+				component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 			heart,
 		)
 
@@ -349,7 +350,7 @@ func TestAutowire(t *testing.T) {
 // recordArrival notes what turned up on a port, since the mesh drains ports once
 // a cycle is done and nothing is left to inspect after Run returns.
 func recordArrival(portName string) component.ActivationFunc {
-	return func(this *component.Component) error {
+	return func(_ context.Context, this *component.Component) error {
 		this.State().Set("arrived", this.InputByName(portName).Signals().FirstPayloadOrNil())
 		return nil
 	}

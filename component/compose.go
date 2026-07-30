@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hovsep/fmesh/signal"
@@ -15,9 +16,9 @@ import (
 // Errors pass through as the component's own, so a stage returning
 // ErrWaitingForInputs suspends the component.
 func Sequential(funcs ...ActivationFunc) ActivationFunc {
-	return func(this *Component) error {
+	return func(ctx context.Context, this *Component) error {
 		for _, f := range funcs {
-			if err := f(this); err != nil {
+			if err := f(ctx, this); err != nil {
 				return err
 			}
 		}
@@ -27,11 +28,11 @@ func Sequential(funcs ...ActivationFunc) ActivationFunc {
 
 // When runs fn only if the predicate holds.
 func When(predicate func(*Component) bool, fn ActivationFunc) ActivationFunc {
-	return func(this *Component) error {
+	return func(ctx context.Context, this *Component) error {
 		if !predicate(this) {
 			return nil
 		}
-		return fn(this)
+		return fn(ctx, this)
 	}
 }
 
@@ -57,7 +58,7 @@ func HasSignalsOn(portNames ...string) func(*Component) bool {
 // every name is checked before any signal, or an empty port hides the typo
 // behind a wait.
 func RequireInputs(portNames ...string) ActivationFunc {
-	return func(this *Component) error {
+	return func(_ context.Context, this *Component) error {
 		for _, name := range portNames {
 			if this.InputByName(name) == nil {
 				return fmt.Errorf("required input port %q does not exist", name)
@@ -80,7 +81,7 @@ type PipelineStage func(signals *signal.Group) (*signal.Group, error)
 // A port name no port has, and a nil group from a stage, are errors rather than
 // nil dereferences. A stage that drops everything returns an empty group.
 func Pipeline(inputPortNames []string, outputPortName string, stages ...PipelineStage) ActivationFunc {
-	return func(this *Component) error {
+	return func(_ context.Context, this *Component) error {
 		out := this.OutputByName(outputPortName)
 		if out == nil {
 			return fmt.Errorf("pipeline output port %q does not exist", outputPortName)

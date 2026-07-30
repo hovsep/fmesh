@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"testing"
@@ -30,7 +31,7 @@ import (
 //
 // bypass minus dummy therefore approximates the cost of f-mesh's signal-movement path.
 
-// cyclesPerRun is how many activation cycles each fm.Run() executes. Large enough to
+// cyclesPerRun is how many activation cycles each fm.Run(context.Background()) executes. Large enough to
 // amortize per-Run setup so the measured rate reflects steady-state per-cycle overhead.
 const cyclesPerRun = 200
 
@@ -69,7 +70,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 		case activationDummy:
 			c, err := component.New(name,
 				component.WithInputs("in"),
-				component.WithActivationFunc(func(*component.Component) error {
+				component.WithActivationFunc(func(context.Context, *component.Component) error {
 					// Keep the input and re-activate next cycle without emitting anything.
 					return component.ErrWaitingForInputsKeep
 				}))
@@ -79,7 +80,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 			c, err := component.New(name,
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
-				component.WithActivationFunc(func(this *component.Component) error {
+				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 					return this.OutputByName("out").PutSignals(this.InputByName("in").Signals().All()...)
 				}))
 			require.NoError(b, err)
@@ -104,7 +105,7 @@ func primeInputs(b *testing.B, fm *FMesh, size int) {
 	b.Helper()
 	for i := range size {
 		c := fm.ComponentByName("c" + strconv.Itoa(i))
-		require.NoError(b, c.ClearInputs())
+		require.NoError(b, c.ClearInputs(context.Background()))
 		require.NoError(b, c.InputByName("in").PutSignals(signal.New(0)))
 	}
 }
@@ -116,7 +117,7 @@ func benchmarkThroughput(b *testing.B, size int, kind activationKind) {
 	b.ReportAllocs()
 	for b.Loop() {
 		primeInputs(b, fm, size)
-		ri, err := fm.Run()
+		ri, err := fm.Run(context.Background())
 		// Hitting the cycle limit is the expected, normal stop for a sustained mesh.
 		if err != nil && !errors.Is(err, ErrReachedMaxAllowedCycles) {
 			b.Fatal(err)

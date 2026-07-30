@@ -1,6 +1,7 @@
 package fmesh
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
@@ -30,7 +31,7 @@ func buildWideMesh(b *testing.B, componentsCount int) *FMesh {
 		c, err := component.New("c"+strconv.Itoa(i),
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 				return this.OutputByName("out").PutSignals(signal.New(num + 1))
 			}))
@@ -63,7 +64,7 @@ func BenchmarkMeshRunWide(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				seedWideMesh(b, fm, n)
-				if _, err := fm.Run(); err != nil {
+				if _, err := fm.Run(context.Background()); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -83,7 +84,7 @@ func buildFanInMesh(b *testing.B, componentsCount int) *FMesh {
 
 	collector, err := component.New("collector",
 		component.WithInputs("in"),
-		component.WithActivationFunc(func(*component.Component) error {
+		component.WithActivationFunc(func(context.Context, *component.Component) error {
 			// Consume silently: the measured cost is the fan-in drain, not the collector.
 			return nil
 		}))
@@ -94,7 +95,7 @@ func buildFanInMesh(b *testing.B, componentsCount int) *FMesh {
 		c, err := component.New("c"+strconv.Itoa(i),
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithActivationFunc(func(this *component.Component) error {
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
 				return this.OutputByName("out").PutSignals(signal.New(num + 1))
 			}))
@@ -119,7 +120,7 @@ func BenchmarkMeshFanIn(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				seedWideMesh(b, fm, n)
-				if _, err := fm.Run(); err != nil {
+				if _, err := fm.Run(context.Background()); err != nil {
 					b.Fatal(err)
 				}
 			}

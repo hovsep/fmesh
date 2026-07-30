@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -15,7 +16,7 @@ func TestComponent_Plugin(t *testing.T) {
 			WithInputs("i1"),
 			WithOutputs("o1"),
 			WithDescription("Bypass int from i1 to o1"),
-			WithActivationFunc(func(this *Component) error {
+			WithActivationFunc(func(_ context.Context, this *Component) error {
 				i1, _ := this.InputByName("i1").Signals().FirstPayloadOrNil().(int)
 
 				return this.OutputByName("o1").PutPayloads(i1)
@@ -34,7 +35,7 @@ func TestComponent_Plugin(t *testing.T) {
 		require.NoError(t, c.InputByName("price_in").PutPayloads(122.333))
 
 		// Activate component
-		activationResult := c.MaybeActivate()
+		activationResult := c.MaybeActivate(context.Background())
 
 		assert.True(t, activationResult.activated)
 		assert.False(t, activationResult.IsError())
@@ -57,7 +58,7 @@ func TestComponent_Plugin(t *testing.T) {
 			WithInputs("i1"),
 			WithOutputs("o1"),
 			WithDescription("Bypass int from i1 to o1"),
-			WithActivationFunc(func(this *Component) error {
+			WithActivationFunc(func(_ context.Context, this *Component) error {
 				i1, _ := this.InputByName("i1").Signals().FirstPayloadOrNil().(int)
 
 				return this.OutputByName("o1").PutPayloads(i1)
@@ -126,13 +127,13 @@ func (pp PricePlugin) Init(c *Component) error {
 	// Plug in to component via hooks
 	c.SetupHooks(func(hooks *Hooks) {
 		// Mutate state
-		hooks.OnCreation(func(this *Component) error {
+		hooks.OnCreation(func(_ context.Context, this *Component) error {
 			this.State().Set("base_price", 77.5)
 			return nil
 		})
 
 		// Modify behavior (activation function)
-		hooks.OnActivation(func(this *Component) error {
+		hooks.OnActivation(func(_ context.Context, this *Component) error {
 			if this.InputByName("price_in").HasSignals() {
 				this.State().Upsert("new_price", func(old any) any {
 					return this.InputByName("price_in").Signals().FirstPayloadOrDefault(0.0)
