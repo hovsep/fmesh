@@ -72,13 +72,13 @@ custom metrics via `b.ReportMetric`: `cycles/s` and `activations/s` (= cycles/s 
 
 Two kinds isolate different overheads, swept over tens/hundreds/thousands of components:
 
-- **dummy** — activation returns `component.ErrWaitKeepingInputs`, so each component
+- **scheduling-only** — activation returns `component.ErrWaitKeepingInputs`, so each component
   keeps its input and re-activates every cycle with no output ports or pipes. This is the
   scheduling/activation floor (goroutine fan-out, `WaitGroup`, result collection).
-- **bypass** — activation copies input→output through a self-loop pipe, adding the real
-  per-cycle drain/flush/forward cost.
+- **with-signal-movement** — activation copies input→output through a self-loop pipe, adding the
+  real per-cycle drain/flush/forward cost.
 
-`bypass − dummy` approximates the cost of the signal-movement path. To sustain N cycles
+`with-signal-movement − scheduling-only` approximates the cost of the signal-movement path. To sustain N cycles
 per `Run`, the mesh sets `WithCyclesLimit(N)` + `WithUnlimitedTime()`; the expected stop
 error is `ErrReachedMaxAllowedCycles` (not a failure). Inputs are re-primed each `Run`
 because the cycle-limit stop skips the final drain and does not carry signal state across

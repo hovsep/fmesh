@@ -20,7 +20,12 @@ fuzz:
 	go test -run=^$$ -fuzz=FuzzSignalCoW -fuzztime=30s ./signal/
 	go test -run=^$$ -fuzz=FuzzGroupOps -fuzztime=30s ./signal/
 
-check: race lint
+fmt-check:
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then echo "These files need gofmt:"; echo "$$unformatted"; exit 1; fi
+
+# What CI runs. Keep the two in step: if this passes locally, CI should pass.
+check: race lint fmt-check
 
 deps:
 	go mod tidy

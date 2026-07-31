@@ -113,26 +113,14 @@ func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
 }
 
 // ByName retrieves a specific port from the collection by its name.
-// Returns nil if not found.
-//
-// Example (in activation function):
-//
-//	if port := this.Inputs().ByName("primary"); port != nil {
-//	    data := port.Signals().FirstPayloadOrDefault("")
-//	}
+// Returns nil if not found, so callers must nil-check.
 func (c *Collection) ByName(name string) *Port {
 	return c.ports[name]
 }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
-// Useful for operating on a specific group of ports together.
-//
-// Example (in activation function):
-//
-//	// Check if specific required inputs have signals
-//	if !this.Inputs().ByNames("data", "config").AllHaveSignals() {
-//	    return nil // Wait for required inputs
-//	}
+// Names that match no port are skipped, which makes the result vacuously ready —
+// see the note on forgiving name lookups in design.md.
 func (c *Collection) ByNames(names ...string) *Collection {
 	selected := NewCollection()
 	for _, name := range names {
@@ -151,14 +139,6 @@ func (c *Collection) AnyHasSignals() bool {
 }
 
 // AllHaveSignals returns true when all ports in the collection have signals.
-// Use this to check if all required inputs are ready before processing.
-//
-// Example (in activation function):
-//
-//	if !this.Inputs().AllHaveSignals() {
-//	    return nil // Wait until all inputs have data
-//	}
-//	// Process all inputs...
 func (c *Collection) AllHaveSignals() bool {
 	return c.Every(func(p *Port) bool {
 		return p.HasSignals()
@@ -179,14 +159,6 @@ func (c *Collection) PutSignalsOnEach(signals ...*signal.Signal) error {
 
 // ForEach applies an action to each port in the collection.
 // Returns the first error encountered.
-//
-// Example (in activation function):
-//
-//	// Add labels to all input ports
-//	this.Inputs().ForEach(func(p *port.Port) error {
-//	    p.AddLabel("processed", "true")
-//	    return nil
-//	})
 func (c *Collection) ForEach(action func(*Port) error) error {
 	for p := range c.each {
 		if err := action(p); err != nil {
@@ -311,20 +283,6 @@ func (c *Collection) FindAny(predicate Predicate) *Port {
 }
 
 // Filter returns a new collection containing only ports that match the predicate.
-// Use this to work with a subset of ports based on specific criteria.
-//
-// Example (in activation function):
-//
-//	// Get only ports with signals
-//	portsWithData := this.Inputs().Filter(func(p *port.Port) bool {
-//	    return p.HasSignals()
-//	})
-//
-//	// Get priority ports
-//	priorityPorts := this.Inputs().Filter(func(p *port.Port) bool {
-//	    labels := p.Labels().All()
-//	    return labels["priority"] == "high"
-//	})
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
 	for port := range c.each {

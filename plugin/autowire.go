@@ -10,32 +10,17 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-// Autowire pipes components together by naming convention instead of by hand.
+// Autowire pipes components together by naming convention instead of by hand: an
+// input port named by Name(output) is wired to that output. See the wiki page on
+// plugins for when to reach for it.
 //
-// A mesh of any size accumulates long stretches of wiring that say nothing an
-// attentive reader could not have guessed: every component that keeps time gets
-// the clock, every component that wants the weather gets the weather. Written
-// out, that is a list which has to be maintained, and the failure mode is
-// silent -- add a component, forget the list, and it sits there activating
-// forever on inputs that never arrive, looking perfectly connected.
+// Wiring happens in both directions as components are added, so the order of
+// AddComponents does not matter. A component must carry its ports when it is
+// added, though — arrival is the only moment it is looked at, so ports added
+// later with AddInputs/AddOutputs are never wired, and nothing reports it.
 //
-// The convention makes the list derivable. An input port named by Name(output)
-// is wired to that output automatically, whatever it is and whenever it appears.
-//
-// Wiring happens as components are added, and in both directions: a new
-// component is offered every output already in the mesh, and every output it
-// brings is offered to the components already there. Order of AddComponents
-// therefore does not matter, which is the property that makes it safe to lean on.
-//
-// What does matter is that a component carries its ports when it is added: the
-// only moment a component is looked at is its arrival, so ports created later
-// with AddInputs/AddOutputs are never wired, and -- as with any missing pipe --
-// nothing says so. Declare ports in component.New.
-//
-// A mesh commonly wants more than one convention at once -- a clock that reaches
-// everything keeping time, and a set of environmental factors that reach
-// whatever asked for them by name. Those are separate rules, so they are
-// separate plugins, which is why each carries its own PluginName.
+// One convention per instance, each with its own PluginName; a mesh that wants
+// two rules registers two plugins.
 type Autowire struct {
 	// Name maps a source component and one of its output ports to the input
 	// port name that should receive it. Returning "" declines to wire.

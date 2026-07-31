@@ -22,14 +22,15 @@ duplicate or contradict it here:
 ## Commands
 
 ```bash
-make test    # go test ./...
-make race    # go test -race ./...   (concurrency is core — run this for scheduler/port changes)
-make lint    # golangci-lint run ./...
-make fix     # golangci-lint run --fix
-make fmt     # go fmt ./...
-make check   # race + lint
-make bench   # go test -bench with -benchmem (no unit tests)
-make deps    # go mod tidy
+make check     # race + lint + fmt-check — exactly what CI runs
+make test      # go test ./...
+make race      # go test -race ./...  (concurrency is core — run for scheduler/port changes)
+make lint      # golangci-lint run ./...
+make fix       # golangci-lint run --fix
+make fmt       # go fmt ./...  (rewrites files)
+make fmt-check # gofmt -l, fails if anything needs formatting
+make bench     # go test -bench with -benchmem (no unit tests)
+make deps      # go mod tidy
 ```
 
 Single test: `go test ./signal/ -run TestSignal_WithLabel -v`
@@ -37,7 +38,8 @@ Single package: `go test ./component/...`
 Integration suites live in `integration_tests/<topic>/` and run as normal `go test`.
 
 Before starting, run `make test` to confirm the baseline is green.
-Verify before finishing: `make test && make lint && make fmt`. Key linters enforced:
+Verify before finishing: **`make check`** (race + lint + fmt-check). It is the same gate CI
+applies, so a green `make check` should mean a green build. Key linters enforced:
 `errcheck`, `govet` (shadow), `prealloc`, `dupl`, `gocyclo` (min-complexity 15), `testifylint`,
 `gosec`. Config: `.golangci.yml`. Go 1.26.
 
@@ -99,6 +101,8 @@ shallow-copied and `nil` is a valid payload. In contrast `meta.Labels`/`meta.Sca
 Never mix them, and there is no exception: mutating types carry no metadata methods at all —
 `x.Labels().Set(k, v)` reaches the live store. `Signal.Payload()` returns `any` and cannot fail.
 
-No generics (FBP needs mixed-type signals in one group); minimise `reflect`; no chainable
-error/"poison object" pattern — fallible methods return `error` last, infallible transforms
-(`Filter`, `Map`, `With*`) return their type directly for fluency.
+The signal **payload** stays `any` — FBP needs mixed-type signals in one group, so pipes cannot be
+typed. Generics are otherwise fine where they remove real duplication (`meta.store[T, S]` is the
+worked example); weigh per-instance cost and godoc rendering first — see `design.md`. Minimise
+`reflect`; no chainable error/"poison object" pattern — fallible methods return `error` last,
+infallible transforms (`Filter`, `Map`, `With*`) return their type directly for fluency.

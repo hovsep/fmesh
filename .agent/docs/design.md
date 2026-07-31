@@ -40,7 +40,13 @@ shared mutable state.
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
-**No generics in data flow.** `signal`/`meta` use `any`/`float64`; FBP requires mixed-type signal flows in one group. Approved generics elsewhere: `hook.Group[T]` (typed hook registry), `component.MustGetTyped[T]` (state accessor), and `signal.As[T]`/`signal.AsOrDefault[T]` (payload accessors — they read a payload out, they do not make the flow typed). Do not add more without approval.
+**The signal payload stays `any`.** This is an FBP requirement, not a style preference: one group has to carry mixed-type signals, so `Signal.Payload()` cannot be parameterised and pipes cannot be typed. `signal.As[T]`/`AsOrDefault[T]` read a payload back out; they do not make the flow typed.
+
+**Generics are otherwise fine — use them where they remove real duplication.** The earlier blanket ban was lifted, and `meta.store[T, S]` is the result: it replaced nineteen method bodies that were identical between `Labels` and `Scalars`. Two things to weigh before reaching for one, both learned from that change:
+- **Measure the per-instance cost.** `meta.store` carries a pointer per store, and signals own two apiece. An earlier draft also stored a name for error messages and that alone cost ~100 bytes per signal.
+- **Watch the godoc.** Methods promoted from an unexported generic type render with unresolved type parameters (`Set(name string, value T) S`). Accepted for `meta`; see the note under Package notes before repeating it elsewhere.
+
+A generic that ends up wrapped in one hand-written forwarding method per call site has not paid for itself — `internal/hook.Group[T]` is close to that line, with 17 wrappers over 3 methods.
 
 **Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
 

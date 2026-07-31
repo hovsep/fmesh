@@ -299,12 +299,7 @@ func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 }
 
 // countPendingSignals totals the signals sitting on input ports across the mesh.
-//
-// It is the cheapest thing that answers "did anything move?" — a stalled cycle
-// leaves it untouched, a component that consumed or produced anything changes
-// it, and a hook that feeds the mesh changes it too, which is what keeps the
-// livelock detector off the back of a component that is legitimately
-// accumulating input.
+// It is the cheapest thing that answers "did anything move?" — see detectLivelock.
 func (fm *FMesh) countPendingSignals() int {
 	total := 0
 	_ = fm.Components().ForEach(func(c *component.Component) error {
@@ -317,17 +312,17 @@ func (fm *FMesh) countPendingSignals() int {
 }
 
 // detectLivelock reports whether the mesh has stopped making progress, and
-// updates the stall bookkeeping. Called once per cycle.
+// updates the stall bookkeeping. Called once per cycle. This is the reference
+// description of a stall; other comments about it point here.
 //
-// A stalled cycle is one where every component that activated was waiting for
-// inputs *and* the pending signal count is unchanged. Both halves are needed:
-// the first alone would flag a component accumulating input over several cycles,
-// the second alone would flag a mesh that is busy but idempotent.
+// A cycle is stalled when every component that activated was waiting for inputs
+// *and* the pending signal count is unchanged. Both halves are needed: the first
+// alone flags a component legitimately accumulating input, the second alone flags
+// a mesh that is busy but idempotent.
 //
-// Waiters that drop their inputs cannot produce a false positive here — dropping
-// changes the pending count, and next cycle they have no input and so do not
-// activate, which ends the run naturally. The failure this catches is the other
-// one: components that keep their inputs and wait for each other forever.
+// Only waiters that *keep* their inputs can deadlock this way. Dropping changes
+// the pending count, and next cycle they have no input and so do not activate,
+// which ends the run naturally.
 func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	if fm.config.LivelockThreshold <= 0 {
 		return false
@@ -367,13 +362,10 @@ func cycleFailures(c *cycle.Cycle) error {
 	return errors.Join(parts...)
 }
 
-// livelockError explains the stall by naming who is stuck and on what.
-//
-// "reached max allowed cycles" is what this used to look like from the outside,
-// a thousand cycles later, and it says nothing about which components are
-// deadlocked or which port never got fed. Reporting the empty input ports of
-// each waiting component points straight at the pipe that was never wired or the
-// producer that never produced.
+// livelockError explains the stall by naming who is stuck and on what. Naming the
+// empty input ports of each waiting component points at the pipe that was never
+// wired; without it this surfaced as "reached max allowed cycles" a thousand
+// cycles later, which named nothing.
 func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 	// A wide mesh can have thousands of stuck components, and a thousand-line error
 	// is not a diagnosis. Name enough to see the pattern and count the rest.

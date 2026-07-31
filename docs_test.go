@@ -139,3 +139,85 @@ func TestDocs_ReferenceOnlyExistingAPI(t *testing.T) {
 	t.Fatalf("documentation references %d symbol(s) that do not exist:\n  %s",
 		len(lines), strings.Join(lines, "\n  "))
 }
+
+// methodCallRe matches a method call on something other than a package
+// qualifier: `.Foo(`, where Foo is exported.
+var methodCallRe = regexp.MustCompile(`\.([A-Z]\w*)\(`)
+
+// TestDocs_NoRemovedMethodNames catches the case
+// TestDocs_ReferenceOnlyExistingAPI is documented as unable to see: a call on a
+// variable rather than a package, like `c.Labels().AddLabel("k", "v")`. The
+// receiver's type is unknowable in a fragment, so the general check skips these
+// — which is how three snippets went on calling AddLabel and SetLabels for a
+// release after both were deleted.
+//
+// The narrow version is exact: a method name that exists nowhere in this module
+// cannot be a valid call on any of its types. Only names that once existed and
+// were removed need listing; add to it whenever public API is renamed away.
+func TestDocs_NoRemovedMethodNames(t *testing.T) {
+	removed := []string{
+		"AddLabel", "AddLabels", "SetLabels", "ClearLabels", "RemoveLabels",
+		"AddScalar", "AddScalars", "SetScalars", "ClearScalars", "RemoveScalars",
+		"PayloadOrNil", "PayloadOrDefault",
+		"HasChainableErr", "ChainableErr",
+	}
+	banned := make(map[string]bool, len(removed))
+	for _, name := range removed {
+		banned[name] = true
+	}
+
+	// A name is only stale if nothing in the module defines it any more.
+	for qualifier, dir := range docPackages {
+		for symbol := range exportedSymbols(t, dir) {
+			if banned[symbol] {
+				t.Fatalf("%s.%s is in the removed list but still exists — drop it from the list",
+					qualifier, symbol)
+			}
+		}
+	}
+
+	files, err := filepath.Glob("docs/wiki/*.md")
+	require.NoError(t, err)
+	files = append(files, "README.md", "CONTRIBUTING.md")
+
+	// Go sources too. A removed method cannot appear in compiling code, so any
+	// hit here is necessarily a comment — which is exactly where one survived
+	// undetected in port/collection.go's ForEach example.
+	goFiles, err := filepath.Glob("*/*.go")
+	require.NoError(t, err)
+	rootGo, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+	files = append(files, append(goFiles, rootGo...)...)
+
+	var stale []string
+	for _, file := range files {
+		if file == "docs_test.go" {
+			continue // names every removed method by definition
+		}
+		content, err := os.ReadFile(file)
+		require.NoError(t, err)
+		blocks := []string{}
+		if strings.HasSuffix(file, ".go") {
+			blocks = append(blocks, string(content))
+		} else {
+			for _, b := range goBlockRe.FindAllStringSubmatch(string(content), -1) {
+				// Markdown prose discusses removed API deliberately; only fenced
+				// Go blocks claim to be usable code.
+				blocks = append(blocks, lineComment.ReplaceAllString(b[1], ""))
+			}
+		}
+		for _, code := range blocks {
+			for _, call := range methodCallRe.FindAllStringSubmatch(code, -1) {
+				if banned[call[1]] {
+					stale = append(stale, file+": ."+call[1]+"()")
+				}
+			}
+		}
+	}
+
+	if len(stale) > 0 {
+		sort.Strings(stale)
+		t.Fatalf("documentation calls %d removed method(s):\n  %s",
+			len(stale), strings.Join(stale, "\n  "))
+	}
+}
