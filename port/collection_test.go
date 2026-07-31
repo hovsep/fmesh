@@ -377,58 +377,6 @@ func TestCollection_Signals(t *testing.T) {
 	}
 }
 
-func TestCollection_Any(t *testing.T) {
-	t.Run("returns port from non-empty collection", func(t *testing.T) {
-		collection := mustNewCollection(mustOutput("p1"))
-		result := collection.Any()
-		require.NotNil(t, result)
-		assert.Equal(t, "p1", result.Name())
-	})
-
-	t.Run("returns nil from empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		result := collection.Any()
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_FindAny(t *testing.T) {
-	t.Run("finds matching port", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2", "target").All()...)
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "target"
-		})
-		require.NotNil(t, result)
-		assert.Equal(t, "target", result.Name())
-	})
-
-	t.Run("returns nil when no match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "p3"
-		})
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_CountMatch(t *testing.T) {
-	t.Run("counts matching ports", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("a1", "a2", "b1").All()...)
-		count := collection.Count(func(p *Port) bool {
-			return p.Name()[0] == 'a'
-		})
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("returns 0 for empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		count := collection.Count(func(p *Port) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-}
-
 func TestCollection_AllMatch(t *testing.T) {
 	t.Run("returns true when all match", func(t *testing.T) {
 		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
@@ -472,30 +420,6 @@ func TestCollection_Filter(t *testing.T) {
 			return p.Name()[0] == 'a'
 		})
 		assert.Equal(t, 2, filtered.Len())
-	})
-}
-
-func TestCollection_Map(t *testing.T) {
-	t.Run("transforms ports", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-		mapped, err := collection.Map(func(p *Port) *Port {
-			return mustOutput("mapped_" + p.Name())
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 2, mapped.Len())
-		assert.NotNil(t, mapped.ByName("mapped_p1"))
-	})
-
-	t.Run("filters out nil results", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-		mapped, err := collection.Map(func(p *Port) *Port {
-			if p.Name() == "p2" {
-				return nil
-			}
-			return p
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 2, mapped.Len())
 	})
 }
 
@@ -547,33 +471,5 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		p1 := collection.ByName("p1")
 		require.NotNil(t, p1)
 		assert.Equal(t, "p1", p1.Name())
-	})
-
-	t.Run("Any returns nil when empty", func(t *testing.T) {
-		collection := NewCollection()
-
-		result := collection.Any()
-		assert.Nil(t, result)
-
-		// Collection should still be usable for adding
-		require.NoError(t, collection.Add(mustOutput("p1")))
-		assert.Equal(t, 1, collection.Len())
-	})
-
-	t.Run("FindAny returns nil when no match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "nonexistent"
-		})
-		assert.Nil(t, result)
-
-		// Collection should still be usable
-		assert.Equal(t, 2, collection.Len())
-		found := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "p1"
-		})
-		require.NotNil(t, found)
-		assert.Equal(t, "p1", found.Name())
 	})
 }

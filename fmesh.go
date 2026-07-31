@@ -23,7 +23,6 @@ type FMesh struct {
 	name        string
 	description string
 	labels      *meta.Labels
-	scalars     *meta.Scalars
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
 	logger      *log.Logger
@@ -42,7 +41,6 @@ func New(name string, opts ...Option) (*FMesh, error) {
 		name:        name,
 		description: "",
 		labels:      meta.NewLabels(),
-		scalars:     meta.NewScalars(),
 		components:  component.NewCollection(),
 		logger:      newDefaultLogger(name),
 		config:      newDefaultConfig(),
@@ -99,27 +97,6 @@ func (fm *FMesh) Labels() *meta.Labels {
 	return fm.labels
 }
 
-// Scalars returns the mesh's scalars store.
-func (fm *FMesh) Scalars() *meta.Scalars {
-	return fm.scalars
-}
-
-// WithLabel is a constructor option that adds or updates a single label on the mesh.
-func WithLabel(name, value string) Option {
-	return func(fm *FMesh) error {
-		fm.labels.Set(name, value)
-		return nil
-	}
-}
-
-// WithScalar is a constructor option that adds or updates a single scalar on the mesh.
-func WithScalar(name string, value float64) Option {
-	return func(fm *FMesh) error {
-		fm.scalars.Set(name, value)
-		return nil
-	}
-}
-
 // AddComponents adds components to the mesh. Returns an error if any component is invalid or has a duplicate name.
 func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	for _, c := range components {
@@ -161,7 +138,7 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	newCycle := cycle.New().SetNumber(nextNumber)
 
 	if err := fm.hooks.beforeCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("beforeCycle hook failed: %w", err))
+		cycleErr := fmt.Errorf("failed to run cycle: beforeCycle hook failed: %w", err)
 		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
@@ -170,7 +147,7 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 	if fm.Components().IsEmpty() {
 		fm.runtimeInfo.Cycles.Add(newCycle)
-		return errors.Join(errFailedToRunCycle, errNoComponents)
+		return errors.New("failed to run cycle: no components found")
 	}
 
 	var wg sync.WaitGroup
@@ -211,7 +188,7 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	}
 
 	if err := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := errors.Join(errFailedToRunCycle, fmt.Errorf("afterCycle hook failed: %w", err))
+		cycleErr := fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", err)
 		fm.runtimeInfo.Cycles.Add(newCycle)
 		return cycleErr
 	}
@@ -269,7 +246,7 @@ func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Compon
 		}
 
 		if err := c.ClearInputs(ctx); err != nil {
-			return errors.Join(errFailedToClearInputs, fmt.Errorf("component %q: %w", c.Name(), err))
+			return fmt.Errorf("failed to clear input ports: component %q: %w", c.Name(), err)
 		}
 	}
 	return nil

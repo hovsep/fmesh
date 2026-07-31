@@ -30,32 +30,6 @@ func mustOutput(name string) *Port {
 	return p
 }
 
-// The *Labeled/*Scalared helpers exist because metadata mutation returns the
-// store, not the port — table entries need a *Port.
-func mustInputLabeled(name string, labels map[string]string) *Port {
-	p := mustInput(name)
-	p.Labels().SetMany(labels)
-	return p
-}
-
-func mustOutputLabeled(name string, labels map[string]string) *Port {
-	p := mustOutput(name)
-	p.Labels().SetMany(labels)
-	return p
-}
-
-func mustInputScalared(name string, scalars map[string]float64) *Port {
-	p := mustInput(name)
-	p.Scalars().SetMany(scalars)
-	return p
-}
-
-func mustOutputScalared(name string, scalars map[string]float64) *Port {
-	p := mustOutput(name)
-	p.Scalars().SetMany(scalars)
-	return p
-}
-
 func TestPort_HasSignals(t *testing.T) {
 	tests := []struct {
 		name string

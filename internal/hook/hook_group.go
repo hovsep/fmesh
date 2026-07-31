@@ -43,19 +43,3 @@ func (g *Group[T]) Trigger(ctx context.Context, arg T) error {
 	}
 	return nil
 }
-
-// Clear removes all hooks from the group.
-func (g *Group[T]) Clear() *Group[T] {
-	g.hooks = make([]func(context.Context, T) error, 0)
-	return g
-}
-
-// Len returns the number of hooks in the group.
-func (g *Group[T]) Len() int {
-	return len(g.hooks)
-}
-
-// IsEmpty returns true if the group has no hooks.
-func (g *Group[T]) IsEmpty() bool {
-	return len(g.hooks) == 0
-}
