@@ -71,7 +71,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, processor.InputByName("filter").PutSignals(signal.New("all")))
 		require.NoError(t, processor.InputByName("metadata").PutSignals(signal.New("user123")))
 
-		// Create and run mesh
 		fm := testutil.MustFMesh("test-mesh")
 		require.NoError(t, fm.AddComponents(processor))
 		_, err := fm.Run(context.Background())
@@ -115,7 +114,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "high", labelMap["severity"])
 		assert.Equal(t, "structured", labelMap["format"])
 
-		// Verify data flowed correctly through all port types
 		processedData, err := processor.OutputByName("processed").Signals().FirstPayload()
 		require.NoError(t, err)
 		assert.Equal(t, "[prod:all] test data (meta: user123)", processedData.(string))
@@ -129,7 +127,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 	})
 
 	t.Run("port label manipulation", func(t *testing.T) {
-		// Create a component and manipulate port labels
 		c := testutil.MustComponent("label-demo",
 			component.WithOutputs("output"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
@@ -140,7 +137,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				// Manipulate port labels during processing
 				inputPort := this.InputByName("input")
 
-				// Add a single label
 				inputPort.Labels().Set("processed", "true")
 
 				// Remove specific labels
@@ -164,14 +160,12 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				port.WithLabel("owner", "team-a")),
 		))
 
-		// Set up and run
 		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
 		fm := testutil.MustFMesh("label-mesh")
 		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
-		// Verify label manipulation results
 		inputPort := c.InputByName("input")
 		lbls := inputPort.Labels().All()
 		require.NoError(t, err)
@@ -205,7 +199,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			testutil.MustInputPort("c", port.WithDescription("Third input")),
 		))
 
-		// Verify all ports exist and work
 		require.NoError(t, c.InputByName("a").PutSignals(signal.New(1)))
 		require.NoError(t, c.InputByName("b").PutSignals(signal.New(2)))
 		require.NoError(t, c.InputByName("c").PutSignals(signal.New(3)))
@@ -219,7 +212,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 6, result.(int))
 
-		// Verify port c has description
 		assert.Equal(t, "Third input", c.InputByName("c").Description())
 	})
 
@@ -276,7 +268,6 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
-		// Verify all ports were labeled
 		require.NoError(t, c.Inputs().ForEach(func(p *port.Port) error {
 			assert.True(t, p.Labels().Has("checked"))
 			return nil

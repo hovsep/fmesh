@@ -17,6 +17,23 @@ Every benchmark reports three numbers (via `b.ReportAllocs()`):
   assertion about how many copies it makes. A jump here usually means a stray copy — or,
   worse, that someone started mutating in place. Watch it first.
 
+## What exists
+
+Three mesh benchmarks, deliberately few. Add a case to one before adding a fourth.
+
+| Benchmark | Answers |
+|---|---|
+| `BenchmarkMeshRun/{wide,fan-in,fan-out,pipeline}/<n>` | what a run costs, per topology and size |
+| `BenchmarkMeshConstruction/<n>` | what building a mesh costs |
+| `BenchmarkMeshCyclesPerSecond/{scheduling-only,with-signal-movement}/<size>` | how fast the loop ticks, with and without signal movement |
+
+Package-level benchmarks (`signal`, `port`) guard specific invariants — copy-on-write
+allocation counts, allocation-free port traversal — and are named for the thing they
+guard.
+
+Note that `scheduling-only` builds a mesh that never makes progress, so it disables
+livelock detection. A benchmark that deliberately stalls has to say so.
+
 ## Comparing runs: benchstat
 
 Never eyeball a single run against another — the variance swamps the signal. Use
@@ -50,7 +67,7 @@ below. It is **advisory and never fails the check** — don't gate merges on run
 The single most important number for f-mesh is **activation cycles per second** — how
 fast the scheduler drives full run-loop ticks with every component activating each cycle.
 It measures the library overhead added *on top of* the user's activation function, so
-`BenchmarkMeshThroughput{Dummy,Bypass}` keep the activation body near-empty and report
+`BenchmarkMeshCyclesPerSecond/{scheduling-only,with-signal-movement}` keeps the activation body near-empty and reports
 custom metrics via `b.ReportMetric`: `cycles/s` and `activations/s` (= cycles/s × size).
 
 Two kinds isolate different overheads, swept over tens/hundreds/thousands of components:
@@ -79,7 +96,7 @@ for _, n := range []int{10, 100, 1_000, 10_000} {
 ```
 
 This is how `BenchmarkGroupBuild` exposes that building a group via repeated `With` is
-O(n²) (each `With` allocates a fresh slice), and how `BenchmarkMeshRunWide` exercises the
+O(n²) (each `With` allocates a fresh slice), and how `BenchmarkMeshRun/wide` exercises the
 run loop's one-goroutine-per-component-per-cycle cost at scale.
 
 Mesh-scale gotchas:
@@ -91,7 +108,7 @@ Mesh-scale gotchas:
   not the pointed-to payload. `BenchmarkGroupPayloadSize` asserts this by keeping `ns/op`
   flat as payload grows — a tripwire for an accidental deep copy.
 - **Fan-in is quadratic** — see "Scaling characteristics" in `runtime.md` for the mechanism
-  and practical limits. `BenchmarkMeshFanIn` sweeps this curve; it flattens to linear only
+  and practical limits. `BenchmarkMeshRun/fan-in` sweeps this curve; it flattens to linear only
   if forwarding ever batches appends.
 - **Long benchmarks accumulate runtime history.** `RuntimeInfo.Cycles` retains every cycle's
   activation results for the whole `Run` (~100 B × components × cycles), so `B/op` in

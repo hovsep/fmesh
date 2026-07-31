@@ -376,7 +376,7 @@ func TestCollection_Clear(t *testing.T) {
 	})
 }
 
-func TestCollection_Without(t *testing.T) {
+func TestCollection_Remove(t *testing.T) {
 	t.Run("removes specified components", func(t *testing.T) {
 		collection := newCol("c1", "c2", "c3")
 		result := collection.Remove("c1", "c3")

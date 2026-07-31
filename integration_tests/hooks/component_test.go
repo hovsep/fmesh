@@ -5,295 +5,289 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hovsep/fmesh/internal/testutil"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/port"
+	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/signal"
 )
 
-func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
-	// Practical example: Error logging with context
-	type ErrorLog struct {
-		ComponentName string
-		ErrorMessage  string
-		ErrorType     string
-	}
-	var errorLog ErrorLog
+// Component hooks: which ones fire, in what order, and what the activation
+// context carries.
 
-	validationErr := errors.New("validation failed: negative value")
-
-	c := testutil.MustComponent("validator",
-		component.WithInputs("data"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			// Simulate validation logic
-			inputVal := c.InputByName("data").Signals().First().Payload().(int)
-			if inputVal < 0 {
-				return validationErr
-			}
-			return nil
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.OnError(func(_ context.Context, ctx *component.ActivationContext) error {
-			// Access the error and log it with component context
-			errorLog = ErrorLog{
-				ComponentName: ctx.Component.Name(),
-				ErrorMessage:  ctx.Result.ActivationError().Error(),
-				ErrorType:     "validation_error",
-			}
-			return nil
-		})
-	})
-
-	require.NoError(t, c.InputByName("data").PutSignals(signal.New(-5)))
-	result := c.MaybeActivate(context.Background())
-
-	require.True(t, result.IsError())
-	assert.Equal(t, "validator", errorLog.ComponentName)
-	assert.Contains(t, errorLog.ErrorMessage, "validation failed")
-	assert.Equal(t, "validation_error", errorLog.ErrorType)
+// recorder collects hook names in firing order.
+type recorder struct {
+	events []string
 }
 
-func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
-	// Practical example: Validate output data in hooks
-	var outputIsValid bool
-	var outputValue int
+func (r *recorder) add(event string) { r.events = append(r.events, event) }
 
-	c := testutil.MustComponent("calculator",
-		component.WithInputs("x", "y"),
-		component.WithOutputs("result"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			x := c.InputByName("x").Signals().First().Payload().(int)
-			y := c.InputByName("y").Signals().First().Payload().(int)
-			result := x + y
-			return c.OutputByName("result").PutSignals(signal.New(result))
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
-			// Access and validate output signals
-			resultPort := ctx.Component.OutputByName("result")
-			if resultPort.Signals().Len() == 1 {
-				val := resultPort.Signals().FirstPayloadOrDefault(0).(int)
-				outputValue = val
-				outputIsValid = val >= 0 && val <= 100 // Valid range check
-			}
-			return nil
-		})
-	})
-
-	require.NoError(t, c.InputByName("x").PutSignals(signal.New(30)))
-	require.NoError(t, c.InputByName("y").PutSignals(signal.New(20)))
-	c.MaybeActivate(context.Background())
-
-	assert.True(t, outputIsValid, "Output should be in valid range")
-	assert.Equal(t, 50, outputValue)
-}
-
-func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
-	// Practical example: Collect metrics about component execution
-	type ComponentMetrics struct {
-		SuccessCount       int
-		ErrorCount         int
-		PanicCount         int
-		TotalActivations   int
-		LastError          error
-		OutputSignalCounts map[string]int
-	}
-	metrics := ComponentMetrics{
-		OutputSignalCounts: make(map[string]int),
-	}
-
+// componentWith builds a single-component mesh whose activation runs af.
+func componentWith(t *testing.T, af component.ActivationFunc, hooks func(*component.Hooks)) *component.Component {
+	t.Helper()
 	c := testutil.MustComponent("processor",
 		component.WithInputs("in"),
-		component.WithOutputs("success", "failure"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			val := c.InputByName("in").Signals().First().Payload().(int)
-			if val > 0 {
-				return c.OutputByName("success").PutSignals(signal.New(val * 2))
-			}
-			return errors.New("invalid input")
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
-			metrics.SuccessCount++
-			// Track output signal counts
-			if err := ctx.Component.Outputs().ForEach(func(p *port.Port) error {
-				metrics.OutputSignalCounts[p.Name()] = p.Signals().Len()
-				return nil
-			}); err != nil {
-				return err
-			}
-			return nil
-		})
-
-		h.OnError(func(_ context.Context, ctx *component.ActivationContext) error {
-			metrics.ErrorCount++
-			metrics.LastError = ctx.Result.ActivationError()
-			return nil
-		})
-
-		h.OnPanic(func(_ context.Context, ctx *component.ActivationContext) error {
-			metrics.PanicCount++
-			return nil
-		})
-
-		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
-			metrics.TotalActivations++
-			return nil
-		})
-	})
-
-	// First activation: success
-	require.NoError(t, c.InputByName("in").PutSignals(signal.New(5)))
-	c.MaybeActivate(context.Background())
-
-	// Second activation: error
-	require.NoError(t, c.InputByName("in").Clear(context.Background()))
-	require.NoError(t, c.InputByName("in").PutSignals(signal.New(-1)))
-	c.MaybeActivate(context.Background())
-
-	assert.Equal(t, 1, metrics.SuccessCount)
-	assert.Equal(t, 1, metrics.ErrorCount)
-	assert.Equal(t, 0, metrics.PanicCount)
-	assert.Equal(t, 2, metrics.TotalActivations)
-	require.Error(t, metrics.LastError)
-	assert.Equal(t, 1, metrics.OutputSignalCounts["success"])
-}
-
-func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
-	// Practical example: Transform or enrich output data in hooks
-	var enrichedOutput []map[string]any
-
-	c := testutil.MustComponent("enricher",
-		component.WithInputs("raw"),
-		component.WithOutputs("enriched"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			// Process and output data
-			err := c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
-				processed := s.Payload().(int) * 10
-				return c.OutputByName("enriched").PutSignals(signal.New(processed))
-			})
-			return err
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.OnSuccess(func(_ context.Context, ctx *component.ActivationContext) error {
-			// Access output and create enriched version with metadata
-			err := ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
-				enriched := map[string]any{
-					"value":         s.Payload(),
-					"component":     ctx.Component.Name(),
-					"timestamp":     "2024-01-01", // In real code, use time.Now()
-					"activation_ok": ctx.Result.Code() == component.ActivationCodeOK,
-				}
-				enrichedOutput = append(enrichedOutput, enriched)
-				return nil
-			})
-			return err
-		})
-	})
-
-	require.NoError(t, c.InputByName("raw").PutSignals(signal.New(3), signal.New(7)))
-	c.MaybeActivate(context.Background())
-
-	require.Len(t, enrichedOutput, 2)
-	assert.Equal(t, 30, enrichedOutput[0]["value"])
-	assert.Equal(t, "enricher", enrichedOutput[0]["component"])
-	assert.Equal(t, true, enrichedOutput[0]["activation_ok"])
-	assert.Equal(t, 70, enrichedOutput[1]["value"])
-}
-
-func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
-	// Practical example: Attempt recovery or fallback on error
-	var recoveryAttempted bool
-	var fallbackValueProvided bool
-
-	c := testutil.MustComponent("resilient",
-		component.WithInputs("in"),
 		component.WithOutputs("out"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			val := c.InputByName("in").Signals().First().Payload().(int)
-			if val == 0 {
-				return errors.New("division by zero")
-			}
-			return c.OutputByName("out").PutSignals(signal.New(100 / val))
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.OnError(func(_ context.Context, ctx *component.ActivationContext) error {
-			recoveryAttempted = true
-			return nil
+		component.WithActivationFunc(af))
+	if hooks != nil {
+		c.SetupHooks(hooks)
+	}
+	return c
+}
+
+func TestComponentHooks_FiringOrderOnSuccess(t *testing.T) {
+	var log recorder
+
+	c := componentWith(t,
+		func(_ context.Context, this *component.Component) error {
+			log.add("activation")
+			return this.OutputByName("out").PutSignals(signal.New(1))
+		},
+		func(h *component.Hooks) {
+			h.BeforeActivation(func(context.Context, *component.Component) error {
+				log.add("before")
+				return nil
+			})
+			h.OnActivation(func(context.Context, *component.Component) error {
+				log.add("onActivation")
+				return nil
+			})
+			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
+				log.add("success")
+				return nil
+			})
+			h.OnError(func(context.Context, *component.ActivationContext) error {
+				log.add("error")
+				return nil
+			})
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
+				log.add("after")
+				return nil
+			})
 		})
 
-		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
-			// Check if error occurred and no output was produced
-			if ctx.Result.IsError() &&
-				ctx.Component.OutputByName("out").Signals().IsEmpty() {
-				fallbackValueProvided = true
-			}
-			return nil
-		})
-	})
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+	require.True(t, c.MaybeActivate(context.Background()).Activated())
 
-	require.NoError(t, c.InputByName("in").PutSignals(signal.New(0)))
+	// OnActivation runs after the main function, as part of the same activation.
+	assert.Equal(t, []string{"before", "activation", "onActivation", "success", "after"}, log.events)
+}
+
+func TestComponentHooks_OutcomeSpecificHooks(t *testing.T) {
+	tests := []struct {
+		name     string
+		activate component.ActivationFunc
+		hook     func(*component.Hooks, *recorder)
+		wantCode component.ActivationResultCode
+		wantLog  []string
+	}{
+		{
+			name:     "error",
+			activate: func(context.Context, *component.Component) error { return errors.New("boom") },
+			hook: func(h *component.Hooks, log *recorder) {
+				h.OnError(func(context.Context, *component.ActivationContext) error {
+					log.add("error")
+					return nil
+				})
+			},
+			wantCode: component.ActivationCodeReturnedError,
+			wantLog:  []string{"error", "after"},
+		},
+		{
+			name:     "panic",
+			activate: func(context.Context, *component.Component) error { panic("boom") },
+			hook: func(h *component.Hooks, log *recorder) {
+				h.OnPanic(func(context.Context, *component.ActivationContext) error {
+					log.add("panic")
+					return nil
+				})
+			},
+			wantCode: component.ActivationCodePanicked,
+			wantLog:  []string{"panic", "after"},
+		},
+		{
+			name:     "waiting, dropping inputs",
+			activate: func(context.Context, *component.Component) error { return component.ErrWaitDroppingInputs },
+			hook: func(h *component.Hooks, log *recorder) {
+				h.OnWaitingForInputs(func(context.Context, *component.ActivationContext) error {
+					log.add("waiting")
+					return nil
+				})
+			},
+			wantCode: component.ActivationCodeWaitingForInputsClear,
+			wantLog:  []string{"waiting", "after"},
+		},
+		{
+			name:     "waiting, keeping inputs",
+			activate: func(context.Context, *component.Component) error { return component.ErrWaitKeepingInputs },
+			hook: func(h *component.Hooks, log *recorder) {
+				h.OnWaitingForInputs(func(context.Context, *component.ActivationContext) error {
+					log.add("waiting")
+					return nil
+				})
+			},
+			wantCode: component.ActivationCodeWaitingForInputsKeep,
+			wantLog:  []string{"waiting", "after"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var log recorder
+			c := componentWith(t, tt.activate, func(h *component.Hooks) {
+				tt.hook(h, &log)
+				h.AfterActivation(func(context.Context, *component.ActivationContext) error {
+					log.add("after")
+					return nil
+				})
+			})
+
+			require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+			result := c.MaybeActivate(context.Background())
+
+			assert.Equal(t, tt.wantCode, result.Code())
+			assert.Equal(t, tt.wantLog, log.events)
+		})
+	}
+}
+
+func TestComponentHooks_ActivationContextCarriesComponentAndResult(t *testing.T) {
+	var gotName string
+	var gotCode component.ActivationResultCode
+	var gotOutputs int
+
+	c := componentWith(t,
+		func(_ context.Context, this *component.Component) error {
+			return this.OutputByName("out").PutSignals(signal.New(100))
+		},
+		func(h *component.Hooks) {
+			h.AfterActivation(func(_ context.Context, activation *component.ActivationContext) error {
+				gotName = activation.Component.Name()
+				gotCode = activation.Result.Code()
+				// Outputs are still on the port here — the drain happens later.
+				gotOutputs = activation.Component.OutputByName("out").Signals().Len()
+				return nil
+			})
+		})
+
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+	c.MaybeActivate(context.Background())
+
+	assert.Equal(t, "processor", gotName)
+	assert.Equal(t, component.ActivationCodeOK, gotCode)
+	assert.Equal(t, 1, gotOutputs)
+}
+
+func TestComponentHooks_NoActivationMeansNoHooks(t *testing.T) {
+	var log recorder
+
+	c := componentWith(t,
+		func(context.Context, *component.Component) error { return nil },
+		func(h *component.Hooks) {
+			h.BeforeActivation(func(context.Context, *component.Component) error {
+				log.add("before")
+				return nil
+			})
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
+				log.add("after")
+				return nil
+			})
+		})
+
+	// No input: the component never activates, so nothing fires.
 	result := c.MaybeActivate(context.Background())
 
-	require.True(t, result.IsError())
-	assert.True(t, recoveryAttempted)
-	assert.True(t, fallbackValueProvided)
+	require.Equal(t, component.ActivationCodeNoInput, result.Code())
+	assert.Empty(t, log.events)
 }
 
-func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
-	// Practical example: Inspect input/output relationship for debugging
-	type ActivationTrace struct {
-		InputCount  int
-		OutputCount int
-		InputValues []int
-		OutputSum   int
-	}
-	var trace ActivationTrace
+func TestComponentHooks_AccumulateInRegistrationOrder(t *testing.T) {
+	var log recorder
 
-	c := testutil.MustComponent("aggregator",
-		component.WithInputs("numbers"),
-		component.WithOutputs("sum"),
-		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			sum := 0
-			if err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
-				sum += s.Payload().(int)
-				return nil
-			}); err != nil {
-				return err
-			}
-			return c.OutputByName("sum").PutSignals(signal.New(sum))
-		}),
-	).SetupHooks(func(h *component.Hooks) {
-		h.BeforeActivation(func(_ context.Context, c *component.Component) error {
-			// Capture input state
-			trace.InputCount = c.InputByName("numbers").Signals().Len()
-			err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
-				trace.InputValues = append(trace.InputValues, s.Payload().(int))
+	// Hooks of the same type, and repeated SetupHooks calls, both accumulate.
+	c := componentWith(t, func(context.Context, *component.Component) error { return nil },
+		func(h *component.Hooks) {
+			h.BeforeActivation(func(context.Context, *component.Component) error {
+				log.add("first")
 				return nil
 			})
-			return err
+			h.BeforeActivation(func(context.Context, *component.Component) error {
+				log.add("second")
+				return nil
+			})
 		})
-
-		h.AfterActivation(func(_ context.Context, ctx *component.ActivationContext) error {
-			// Capture output state
-			trace.OutputCount = ctx.Component.OutputByName("sum").Signals().Len()
-			if trace.OutputCount > 0 {
-				trace.OutputSum = ctx.Component.OutputByName("sum").
-					Signals().First().Payload().(int)
-			}
+	c.SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(context.Context, *component.Component) error {
+			log.add("third")
 			return nil
 		})
 	})
 
-	require.NoError(t, c.InputByName("numbers").PutSignals(signal.New(10), signal.New(20), signal.New(30)))
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	c.MaybeActivate(context.Background())
 
-	assert.Equal(t, 3, trace.InputCount)
-	assert.Equal(t, []int{10, 20, 30}, trace.InputValues)
-	assert.Equal(t, 1, trace.OutputCount)
-	assert.Equal(t, 60, trace.OutputSum)
+	assert.Equal(t, []string{"first", "second", "third"}, log.events)
+}
+
+func TestComponentHooks_FireForEveryComponentInAMeshRun(t *testing.T) {
+	var log recorder
+
+	track := func(c *component.Component) *component.Component {
+		return c.SetupHooks(func(h *component.Hooks) {
+			h.BeforeActivation(func(_ context.Context, this *component.Component) error {
+				log.add(this.Name() + ":before")
+				return nil
+			})
+			h.AfterActivation(func(_ context.Context, activation *component.ActivationContext) error {
+				log.add(activation.Component.Name() + ":after")
+				return nil
+			})
+		})
+	}
+
+	producer := track(testutil.MustComponent("producer",
+		component.WithInputs("in"), component.WithOutputs("out"),
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+			return this.OutputByName("out").PutSignals(signal.New(1))
+		})))
+	consumer := track(testutil.MustComponent("consumer",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })))
+
+	fm := testutil.MustFMesh("hooked")
+	require.NoError(t, fm.AddComponents(producer, consumer))
+	require.NoError(t, producer.OutputByName("out").PipeTo(consumer.InputByName("in")))
+	require.NoError(t, producer.InputByName("in").PutSignals(signal.New(1)))
+
+	_, err := fm.Run(context.Background())
+	require.NoError(t, err)
+
+	// The producer activates in cycle 1, the consumer in cycle 2 once the signal
+	// has been drained to it.
+	assert.Equal(t, []string{
+		"producer:before", "producer:after",
+		"consumer:before", "consumer:after",
+	}, log.events)
+}
+
+func TestComponentHooks_HookFailureStopsTheMesh(t *testing.T) {
+	c := componentWith(t,
+		func(context.Context, *component.Component) error { return nil },
+		func(h *component.Hooks) {
+			h.BeforeActivation(func(context.Context, *component.Component) error {
+				return errors.New("hook says no")
+			})
+		})
+
+	fm := testutil.MustFMesh("failing-hook")
+	require.NoError(t, fm.AddComponents(c))
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+
+	_, err := fm.Run(context.Background())
+
+	// A hook failure is an activation error, so the default strategy stops the run.
+	require.ErrorIs(t, err, fmesh.ErrHitAnErrorOrPanic)
+	assert.Contains(t, err.Error(), "hook says no")
 }

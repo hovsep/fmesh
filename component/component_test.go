@@ -100,276 +100,46 @@ func TestComponent_WithDescription(t *testing.T) {
 	})
 }
 
-func TestComponent_SetLabels(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		labels     map[string]string
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:      "set labels on new component",
-			component: mustNew("c1"),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Labels().Len())
-				assert.True(t, component.labels.HasAll("l1", "l2"))
-			},
-		},
-		{
-			name:      "set labels replaces existing labels",
-			component: mustNewLabeled("c1", map[string]string{"old": "value"}),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Labels().Len())
-				assert.True(t, component.labels.HasAll("l1", "l2"))
-				assert.False(t, component.labels.Has("old"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.component.Labels().Clear().SetMany(tt.labels)
+// Components hold metadata in a live store; the store's own behavior is covered
+// in the meta package, so this only checks the wiring.
+func TestComponent_Metadata(t *testing.T) {
+	t.Run("Labels returns the live store", func(t *testing.T) {
+		c := mustNew("c1")
+		c.Labels().Set("env", "prod").SetMany(map[string]string{"tier": "api"})
 
-			componentAfter := tt.component
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
-}
+		assert.Equal(t, 2, c.Labels().Len())
+		assert.True(t, c.Labels().ValueIs("env", "prod"))
 
-func TestComponent_AddLabels(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		labels     map[string]string
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:      "add labels to new component",
-			component: mustNew("c1"),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Labels().Len())
-				assert.True(t, component.labels.HasAll("l1", "l2"))
-			},
-		},
-		{
-			name:      "add labels merges with existing",
-			component: mustNewLabeled("c1", map[string]string{"existing": "label"}),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 3, component.Labels().Len())
-				assert.True(t, component.labels.HasAll("existing", "l1", "l2"))
-			},
-		},
-		{
-			name:      "add labels updates existing key",
-			component: mustNewLabeled("c1", map[string]string{"l1": "old"}),
-			labels: map[string]string{
-				"l1": "new",
-			},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Labels().Len())
-				assert.True(t, component.labels.ValueIs("l1", "new"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.component.Labels().SetMany(tt.labels)
+		c.Labels().Remove("env")
+		assert.False(t, c.Labels().Has("env"))
 
-			componentAfter := tt.component
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
-}
+		c.Labels().Clear()
+		assert.Zero(t, c.Labels().Len())
+	})
 
-func TestComponent_AddLabel(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		labelName  string
-		labelValue string
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:       "add single label to new component",
-			component:  mustNew("c1"),
-			labelName:  "env",
-			labelValue: "prod",
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Labels().Len())
-				assert.True(t, component.labels.ValueIs("env", "prod"))
-			},
-		},
-		{
-			name:       "add label merges with existing",
-			component:  mustNewLabeled("c1", map[string]string{"existing": "label"}),
-			labelName:  "env",
-			labelValue: "prod",
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Labels().Len())
-				assert.True(t, component.labels.HasAll("existing", "env"))
-			},
-		},
-		{
-			name:       "add label updates existing key",
-			component:  mustNewLabeled("c1", map[string]string{"env": "dev"}),
-			labelName:  "env",
-			labelValue: "prod",
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Labels().Len())
-				assert.True(t, component.labels.ValueIs("env", "prod"))
-			},
-		},
-		{
-			name:       "chainable",
-			component:  mustNew("c1"),
-			labelName:  "l1",
-			labelValue: "v1",
-			assertions: func(t *testing.T, component *Component) {
-				// Chaining lives on the label store now, not on the component.
-				result := component.Labels().Set("l2", "v2").Set("l3", "v3")
-				assert.Equal(t, 3, result.Len())
-				assert.True(t, component.labels.HasAll("l1", "l2", "l3"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.component.Labels().Set(tt.labelName, tt.labelValue)
+	t.Run("Scalars returns the live store", func(t *testing.T) {
+		c := mustNew("c1")
+		c.Scalars().Set("weight", 1.5)
 
-			componentAfter := tt.component
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
-}
+		assert.True(t, c.Scalars().ValueIs("weight", 1.5))
 
-func TestComponent_ClearLabels(t *testing.T) {
-	tests := []struct {
-		name       string
-		component  *Component
-		assertions func(t *testing.T, component *Component)
-	}{
-		{
-			name:      "clear labels from component with labels",
-			component: mustNewLabeled("c1", map[string]string{"k1": "v1", "k2": "v2"}),
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 0, component.Labels().Len())
-				assert.False(t, component.Labels().Has("k1"))
-				assert.False(t, component.Labels().Has("k2"))
-			},
-		},
-		{
-			name:      "clear labels from component without labels",
-			component: mustNew("c1"),
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 0, component.Labels().Len())
-			},
-		},
-		{
-			name:      "chainable",
-			component: mustNewLabeled("c1", map[string]string{"k1": "v1"}),
-			assertions: func(t *testing.T, component *Component) {
-				result := component.Labels().Clear().Set("k2", "v2")
-				assert.Equal(t, 1, result.Len())
-				assert.False(t, result.Has("k1"))
-				assert.True(t, result.ValueIs("k2", "v2"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.component.Labels().Clear()
+		c.Scalars().Clear()
+		assert.Zero(t, c.Scalars().Len())
+	})
 
-			componentAfter := tt.component
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
-}
+	t.Run("constructor options seed both stores", func(t *testing.T) {
+		c := mustNew("c1", WithLabel("env", "prod"), WithScalar("weight", 2))
 
-func TestComponent_RemoveLabels(t *testing.T) {
-	tests := []struct {
-		name           string
-		component      *Component
-		labelsToRemove []string
-		assertions     func(t *testing.T, component *Component)
-	}{
-		{
-			name:           "remove single label",
-			component:      mustNewLabeled("c1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1"},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 2, component.Labels().Len())
-				assert.False(t, component.Labels().Has("k1"))
-				assert.True(t, component.Labels().Has("k2"))
-				assert.True(t, component.Labels().Has("k3"))
-			},
-		},
-		{
-			name:           "remove multiple labels",
-			component:      mustNewLabeled("c1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1", "k2"},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Labels().Len())
-				assert.False(t, component.Labels().Has("k1"))
-				assert.False(t, component.Labels().Has("k2"))
-				assert.True(t, component.Labels().ValueIs("k3", "v3"))
-			},
-		},
-		{
-			name:           "remove non-existent label",
-			component:      mustNewLabeled("c1", map[string]string{"k1": "v1"}),
-			labelsToRemove: []string{"k2"},
-			assertions: func(t *testing.T, component *Component) {
-				assert.Equal(t, 1, component.Labels().Len())
-				assert.True(t, component.Labels().ValueIs("k1", "v1"))
-			},
-		},
-		{
-			name:           "chainable",
-			component:      mustNewLabeled("c1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1"},
-			assertions: func(t *testing.T, component *Component) {
-				result := component.Labels().Remove("k2").Set("k4", "v4")
-				assert.Equal(t, 2, result.Len())
-				assert.False(t, result.Has("k1"))
-				assert.False(t, result.Has("k2"))
-				assert.True(t, result.ValueIs("k3", "v3"))
-				assert.True(t, result.ValueIs("k4", "v4"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.component.Labels().Remove(tt.labelsToRemove...)
+		assert.True(t, c.Labels().ValueIs("env", "prod"))
+		assert.True(t, c.Scalars().ValueIs("weight", 2))
+	})
 
-			componentAfter := tt.component
-			if tt.assertions != nil {
-				tt.assertions(t, componentAfter)
-			}
-		})
-	}
+	t.Run("stores are per component", func(t *testing.T) {
+		c1, c2 := mustNew("c1"), mustNew("c2")
+		c1.Labels().Set("only", "c1")
+
+		assert.False(t, c2.Labels().Has("only"))
+	})
 }
 
 func TestComponent_Chainability(t *testing.T) {
@@ -411,17 +181,11 @@ func TestComponent_Chainability(t *testing.T) {
 		assert.True(t, c.Labels().ValueIs("k5", "v5"))
 	})
 
-	t.Run("WithDescription replaces previous value", func(t *testing.T) {
-		c := mustNew("c1", WithDescription("first"), WithDescription("second"))
-		assert.Equal(t, "second", c.Description())
-	})
-
 	t.Run("AddInputs called twice adds ports without duplicates", func(t *testing.T) {
 		c := mustNew("c1")
 		require.NoError(t, c.AddInputs("in1", "in2"))
 		require.NoError(t, c.AddInputs("in3")) // in1 already exists - would error, skip in1
-		// Add in1 separately to test duplicate skipping
-		_ = c.AddInputs("in1") // duplicate - ignore error
+		_ = c.AddInputs("in1")                 // duplicate - ignore error
 
 		assert.Equal(t, 3, c.Inputs().Len())
 		assert.NotNil(t, c.Inputs().ByName("in1"))

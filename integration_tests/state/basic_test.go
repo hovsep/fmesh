@@ -72,7 +72,6 @@ func Test_State(t *testing.T) {
 					component.WithOutputs("consumed_signals", "demand_rate"),
 					component.WithDescription("consumes signals"),
 					component.WithInitialState(func(state component.State) {
-						// Simulate uneven demand
 						state.Set("demand_shape", []int{3, 70, 22, 1350})
 					}),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {

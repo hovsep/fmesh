@@ -372,8 +372,12 @@ func cycleFailures(c *cycle.Cycle) error {
 // each waiting component points straight at the pipe that was never wired or the
 // producer that never produced.
 func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
+	// A wide mesh can have thousands of stuck components, and a thousand-line error
+	// is not a diagnosis. Name enough to see the pattern and count the rest.
+	const maxNamed = 5
+
 	var detail strings.Builder
-	starved := 0
+	starved, named, waiting := 0, 0, 0
 	for _, c := range fm.Components().AllOrdered() {
 		activationResult := lastCycle.ActivationResults().ByName(c.Name())
 		if activationResult == nil || !component.IsWaitingForInput(activationResult) {
@@ -395,12 +399,22 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 			}
 		}
 
+		waiting++
+		if named >= maxNamed {
+			continue
+		}
+		named++
+
 		mode := "dropping inputs"
 		if component.WantsToKeepInputs(activationResult) {
 			mode = "keeping inputs"
 		}
 		fmt.Fprintf(&detail, "\n  %q is waiting (%s): empty input ports %v, holding signals on %v",
 			c.Name(), mode, empty, holding)
+	}
+
+	if waiting > named {
+		fmt.Fprintf(&detail, "\n  ...and %d more waiting component(s)", waiting-named)
 	}
 
 	if starved > 0 {

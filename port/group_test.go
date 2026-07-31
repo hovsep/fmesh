@@ -427,7 +427,6 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		group.add(mustOutput("p1"))
 		assert.Equal(t, 1, group.Len())
 
-		// Now First should work
 		first := group.First()
 		require.NotNil(t, first)
 		assert.Equal(t, "p1", first.Name())

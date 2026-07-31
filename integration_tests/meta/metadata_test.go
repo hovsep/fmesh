@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -169,5 +170,64 @@ func Test_PortScalarsWithOptions(t *testing.T) {
 		v, err := p.Scalars().Value("bandwidth")
 		require.NoError(t, err)
 		assert.InDelta(t, 1e6, v, 1e-9)
+	})
+}
+
+// Test_LabelsFlowThroughAMesh shows labels surviving a mesh run and being
+// rewritten en route. Label algebra itself (Map, Filter, ...) is unit-tested in
+// the meta package.
+func Test_LabelsFlowThroughAMesh(t *testing.T) {
+	t.Run("transform labels in mesh processing", func(t *testing.T) {
+		// Scenario: Process signals and normalize their labels during mesh execution
+		normalizer := testutil.MustComponent("normalizer",
+			component.WithInputs("in"),
+			component.WithOutputs("out"),
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+				inPort := this.InputByName("in")
+				outPort := this.OutputByName("out")
+
+				// Process each signal and normalize its labels
+				err := inPort.Signals().ForEach(func(sig *signal.Signal) error {
+					// Normalize label keys to the lowercase
+					normalizedLabels := sig.Labels().Map(func(k, v string) (string, string) {
+						return strings.ToLower(k), v
+					})
+
+					labelsMap := normalizedLabels.All()
+
+					newSignal := signal.New(sig.Payload()).WithOnlyLabels(labelsMap)
+					return outPort.PutSignals(newSignal)
+				})
+
+				return err
+			}),
+		)
+
+		fm := testutil.MustFMesh("label-transform-mesh")
+		require.NoError(t, fm.AddComponents(normalizer))
+
+		// Input signal with mixed-case labels
+		require.NoError(t, fm.ComponentByName("normalizer").InputByName("in").PutSignals(
+			signal.New(100).WithOnlyLabels(map[string]string{
+				"ENV":    "prod",
+				"Region": "us-west",
+				"TIER":   "frontend",
+			}),
+		))
+
+		_, err := fm.Run(context.Background())
+		require.NoError(t, err)
+
+		outSignals := fm.ComponentByName("normalizer").OutputByName("out").Signals()
+		assert.Equal(t, 1, outSignals.Len())
+
+		firstSignal := outSignals.First()
+		require.NotNil(t, firstSignal)
+
+		assert.True(t, firstSignal.Labels().Has("env"))
+		assert.True(t, firstSignal.Labels().Has("region"))
+		assert.True(t, firstSignal.Labels().Has("tier"))
+		assert.True(t, firstSignal.Labels().ValueIs("env", "prod"))
+		assert.True(t, firstSignal.Labels().ValueIs("region", "us-west"))
 	})
 }

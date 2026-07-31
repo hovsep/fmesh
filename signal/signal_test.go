@@ -79,25 +79,6 @@ func TestSignal_Payload(t *testing.T) {
 	}
 }
 
-func TestSignal_PayloadOrNil(t *testing.T) {
-	tests := []struct {
-		name   string
-		signal *Signal
-		want   any
-	}{
-		{
-			name:   "payload returned",
-			signal: New(123),
-			want:   123,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.signal.Payload())
-		})
-	}
-}
-
 func TestSignal_Map(t *testing.T) {
 	tests := []struct {
 		name       string

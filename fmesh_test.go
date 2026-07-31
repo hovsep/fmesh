@@ -1164,10 +1164,8 @@ func TestFMesh_validateMeshStructure(t *testing.T) {
 				// Pipe between components
 				require.NoError(t, c1.OutputByName("out").PipeTo(c2.InputByName("in")))
 
-				// Add c1 properly
 				require.NoError(t, fm.AddComponents(c1))
 
-				// Add c2 but with wrong parent mesh
 				require.NoError(t, fm.components.Add(c2))
 
 				return fm
