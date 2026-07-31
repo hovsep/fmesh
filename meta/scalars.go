@@ -8,13 +8,37 @@ import (
 // Scalars is a mutable name→float64 store for numeric metadata.
 // All write methods modify the receiver in place.
 type Scalars struct {
-	store[float64, *Scalars]
+	store[float64]
 }
 
 // NewScalars creates an initialized, empty Scalars store.
 func NewScalars() *Scalars {
 	s := &Scalars{}
-	s.init(s)
+	s.init()
+	return s
+}
+
+// Set adds or updates a single scalar (upsert semantics).
+func (s *Scalars) Set(name string, value float64) *Scalars {
+	s.set(name, value)
+	return s
+}
+
+// SetMany adds or updates multiple scalars (upsert semantics).
+func (s *Scalars) SetMany(scalars map[string]float64) *Scalars {
+	s.setMany(scalars)
+	return s
+}
+
+// Remove deletes the named scalars. Missing names are silently ignored.
+func (s *Scalars) Remove(names ...string) *Scalars {
+	s.remove(names...)
+	return s
+}
+
+// Clear removes every scalar.
+func (s *Scalars) Clear() *Scalars {
+	s.clear()
 	return s
 }
 

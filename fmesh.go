@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"iter"
 	"log"
 	"strings"
 	"sync"
@@ -220,21 +219,30 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	return nil
 }
 
-// activated yields the components that activated in the last cycle, paired with
-// their result, in the order given. A component with no result did not activate.
-func (fm *FMesh) activated(components []*component.Component) iter.Seq2[*component.Component, *component.ActivationResult] {
+// forEachActivatedComponent applies action to every component that activated in
+// the last cycle, paired with its activation result, and stops at the first error.
+//
+// It walks the components rather than the cycle's activation results, which is
+// why it does not simply use ActivationResultCollection.ForEach: that collection
+// is map-backed, so its iteration order varies between runs, and the drain order
+// decides what a shared downstream port receives. Walking AllOrdered() keeps the
+// order component-name deterministic and joins the results by name. A component
+// with no result did not activate at all.
+func (fm *FMesh) forEachActivatedComponent(
+	components []*component.Component,
+	action func(*component.Component, *component.ActivationResult) error,
+) error {
 	results := fm.runtimeInfo.Cycles.Last().ActivationResults()
-	return func(yield func(*component.Component, *component.ActivationResult) bool) {
-		for _, c := range components {
-			ar := results.ByName(c.Name())
-			if ar == nil || !ar.Activated() {
-				continue
-			}
-			if !yield(c, ar) {
-				return
-			}
+	for _, c := range components {
+		activationResult := results.ByName(c.Name())
+		if activationResult == nil || !activationResult.Activated() {
+			continue
+		}
+		if err := action(c, activationResult); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 // drainComponents drains the data from activated components.
@@ -250,32 +258,32 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 		return errors.Join(ErrFailedToDrain, err)
 	}
 
-	for c, activationResult := range fm.activated(components) {
+	return fm.forEachActivatedComponent(components, func(c *component.Component, activationResult *component.ActivationResult) error {
 		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
-			continue
+			return nil
 		}
 
 		if err := c.FlushOutputs(ctx); err != nil {
 			return errors.Join(ErrFailedToDrain, fmt.Errorf("failed to flush outputs of component %q: %w", c.Name(), err))
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Component) error {
-	for c, activationResult := range fm.activated(components) {
+	return fm.forEachActivatedComponent(components, func(c *component.Component, activationResult *component.ActivationResult) error {
 		if component.IsWaitingForInput(activationResult) && component.WantsToKeepInputs(activationResult) {
 			// Component wants to keep inputs for the next cycle
-			continue
+			return nil
 		}
 
 		if err := c.ClearInputs(ctx); err != nil {
 			return fmt.Errorf("failed to clear input ports: component %q: %w", c.Name(), err)
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {

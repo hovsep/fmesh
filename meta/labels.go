@@ -8,13 +8,37 @@ import (
 // Labels is a mutable key-value string store.
 // All write methods modify the receiver in place.
 type Labels struct {
-	store[string, *Labels]
+	store[string]
 }
 
 // NewLabels creates an initialized Labels store.
 func NewLabels() *Labels {
 	c := &Labels{}
-	c.init(c)
+	c.init()
+	return c
+}
+
+// Set adds or updates a single label (upsert semantics).
+func (c *Labels) Set(label, value string) *Labels {
+	c.set(label, value)
+	return c
+}
+
+// SetMany adds or updates multiple labels (upsert semantics).
+func (c *Labels) SetMany(labels map[string]string) *Labels {
+	c.setMany(labels)
+	return c
+}
+
+// Remove deletes the named labels. Missing names are silently ignored.
+func (c *Labels) Remove(labels ...string) *Labels {
+	c.remove(labels...)
+	return c
+}
+
+// Clear removes every label.
+func (c *Labels) Clear() *Labels {
+	c.clear()
 	return c
 }
 

@@ -750,6 +750,19 @@ func TestLabelsCollection_Chainable(t *testing.T) {
 		assert.False(t, lc.Has("zone"))
 	})
 
+	// design.md documents Clear().SetMany(m) as the way to replace every label,
+	// so the chain has to survive a Clear in the middle of it.
+	t.Run("Clear in the middle of a chain replaces everything", func(t *testing.T) {
+		lc := NewLabels().
+			Set("old", "value").
+			Clear().
+			SetMany(map[string]string{"new": "value"})
+
+		assert.Equal(t, 1, lc.Len())
+		assert.False(t, lc.Has("old"))
+		assert.True(t, lc.ValueIs("new", "value"))
+	})
+
 	t.Run("SetMany called twice merges labels", func(t *testing.T) {
 		lc := NewLabels().
 			SetMany(map[string]string{"k1": "v1", "k2": "v2"}).

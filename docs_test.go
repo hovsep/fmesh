@@ -1,3 +1,19 @@
+// This file keeps the documentation honest about the API.
+//
+// Nothing else does. The README's quick start is compiled by Example in
+// example_test.go, but the wiki is 4,000 lines of Markdown that no compiler ever
+// reads, so a rename leaves it telling users to call something that no longer
+// exists and nothing fails until someone copies the snippet. Both checks here
+// exist because that had already happened.
+//
+//   - TestDocs_ReferenceOnlyExistingAPI — every qualified reference in a Go block
+//     (component.X, signal.X, …) must name a real exported symbol.
+//   - TestDocs_NoRemovedMethodNames — catches what the first one cannot: calls on
+//     a variable, like c.Labels().AddLabel(...), whose receiver type a fragment
+//     does not reveal. It works by refusing a list of names that were removed.
+//
+// Deliberately not checked: argument counts, and prose outside Go blocks — the
+// wiki discusses removed API on purpose when explaining a migration.
 package fmesh_test
 
 import (
@@ -13,17 +29,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-// Documentation drifts silently: a rename leaves the wiki telling users to call
-// something that no longer exists, and nothing fails until someone copies it.
-//
-// The README is compile-checked by Example in example_test.go. Wiki snippets are
-// fragments with elisions, so compiling them is guesswork — but every qualified
-// reference to this project's API in them must name a real exported symbol, which
-// is exactly the drift a rename causes and has no false positives.
-//
-// Not covered: argument counts, method calls (the receiver type is unknowable in
-// a fragment), and prose outside Go blocks.
 
 // docPackages maps the import qualifier used in docs to its directory.
 var docPackages = map[string]string{
