@@ -18,6 +18,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   check-tag:
     name: Tag must be plain semver

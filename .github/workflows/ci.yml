@@ -7,6 +7,11 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: both jobs only read the checkout. CodeQL flagged the absence
+# of this block, and an unset `permissions` inherits whatever the repo default is.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run tests and collect coverage

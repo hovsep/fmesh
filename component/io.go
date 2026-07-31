@@ -63,7 +63,7 @@ func (c *Component) addPorts(direction port.Direction, portNames ...string) erro
 		}
 		ports = append(ports, p)
 	}
-	return c.attach(side, ports, fmt.Sprintf("failed to add %s ports", side.name))
+	return c.attach(side, ports, "add")
 }
 
 // addIndexedPorts creates prefixed ports numbered startIndex..endIndex inclusive.
@@ -81,13 +81,15 @@ func (c *Component) addIndexedPorts(direction port.Direction, prefix string, sta
 		}
 		ports = append(ports, p)
 	}
-	return c.attach(side, ports, fmt.Sprintf("failed to add indexed %s ports", side.name))
+	return c.attach(side, ports, "add indexed")
 }
 
-// attach adds already-built ports to one side and adopts them.
-func (c *Component) attach(side portSide, ports []*port.Port, failure string) error {
+// attach adds already-built ports to one side and adopts them. verb names what the
+// caller was doing, and is a constant so the message costs nothing unless Add
+// fails — building it eagerly cost an allocation on every port added.
+func (c *Component) attach(side portSide, ports []*port.Port, verb string) error {
 	if err := side.ports.Add(ports...); err != nil {
-		return fmt.Errorf("%s: %w", failure, err)
+		return fmt.Errorf("failed to %s %s ports: %w", verb, side.name, err)
 	}
 	side.ports.SetParentComponent(c)
 	return nil
@@ -102,7 +104,7 @@ func (c *Component) attachPorts(direction port.Direction, ports ...*port.Port) e
 				side.name, p.Name(), side.name, side.ctorName, port.ErrWrongPortDirection)
 		}
 	}
-	return c.attach(side, ports, fmt.Sprintf("failed to attach %s ports", side.name))
+	return c.attach(side, ports, "attach")
 }
 
 // AddInputs creates input ports by name and attaches them to the component.
