@@ -8,6 +8,8 @@ This repo already carries detailed agent guidance. Read it before making changes
 duplicate or contradict it here:
 
 - `.agent/docs/design.md` — invariants, per-package rules, comment/dead-code policy
+- `.agent/docs/downstream.md` — the sibling repos that consume the public API, and how to
+  compile-check them **before removing any exported symbol**
 - `.agent/docs/runtime.md` — run loop, activation lifecycle, stop conditions, component state
 - `.agent/docs/hooks.md` — hook levels (mesh/component/port), semantics, plugins
 - `.agent/docs/naming.md` — `With`/`Set`/`Add` conventions, CoW vs mutating
@@ -45,7 +47,10 @@ Verify before finishing: `make test && make lint && make fmt`. Key linters enfor
   always the user's job — leave changes in the working tree and don't worry about them.
 - **API compatibility is not a concern.** F-Mesh is not used in production; any public API may
   be freely changed or broken, until this doc says otherwise. (No deprecation shims or
-  backward-compat layers needed.)
+  backward-compat layers needed.) **But breaking it is the user's call, not a side effect of a
+  cleanup:** `fmesh-examples` (five Go modules) and `fmesh-graphviz` consume the public API, and
+  nothing in this repo references most of it. Compile them before removing an exported symbol —
+  see `.agent/docs/downstream.md`.
 - Ask before relaxing a constraint or introducing a new pattern/helper/abstraction.
 - **Release tags are plain semver** (`v1.12.0`) — a suffix makes the tag a *pre-release*, which
   `go get` skips. This project shipped 36 codenamed tags (`v1.11.1-Shirak`) that Go never served;

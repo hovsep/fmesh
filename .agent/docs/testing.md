@@ -23,6 +23,12 @@
 - Anything taking a port name as a string: cover the name that resolves to no port. An unresolved name reaches the assertion as an empty collection (vacuously ready) or a nil port (a panic at the first dereference), so the passing test proves nothing unless it names a port that does not exist
 - Typed payload accessors: a wrong payload type, a nil payload, and a nil signal must all return an error or the default — never panic
 
+## Coverage is not a usage signal
+
+A method exercised only by its own unit test is not thereby dead — the library's callers are in
+`fmesh-examples` and `fmesh-graphviz`, and no test in this repo will ever mention them. Do not use
+"own-package test only" as grounds for deleting exported API; see [downstream.md](downstream.md).
+
 ## Documentation is tested too
 
 - `Example` in `example_test.go` is the README quick start. It runs in CI, so the README's headline

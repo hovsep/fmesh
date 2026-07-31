@@ -104,9 +104,19 @@ two or three sentences, and that is the ceiling.
 
 ## Dead code policy
 
-Do not keep unused exported symbols "for future use". Remove them immediately:
-- Exported error vars with no callers (e.g. `ErrInvalidSignal`)
+Do not keep unused **unexported** symbols "for future use". Remove them immediately:
 - Named slice type aliases that carry no methods (e.g. `type Components []*Component`)
 - Unreachable branches (e.g. a second `if len(x) == 0` guard after the first already returned)
+- Private helpers with no caller
 
 These create noise, mislead readers, and rot silently as the surrounding code evolves.
+
+**Exported symbols are different, and this policy does not cover them.** F-Mesh is a library: its
+callers live in `fmesh-examples` (five separate Go modules) and `fmesh-graphviz`, which no analysis
+of this repo can see. "No in-repo caller" is not evidence a public symbol is dead — it is the normal
+state of a public API. Before removing anything exported, compile the downstream repos and get the
+user's decision; see [downstream.md](downstream.md), which records the six symbols a previous
+cleanup removed on exactly that mistaken reasoning.
+
+Exported **error sentinels** are the same trap in miniature: "nothing calls `errors.Is` on it in
+this repo" is expected, because users are the ones who check them.
