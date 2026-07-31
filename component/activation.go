@@ -47,33 +47,21 @@ func (c *Component) activate(ctx context.Context) (result *ActivationResult) {
 		}
 	}()
 
-	// Create func slice
-	allActivationFunctions := make([]ActivationFunc, 0)
-	// Add main activation function
-	allActivationFunctions = append(allActivationFunctions, c.f)
-
-	// Add onActivation hooks
-	for _, onActivationHook := range c.hooks.onActivation.All() {
-		allActivationFunctions = append(allActivationFunctions, onActivationHook)
+	// The component's own function runs first, then any OnActivation hooks, as a
+	// single sequence — so a hook returning ErrWaitingForInputs suspends the
+	// component exactly as the function itself would.
+	onActivation := c.hooks.onActivation.All()
+	funcs := make([]ActivationFunc, 0, 1+len(onActivation))
+	funcs = append(funcs, c.f)
+	for _, hook := range onActivation {
+		funcs = append(funcs, hook)
 	}
-	// Execute all activation functions sequentially
-	err := sequentialActivationFunc(allActivationFunctions...)(ctx, c)
+
+	err := Sequential(funcs...)(ctx, c)
 	result = c.buildResultAndTriggerHook(ctx, err)
 	c.triggerAfterActivation(ctx, result)
 
 	return result
-}
-
-// sequentialActivationFunc creates an activation function that executes a sequence of activation functions.
-func sequentialActivationFunc(funcs ...ActivationFunc) ActivationFunc {
-	return func(ctx context.Context, this *Component) error {
-		for _, f := range funcs {
-			if err := f(ctx, this); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
 }
 
 // buildResultAndTriggerHook creates the activation result and triggers the appropriate hook.

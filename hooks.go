@@ -77,35 +77,30 @@ func validateComponentStructure(fm *FMesh, c *component.Component) error {
 }
 
 // OnComponentAdded registers a hook called after each component is successfully added to the mesh.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) OnComponentAdded(fn func(context.Context, *ComponentAddedContext) error) *Hooks {
 	h.onComponentAdded.Add(fn)
 	return h
 }
 
 // BeforeRun registers a hook to be called before the mesh starts running.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) BeforeRun(fn func(context.Context, *FMesh) error) *Hooks {
 	h.beforeRun.Add(fn)
 	return h
 }
 
 // AfterRun registers a hook to be called after the mesh finishes running.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) AfterRun(fn func(context.Context, *FMesh) error) *Hooks {
 	h.afterRun.Add(fn)
 	return h
 }
 
 // BeforeCycle registers a hook to be called at the beginning of each cycle.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) BeforeCycle(fn func(context.Context, *CycleContext) error) *Hooks {
 	h.beforeCycle.Add(fn)
 	return h
 }
 
 // AfterCycle registers a hook to be called at the end of each cycle.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) AfterCycle(fn func(context.Context, *CycleContext) error) *Hooks {
 	h.afterCycle.Add(fn)
 	return h

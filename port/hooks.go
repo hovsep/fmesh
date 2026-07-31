@@ -53,28 +53,24 @@ func newHooks() *Hooks {
 }
 
 // OnSignalsAdded registers a hook called when signals are added to the port.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) OnSignalsAdded(fn func(context.Context, *SignalsAddedContext) error) *Hooks {
 	h.onSignalsAdded.Add(fn)
 	return h
 }
 
 // OnClear registers a hook called when signals are cleared from the port.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) OnClear(fn func(context.Context, *ClearContext) error) *Hooks {
 	h.onClear.Add(fn)
 	return h
 }
 
 // OnInboundPipe registers a hook called when a pipe is created TO this port.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) OnInboundPipe(fn func(context.Context, *InboundPipeContext) error) *Hooks {
 	h.onInboundPipe.Add(fn)
 	return h
 }
 
 // OnOutboundPipe registers a hook called when this port creates a pipe.
-// Returns the Hooks registry for method chaining.
 func (h *Hooks) OnOutboundPipe(fn func(context.Context, *OutboundPipeContext) error) *Hooks {
 	h.onOutboundPipe.Add(fn)
 	return h

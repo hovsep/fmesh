@@ -52,26 +52,33 @@ func newDefaultConfig() Config {
 	}
 }
 
+// setPositive assigns a config field that must be greater than 0.
+//
+// Zero is reserved as "no limit" on every one of these fields, which is why it is
+// rejected rather than accepted: a caller passing 0 almost always means a limit,
+// not the removal of one, and the message names the option that does remove it.
+func setPositive(value int, field *int, msg string) error {
+	if value <= 0 {
+		return errors.New(msg)
+	}
+	*field = value
+	return nil
+}
+
 // WithLivelockThreshold is an FMesh option that sets how many consecutive stalled
 // cycles end the run with ErrLivelockDetected. threshold must be greater than 0.
 // Use WithoutLivelockDetection to turn detection off.
 func WithLivelockThreshold(threshold int) Option {
 	return func(fm *FMesh) error {
-		if threshold <= 0 {
-			return errors.New("livelock threshold must be greater than 0, use WithoutLivelockDetection() to disable detection")
-		}
-		fm.config.LivelockThreshold = threshold
-		return nil
+		return setPositive(threshold, &fm.config.LivelockThreshold,
+			"livelock threshold must be greater than 0, use WithoutLivelockDetection() to disable detection")
 	}
 }
 
 // WithoutLivelockDetection is an FMesh option that disables livelock detection.
 // A livelocked mesh then runs until it hits the cycle or time limit.
 func WithoutLivelockDetection() Option {
-	return func(fm *FMesh) error {
-		fm.config.LivelockThreshold = 0
-		return nil
-	}
+	return func(fm *FMesh) error { fm.config.LivelockThreshold = 0; return nil }
 }
 
 // WithConfig is an FMesh option that replaces the entire configuration.
@@ -94,20 +101,14 @@ func WithErrorHandlingStrategy(s ErrorHandlingStrategy) Option {
 // limit must be greater than 0. Use WithUnlimitedCycles to remove the cycle limit.
 func WithCyclesLimit(limit int) Option {
 	return func(fm *FMesh) error {
-		if limit <= 0 {
-			return errors.New("cycles limit must be greater than 0, use WithUnlimitedCycles() to remove the limit")
-		}
-		fm.config.CyclesLimit = limit
-		return nil
+		return setPositive(limit, &fm.config.CyclesLimit,
+			"cycles limit must be greater than 0, use WithUnlimitedCycles() to remove the limit")
 	}
 }
 
 // WithUnlimitedCycles is an FMesh option that removes the cycle limit.
 func WithUnlimitedCycles() Option {
-	return func(fm *FMesh) error {
-		fm.config.CyclesLimit = 0
-		return nil
-	}
+	return func(fm *FMesh) error { fm.config.CyclesLimit = 0; return nil }
 }
 
 // WithTimeLimit is an FMesh option that sets the maximum duration the mesh can run.
@@ -124,10 +125,7 @@ func WithTimeLimit(d time.Duration) Option {
 
 // WithUnlimitedTime is an FMesh option that removes the time limit.
 func WithUnlimitedTime() Option {
-	return func(fm *FMesh) error {
-		fm.config.TimeLimit = 0
-		return nil
-	}
+	return func(fm *FMesh) error { fm.config.TimeLimit = 0; return nil }
 }
 
 // WithDebug is an FMesh option that enables or disables debug mode.
@@ -143,18 +141,12 @@ func WithDebug(enabled bool) Option {
 // to remove the limit.
 func WithCyclesHistoryLimit(limit int) Option {
 	return func(fm *FMesh) error {
-		if limit <= 0 {
-			return errors.New("cycles history limit must be greater than 0, use WithUnlimitedCyclesHistory() to remove the limit")
-		}
-		fm.config.CyclesHistoryLimit = limit
-		return nil
+		return setPositive(limit, &fm.config.CyclesHistoryLimit,
+			"cycles history limit must be greater than 0, use WithUnlimitedCyclesHistory() to remove the limit")
 	}
 }
 
 // WithUnlimitedCyclesHistory is an FMesh option that removes the cycles history retention limit.
 func WithUnlimitedCyclesHistory() Option {
-	return func(fm *FMesh) error {
-		fm.config.CyclesHistoryLimit = 0
-		return nil
-	}
+	return func(fm *FMesh) error { fm.config.CyclesHistoryLimit = 0; return nil }
 }
