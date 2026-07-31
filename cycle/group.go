@@ -2,8 +2,6 @@ package cycle
 
 import (
 	"slices"
-
-	"github.com/hovsep/fmesh/meta"
 )
 
 // Group contains multiple activation cycles.
@@ -12,55 +10,13 @@ type Group struct {
 	// lenLimit caps how many cycles the group retains; 0 means unlimited.
 	// When Add would exceed the limit, the oldest cycles are evicted.
 	lenLimit int
-	labels   *meta.Labels
-	scalars  *meta.Scalars
 }
 
 // NewGroup creates a group of cycles.
 func NewGroup() *Group {
 	return &Group{
-		cycles:  make([]*Cycle, 0),
-		labels:  meta.NewLabels(),
-		scalars: meta.NewScalars(),
+		cycles: make([]*Cycle, 0),
 	}
-}
-
-// Labels returns the group's own labels store.
-func (g *Group) Labels() *meta.Labels { return g.labels }
-
-// Scalars returns the group's own scalars store.
-func (g *Group) Scalars() *meta.Scalars { return g.scalars }
-
-// SetLabelOnEach sets a label on every cycle in the group.
-func (g *Group) SetLabelOnEach(name, value string) *Group {
-	for _, c := range g.cycles {
-		c.labels.Set(name, value)
-	}
-	return g
-}
-
-// SetScalarOnEach sets a scalar on every cycle in the group.
-func (g *Group) SetScalarOnEach(name string, value float64) *Group {
-	for _, c := range g.cycles {
-		c.scalars.Set(name, value)
-	}
-	return g
-}
-
-// RemoveLabelOnEach removes a label from every cycle in the group.
-func (g *Group) RemoveLabelOnEach(names ...string) *Group {
-	for _, c := range g.cycles {
-		c.labels.Remove(names...)
-	}
-	return g
-}
-
-// RemoveScalarOnEach removes a scalar from every cycle in the group.
-func (g *Group) RemoveScalarOnEach(names ...string) *Group {
-	for _, c := range g.cycles {
-		c.scalars.Remove(names...)
-	}
-	return g
 }
 
 // SetLenLimit caps how many cycles the group retains and returns the group.
@@ -112,35 +68,6 @@ func (g *Group) RemoveOldest(count int) *Group {
 	return g
 }
 
-// Without removes cycles matching the predicate and returns a new group.
-func (g *Group) Without(predicate Predicate) *Group {
-	return g.Filter(func(c *Cycle) bool {
-		return !predicate(c)
-	})
-}
-
-// ForEach applies the action to each cycle. Returns the first error encountered.
-func (g *Group) ForEach(action func(*Cycle) error) error {
-	for _, c := range g.cycles {
-		if err := action(c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ForEachIf applies the action only to cycles that match the predicate.
-func (g *Group) ForEachIf(predicate Predicate, action func(*Cycle) error) error {
-	for _, c := range g.cycles {
-		if predicate(c) {
-			if err := action(c); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Len returns number of cycles in group.
 func (g *Group) Len() int {
 	return len(g.cycles)
@@ -160,16 +87,6 @@ func (g *Group) IsEmpty() bool {
 	return g.Len() == 0
 }
 
-// Find returns the first cycle matching the predicate, or nil if none match.
-func (g *Group) Find(predicate Predicate) *Cycle {
-	for _, c := range g.cycles {
-		if predicate(c) {
-			return c
-		}
-	}
-	return nil
-}
-
 // First returns the first cycle in the group.
 // Returns nil if the group is empty.
 func (g *Group) First() *Cycle {
@@ -183,68 +100,4 @@ func (g *Group) First() *Cycle {
 // the *Cycle pointers inside are shared.
 func (g *Group) All() []*Cycle {
 	return slices.Clone(g.cycles)
-}
-
-// Every returns true if all cycles match the predicate.
-func (g *Group) Every(predicate Predicate) bool {
-	for _, cyc := range g.cycles {
-		if !predicate(cyc) {
-			return false
-		}
-	}
-	return true
-}
-
-// Any returns true if any cycle matches the predicate.
-func (g *Group) Any(predicate Predicate) bool {
-	return slices.ContainsFunc(g.cycles, predicate)
-}
-
-// Count returns the number of cycles that match the predicate.
-func (g *Group) Count(predicate Predicate) int {
-	count := 0
-	for _, cyc := range g.cycles {
-		if predicate(cyc) {
-			count++
-		}
-	}
-	return count
-}
-
-// Filter returns a new group with cycles that match the predicate.
-func (g *Group) Filter(predicate Predicate) *Group {
-	filtered := NewGroup()
-	for _, cyc := range g.cycles {
-		if predicate(cyc) {
-			filtered = filtered.Add(cyc)
-		}
-	}
-	return filtered
-}
-
-// MapIf is like Map but only applies the mapper to cycles that match the predicate.
-// Non-matching cycles are kept as-is. Nil mapper results are dropped.
-func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	mapped := NewGroup()
-	for _, c := range g.cycles {
-		if predicate(c) {
-			if transformedCyc := mapper(c); transformedCyc != nil {
-				mapped = mapped.Add(transformedCyc)
-			}
-		} else {
-			mapped = mapped.Add(c)
-		}
-	}
-	return mapped
-}
-
-// Map returns a new group with cycles transformed by the mapper function.
-func (g *Group) Map(mapper Mapper) *Group {
-	mapped := NewGroup()
-	for _, cyc := range g.cycles {
-		if transformedCyc := mapper(cyc); transformedCyc != nil {
-			mapped = mapped.Add(transformedCyc)
-		}
-	}
-	return mapped
 }

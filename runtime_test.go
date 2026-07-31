@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -33,9 +32,13 @@ func Test_MultipleRun(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, runResult)
 			assert.Equal(t, 2, runResult.Cycles.Len())
-			assert.Equal(t, 1, runResult.Cycles.Count(func(c *cycle.Cycle) bool {
-				return c.HasActivatedComponents()
-			}))
+			activated := 0
+			for _, c := range runResult.Cycles.All() {
+				if c.HasActivatedComponents() {
+					activated++
+				}
+			}
+			assert.Equal(t, 1, activated)
 		}
 	})
 

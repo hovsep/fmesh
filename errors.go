@@ -38,10 +38,7 @@ var (
 	// hits a deadline of its own. It wraps the underlying context error, so
 	// errors.Is(err, context.Canceled) and context.DeadlineExceeded both work.
 	// A time limit configured on the mesh reports ErrTimeLimitExceeded instead.
-	ErrRunCanceled         = errors.New("run canceled")
-	errFailedToRunCycle    = errors.New("failed to run cycle")
-	errNoComponents        = errors.New("no components found")
-	errFailedToClearInputs = errors.New("failed to clear input ports")
+	ErrRunCanceled = errors.New("run canceled")
 	// ErrFailedToDrain is returned when failed to drain.
 	ErrFailedToDrain = errors.New("failed to drain")
 )

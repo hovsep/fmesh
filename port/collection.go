@@ -6,7 +6,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -29,16 +28,12 @@ type Collection struct {
 	// activation goroutines, and a lazily filled cache would turn a read into a
 	// write.
 	ordered []*Port
-	labels  *meta.Labels
-	scalars *meta.Scalars
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		ports:   make(map[string]*Port),
-		labels:  meta.NewLabels(),
-		scalars: meta.NewScalars(),
+		ports: make(map[string]*Port),
 	}
 }
 
@@ -72,44 +67,6 @@ func (c *Collection) each(yield func(*Port) bool) {
 			return
 		}
 	}
-}
-
-// Labels returns the collection's own labels store.
-func (c *Collection) Labels() *meta.Labels { return c.labels }
-
-// Scalars returns the collection's own scalars store.
-func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
-
-// SetLabelOnEach sets a label on every port in the collection.
-func (c *Collection) SetLabelOnEach(name, value string) *Collection {
-	for p := range c.each {
-		p.labels.Set(name, value)
-	}
-	return c
-}
-
-// SetScalarOnEach sets a scalar on every port in the collection.
-func (c *Collection) SetScalarOnEach(name string, value float64) *Collection {
-	for p := range c.each {
-		p.scalars.Set(name, value)
-	}
-	return c
-}
-
-// RemoveLabelOnEach removes a label from every port in the collection.
-func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
-	for p := range c.each {
-		p.labels.Remove(names...)
-	}
-	return c
-}
-
-// RemoveScalarOnEach removes a scalar from every port in the collection.
-func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
-	for p := range c.each {
-		p.scalars.Remove(names...)
-	}
-	return c
 }
 
 // ByName retrieves a specific port from the collection by its name.
@@ -231,15 +188,6 @@ func (c *Collection) Add(ports ...*Port) error {
 	return nil
 }
 
-// Remove deletes ports by name and returns the collection.
-func (c *Collection) Remove(names ...string) *Collection {
-	for _, name := range names {
-		delete(c.ports, name)
-	}
-	c.rebuildOrder()
-	return c
-}
-
 // Signals returns all signals of all ports in the collection.
 func (c *Collection) Signals() *signal.Group {
 	group := signal.NewGroup()
@@ -254,17 +202,6 @@ func (c *Collection) Signals() *signal.Group {
 // A copy is returned so the caller cannot mutate the internal state.
 func (c *Collection) All() map[string]*Port {
 	return maps.Clone(c.ports)
-}
-
-// Any returns the first port in the collection by name order.
-// Returns nil if the collection is empty.
-// The name says "any" because callers should not depend on which one they get;
-// it is nonetheless stable across runs, like every traversal here.
-func (c *Collection) Any() *Port {
-	for port := range c.each {
-		return port
-	}
-	return nil
 }
 
 // Every returns true if all ports match the predicate.
@@ -286,28 +223,6 @@ func (c *Collection) AnyMatch(predicate Predicate) bool {
 		}
 	}
 	return false
-}
-
-// Count returns the number of ports that match the predicate.
-func (c *Collection) Count(predicate Predicate) int {
-	count := 0
-	for port := range c.each {
-		if predicate(port) {
-			count++
-		}
-	}
-	return count
-}
-
-// FindAny returns the first port matching the predicate, in name order.
-// Returns nil if no match found.
-func (c *Collection) FindAny(predicate Predicate) *Port {
-	for port := range c.each {
-		if predicate(port) {
-			return port
-		}
-	}
-	return nil
 }
 
 // Filter returns a new collection containing only ports that match the predicate.
@@ -335,21 +250,6 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	return filtered
 }
 
-// Map returns a new collection with ports transformed by the mapper function.
-// Returns an error if a mapped port has a duplicate name.
-func (c *Collection) Map(mapper Mapper) (*Collection, error) {
-	mapped := NewCollection()
-	for port := range c.each {
-		transformedPort := mapper(port)
-		if transformedPort != nil {
-			if err := mapped.Add(transformedPort); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return mapped, nil
-}
-
 // SetParentComponent sets the parent component on all ports in the collection and returns the collection.
 func (c *Collection) SetParentComponent(comp ParentComponent) *Collection {
 	for p := range c.each {
@@ -361,9 +261,4 @@ func (c *Collection) SetParentComponent(comp ParentComponent) *Collection {
 // Len returns the number of ports in a collection.
 func (c *Collection) Len() int {
 	return len(c.ports)
-}
-
-// IsEmpty returns true when there are no ports in the collection.
-func (c *Collection) IsEmpty() bool {
-	return c.Len() == 0
 }

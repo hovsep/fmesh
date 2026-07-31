@@ -98,31 +98,10 @@ func (s *Signal) Scalars() *meta.Scalars {
 	return cloneScalars(s.scalars)
 }
 
-// WithOnlyScalars replaces all scalars and returns a new signal.
-func (s *Signal) WithOnlyScalars(scalarsMap map[string]float64) *Signal {
-	next := cloneSignal(s)
-	next.scalars = meta.NewScalars().SetMany(scalarsMap)
-	return next
-}
-
-// WithScalars adds or updates scalars and returns a new signal.
-func (s *Signal) WithScalars(scalarsMap map[string]float64) *Signal {
-	next := cloneSignal(s)
-	next.scalars = next.scalars.SetMany(scalarsMap)
-	return next
-}
-
 // WithScalar adds or updates a single scalar and returns a new signal.
 func (s *Signal) WithScalar(name string, value float64) *Signal {
 	next := cloneSignal(s)
 	next.scalars = next.scalars.Set(name, value)
-	return next
-}
-
-// WithNoScalars removes all scalars and returns a new signal.
-func (s *Signal) WithNoScalars() *Signal {
-	next := cloneSignal(s)
-	next.scalars = meta.NewScalars()
 	return next
 }
 

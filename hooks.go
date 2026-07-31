@@ -35,21 +35,16 @@ type Hooks struct {
 func newHooks() *Hooks {
 	return &Hooks{
 		onComponentAdded: hook.NewGroup[*ComponentAddedContext](),
-		beforeRun:        hook.NewGroup[*FMesh]().Add(getDefaultBeforeRunHook()),
+		beforeRun:        hook.NewGroup[*FMesh]().Add(validateMeshStructure),
 		afterRun:         hook.NewGroup[*FMesh](),
 		beforeCycle:      hook.NewGroup[*CycleContext](),
 		afterCycle:       hook.NewGroup[*CycleContext](),
 	}
 }
 
-// getDefaultBeforeRunHook validates the mesh structure on every run,
-// so components added between runs are validated too.
-func getDefaultBeforeRunHook() func(context.Context, *FMesh) error {
-	return validateMeshStructure
-}
-
-// validateMeshStructure validates components in name order so validation
-// errors are deterministic.
+// validateMeshStructure runs before every run, so components added between runs
+// are validated too. Components are validated in name order so errors are
+// deterministic.
 func validateMeshStructure(_ context.Context, fm *FMesh) error {
 	for _, c := range fm.Components().AllOrdered() {
 		if err := validateComponentStructure(fm, c); err != nil {
