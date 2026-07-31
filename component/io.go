@@ -35,34 +35,35 @@ func WithIndexedOutputs(prefix string, startIndex, endIndex int) Option {
 	}
 }
 
-// side bundles the direction-specific pieces the add/attach helpers vary by, so
-// the input and output paths are one implementation rather than two.
-type side struct {
-	ports  *port.Collection
-	create func(string, ...port.Option) (*port.Port, error)
-	name   string // "input" or "output", for error messages
-	ctor   string // the constructor to point a caller at
+// portSide is everything about a component's I/O that depends on which side of it
+// you are on, so the input and output paths can be one implementation instead of
+// two near-identical ones.
+type portSide struct {
+	ports    *port.Collection
+	create   func(string, ...port.Option) (*port.Port, error)
+	name     string // "input" or "output", for error messages
+	ctorName string // the constructor to point a caller at, for error messages
 }
 
-func (c *Component) side(direction port.Direction) side {
+func (c *Component) sideFor(direction port.Direction) portSide {
 	if direction == port.DirectionIn {
-		return side{c.inputPorts, port.NewInput, "input", "port.NewInput"}
+		return portSide{c.inputPorts, port.NewInput, "input", "port.NewInput"}
 	}
-	return side{c.outputPorts, port.NewOutput, "output", "port.NewOutput"}
+	return portSide{c.outputPorts, port.NewOutput, "output", "port.NewOutput"}
 }
 
 // addPorts creates ports by name on one side of the component.
 func (c *Component) addPorts(direction port.Direction, portNames ...string) error {
-	s := c.side(direction)
+	side := c.sideFor(direction)
 	ports := make([]*port.Port, 0, len(portNames))
 	for _, name := range portNames {
-		p, err := s.create(name)
+		p, err := side.create(name)
 		if err != nil {
-			return fmt.Errorf("failed to create %s port %q: %w", s.name, name, err)
+			return fmt.Errorf("failed to create %s port %q: %w", side.name, name, err)
 		}
 		ports = append(ports, p)
 	}
-	return c.attach(s, ports, fmt.Sprintf("failed to add %s ports", s.name))
+	return c.attach(side, ports, fmt.Sprintf("failed to add %s ports", side.name))
 }
 
 // addIndexedPorts creates prefixed ports numbered startIndex..endIndex inclusive.
@@ -71,37 +72,37 @@ func (c *Component) addIndexedPorts(direction port.Direction, prefix string, sta
 		return port.ErrInvalidRangeForIndexedGroup
 	}
 
-	s := c.side(direction)
+	side := c.sideFor(direction)
 	ports := make([]*port.Port, 0, endIndex-startIndex+1)
 	for i := startIndex; i <= endIndex; i++ {
-		p, err := s.create(fmt.Sprintf("%s%d", prefix, i))
+		p, err := side.create(fmt.Sprintf("%s%d", prefix, i))
 		if err != nil {
-			return fmt.Errorf("failed to create indexed %s port: %w", s.name, err)
+			return fmt.Errorf("failed to create indexed %s port: %w", side.name, err)
 		}
 		ports = append(ports, p)
 	}
-	return c.attach(s, ports, fmt.Sprintf("failed to add indexed %s ports", s.name))
+	return c.attach(side, ports, fmt.Sprintf("failed to add indexed %s ports", side.name))
 }
 
-// attach adds already-built ports to a side and adopts them.
-func (c *Component) attach(s side, ports []*port.Port, failure string) error {
-	if err := s.ports.Add(ports...); err != nil {
+// attach adds already-built ports to one side and adopts them.
+func (c *Component) attach(side portSide, ports []*port.Port, failure string) error {
+	if err := side.ports.Add(ports...); err != nil {
 		return fmt.Errorf("%s: %w", failure, err)
 	}
-	s.ports.SetParentComponent(c)
+	side.ports.SetParentComponent(c)
 	return nil
 }
 
 // attachPorts adds pre-built ports, rejecting any facing the wrong way.
 func (c *Component) attachPorts(direction port.Direction, ports ...*port.Port) error {
-	s := c.side(direction)
+	side := c.sideFor(direction)
 	for _, p := range ports {
 		if p.Direction() != direction {
 			return fmt.Errorf("cannot attach %s port %q: it is not an %s port (create it with %s): %w",
-				s.name, p.Name(), s.name, s.ctor, port.ErrWrongPortDirection)
+				side.name, p.Name(), side.name, side.ctorName, port.ErrWrongPortDirection)
 		}
 	}
-	return c.attach(s, ports, fmt.Sprintf("failed to attach %s ports", s.name))
+	return c.attach(side, ports, fmt.Sprintf("failed to attach %s ports", side.name))
 }
 
 // AddInputs creates input ports by name and attaches them to the component.
