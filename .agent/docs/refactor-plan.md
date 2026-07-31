@@ -197,14 +197,24 @@ group*, which is an ordinary runtime state; returning a silent nil for it would 
 quiet-wrongness this whole review set out to remove. `FirstPayloadOrDefault`/`FirstPayloadOrNil`
 stay for the same reason.
 
-## Phase 5 — diagnostics
+## Phase 5 — diagnostics ✅ DONE
 
-- [ ] Fix `%!w(<nil>)` in `fmesh.go` `mustStop` — `%w` is handed `AllPanicsCombined()`, which is nil
+- [x] Fix `%!w(<nil>)` in `fmesh.go` `mustStop` — `%w` is handed `AllPanicsCombined()`, which is nil
       when there are no panics. This string reaches user logs today. Build from non-nil parts with
       `errors.Join`.
-- [ ] `component.PanicError{Component, Value, Stack}`; `Error()` returns one readable line,
+- [x] `component.PanicError{ComponentName, Value, Stack}`; `Error()` returns one readable line,
       `StackTrace()` returns the trace. Today the full `debug.Stack()` is formatted into the error
       string, producing multi-KB single-line errors.
+
+**Done:** `cycleFailures` builds the run error from the parts that actually happened, so a cycle
+with errors but no panics no longer ends in `activation panics: %!w(<nil>)`. `PanicError` keeps the
+stack off `Error()` (one line: `panicked: <value>`) and exposes it via `StackTrace()`; `Unwrap`
+reaches a thrown `error` so `errors.Is` works through a panic. The run loop prints the stack under
+`WithDebug`, so keeping it out of the message loses nothing.
+
+Also fixed a silent test gap: the panic cases in `TestComponent_MaybeActivate` asserted an expected
+message that was never compared, because the table only checked errors when `IsError()` — false for
+panics. They now assert for real, and `integration_tests/diagnostics/` covers both fixes end to end.
 
 ## Phase 6 — docs and release
 

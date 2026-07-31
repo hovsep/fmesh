@@ -37,7 +37,11 @@ func (c *Component) activate(ctx context.Context) (result *ActivationResult) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			result = c.newActivationResultPanicked(fmt.Errorf("panicked with: %v, stack: %s", r, debug.Stack()))
+			result = c.newActivationResultPanicked(&PanicError{
+				ComponentName: c.Name(),
+				Value:         r,
+				Stack:         debug.Stack(),
+			})
 			c.triggerHooksForResult(ctx, result, c.hooks.onPanic)
 			c.triggerAfterActivation(ctx, result)
 		}

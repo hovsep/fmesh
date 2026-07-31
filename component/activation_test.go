@@ -119,7 +119,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodePanicked).
-				AddActivationError(errors.New("panicked with: oh shrimps")),
+				AddActivationError(errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -138,7 +138,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
 				SetActivationCode(ActivationCodePanicked).
-				AddActivationError(errors.New("panicked with: oh shrimps")),
+				AddActivationError(errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component is waiting for inputs",
@@ -244,10 +244,16 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			assert.Equal(t, tt.wantActivationResult.Activated(), gotActivationResult.Activated())
 			assert.Equal(t, tt.wantActivationResult.ComponentName(), gotActivationResult.ComponentName())
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
-			if tt.wantActivationResult.IsError() {
-				assert.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
-			} else {
+			switch {
+			case tt.wantActivationResult.IsError():
+				require.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
+			case tt.wantActivationResult.IsPanic():
+				// Panics used to land in the else branch below, so the expected
+				// message was never compared with anything.
+				require.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
+			default:
 				assert.False(t, gotActivationResult.IsError())
+				assert.False(t, gotActivationResult.IsPanic())
 			}
 
 			if tt.loggerAssertions != nil {
