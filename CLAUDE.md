@@ -47,6 +47,13 @@ Verify before finishing: `make test && make lint && make fmt`. Key linters enfor
   be freely changed or broken, until this doc says otherwise. (No deprecation shims or
   backward-compat layers needed.)
 - Ask before relaxing a constraint or introducing a new pattern/helper/abstraction.
+- **Release tags are plain semver** (`v1.12.0`) — a suffix makes the tag a *pre-release*, which
+  `go get` skips. This project shipped 36 codenamed tags (`v1.11.1-Shirak`) that Go never served;
+  one stray plain `v1.3.0` won `@latest` for a year, and the module proxy caches immutably so
+  deleting a tag cannot undo it. Codenames go in the GitHub release **title**. The module path
+  stays `github.com/hovsep/fmesh` — a major bump to v2+ would require the `/vN` suffix in `go.mod`
+  and every internal import. `.github/workflows/release-guard.yml` enforces both.
+- Breaking changes go in `CHANGELOG.md` under a `BREAKING` heading, with before/after code.
 
 ## Architecture in one pass
 

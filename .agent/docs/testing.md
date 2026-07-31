@@ -22,3 +22,17 @@
 - `signal.Group` batch methods (`WithLabelOnEach`, `WithScalarOnEach`, etc.) must preserve the group's own metadata on the returned group
 - Anything taking a port name as a string: cover the name that resolves to no port. An unresolved name reaches the assertion as an empty collection (vacuously ready) or a nil port (a panic at the first dereference), so the passing test proves nothing unless it names a port that does not exist
 - Typed payload accessors: a wrong payload type, a nil payload, and a nil signal must all return an error or the default — never panic
+
+## Documentation is tested too
+
+- `Example` in `example_test.go` is the README quick start. It runs in CI, so the README's headline
+  snippet cannot rot. Keep the two in sync — if you change one, change the other.
+- `TestDocs_ReferenceOnlyExistingAPI` (`docs_test.go`) parses every ```go block in `README.md`,
+  `CHANGELOG.md`, `CONTRIBUTING.md` and `docs/wiki/*.md` and asserts that every qualified reference
+  to this project's API (`component.X`, `signal.X`, …) is a symbol that actually exists. It is how
+  a rename gets caught in the docs rather than by a user copying a dead snippet.
+
+  It deliberately does not compile the wiki snippets: they are fragments with elisions, so wrapping
+  them into buildable files is guesswork. It also accepts method names as valid for a package
+  qualifier, because docs shadow package names with variables (`port.Signals()` is a `*Port` called
+  `port`). Argument counts are not checked.

@@ -1,0 +1,54 @@
+name: Release guard
+
+# Rejects a release tag Go cannot see.
+#
+# Every tag this project published between v0.1.0 and v1.11.1 carried an Armenian
+# capital as a suffix — v1.11.1-Shirak. Semver reads that as a PRE-RELEASE, and
+# `go get` prefers release versions over pre-releases regardless of their numbers.
+# One plain v1.3.0 tag from 2025 therefore beat all 36 codenamed tags, and
+# `go get github.com/hovsep/fmesh` served v1.3.0 for close to a year while HEAD
+# was many breaking changes ahead. The proxy caches immutably, so deleting the tag
+# on GitHub could not undo it; the only fix was publishing a higher plain-semver
+# release.
+#
+# Codenames belong in the GitHub release TITLE. The tag stays plain.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  check-tag:
+    name: Tag must be plain semver
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Reject pre-release and malformed tags
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' is not plain semver (vMAJOR.MINOR.PATCH)."
+            echo "::error::A suffix makes it a pre-release, which 'go get' skips. Put the codename in the release title instead."
+            exit 1
+          fi
+
+      - name: Module path major version must match the tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          MAJOR="${TAG%%.*}"; MAJOR="${MAJOR#v}"
+          MODULE=$(head -1 go.mod | awk '{print $2}')
+          echo "Tag major: $MAJOR, module: $MODULE"
+          if [ "$MAJOR" -ge 2 ]; then
+            if [[ "$MODULE" != */v$MAJOR ]]; then
+              echo "::error::Tag $TAG needs module path ending in /v$MAJOR, found '$MODULE'."
+              echo "::error::Go requires the major-version suffix for v2+. Without it the proxy rejects the tag."
+              exit 1
+            fi
+          elif [[ "$MODULE" == */v[0-9]* ]]; then
+            echo "::error::Module path '$MODULE' has a major-version suffix but the tag is $TAG."
+            exit 1
+          fi

@@ -8,6 +8,11 @@ import (
 // Typed reads of a payload, which is an any because a mesh carries mixed types
 // down one pipe. Two shapes: one reports what went wrong, one carries on with a
 // default. Neither panics.
+//
+// Reach for As. AsOrDefault is the one that turns "upstream now sends int64" into
+// a silent zero — the mismatch and the genuinely-absent value are indistinguishable
+// in its result, and nothing anywhere else in the mesh will mention it. Use it only
+// where a fallback is the correct answer rather than the convenient one.
 
 // As returns the payload as T, failing rather than panicking when the payload is
 // another type — a component cannot know that something upstream changed its
@@ -28,6 +33,10 @@ func As[T any](s *Signal) (T, error) {
 
 // AsOrDefault returns the payload as T, or the default if it is missing or of
 // another type.
+//
+// It cannot tell those two cases apart, and says nothing when it substitutes: a
+// component whose upstream changed from int to int64 keeps computing, on zero.
+// Prefer As unless the default is genuinely the right answer for a wrong type.
 //
 // T is inferred from defaultValue, so an untyped 0 means int: pass 0.0, or use
 // AsFloat64OrDefault, when the payload is a float64.
