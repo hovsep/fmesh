@@ -121,69 +121,9 @@ func (p *Port) Labels() *meta.Labels {
 	return p.labels
 }
 
-// SetLabels replaces all labels.
-func (p *Port) SetLabels(labelMap map[string]string) *Port {
-	p.labels.Clear().SetMany(labelMap)
-	return p
-}
-
-// AddLabels adds or updates labels.
-func (p *Port) AddLabels(labelMap map[string]string) *Port {
-	p.labels.SetMany(labelMap)
-	return p
-}
-
-// AddLabel adds or updates a single label.
-func (p *Port) AddLabel(name, value string) *Port {
-	p.labels.Set(name, value)
-	return p
-}
-
-// ClearLabels removes all labels.
-func (p *Port) ClearLabels() *Port {
-	p.labels.Clear()
-	return p
-}
-
-// RemoveLabels removes specific labels.
-func (p *Port) RemoveLabels(names ...string) *Port {
-	p.labels.Remove(names...)
-	return p
-}
-
 // Scalars returns the port's scalars store.
 func (p *Port) Scalars() *meta.Scalars {
 	return p.scalars
-}
-
-// SetScalars replaces all scalars.
-func (p *Port) SetScalars(scalarsMap map[string]float64) *Port {
-	p.scalars.Clear().SetMany(scalarsMap)
-	return p
-}
-
-// AddScalars adds or updates scalars.
-func (p *Port) AddScalars(scalarsMap map[string]float64) *Port {
-	p.scalars.SetMany(scalarsMap)
-	return p
-}
-
-// AddScalar adds or updates a single scalar.
-func (p *Port) AddScalar(name string, value float64) *Port {
-	p.scalars.Set(name, value)
-	return p
-}
-
-// ClearScalars removes all scalars.
-func (p *Port) ClearScalars() *Port {
-	p.scalars.Clear()
-	return p
-}
-
-// RemoveScalars removes specific scalars.
-func (p *Port) RemoveScalars(names ...string) *Port {
-	p.scalars.Remove(names...)
-	return p
 }
 
 // WithScalar is a port constructor option that adds or updates a single scalar.

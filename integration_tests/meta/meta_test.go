@@ -163,8 +163,9 @@ func Test_PortScalarsWithOptions(t *testing.T) {
 		assert.InDelta(t, 100.0, v, 1e-9)
 	})
 
-	t.Run("port WithScalar mutating method", func(t *testing.T) {
-		p := testutil.MustOutputPort("data-out").AddScalar("bandwidth", 1e6)
+	t.Run("port scalars set through the store", func(t *testing.T) {
+		p := testutil.MustOutputPort("data-out")
+		p.Scalars().Set("bandwidth", 1e6)
 		v, err := p.Scalars().Value("bandwidth")
 		require.NoError(t, err)
 		assert.InDelta(t, 1e6, v, 1e-9)

@@ -26,7 +26,7 @@ func BenchmarkGroupCoWOps(b *testing.B) {
 				return s.WithLabel("mapped", "true")
 			}).
 			Filter(func(s *Signal) bool {
-				return s.PayloadOrDefault(0).(int)%2 == 0
+				return s.Payload().(int)%2 == 0
 			})
 	}
 }

@@ -30,6 +30,32 @@ func mustOutput(name string) *Port {
 	return p
 }
 
+// The *Labeled/*Scalared helpers exist because metadata mutation returns the
+// store, not the port — table entries need a *Port.
+func mustInputLabeled(name string, labels map[string]string) *Port {
+	p := mustInput(name)
+	p.Labels().SetMany(labels)
+	return p
+}
+
+func mustOutputLabeled(name string, labels map[string]string) *Port {
+	p := mustOutput(name)
+	p.Labels().SetMany(labels)
+	return p
+}
+
+func mustInputScalared(name string, scalars map[string]float64) *Port {
+	p := mustInput(name)
+	p.Scalars().SetMany(scalars)
+	return p
+}
+
+func mustOutputScalared(name string, scalars map[string]float64) *Port {
+	p := mustOutput(name)
+	p.Scalars().SetMany(scalars)
+	return p
+}
+
 func TestPort_HasSignals(t *testing.T) {
 	tests := []struct {
 		name string
@@ -484,8 +510,7 @@ func TestPort_Flush(t *testing.T) {
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 3, destPort.Signals().Len())
-					allPayloads, err := destPort.Signals().AllPayloads()
-					require.NoError(t, err)
+					allPayloads := destPort.Signals().AllPayloads()
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -511,8 +536,7 @@ func TestPort_Flush(t *testing.T) {
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 6, destPort.Signals().Len())
-					allPayloads, err := destPort.Signals().AllPayloads()
-					require.NoError(t, err)
+					allPayloads := destPort.Signals().AllPayloads()
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -566,7 +590,7 @@ func TestPort_SetLabels(t *testing.T) {
 		},
 		{
 			name: "set labels replaces existing labels",
-			port: mustOutput("p1").AddLabels(map[string]string{"old": "value"}),
+			port: mustOutputLabeled("p1", map[string]string{"old": "value"}),
 			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
@@ -580,7 +604,9 @@ func TestPort_SetLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.SetLabels(tt.labels)
+			tt.port.Labels().Clear().SetMany(tt.labels)
+
+			portAfter := tt.port
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -609,7 +635,7 @@ func TestPort_AddLabels(t *testing.T) {
 		},
 		{
 			name: "add labels merges with existing",
-			port: mustOutput("p1").AddLabels(map[string]string{"existing": "label"}),
+			port: mustOutputLabeled("p1", map[string]string{"existing": "label"}),
 			labels: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
@@ -621,7 +647,7 @@ func TestPort_AddLabels(t *testing.T) {
 		},
 		{
 			name: "add labels updates existing key",
-			port: mustOutput("p1").AddLabels(map[string]string{"l1": "old"}),
+			port: mustOutputLabeled("p1", map[string]string{"l1": "old"}),
 			labels: map[string]string{
 				"l1": "new",
 			},
@@ -633,7 +659,9 @@ func TestPort_AddLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.AddLabels(tt.labels)
+			tt.port.Labels().SetMany(tt.labels)
+
+			portAfter := tt.port
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -661,7 +689,7 @@ func TestPort_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label merges with existing",
-			port:       mustOutput("p1").AddLabel("existing", "label"),
+			port:       mustOutputLabeled("p1", map[string]string{"existing": "label"}),
 			labelName:  "direction",
 			labelValue: "in",
 			assertions: func(t *testing.T, port *Port) {
@@ -671,7 +699,7 @@ func TestPort_AddLabel(t *testing.T) {
 		},
 		{
 			name:       "add label updates existing key",
-			port:       mustOutput("p1").AddLabel("direction", "in"),
+			port:       mustOutputLabeled("p1", map[string]string{"direction": "in"}),
 			labelName:  "direction",
 			labelValue: "out",
 			assertions: func(t *testing.T, port *Port) {
@@ -685,15 +713,17 @@ func TestPort_AddLabel(t *testing.T) {
 			labelName:  "l1",
 			labelValue: "v1",
 			assertions: func(t *testing.T, port *Port) {
-				result := port.AddLabel("l2", "v2").AddLabel("l3", "v3")
-				assert.Equal(t, 3, result.Labels().Len())
-				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
+				result := port.Labels().Set("l2", "v2").Set("l3", "v3")
+				assert.Equal(t, 3, result.Len())
+				assert.True(t, result.HasAll("l1", "l2", "l3"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.AddLabel(tt.labelName, tt.labelValue)
+			tt.port.Labels().Set(tt.labelName, tt.labelValue)
+
+			portAfter := tt.port
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -709,7 +739,7 @@ func TestPort_ClearLabels(t *testing.T) {
 	}{
 		{
 			name: "clear labels from port with labels",
-			port: mustOutput("p1").AddLabels(map[string]string{"k1": "v1", "k2": "v2"}),
+			port: mustOutputLabeled("p1", map[string]string{"k1": "v1", "k2": "v2"}),
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 0, port.Labels().Len())
 				assert.False(t, port.Labels().Has("k1"))
@@ -725,18 +755,20 @@ func TestPort_ClearLabels(t *testing.T) {
 		},
 		{
 			name: "chainable",
-			port: mustOutput("p1").AddLabels(map[string]string{"k1": "v1"}),
+			port: mustOutputLabeled("p1", map[string]string{"k1": "v1"}),
 			assertions: func(t *testing.T, port *Port) {
-				result := port.ClearLabels().AddLabel("k2", "v2")
-				assert.Equal(t, 1, result.Labels().Len())
-				assert.False(t, result.Labels().Has("k1"))
-				assert.True(t, result.Labels().ValueIs("k2", "v2"))
+				result := port.Labels().Clear().Set("k2", "v2")
+				assert.Equal(t, 1, result.Len())
+				assert.False(t, result.Has("k1"))
+				assert.True(t, result.ValueIs("k2", "v2"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.ClearLabels()
+			tt.port.Labels().Clear()
+
+			portAfter := tt.port
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -753,7 +785,7 @@ func TestPort_RemoveLabels(t *testing.T) {
 	}{
 		{
 			name:           "remove single label",
-			port:           mustOutput("p1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           mustOutputLabeled("p1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 2, port.Labels().Len())
@@ -764,7 +796,7 @@ func TestPort_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "remove multiple labels",
-			port:           mustOutput("p1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           mustOutputLabeled("p1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1", "k2"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 1, port.Labels().Len())
@@ -775,7 +807,7 @@ func TestPort_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "remove non-existent label",
-			port:           mustOutput("p1").AddLabels(map[string]string{"k1": "v1"}),
+			port:           mustOutputLabeled("p1", map[string]string{"k1": "v1"}),
 			labelsToRemove: []string{"k2"},
 			assertions: func(t *testing.T, port *Port) {
 				assert.Equal(t, 1, port.Labels().Len())
@@ -784,21 +816,23 @@ func TestPort_RemoveLabels(t *testing.T) {
 		},
 		{
 			name:           "chainable",
-			port:           mustOutput("p1").AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			port:           mustOutputLabeled("p1", map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
 			labelsToRemove: []string{"k1"},
 			assertions: func(t *testing.T, port *Port) {
-				result := port.RemoveLabels("k2").AddLabel("k4", "v4")
-				assert.Equal(t, 2, result.Labels().Len())
-				assert.False(t, result.Labels().Has("k1"))
-				assert.False(t, result.Labels().Has("k2"))
-				assert.True(t, result.Labels().ValueIs("k3", "v3"))
-				assert.True(t, result.Labels().ValueIs("k4", "v4"))
+				result := port.Labels().Remove("k2").Set("k4", "v4")
+				assert.Equal(t, 2, result.Len())
+				assert.False(t, result.Has("k1"))
+				assert.False(t, result.Has("k2"))
+				assert.True(t, result.ValueIs("k3", "v3"))
+				assert.True(t, result.ValueIs("k4", "v4"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			portAfter := tt.port.RemoveLabels(tt.labelsToRemove...)
+			tt.port.Labels().Remove(tt.labelsToRemove...)
+
+			portAfter := tt.port
 			if tt.assertions != nil {
 				tt.assertions(t, portAfter)
 			}
@@ -930,7 +964,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 				}(),
 				destPort: mustOutput("p2"),
 				predicate: func(signal *signal.Signal) bool {
-					return signal.PayloadOrDefault(0).(int) > 0
+					return signal.Payload().(int) > 0
 				},
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
@@ -953,7 +987,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 					return p
 				}(),
 				predicate: func(signal *signal.Signal) bool {
-					return signal.PayloadOrDefault(0).(int) > 10
+					return signal.Payload().(int) > 10
 				},
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
@@ -976,7 +1010,7 @@ func TestPort_ForwardWithFilter(t *testing.T) {
 					return p
 				}(),
 				predicate: func(signal *signal.Signal) bool {
-					return signal.PayloadOrDefault(0).(int) > 99
+					return signal.Payload().(int) > 99
 				},
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
@@ -1042,9 +1076,9 @@ func TestPort_ForwardWithMap(t *testing.T) {
 
 func TestPort_Chainability(t *testing.T) {
 	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
-		p := mustOutput("p1").
-			SetLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			SetLabels(map[string]string{"k3": "v3"})
+		p := mustOutput("p1")
+		p.Labels().Clear().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
+		p.Labels().Clear().SetMany(map[string]string{"k3": "v3"})
 
 		assert.Equal(t, 1, p.Labels().Len())
 		assert.False(t, p.Labels().Has("k1"), "k1 should be replaced")
@@ -1053,9 +1087,9 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
-		p := mustOutput("p1").
-			AddLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			AddLabels(map[string]string{"k3": "v3", "k2": "v2-updated"})
+		p := mustOutput("p1")
+		p.Labels().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
+		p.Labels().SetMany(map[string]string{"k3": "v3", "k2": "v2-updated"})
 
 		assert.Equal(t, 3, p.Labels().Len())
 		assert.True(t, p.Labels().ValueIs("k1", "v1"))
@@ -1064,16 +1098,17 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("mixed Set and Add operations", func(t *testing.T) {
-		p := mustOutput("p1").
-			AddLabel("k1", "v1").
-			AddLabels(map[string]string{"k2": "v2", "k3": "v3"}).
-			SetLabels(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
-			AddLabel("k5", "v5")                      // Merges with k4
+		p := mustOutput("p1")
+		p.Labels().
+			Set("k1", "v1").
+			SetMany(map[string]string{"k2": "v2", "k3": "v3"}).
+			Clear().SetMany(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
+			Set("k5", "v5")                                 // Merges with k4
 
 		assert.Equal(t, 2, p.Labels().Len())
-		assert.False(t, p.Labels().Has("k1"), "wiped by SetLabels")
-		assert.False(t, p.Labels().Has("k2"), "wiped by SetLabels")
-		assert.False(t, p.Labels().Has("k3"), "wiped by SetLabels")
+		assert.False(t, p.Labels().Has("k1"), "wiped by Clear")
+		assert.False(t, p.Labels().Has("k2"), "wiped by Clear")
+		assert.False(t, p.Labels().Has("k3"), "wiped by Clear")
 		assert.True(t, p.Labels().ValueIs("k4", "v4"))
 		assert.True(t, p.Labels().ValueIs("k5", "v5"))
 	})
@@ -1101,10 +1136,11 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("ClearLabels removes all labels", func(t *testing.T) {
-		p := mustOutput("p1").
-			AddLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			ClearLabels().
-			AddLabel("k3", "v3")
+		p := mustOutput("p1")
+		p.Labels().
+			SetMany(map[string]string{"k1": "v1", "k2": "v2"}).
+			Clear().
+			Set("k3", "v3")
 
 		assert.Equal(t, 1, p.Labels().Len())
 		assert.False(t, p.Labels().Has("k1"))
@@ -1113,10 +1149,11 @@ func TestPort_Chainability(t *testing.T) {
 	})
 
 	t.Run("RemoveLabels removes specific labels", func(t *testing.T) {
-		p := mustOutput("p1").
-			AddLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
-			RemoveLabels("k1", "k2").
-			AddLabel("k4", "v4")
+		p := mustOutput("p1")
+		p.Labels().
+			SetMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			Remove("k1", "k2").
+			Set("k4", "v4")
 
 		assert.Equal(t, 2, p.Labels().Len())
 		assert.False(t, p.Labels().Has("k1"))

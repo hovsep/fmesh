@@ -83,7 +83,9 @@ receive `context.Background()`. Cancellation is cooperative and checked between 
 **copy-on-write** — mutating methods return a new value, never touch the receiver; payload is
 shallow-copied and `nil` is a valid payload. In contrast `meta.Labels`/`meta.Scalars` and the
 `port`/`component`/`cycle` types **mutate in place**. This split drives the naming convention:
-`With*`/`Without*` = CoW returning new; `Set*`/`Add*`/`Remove*` = mutating. Never mix them.
+`With*`/`Without*` = CoW returning new (or a constructor option); `Set*`/`Add*`/`Remove*` = mutating.
+Never mix them, and there is no exception: mutating types carry no metadata methods at all —
+`x.Labels().Set(k, v)` reaches the live store. `Signal.Payload()` returns `any` and cannot fail.
 
 No generics (FBP needs mixed-type signals in one group); minimise `reflect`; no chainable
 error/"poison object" pattern — fallible methods return `error` last, infallible transforms

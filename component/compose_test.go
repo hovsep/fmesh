@@ -129,7 +129,7 @@ func TestPipeline(t *testing.T) {
 
 	double := func(g *signal.Group) (*signal.Group, error) {
 		return g.Map(func(s *signal.Signal) *signal.Signal {
-			return signal.New(s.PayloadOrDefault(0).(int) * 2)
+			return signal.New(s.Payload().(int) * 2)
 		}), nil
 	}
 
@@ -137,7 +137,7 @@ func TestPipeline(t *testing.T) {
 
 	got := c.OutputByName("out").Signals()
 	require.Equal(t, 2, got.Len())
-	assert.Equal(t, 8, got.First().PayloadOrDefault(0), "two doublings of 2")
+	assert.Equal(t, 8, got.First().Payload(), "two doublings of 2")
 
 	t.Run("a failing stage says which one", func(t *testing.T) {
 		bad := func(*signal.Group) (*signal.Group, error) { return nil, errors.New("nope") }
@@ -176,7 +176,6 @@ func TestPipelineReadsInputsInOrder(t *testing.T) {
 
 	require.NoError(t, Pipeline([]string{"d", "a", "b"}, "out")(context.Background(), c))
 
-	payloads, err := c.OutputByName("out").Signals().AllPayloads()
-	require.NoError(t, err)
+	payloads := c.OutputByName("out").Signals().AllPayloads()
 	assert.Equal(t, []any{"d", "a", "b"}, payloads)
 }

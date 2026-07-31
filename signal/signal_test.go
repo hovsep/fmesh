@@ -49,11 +49,18 @@ func TestNew(t *testing.T) {
 
 func TestSignal_Payload(t *testing.T) {
 	tests := []struct {
-		name            string
-		signal          *Signal
-		want            any
-		wantErrorString string
+		name   string
+		signal *Signal
+		want   any
 	}{
+		{
+			// Payload no longer reports this: a signal without one can only come
+			// from building the zero value instead of calling New, and it reads
+			// as nil like any other absent value.
+			name:   "zero-value signal reads as nil",
+			signal: &Signal{},
+			want:   nil,
+		},
 		{
 			name:   "nil payload is valid",
 			signal: New(nil),
@@ -67,13 +74,7 @@ func TestSignal_Payload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.signal.Payload()
-			if tt.wantErrorString != "" {
-				require.Error(t, err)
-				require.EqualError(t, err, tt.wantErrorString)
-			} else {
-				assert.Equal(t, tt.want, got)
-			}
+			assert.Equal(t, tt.want, tt.signal.Payload())
 		})
 	}
 }
@@ -92,7 +93,7 @@ func TestSignal_PayloadOrNil(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.signal.PayloadOrNil())
+			assert.Equal(t, tt.want, tt.signal.Payload())
 		})
 	}
 }
@@ -154,7 +155,7 @@ func TestSignal_MapPayload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.signal.MapPayload(tt.mapperFunc)
-			assert.Equal(t, tt.want.PayloadOrNil(), got.PayloadOrNil())
+			assert.Equal(t, tt.want.Payload(), got.Payload())
 			assert.Equal(t, tt.want.Labels(), got.Labels())
 		})
 	}
@@ -527,18 +528,21 @@ func TestSignal_NilPayloadInvariant(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payload, err := tt.signal.Payload()
-			require.NoError(t, err)
+			payload := tt.signal.Payload()
 			assert.Nil(t, payload)
 		})
 	}
 }
 
-func TestSignal_ZeroValueHasNoPayload(t *testing.T) {
+func TestSignal_ZeroValueReadsAsNil(t *testing.T) {
+	// A signal without a payload can only be built by skipping New. Payload does
+	// not report that as an error — it is a construction bug, not a runtime
+	// condition — so it reads as nil, and the typed accessors say what is wrong.
 	var s Signal
 
-	_, err := s.Payload()
-	require.ErrorIs(t, err, ErrNoPayload)
-	assert.Nil(t, s.PayloadOrNil())
-	assert.Equal(t, "fallback", s.PayloadOrDefault("fallback"))
+	assert.Nil(t, s.Payload())
+
+	_, err := As[string](&s)
+	require.Error(t, err, "As must still report that the payload is not a string")
+	assert.Equal(t, "fallback", AsOrDefault(&s, "fallback"))
 }

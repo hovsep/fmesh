@@ -234,12 +234,7 @@ func TestPortHooks_ContextAccess(t *testing.T) {
 				portName = ctx.Port.Name()
 				// Access actual signal data
 				for _, sig := range ctx.SignalsAdded {
-					payload, err := sig.Payload()
-					if err != nil {
-						continue
-					}
-
-					if val, ok := payload.(int); ok {
+					if val, ok := sig.Payload().(int); ok {
 						signalPayloads = append(signalPayloads, val)
 					}
 				}
@@ -345,10 +340,7 @@ func TestPortHooks_PracticalDataValidation(t *testing.T) {
 
 				// Validate: all payloads must be positive integers
 				for _, sig := range ctx.SignalsAdded {
-					payload, err := sig.Payload()
-					if err != nil {
-						return errors.New("payload error")
-					}
+					payload := sig.Payload()
 					if val, ok := payload.(int); !ok || val <= 0 {
 						return errors.New("invalid payload")
 					}

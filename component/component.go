@@ -76,69 +76,9 @@ func (c *Component) Labels() *meta.Labels {
 	return c.labels
 }
 
-// SetLabels replaces all labels.
-func (c *Component) SetLabels(labelMap map[string]string) *Component {
-	c.labels.Clear().SetMany(labelMap)
-	return c
-}
-
-// AddLabels adds or updates labels.
-func (c *Component) AddLabels(labelMap map[string]string) *Component {
-	c.labels.SetMany(labelMap)
-	return c
-}
-
-// AddLabel adds or updates a single label.
-func (c *Component) AddLabel(name, value string) *Component {
-	c.labels.Set(name, value)
-	return c
-}
-
-// ClearLabels removes all labels.
-func (c *Component) ClearLabels() *Component {
-	c.labels.Clear()
-	return c
-}
-
-// RemoveLabels removes specific labels.
-func (c *Component) RemoveLabels(names ...string) *Component {
-	c.labels.Remove(names...)
-	return c
-}
-
 // Scalars returns the component's scalars store.
 func (c *Component) Scalars() *meta.Scalars {
 	return c.scalars
-}
-
-// SetScalars replaces all scalars.
-func (c *Component) SetScalars(scalarsMap map[string]float64) *Component {
-	c.scalars.Clear().SetMany(scalarsMap)
-	return c
-}
-
-// AddScalars adds or updates scalars.
-func (c *Component) AddScalars(scalarsMap map[string]float64) *Component {
-	c.scalars.SetMany(scalarsMap)
-	return c
-}
-
-// AddScalar adds or updates a single scalar.
-func (c *Component) AddScalar(name string, value float64) *Component {
-	c.scalars.Set(name, value)
-	return c
-}
-
-// ClearScalars removes all scalars.
-func (c *Component) ClearScalars() *Component {
-	c.scalars.Clear()
-	return c
-}
-
-// RemoveScalars removes specific scalars.
-func (c *Component) RemoveScalars(names ...string) *Component {
-	c.scalars.Remove(names...)
-	return c
 }
 
 // WithDescription is a component constructor option that sets the description.

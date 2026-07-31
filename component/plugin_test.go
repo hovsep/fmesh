@@ -144,7 +144,7 @@ func (pp PricePlugin) Init(c *Component) error {
 	})
 
 	// Modify metadata
-	c.AddLabel("plugin/price/version", "v1.2.4")
-	c.AddScalar("plugin/price/threshold", 105.54)
+	c.Labels().Set("plugin/price/version", "v1.2.4")
+	c.Scalars().Set("plugin/price/threshold", 105.54)
 	return nil
 }

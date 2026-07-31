@@ -148,7 +148,7 @@ positive that kills correct runs, which is worse than no detector.
 port named in the message, and the negative cases — accumulation, drop-mode waiters resolving
 naturally, a 200-cycle productive run, thresholds, and disabling.
 
-## Phase 4 — API diet and naming harmonisation
+## Phase 4 — API diet and naming harmonisation ✅ DONE
 
 One change fixes both: ~460 exported symbols, and a `naming.md` exception large enough to swallow
 the rule it qualifies.
@@ -157,13 +157,13 @@ The exception exists only because mutating types have `With*` metadata methods t
 methods are pure delegation — `fm.AddLabel(k,v)` is `fm.labels.Set(k,v); return fm` — and
 `Labels()` on those types already returns the live store.
 
-- [ ] Delete metadata methods on **mutating** types (`FMesh`, `Component`, `Port`,
+- [x] Delete metadata methods on **mutating** types (`FMesh`, `Component`, `Port`,
       `port.Collection`, `cycle.Cycle`, `cycle.Group`): `AddLabel(s)`, `SetLabels`, `ClearLabels`,
       `RemoveLabels` and the scalar equivalents — ~60 methods.
       `fm.AddLabel("env","prod")` → `fm.Labels().Set("env","prod")` (still chainable on `*Labels`)
-- [ ] **Keep** `With*`/`Without*` on CoW types (`signal.Signal`, `signal.Group`) — load-bearing there
-- [ ] **Keep** constructor options `WithLabel`/`WithScalar` — correct use of `With`
-- [ ] Renames:
+- [x] **Keep** `With*`/`Without*` on CoW types (`signal.Signal`, `signal.Group`) — load-bearing there
+- [x] **Keep** constructor options `WithLabel`/`WithScalar` — correct use of `With`
+- [x] Renames:
       | Now | → | Why |
       |---|---|---|
       | `port.Collection.Without(names)` | `Remove(names)` | mutates in place |
@@ -171,17 +171,31 @@ methods are pure delegation — `fm.AddLabel(k,v)` is `fm.labels.Set(k,v); retur
       | `Collection.With*OnEach` | `Set*OnEach` | mutates (CoW `signal.Group` keeps `With*OnEach`) |
       | `Collection.PutSignals` | `PutSignalsOnEach` | it broadcasts to every port |
       | `Collection.PipeTo` | `PipeEachTo` | it builds a full cross-product |
-- [ ] Collapse payload accessors — `Payload()` errors only for a zero-value `Signal`, which is a
+- [x] Collapse payload accessors — `Payload()` errors only for a zero-value `Signal`, which is a
       construction bug, not a runtime condition:
       - `Signal.Payload() (any, error)` → `Payload() any`
       - delete `PayloadOrNil`, `PayloadOrDefault`, `Group.FirstPayloadOrNil`,
         `Group.FirstPayloadOrDefault`; `Group.FirstPayload() any` (nil for empty group)
       - `As[T]` / `AsOrDefault[T]` remain the typed path
-- [ ] Remove the exception paragraph from `naming.md`; the rule becomes absolute:
+- [x] Remove the exception paragraph from `naming.md`; the rule becomes absolute:
       **`With` means CoW-returns-new, or a constructor Option. Nothing else.**
-- [ ] Update the duplicated naming rule in `CONTRIBUTING.md`
+- [x] Update the duplicated naming rule in `CONTRIBUTING.md`
 
-**Done when:** ~70–80 exported symbols are gone, `naming.md` has no exceptions, no functionality lost.
+**Done:** 40 exported symbols deleted (38 delegating metadata methods + `PayloadOrNil`/
+`PayloadOrDefault`); 459 → 423 net across the repo, the difference being the 4 symbols phases 1–3
+added. The plan's "~60 methods" estimate was optimistic: `FMesh`/`Component`/`Port` had 10 each,
+but `cycle.Cycle` had only 2 and the collections 2 apiece.
+
+`naming.md` has no exceptions left — `With` means CoW-returns-new or a constructor option, full
+stop. Chaining did not disappear with the deleted methods, it moved to `*meta.Labels`, which is
+where it belonged.
+
+One deviation, deliberate: **`Group.FirstPayload` keeps its error.** The plan said to collapse it
+alongside `Signal.Payload`, but the two errors are not the same kind. `Signal.Payload` could only
+fail for a zero-value `Signal{}` — a construction bug. `Group.FirstPayload` fails for an *empty
+group*, which is an ordinary runtime state; returning a silent nil for it would be exactly the
+quiet-wrongness this whole review set out to remove. `FirstPayloadOrDefault`/`FirstPayloadOrNil`
+stay for the same reason.
 
 ## Phase 5 — diagnostics
 

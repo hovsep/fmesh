@@ -88,7 +88,7 @@ type activationCounter struct {
 func (p *activationCounter) GetName() string { return "activationCounter" }
 
 func (p *activationCounter) Init(fm *FMesh) error {
-	fm.AddLabel("plugin/counter/version", "v1")
+	fm.Labels().Set("plugin/counter/version", "v1")
 
 	fm.SetupHooks(func(hooks *Hooks) {
 		hooks.OnComponentAdded(func(_ context.Context, ctx *ComponentAddedContext) error {

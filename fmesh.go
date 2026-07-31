@@ -99,69 +99,9 @@ func (fm *FMesh) Labels() *meta.Labels {
 	return fm.labels
 }
 
-// SetLabels replaces all labels.
-func (fm *FMesh) SetLabels(labelMap map[string]string) *FMesh {
-	fm.labels.Clear().SetMany(labelMap)
-	return fm
-}
-
-// AddLabels adds or updates labels.
-func (fm *FMesh) AddLabels(labelMap map[string]string) *FMesh {
-	fm.labels.SetMany(labelMap)
-	return fm
-}
-
-// AddLabel adds or updates a single label.
-func (fm *FMesh) AddLabel(name, value string) *FMesh {
-	fm.labels.Set(name, value)
-	return fm
-}
-
-// ClearLabels removes all labels.
-func (fm *FMesh) ClearLabels() *FMesh {
-	fm.labels.Clear()
-	return fm
-}
-
-// RemoveLabels removes specific labels.
-func (fm *FMesh) RemoveLabels(names ...string) *FMesh {
-	fm.labels.Remove(names...)
-	return fm
-}
-
 // Scalars returns the mesh's scalars store.
 func (fm *FMesh) Scalars() *meta.Scalars {
 	return fm.scalars
-}
-
-// SetScalars replaces all scalars.
-func (fm *FMesh) SetScalars(scalarsMap map[string]float64) *FMesh {
-	fm.scalars.Clear().SetMany(scalarsMap)
-	return fm
-}
-
-// AddScalars adds or updates scalars.
-func (fm *FMesh) AddScalars(scalarsMap map[string]float64) *FMesh {
-	fm.scalars.SetMany(scalarsMap)
-	return fm
-}
-
-// AddScalar adds or updates a single scalar.
-func (fm *FMesh) AddScalar(name string, value float64) *FMesh {
-	fm.scalars.Set(name, value)
-	return fm
-}
-
-// ClearScalars removes all scalars.
-func (fm *FMesh) ClearScalars() *FMesh {
-	fm.scalars.Clear()
-	return fm
-}
-
-// RemoveScalars removes specific scalars.
-func (fm *FMesh) RemoveScalars(names ...string) *FMesh {
-	fm.scalars.Remove(names...)
-	return fm
 }
 
 // WithLabel is a constructor option that adds or updates a single label on the mesh.

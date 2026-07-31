@@ -28,28 +28,19 @@ func NewGroup() *Group {
 // Labels returns the group's own labels store.
 func (g *Group) Labels() *meta.Labels { return g.labels }
 
-// WithLabel adds or updates a single label on the group itself.
-func (g *Group) WithLabel(name, value string) *Group { g.labels.Set(name, value); return g }
-
 // Scalars returns the group's own scalars store.
 func (g *Group) Scalars() *meta.Scalars { return g.scalars }
 
-// WithScalar adds or updates a single scalar on the group itself.
-func (g *Group) WithScalar(name string, value float64) *Group {
-	g.scalars.Set(name, value)
-	return g
-}
-
-// WithLabelOnEach sets a label on every cycle in the group.
-func (g *Group) WithLabelOnEach(name, value string) *Group {
+// SetLabelOnEach sets a label on every cycle in the group.
+func (g *Group) SetLabelOnEach(name, value string) *Group {
 	for _, c := range g.cycles {
 		c.labels.Set(name, value)
 	}
 	return g
 }
 
-// WithScalarOnEach sets a scalar on every cycle in the group.
-func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+// SetScalarOnEach sets a scalar on every cycle in the group.
+func (g *Group) SetScalarOnEach(name string, value float64) *Group {
 	for _, c := range g.cycles {
 		c.scalars.Set(name, value)
 	}

@@ -384,6 +384,14 @@ func TestActivationResultCollection_Filter(t *testing.T) {
 }
 
 // mustNew is a test helper that creates a component and panics on error.
+// mustNewLabeled builds a component and sets labels on it, for table entries
+// that need a *Component rather than the label store the chain now returns.
+func mustNewLabeled(name string, labels map[string]string) *Component {
+	c := mustNew(name)
+	c.Labels().SetMany(labels)
+	return c
+}
+
 func mustNew(name string, opts ...Option) *Component {
 	c, err := New(name, opts...)
 	if err != nil {

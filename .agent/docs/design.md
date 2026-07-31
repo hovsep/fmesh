@@ -9,6 +9,8 @@ Architecture overview (the concept → type → package table and the execution 
 
 **Payload is shallow-copied.** Mutable reference payloads (map, slice, pointer) must be treated as immutable by the caller. `nil` is a valid payload and must survive all CoW operations unchanged.
 
+**`Signal.Payload()` cannot fail.** It returns `any`. Since `nil` is a valid payload, the only way to hold a signal without one is to build the zero value instead of calling `New` — a construction bug, not a runtime condition, and not worth an error return on the most-called accessor in the library. Such a signal reads as `nil`. Type checking is `signal.As[T]`; "was there a signal at all" is `Group.First() == nil`. `Group.FirstPayload` **keeps** its error, because an empty group is a real runtime state rather than a construction bug — do not collapse it.
+
 **`meta.Labels` and `meta.Scalars` are mutable.** They mutate in place. Do not make them CoW — `port`, `component`, `cycle`, and the Group/Collection types depend on mutation. The one exception is `Merge(other)` on both types, which returns a new value.
 
 **Errors are returned directly.** Methods that can fail return `error` as the last return value. Infallible methods (transformations like `Filter`, `Map`, `With*` on `signal.Signal`) return their type directly for fluency. There is no "poison object" or chainable error field on any type.

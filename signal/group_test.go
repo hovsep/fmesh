@@ -108,13 +108,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.group.AllPayloads()
-			if tt.wantErrorString != "" {
-				require.Error(t, err)
-				require.EqualError(t, err, tt.wantErrorString)
-			} else {
-				assert.Equal(t, tt.want, got)
-			}
+			assert.Equal(t, tt.want, tt.group.AllPayloads())
 		})
 	}
 }
@@ -231,8 +225,7 @@ func TestGroup_First(t *testing.T) {
 		group := NewGroup(3, 5, 7)
 		got := group.First()
 		require.NotNil(t, got)
-		payload, err := got.Payload()
-		require.NoError(t, err)
+		payload := got.Payload()
 		assert.Equal(t, 3, payload)
 	})
 }
@@ -246,8 +239,7 @@ func TestGroup_Last(t *testing.T) {
 		group := NewGroup(42)
 		got := group.Last()
 		require.NotNil(t, got)
-		payload, err := got.Payload()
-		require.NoError(t, err)
+		payload := got.Payload()
 		assert.Equal(t, 42, payload)
 	})
 
@@ -255,8 +247,7 @@ func TestGroup_Last(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		got := group.Last()
 		require.NotNil(t, got)
-		payload, err := got.Payload()
-		require.NoError(t, err)
+		payload := got.Payload()
 		assert.Equal(t, 3, payload)
 	})
 }
@@ -366,19 +357,18 @@ func TestGroup_Find(t *testing.T) {
 	t.Run("returns first matching signal", func(t *testing.T) {
 		group := NewGroup(1, 2, 3, 4)
 		got := group.Find(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		require.NotNil(t, got)
-		payload, err := got.Payload()
-		require.NoError(t, err)
+		payload := got.Payload()
 		assert.Equal(t, 2, payload)
 	})
 
 	t.Run("returns nil when no signal matches", func(t *testing.T) {
 		group := NewGroup(1, 3, 5)
 		got := group.Find(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		assert.Nil(t, got)
@@ -462,7 +452,7 @@ func TestGroup_Filter(t *testing.T) {
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
 				predicate: func(signal *Signal) bool {
-					return signal.PayloadOrDefault(0).(int) <= 2
+					return signal.Payload().(int) <= 2
 				},
 			},
 			want: NewGroup(1, 2),
@@ -472,7 +462,7 @@ func TestGroup_Filter(t *testing.T) {
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
 				predicate: func(signal *Signal) bool {
-					return signal.PayloadOrDefault(0).(int) > 10
+					return signal.Payload().(int) > 10
 				},
 			},
 			want: NewGroup(),
@@ -573,7 +563,7 @@ func TestGroup_MapIf(t *testing.T) {
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
 				predicate: func(s *Signal) bool {
-					payload, _ := s.Payload()
+					payload := s.Payload()
 					return payload.(int)%2 == 0
 				},
 				mapperFunc: func(s *Signal) *Signal {
@@ -634,7 +624,7 @@ func TestGroup_MapPayloadsIf(t *testing.T) {
 			group: NewGroup(1, 2, 3, 4),
 			args: args{
 				predicate: func(s *Signal) bool {
-					payload, _ := s.Payload()
+					payload := s.Payload()
 					return payload.(int)%2 == 0
 				},
 				mapperFunc: func(p any) any { return p.(int) * 100 },
@@ -693,7 +683,7 @@ func TestGroup_Every(t *testing.T) {
 	t.Run("returns true when all match", func(t *testing.T) {
 		group := NewGroup(2, 4, 6)
 		result := group.Every(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		assert.True(t, result)
@@ -702,7 +692,7 @@ func TestGroup_Every(t *testing.T) {
 	t.Run("returns false when not all match", func(t *testing.T) {
 		group := NewGroup(2, 3, 4)
 		result := group.Every(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		assert.False(t, result)
@@ -721,7 +711,7 @@ func TestGroup_Any(t *testing.T) {
 	t.Run("returns true when at least one matches", func(t *testing.T) {
 		group := NewGroup(1, 2, 3)
 		result := group.Any(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int) == 2
 		})
 		assert.True(t, result)
@@ -730,7 +720,7 @@ func TestGroup_Any(t *testing.T) {
 	t.Run("returns false when none match", func(t *testing.T) {
 		group := NewGroup(1, 3, 5)
 		result := group.Any(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		assert.False(t, result)
@@ -749,7 +739,7 @@ func TestGroup_Count(t *testing.T) {
 	t.Run("counts matching signals", func(t *testing.T) {
 		group := NewGroup(1, 2, 3, 4, 5)
 		count := group.Count(func(s *Signal) bool {
-			payload, _ := s.Payload()
+			payload := s.Payload()
 			return payload.(int)%2 == 0
 		})
 		assert.Equal(t, 2, count)
@@ -791,7 +781,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 		count := 0
 		err := group.ForEachIf(
 			func(s *Signal) bool {
-				payload, _ := s.Payload()
+				payload := s.Payload()
 				return payload.(int)%2 == 0
 			},
 			func(s *Signal) error {
@@ -850,13 +840,12 @@ func TestGroup_Reduce(t *testing.T) {
 	t.Run("accumulates signals", func(t *testing.T) {
 		g := NewGroup(1, 2, 3)
 		result := g.Reduce(New(0), func(acc, s *Signal) *Signal {
-			accVal, _ := acc.Payload()
-			sVal, _ := s.Payload()
+			accVal := acc.Payload()
+			sVal := s.Payload()
 			return New(accVal.(int) + sVal.(int))
 		})
 		require.NotNil(t, result)
-		payload, err := result.Payload()
-		require.NoError(t, err)
+		payload := result.Payload()
 		assert.Equal(t, 6, payload)
 	})
 
@@ -894,32 +883,28 @@ func TestGroup_ReducePayloads(t *testing.T) {
 // and survives group operations unchanged.
 func TestGroup_NilPayloadInvariant(t *testing.T) {
 	t.Run("First returns nil-payload signal", func(t *testing.T) {
-		got, err := NewGroup(nil, 1).First().Payload()
-		require.NoError(t, err)
+		got := NewGroup(nil, 1).First().Payload()
 		assert.Nil(t, got)
 	})
 
 	t.Run("Last returns nil-payload signal", func(t *testing.T) {
-		got, err := NewGroup(1, nil).Last().Payload()
-		require.NoError(t, err)
+		got := NewGroup(1, nil).Last().Payload()
 		assert.Nil(t, got)
 	})
 
 	t.Run("Filter preserves nil-payload signals", func(t *testing.T) {
 		filtered := NewGroup(nil, 1, nil).Filter(func(s *Signal) bool {
-			return s.PayloadOrDefault("x") == nil
+			return s.Payload() == nil
 		})
 		assert.Equal(t, 2, filtered.Len())
-		got, err := filtered.First().Payload()
-		require.NoError(t, err)
+		got := filtered.First().Payload()
 		assert.Nil(t, got)
 	})
 
 	t.Run("Map preserves nil-payload signals", func(t *testing.T) {
-		got, err := NewGroup(nil).Map(func(s *Signal) *Signal {
+		got := NewGroup(nil).Map(func(s *Signal) *Signal {
 			return s.WithLabel("touched", "yes")
 		}).First().Payload()
-		require.NoError(t, err)
 		assert.Nil(t, got)
 	})
 
@@ -927,18 +912,15 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 		joined := NewGroup(nil).Join(NewGroup(nil))
 		assert.Equal(t, 2, joined.Len())
 
-		first, err := joined.First().Payload()
-		require.NoError(t, err)
+		first := joined.First().Payload()
 		assert.Nil(t, first)
 
-		last, err := joined.Last().Payload()
-		require.NoError(t, err)
+		last := joined.Last().Payload()
 		assert.Nil(t, last)
 	})
 
 	t.Run("AllPayloads includes nil entries", func(t *testing.T) {
-		payloads, err := NewGroup(1, nil, 2).AllPayloads()
-		require.NoError(t, err)
+		payloads := NewGroup(1, nil, 2).AllPayloads()
 		assert.Equal(t, []any{1, nil, 2}, payloads)
 	})
 
@@ -955,7 +937,7 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 
 func TestGroup_MapDropsNilResults(t *testing.T) {
 	dropOdd := func(s *Signal) *Signal {
-		if s.PayloadOrDefault(0).(int)%2 != 0 {
+		if s.Payload().(int)%2 != 0 {
 			return nil
 		}
 		return s
@@ -965,22 +947,21 @@ func TestGroup_MapDropsNilResults(t *testing.T) {
 		g := NewGroup(1, 2, 3, 4).Map(dropOdd)
 		assert.Equal(t, 2, g.Len())
 		require.NoError(t, g.ForEach(func(s *Signal) error {
-			_, err := s.Payload()
-			return err
+			assert.NotNil(t, s.Payload())
+			return nil
 		}))
 	})
 
 	t.Run("MapIf drops nil mapper results and keeps non-matching signals", func(t *testing.T) {
 		isOdd := func(s *Signal) bool {
-			return s.PayloadOrDefault(0).(int)%2 != 0
+			return s.Payload().(int)%2 != 0
 		}
 		g := NewGroup(1, 2, 3, 4).MapIf(isOdd, func(*Signal) *Signal {
 			return nil
 		})
 		assert.Equal(t, 2, g.Len())
 
-		payloads, err := g.AllPayloads()
-		require.NoError(t, err)
+		payloads := g.AllPayloads()
 		assert.Equal(t, []any{2, 4}, payloads)
 	})
 }

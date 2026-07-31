@@ -27,12 +27,12 @@ func FuzzSignalCoW(f *testing.F) {
 		// Snapshot the receiver's observable state.
 		labelsBefore := s.Labels().All()
 		scalarsBefore := s.Scalars().All()
-		payloadBefore := s.PayloadOrNil()
+		payloadBefore := s.Payload()
 
 		assertUnchanged := func(what string) {
 			assert.Equal(t, labelsBefore, s.Labels().All(), "%s mutated receiver labels", what)
 			assert.Equal(t, scalarsBefore, s.Scalars().All(), "%s mutated receiver scalars", what)
-			assert.Equal(t, payloadBefore, s.PayloadOrNil(), "%s mutated receiver payload", what)
+			assert.Equal(t, payloadBefore, s.Payload(), "%s mutated receiver payload", what)
 		}
 
 		// WithLabel: returns new, receiver unchanged, round-trips the value.
@@ -57,6 +57,6 @@ func FuzzSignalCoW(f *testing.F) {
 
 		remapped := s.MapPayload(func(any) any { return "remapped" })
 		assertUnchanged("MapPayload")
-		assert.Equal(t, "remapped", remapped.PayloadOrNil())
+		assert.Equal(t, "remapped", remapped.Payload())
 	})
 }

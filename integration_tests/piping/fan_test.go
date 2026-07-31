@@ -165,10 +165,8 @@ func Test_Fan(t *testing.T) {
 				signals := resultSignals.All()
 				sig0, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
-				sig1, err := signals[1].Payload()
-				require.NoError(t, err)
-				sig2, err := signals[2].Payload()
-				require.NoError(t, err)
+				sig1 := signals[1].Payload()
+				sig2 := signals[2].Payload()
 
 				assert.NotEqual(t, sig0, sig1)
 				assert.NotEqual(t, sig1, sig2)

@@ -20,7 +20,7 @@ func mustNewCollection(ports ...*Port) *Collection {
 
 func TestCollection_AllHaveSignals(t *testing.T) {
 	oneEmptyPorts := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
+	require.NoError(t, oneEmptyPorts.PutSignalsOnEach(signal.New(123)))
 	require.NoError(t, oneEmptyPorts.ByName("p2").Clear(context.Background()))
 
 	tests := []struct {
@@ -42,7 +42,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 			name: "all set",
 			ports: func() *Collection {
 				c := mustNewCollection(NewOutputGroup("out1", "out2", "out3").All()...)
-				require.NoError(t, c.PutSignals(signal.New(77)))
+				require.NoError(t, c.PutSignalsOnEach(signal.New(77)))
 				return c
 			}(),
 			want: true,
@@ -57,7 +57,7 @@ func TestCollection_AllHaveSignals(t *testing.T) {
 
 func TestCollection_AnyHasSignals(t *testing.T) {
 	oneEmptyPorts := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-	require.NoError(t, oneEmptyPorts.PutSignals(signal.New(123)))
+	require.NoError(t, oneEmptyPorts.PutSignalsOnEach(signal.New(123)))
 	require.NoError(t, oneEmptyPorts.ByName("p2").Clear(context.Background()))
 
 	tests := []struct {
@@ -104,7 +104,7 @@ func TestCollection_ByName(t *testing.T) {
 			name: "port with signals found",
 			collection: func() *Collection {
 				c := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-				require.NoError(t, c.PutSignals(signal.New(12)))
+				require.NoError(t, c.PutSignalsOnEach(signal.New(12)))
 				return c
 			}(),
 			args:     args{name: "p2"},
@@ -176,7 +176,7 @@ func TestCollection_ByNames(t *testing.T) {
 func TestCollection_ForEachClear(t *testing.T) {
 	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
 		ports := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-		require.NoError(t, ports.PutSignals(signal.New(1), signal.New(2), signal.New(3)))
+		require.NoError(t, ports.PutSignalsOnEach(signal.New(1), signal.New(2), signal.New(3)))
 		assert.True(t, ports.AllHaveSignals())
 		err := ports.ForEach(func(p *Port) error {
 			return p.Clear(context.Background())
@@ -267,8 +267,7 @@ func TestCollection_Flush(t *testing.T) {
 				assert.False(t, collection.ByName("src").HasSignals())
 				for _, destPort := range collection.ByName("src").Pipes().All() {
 					assert.Equal(t, 3, destPort.Signals().Len())
-					allPayloads, err := destPort.Signals().AllPayloads()
-					require.NoError(t, err)
+					allPayloads := destPort.Signals().AllPayloads()
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -338,7 +337,7 @@ func TestCollection_PipeTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.collection.PipeTo(tt.args.destPorts...)
+			err := tt.collection.PipeEachTo(tt.args.destPorts...)
 			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, tt.collection)
@@ -364,8 +363,8 @@ func TestCollection_Signals(t *testing.T) {
 				indexedPorts, err := NewIndexedOutputGroup("p", 1, 3)
 				require.NoError(t, err)
 				c := mustNewCollection(indexedPorts.All()...)
-				require.NoError(t, c.PutSignals(signal.New(1), signal.New(2), signal.New(3)))
-				require.NoError(t, c.PutSignals(signal.New("test")))
+				require.NoError(t, c.PutSignalsOnEach(signal.New(1), signal.New(2), signal.New(3)))
+				require.NoError(t, c.PutSignalsOnEach(signal.New("test")))
 				return c
 			}(),
 			want: signal.NewGroup(1, 2, 3, "test", 1, 2, 3, "test", 1, 2, 3, "test"),
@@ -515,7 +514,7 @@ func TestCollection_Len(t *testing.T) {
 func TestCollection_IterationOperationsDoNotPoisonCollection(t *testing.T) {
 	t.Run("PutSignals does not fail on valid collection", func(t *testing.T) {
 		collection := mustNewCollection(mustOutput("p1"), mustOutput("p2"))
-		err := collection.PutSignals(signal.New(42))
+		err := collection.PutSignalsOnEach(signal.New(42))
 		require.NoError(t, err)
 		assert.Equal(t, 2, collection.Len())
 	})
@@ -530,7 +529,7 @@ func TestCollection_IterationOperationsDoNotPoisonCollection(t *testing.T) {
 	t.Run("PipeTo does not fail on valid collection", func(t *testing.T) {
 		dest := mustInput("dest")
 		collection := mustNewCollection(mustOutput("p1"), mustOutput("p2"))
-		err := collection.PipeTo(dest)
+		err := collection.PipeEachTo(dest)
 		require.NoError(t, err)
 		assert.Equal(t, 2, collection.Len())
 	})

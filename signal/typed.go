@@ -18,11 +18,7 @@ func As[T any](s *Signal) (T, error) {
 		return zero, errors.New("signal is nil")
 	}
 
-	payload, err := s.Payload()
-	if err != nil {
-		return zero, fmt.Errorf("signal payload: %w", err)
-	}
-
+	payload := s.Payload()
 	typed, ok := payload.(T)
 	if !ok {
 		return zero, fmt.Errorf("signal payload is %T, not %T", payload, zero)
@@ -40,7 +36,7 @@ func AsOrDefault[T any](s *Signal, defaultValue T) T {
 		return defaultValue
 	}
 
-	value, ok := s.PayloadOrDefault(defaultValue).(T)
+	value, ok := s.Payload().(T)
 	if !ok {
 		return defaultValue
 	}
@@ -80,7 +76,7 @@ func AsNumber(s *Signal) (float64, bool) {
 		return 0, false
 	}
 
-	switch v := s.PayloadOrNil().(type) {
+	switch v := s.Payload().(type) {
 	case float64:
 		return v, true
 	case float32:

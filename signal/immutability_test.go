@@ -78,14 +78,12 @@ func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
 	orig := New(10).WithLabel("trace", "id")
 	next := orig.MapPayload(func(p any) any { return p.(int) * 2 })
 
-	p0, err := orig.Payload()
-	require.NoError(t, err)
+	p0 := orig.Payload()
 	assert.Equal(t, 10, p0)
 	assert.Equal(t, 1, orig.Labels().Len())
 	assert.True(t, orig.Labels().ValueIs("trace", "id"))
 
-	p1, err := next.Payload()
-	require.NoError(t, err)
+	p1 := next.Payload()
 	assert.Equal(t, 20, p1)
 	assert.True(t, next.Labels().ValueIs("trace", "id"))
 }
