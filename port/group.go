@@ -35,11 +35,7 @@ func newGroupOfDirection(direction Direction, names ...string) *Group {
 }
 
 func newPortOfDirection(direction Direction, name string) *Port {
-	if direction == DirectionIn {
-		p, _ := NewInput(name) // no opts, never fails
-		return p
-	}
-	p, _ := NewOutput(name) // no opts, never fails
+	p, _ := newPort(direction, name) // no opts, never fails
 	return p
 }
 

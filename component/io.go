@@ -10,155 +10,130 @@ import (
 // WithInputs is a component option that creates named input ports.
 func WithInputs(portNames ...string) Option {
 	return func(c *Component) error {
-		return c.addInputs(portNames...)
+		return c.addPorts(port.DirectionIn, portNames...)
 	}
 }
 
 // WithOutputs is a component option that creates named output ports.
 func WithOutputs(portNames ...string) Option {
 	return func(c *Component) error {
-		return c.addOutputs(portNames...)
+		return c.addPorts(port.DirectionOut, portNames...)
 	}
 }
 
 // WithIndexedInputs is a component option that creates prefixed indexed input ports.
 func WithIndexedInputs(prefix string, startIndex, endIndex int) Option {
 	return func(c *Component) error {
-		return c.addIndexedInputs(prefix, startIndex, endIndex)
+		return c.addIndexedPorts(port.DirectionIn, prefix, startIndex, endIndex)
 	}
 }
 
 // WithIndexedOutputs is a component option that creates prefixed indexed output ports.
 func WithIndexedOutputs(prefix string, startIndex, endIndex int) Option {
 	return func(c *Component) error {
-		return c.addIndexedOutputs(prefix, startIndex, endIndex)
+		return c.addIndexedPorts(port.DirectionOut, prefix, startIndex, endIndex)
 	}
 }
 
-// addInputs creates input ports by name and adds them to the component.
-func (c *Component) addInputs(portNames ...string) error {
+// side bundles the direction-specific pieces the add/attach helpers vary by, so
+// the input and output paths are one implementation rather than two.
+type side struct {
+	ports  *port.Collection
+	create func(string, ...port.Option) (*port.Port, error)
+	name   string // "input" or "output", for error messages
+	ctor   string // the constructor to point a caller at
+}
+
+func (c *Component) side(direction port.Direction) side {
+	if direction == port.DirectionIn {
+		return side{c.inputPorts, port.NewInput, "input", "port.NewInput"}
+	}
+	return side{c.outputPorts, port.NewOutput, "output", "port.NewOutput"}
+}
+
+// addPorts creates ports by name on one side of the component.
+func (c *Component) addPorts(direction port.Direction, portNames ...string) error {
+	s := c.side(direction)
 	ports := make([]*port.Port, 0, len(portNames))
 	for _, name := range portNames {
-		p, err := port.NewInput(name)
+		p, err := s.create(name)
 		if err != nil {
-			return fmt.Errorf("failed to create input port %q: %w", name, err)
+			return fmt.Errorf("failed to create %s port %q: %w", s.name, name, err)
 		}
 		ports = append(ports, p)
 	}
-	if err := c.inputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("failed to add input ports: %w", err)
-	}
-	c.inputPorts.SetParentComponent(c)
-	return nil
+	return c.attach(s, ports, fmt.Sprintf("failed to add %s ports", s.name))
 }
 
-// addOutputs creates output ports by name and adds them to the component.
-func (c *Component) addOutputs(portNames ...string) error {
-	ports := make([]*port.Port, 0, len(portNames))
-	for _, name := range portNames {
-		p, err := port.NewOutput(name)
-		if err != nil {
-			return fmt.Errorf("failed to create output port %q: %w", name, err)
-		}
-		ports = append(ports, p)
-	}
-	if err := c.outputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("failed to add output ports: %w", err)
-	}
-	c.outputPorts.SetParentComponent(c)
-	return nil
-}
-
-// addIndexedInputs creates multiple prefixed input ports.
-func (c *Component) addIndexedInputs(prefix string, startIndex, endIndex int) error {
+// addIndexedPorts creates prefixed ports numbered startIndex..endIndex inclusive.
+func (c *Component) addIndexedPorts(direction port.Direction, prefix string, startIndex, endIndex int) error {
 	if startIndex > endIndex {
 		return port.ErrInvalidRangeForIndexedGroup
 	}
 
+	s := c.side(direction)
 	ports := make([]*port.Port, 0, endIndex-startIndex+1)
 	for i := startIndex; i <= endIndex; i++ {
-		p, err := port.NewInput(fmt.Sprintf("%s%d", prefix, i))
+		p, err := s.create(fmt.Sprintf("%s%d", prefix, i))
 		if err != nil {
-			return fmt.Errorf("failed to create indexed input port: %w", err)
+			return fmt.Errorf("failed to create indexed %s port: %w", s.name, err)
 		}
 		ports = append(ports, p)
 	}
-	if err := c.inputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("failed to add indexed input ports: %w", err)
+	return c.attach(s, ports, fmt.Sprintf("failed to add indexed %s ports", s.name))
+}
+
+// attach adds already-built ports to a side and adopts them.
+func (c *Component) attach(s side, ports []*port.Port, failure string) error {
+	if err := s.ports.Add(ports...); err != nil {
+		return fmt.Errorf("%s: %w", failure, err)
 	}
-	c.inputPorts.SetParentComponent(c)
+	s.ports.SetParentComponent(c)
 	return nil
 }
 
-// addIndexedOutputs creates multiple prefixed output ports.
-func (c *Component) addIndexedOutputs(prefix string, startIndex, endIndex int) error {
-	if startIndex > endIndex {
-		return port.ErrInvalidRangeForIndexedGroup
-	}
-
-	ports := make([]*port.Port, 0, endIndex-startIndex+1)
-	for i := startIndex; i <= endIndex; i++ {
-		p, err := port.NewOutput(fmt.Sprintf("%s%d", prefix, i))
-		if err != nil {
-			return fmt.Errorf("failed to create indexed output port: %w", err)
+// attachPorts adds pre-built ports, rejecting any facing the wrong way.
+func (c *Component) attachPorts(direction port.Direction, ports ...*port.Port) error {
+	s := c.side(direction)
+	for _, p := range ports {
+		if p.Direction() != direction {
+			return fmt.Errorf("cannot attach %s port %q: it is not an %s port (create it with %s): %w",
+				s.name, p.Name(), s.name, s.ctor, port.ErrWrongPortDirection)
 		}
-		ports = append(ports, p)
 	}
-	if err := c.outputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("failed to add indexed output ports: %w", err)
-	}
-	c.outputPorts.SetParentComponent(c)
-	return nil
+	return c.attach(s, ports, fmt.Sprintf("failed to attach %s ports", s.name))
 }
 
 // AddInputs creates input ports by name and attaches them to the component.
 // Returns an error if any port cannot be created.
 func (c *Component) AddInputs(portNames ...string) error {
-	return c.addInputs(portNames...)
+	return c.addPorts(port.DirectionIn, portNames...)
 }
 
 // AddOutputs creates output ports by name and attaches them to the component.
 // Returns an error if any port cannot be created.
 func (c *Component) AddOutputs(portNames ...string) error {
-	return c.addOutputs(portNames...)
+	return c.addPorts(port.DirectionOut, portNames...)
 }
 
 // AddIndexedInputs creates multiple prefixed input ports and attaches them to the component.
 func (c *Component) AddIndexedInputs(prefix string, startIndex, endIndex int) error {
-	return c.addIndexedInputs(prefix, startIndex, endIndex)
+	return c.addIndexedPorts(port.DirectionIn, prefix, startIndex, endIndex)
 }
 
 // AddIndexedOutputs creates multiple prefixed output ports and attaches them to the component.
 func (c *Component) AddIndexedOutputs(prefix string, startIndex, endIndex int) error {
-	return c.addIndexedOutputs(prefix, startIndex, endIndex)
+	return c.addIndexedPorts(port.DirectionOut, prefix, startIndex, endIndex)
 }
 
 // AttachInputPorts attaches pre-configured input ports (must be created with port.NewInput).
 func (c *Component) AttachInputPorts(ports ...*port.Port) error {
-	for _, p := range ports {
-		if !p.IsInput() {
-			return fmt.Errorf("AttachInputPorts: port %q is not an input port (use port.NewInput): %w", p.Name(), port.ErrWrongPortDirection)
-		}
-	}
-	if err := c.inputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("AttachInputPorts: %w", err)
-	}
-	c.inputPorts.SetParentComponent(c)
-	return nil
+	return c.attachPorts(port.DirectionIn, ports...)
 }
 
 // AttachOutputPorts attaches pre-configured output ports (must be created with port.NewOutput).
 func (c *Component) AttachOutputPorts(ports ...*port.Port) error {
-	for _, p := range ports {
-		if !p.IsOutput() {
-			return fmt.Errorf("AttachOutputPorts: port %q is not an output port (use port.NewOutput): %w", p.Name(), port.ErrWrongPortDirection)
-		}
-	}
-	if err := c.outputPorts.Add(ports...); err != nil {
-		return fmt.Errorf("AttachOutputPorts: %w", err)
-	}
-	c.outputPorts.SetParentComponent(c)
-	return nil
+	return c.attachPorts(port.DirectionOut, ports...)
 }
 
 // Inputs returns the component's input ports.
