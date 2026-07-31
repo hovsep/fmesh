@@ -29,6 +29,11 @@ var (
 	ErrReachedMaxAllowedCycles = errors.New("reached max allowed cycles")
 	// ErrTimeLimitExceeded is returned when the time limit is exceeded.
 	ErrTimeLimitExceeded = errors.New("time limit exceeded")
+	// ErrLivelockDetected is returned when the mesh stopped making progress: every
+	// component that activated was waiting for inputs and no signal moved, for
+	// LivelockThreshold consecutive cycles. The wrapped message names the stuck
+	// components and, for each, which of its input ports are empty.
+	ErrLivelockDetected = errors.New("livelock detected")
 	// ErrRunCanceled is returned when the context passed to Run is canceled or
 	// hits a deadline of its own. It wraps the underlying context error, so
 	// errors.Is(err, context.Canceled) and context.DeadlineExceeded both work.

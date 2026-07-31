@@ -74,7 +74,7 @@ hook failures stop the mesh under `StopOnFirstErrorOrPanic` and surface in `Run(
 Control-flow sentinels in `component/errors.go` — returned **by activation functions**, not real failures:
 
 - `ErrWaitingForInputs` — skip this cycle; the scheduler **clears** the component's inputs.
-- `ErrWaitingForInputsKeep` — skip this cycle; inputs are **kept** for the next cycle (use when accumulating partial inputs, e.g. waiting for both operands).
+- `ErrWaitKeepingInputs` — skip this cycle; inputs are **kept** for the next cycle (use when accumulating partial inputs, e.g. waiting for both operands).
 
 A component that reported waiting is not drained (its outputs are not flushed) and does not count as an "error" under any strategy.
 
@@ -96,7 +96,19 @@ with no signals or no pipes is a no-op, not an error.
    - `StopOnFirstErrorOrPanic` → stop with `ErrHitAnErrorOrPanic` (includes hook failures)
    - `StopOnFirstPanic` → errors ignored, panics stop with `ErrHitAPanic`
    - `IgnoreAll` → run until natural stop or a limit
-4. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
+4. **Livelock** (`config.LivelockThreshold`, default **2**; 0 = disabled) → `ErrLivelockDetected`.
+   A cycle is *stalled* when every component that activated returned a waiting result **and** the
+   mesh's pending signal count is unchanged. Both halves matter: the first alone would flag a
+   component legitimately accumulating input, the second alone would flag a busy-but-idempotent
+   mesh. `LivelockThreshold` consecutive stalled cycles end the run, and the error names each
+   waiting component with its empty and non-empty input ports, plus a count of components that
+   never activated at all.
+
+   Why this is decidable rather than a guess: waiting components are never drained, so a stalled
+   cycle moves no signals, so the next cycle is bit-identical. Waiters that *drop* their inputs
+   cannot trigger it — dropping changes the pending count, and next cycle they have no input and
+   stop activating, which is a natural stop.
+5. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
 
 ### Cancellation is cooperative
 
@@ -110,7 +122,7 @@ papered over:
   to anything that blocks; poll `ctx.Err()` inside long loops.
 - An already-canceled context runs **zero** cycles.
 
-When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first.
+When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first — unless it is stalled rather than busy, in which case livelock detection ends it after 2 cycles.
 
 ## Scaling characteristics (measured)
 

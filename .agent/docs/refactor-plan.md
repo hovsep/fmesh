@@ -118,7 +118,7 @@ within a fixed 100ms ceiling, which race overhead under load breached. It now co
 2's own measured wall time and asserts `StartedAt`/`StoppedAt` ordering — testing "per run" instead
 of "fast enough". Pre-existing flake, unrelated to these phases.
 
-## Phase 3 — livelock detection
+## Phase 3 — livelock detection ✅ DONE
 
 Currently two components waiting on each other burn 1001 cycles and report the generic
 `reached max allowed cycles`.
@@ -128,18 +128,25 @@ drop-mode waiters clear their inputs and stop activating (self-resolving). A dur
 therefore exactly: every activated component in the cycle returned a waiting result, with at least
 one keep-mode waiter. Nothing moved; the next cycle is bit-identical.
 
-- [ ] `cycle.Cycle.AllActivatedAreWaiting() bool`
-- [ ] Consecutive-stalled-cycle counter on the run (threshold, not 1, because a `BeforeCycle` hook
+- [x] `cycle.Cycle.AllActivatedAreWaiting() bool`
+- [x] Consecutive-stalled-cycle counter on the run (threshold, not 1, because a `BeforeCycle` hook
       may legitimately inject signals)
-- [ ] `WithLivelockThreshold(n)`, default 2, `0` disables
-- [ ] `ErrLivelockDetected` naming the stuck components and, for each, which input ports are empty
-- [ ] Rename the wait sentinels so neither behaviour is the unmarked default:
+- [x] `WithLivelockThreshold(n)`, default 2, plus `WithoutLivelockDetection()` — matching the
+      existing `WithCyclesLimit`/`WithUnlimitedCycles` convention rather than overloading 0
+- [x] `ErrLivelockDetected` naming the stuck components and, for each, which input ports are empty
+- [x] Rename the wait sentinels so neither behaviour is the unmarked default:
       - `ErrWaitingForInputs` stays as the parent sentinel for `errors.Is`
       - `ErrWaitingForInputs` (drop) → `ErrWaitDroppingInputs`
       - `ErrWaitingForInputsKeep` → `ErrWaitKeepingInputs`
 
-**Done when:** the mutual-wait mesh stops in ~3 cycles with an error naming both components and
-their empty ports.
+**Done:** the mutual-wait probe went from 1001 cycles / "reached max allowed cycles" to 2 cycles
+with a named diagnosis. A stalled cycle needed a second condition beyond "all activated are
+waiting": the pending-signal count must also be unchanged. Without it, a component legitimately
+accumulating input across cycles (fed by a `BeforeCycle` hook) is flagged as livelocked — a false
+positive that kills correct runs, which is worse than no detector.
+`integration_tests/livelock/detection_test.go` covers both directions: mutual wait, an unfed join
+port named in the message, and the negative cases — accumulation, drop-mode waiters resolving
+naturally, a 200-cycle productive run, thresholds, and disabling.
 
 ## Phase 4 — API diet and naming harmonisation
 

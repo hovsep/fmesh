@@ -66,7 +66,7 @@ func RequireInputs(portNames ...string) ActivationFunc {
 		}
 
 		if !this.Inputs().ByNames(portNames...).AllHaveSignals() {
-			return ErrWaitingForInputsKeep
+			return ErrWaitKeepingInputs
 		}
 		return nil
 	}

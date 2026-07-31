@@ -540,7 +540,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithDescription("This component waits until it gets signals on both inputs"),
 						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-								return component.ErrWaitingForInputs
+								return component.ErrWaitDroppingInputs
 							}
 							return this.OutputByName("o1").PutSignals(signal.New("done"))
 						})),
@@ -567,10 +567,10 @@ func TestFMesh_Run(t *testing.T) {
 		},
 		{
 			// c1 loops back into itself 4 times (counts 1-4), sending odd counts to c2.in1
-			// and even counts to c2.in2. c2 uses ErrWaitingForInputsKeep until it has both
+			// and even counts to c2.in2. c2 uses ErrWaitKeepingInputs until it has both
 			// inputs, then multiplies them. Two pairs (1×2, 3×4) are produced and the mesh
-			// stops naturally — proving ErrWaitingForInputsKeep never triggers StopOnFirstErrorOrPanic.
-			name: "ErrWaitingForInputsKeep does not stop mesh with StopOnFirstErrorOrPanic strategy",
+			// stops naturally — proving ErrWaitKeepingInputs never triggers StopOnFirstErrorOrPanic.
+			name: "ErrWaitKeepingInputs does not stop mesh with StopOnFirstErrorOrPanic strategy",
 			getFM: func() *FMesh {
 				fm := mustNewFMesh("fm", WithConfig(Config{
 					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
@@ -607,7 +607,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithDescription("Waits for both inputs (keeping signals) then multiplies them"),
 						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							if !this.Inputs().ByNames("in1", "in2").AllHaveSignals() {
-								return component.ErrWaitingForInputsKeep
+								return component.ErrWaitKeepingInputs
 							}
 							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
 							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
@@ -631,7 +631,7 @@ func TestFMesh_Run(t *testing.T) {
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitKeepingInputs),
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
@@ -639,7 +639,7 @@ func TestFMesh_Run(t *testing.T) {
 				),
 				cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitingForInputsKeep),
+					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitKeepingInputs),
 				),
 				// c1's NoInput result is not recorded (c2 activated).
 				cycle.New().AddActivationResults(

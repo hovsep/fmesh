@@ -27,6 +27,17 @@ type Config struct {
 	// CyclesHistoryLimit defines the maximum number of past cycles retained in
 	// RuntimeInfo.Cycles; 0 means unlimited (the default).
 	CyclesHistoryLimit int
+
+	// LivelockThreshold is how many consecutive stalled cycles end the run with
+	// ErrLivelockDetected. A cycle is stalled when every component that activated
+	// was waiting for inputs and the mesh's pending signals did not change, which
+	// means the next cycle would be identical to this one.
+	//
+	// The default of 2 rather than 1 leaves room for a BeforeCycle hook that feeds
+	// the mesh: such a hook changes the pending signal count, which resets the
+	// counter anyway, but a threshold above one keeps the detector conservative.
+	// 0 disables detection (use WithoutLivelockDetection to say so explicitly).
+	LivelockThreshold int
 }
 
 // newDefaultConfig returns a safe default configuration.
@@ -37,6 +48,29 @@ func newDefaultConfig() Config {
 		Debug:                 false,
 		TimeLimit:             5 * time.Second,
 		CyclesHistoryLimit:    0,
+		LivelockThreshold:     2,
+	}
+}
+
+// WithLivelockThreshold is an FMesh option that sets how many consecutive stalled
+// cycles end the run with ErrLivelockDetected. threshold must be greater than 0.
+// Use WithoutLivelockDetection to turn detection off.
+func WithLivelockThreshold(threshold int) Option {
+	return func(fm *FMesh) error {
+		if threshold <= 0 {
+			return errors.New("livelock threshold must be greater than 0, use WithoutLivelockDetection() to disable detection")
+		}
+		fm.config.LivelockThreshold = threshold
+		return nil
+	}
+}
+
+// WithoutLivelockDetection is an FMesh option that disables livelock detection.
+// A livelocked mesh then runs until it hits the cycle or time limit.
+func WithoutLivelockDetection() Option {
+	return func(fm *FMesh) error {
+		fm.config.LivelockThreshold = 0
+		return nil
 	}
 }
 

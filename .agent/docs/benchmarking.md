@@ -55,7 +55,7 @@ custom metrics via `b.ReportMetric`: `cycles/s` and `activations/s` (= cycles/s 
 
 Two kinds isolate different overheads, swept over tens/hundreds/thousands of components:
 
-- **dummy** — activation returns `component.ErrWaitingForInputsKeep`, so each component
+- **dummy** — activation returns `component.ErrWaitKeepingInputs`, so each component
   keeps its input and re-activates every cycle with no output ports or pipes. This is the
   scheduling/activation floor (goroutine fan-out, `WaitGroup`, result collection).
 - **bypass** — activation copies input→output through a self-loop pipe, adding the real

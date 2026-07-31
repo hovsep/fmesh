@@ -35,11 +35,11 @@ func TestSequential(t *testing.T) {
 	t.Run("a waiting stage suspends the component", func(t *testing.T) {
 		// The error passes through as the component's own, so a stage can
 		// suspend exactly as it would if the activation were one function.
-		wait := func(context.Context, *Component) error { return ErrWaitingForInputsKeep }
+		wait := func(context.Context, *Component) error { return ErrWaitKeepingInputs }
 
 		err := Sequential(wait, func(context.Context, *Component) error { return nil })(context.Background(), nil)
 
-		require.ErrorIs(t, err, ErrWaitingForInputsKeep)
+		require.ErrorIs(t, err, ErrWaitKeepingInputs)
 	})
 }
 
@@ -79,7 +79,7 @@ func TestWhenAndRequireInputs(t *testing.T) {
 
 		err := RequireInputs("a", "b")(context.Background(), c)
 
-		require.ErrorIs(t, err, ErrWaitingForInputsKeep)
+		require.ErrorIs(t, err, ErrWaitKeepingInputs)
 	})
 
 	t.Run("RequireInputs passes once everything has arrived", func(t *testing.T) {

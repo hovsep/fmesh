@@ -122,7 +122,7 @@ func TestComponentHooks_OnWaitingForInputs(t *testing.T) {
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			// Wait for config input
 			if !c.InputByName("config").Signals().Any(func(s *signal.Signal) bool { return true }) {
-				return component.ErrWaitingForInputs
+				return component.ErrWaitDroppingInputs
 			}
 			return nil
 		}),

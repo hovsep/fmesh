@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/internal/plugin"
 	"github.com/hovsep/fmesh/meta"
+	"github.com/hovsep/fmesh/port"
 )
 
 // Option is a functional option for configuring an FMesh during construction.
@@ -28,6 +30,10 @@ type FMesh struct {
 	config      Config
 	hooks       *Hooks
 	plugins     *plugin.Registry[*FMesh]
+
+	// Livelock bookkeeping for the current run; reset by cleanUpPreviousRun.
+	stalledCycles  int
+	pendingSignals int
 }
 
 // New creates a new F-Mesh with the default configuration and applies any provided options.
@@ -334,7 +340,108 @@ func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 	// Init runtime info
 	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
 	fm.runtimeInfo.markStarted()
+
+	// Seeded inputs are the baseline the first cycle is compared against, so a
+	// mesh that stalls immediately is caught in threshold cycles rather than
+	// threshold+1.
+	fm.stalledCycles = 0
+	fm.pendingSignals = fm.countPendingSignals()
 	return nil
+}
+
+// countPendingSignals totals the signals sitting on input ports across the mesh.
+//
+// It is the cheapest thing that answers "did anything move?" — a stalled cycle
+// leaves it untouched, a component that consumed or produced anything changes
+// it, and a hook that feeds the mesh changes it too, which is what keeps the
+// livelock detector off the back of a component that is legitimately
+// accumulating input.
+func (fm *FMesh) countPendingSignals() int {
+	total := 0
+	_ = fm.Components().ForEach(func(c *component.Component) error {
+		return c.Inputs().ForEach(func(p *port.Port) error {
+			total += p.Signals().Len()
+			return nil
+		})
+	})
+	return total
+}
+
+// detectLivelock reports whether the mesh has stopped making progress, and
+// updates the stall bookkeeping. Called once per cycle.
+//
+// A stalled cycle is one where every component that activated was waiting for
+// inputs *and* the pending signal count is unchanged. Both halves are needed:
+// the first alone would flag a component accumulating input over several cycles,
+// the second alone would flag a mesh that is busy but idempotent.
+//
+// Waiters that drop their inputs cannot produce a false positive here — dropping
+// changes the pending count, and next cycle they have no input and so do not
+// activate, which ends the run naturally. The failure this catches is the other
+// one: components that keep their inputs and wait for each other forever.
+func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
+	if fm.config.LivelockThreshold <= 0 {
+		return false
+	}
+
+	pending := fm.countPendingSignals()
+	if lastCycle.AllActivatedAreWaiting() && pending == fm.pendingSignals {
+		fm.stalledCycles++
+	} else {
+		fm.stalledCycles = 0
+	}
+	fm.pendingSignals = pending
+
+	return fm.stalledCycles >= fm.config.LivelockThreshold
+}
+
+// livelockError explains the stall by naming who is stuck and on what.
+//
+// "reached max allowed cycles" is what this used to look like from the outside,
+// a thousand cycles later, and it says nothing about which components are
+// deadlocked or which port never got fed. Reporting the empty input ports of
+// each waiting component points straight at the pipe that was never wired or the
+// producer that never produced.
+func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
+	var detail strings.Builder
+	starved := 0
+	for _, c := range fm.Components().AllOrdered() {
+		activationResult := lastCycle.ActivationResults().ByName(c.Name())
+		if activationResult == nil || !component.IsWaitingForInput(activationResult) {
+			// A component with no input is not recorded at all. Counting them is
+			// worth the line: in a mutual wait only the component that happens to
+			// hold the signal shows up above, and the one starving it is invisible.
+			if activationResult == nil {
+				starved++
+			}
+			continue
+		}
+
+		var empty, holding []string
+		for _, p := range c.Inputs().AllOrdered() {
+			if p.HasSignals() {
+				holding = append(holding, p.Name())
+			} else {
+				empty = append(empty, p.Name())
+			}
+		}
+
+		mode := "dropping inputs"
+		if component.WantsToKeepInputs(activationResult) {
+			mode = "keeping inputs"
+		}
+		fmt.Fprintf(&detail, "\n  %q is waiting (%s): empty input ports %v, holding signals on %v",
+			c.Name(), mode, empty, holding)
+	}
+
+	if starved > 0 {
+		fmt.Fprintf(&detail, "\n  %d other component(s) never activated: no signals ever reached them", starved)
+	}
+
+	return fmt.Errorf("%w: no progress for %d consecutive cycles, stopped at cycle #%d. "+
+		"Every component that activated is waiting for inputs and no signals moved, "+
+		"so every following cycle would be identical to this one%s",
+		ErrLivelockDetected, fm.stalledCycles, lastCycle.Number(), detail.String())
 }
 
 // Run executes the mesh, activating components until completion or cycle limit.
@@ -474,6 +581,15 @@ func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 	if !lastCycle.HasActivatedComponents() {
 		fm.LogDebug("going to stop naturally")
 		return true, nil
+	}
+
+	// Components activated, but did the mesh actually move? Checked after the
+	// natural stop because a livelock is by definition a cycle that activated
+	// something, and last because a real error is always the better explanation.
+	if fm.detectLivelock(lastCycle) {
+		runError := fm.livelockError(lastCycle)
+		fm.LogDebug("going to stop: %s", runError)
+		return true, runError
 	}
 
 	return false, nil
