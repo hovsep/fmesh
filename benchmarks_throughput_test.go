@@ -21,7 +21,7 @@ import (
 //   - activations/s — component activations per second (cycles/s × mesh size)
 //
 // Two activation kinds isolate different parts of the overhead:
-//   - dummy  — the activation returns ErrWaitingForInputsKeep, so each component keeps
+//   - dummy  — the activation returns ErrWaitKeepingInputs, so each component keeps
 //     its input and re-activates every cycle. No output ports, no pipes: this measures
 //     pure scheduling + activation-lifecycle overhead (goroutine fan-out, WaitGroup,
 //     result collection), with none of the drain/flush machinery.
@@ -72,7 +72,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 				component.WithInputs("in"),
 				component.WithActivationFunc(func(context.Context, *component.Component) error {
 					// Keep the input and re-activate next cycle without emitting anything.
-					return component.ErrWaitingForInputsKeep
+					return component.ErrWaitKeepingInputs
 				}))
 			require.NoError(b, err)
 			components[i] = c

@@ -167,7 +167,7 @@ func (c *Component) newActivationResultHookFailed(err error) *ActivationResult {
 
 func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
 	activationCode := ActivationCodeWaitingForInputsClear
-	if errors.Is(err, ErrWaitingForInputsKeep) {
+	if errors.Is(err, ErrWaitKeepingInputs) {
 		activationCode = ActivationCodeWaitingForInputsKeep
 	}
 	return NewActivationResult(c.Name()).

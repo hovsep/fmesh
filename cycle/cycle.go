@@ -70,6 +70,26 @@ func (c *Cycle) HasActivatedComponents() bool {
 	return c.ActivationResults().HasActivatedComponents()
 }
 
+// AllActivatedAreWaiting reports whether every component that activated in this
+// cycle did so only to say it is waiting for inputs.
+//
+// This is the shape of a stalled cycle. Waiting components are never drained, so
+// such a cycle moves no signals at all: whatever the mesh was holding when the
+// cycle began, it is still holding. On its own that does not prove a livelock —
+// a component accumulating input is legitimately waiting — which is why the run
+// loop pairs this with a check that the signals really did not move.
+//
+// Components that did not activate at all are not recorded (see runCycle), so an
+// idle component does not make a cycle look stalled. A result that is anything
+// other than waiting — an error, a panic, a hook failure, a plain success —
+// makes this false.
+func (c *Cycle) AllActivatedAreWaiting() bool {
+	if !c.HasActivatedComponents() {
+		return false
+	}
+	return c.ActivationResults().Every(component.IsWaitingForInput)
+}
+
 // AddActivationResults adds multiple activation results.
 // Safe for concurrent use: the underlying collection is mutex-protected and
 // the field is never reassigned.

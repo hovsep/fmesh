@@ -49,7 +49,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					component.WithDescription("This component just sums 2 inputs"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						if !this.Inputs().ByNames("i1", "i2").AllHaveSignals() {
-							return component.ErrWaitingForInputsKeep
+							return component.ErrWaitKeepingInputs
 						}
 
 						inputNum1 := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
