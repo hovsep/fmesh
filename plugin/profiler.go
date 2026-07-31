@@ -83,31 +83,37 @@ func NewProfiler() *Profiler {
 // GetName implements fmesh.Plugin.
 func (p *Profiler) GetName() string { return "profiler" }
 
+// start stamps a begin time under the lock.
+func (p *Profiler) start(at *time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	*at = time.Now()
+}
+
+// finish folds the elapsed time since started into stat.
+func (p *Profiler) finish(stat *Stat, started *time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	*stat = stat.with(time.Since(*started))
+}
+
 // Init implements fmesh.Plugin.
 func (p *Profiler) Init(fm *fmesh.FMesh) error {
 	fm.SetupHooks(func(hooks *fmesh.Hooks) {
 		hooks.BeforeRun(func(context.Context, *fmesh.FMesh) error {
-			p.mu.Lock()
-			defer p.mu.Unlock()
-			p.runStarted = time.Now()
+			p.start(&p.runStarted)
 			return nil
 		})
 		hooks.AfterRun(func(context.Context, *fmesh.FMesh) error {
-			p.mu.Lock()
-			defer p.mu.Unlock()
-			p.run = p.run.with(time.Since(p.runStarted))
+			p.finish(&p.run, &p.runStarted)
 			return nil
 		})
 		hooks.BeforeCycle(func(context.Context, *fmesh.CycleContext) error {
-			p.mu.Lock()
-			defer p.mu.Unlock()
-			p.cycleStarted = time.Now()
+			p.start(&p.cycleStarted)
 			return nil
 		})
 		hooks.AfterCycle(func(context.Context, *fmesh.CycleContext) error {
-			p.mu.Lock()
-			defer p.mu.Unlock()
-			p.cycle = p.cycle.with(time.Since(p.cycleStarted))
+			p.finish(&p.cycle, &p.cycleStarted)
 			return nil
 		})
 		hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {

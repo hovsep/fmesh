@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"log"
 	"strings"
 	"sync"
@@ -137,16 +138,18 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	}
 	newCycle := cycle.New().SetNumber(nextNumber)
 
+	// Recorded however the cycle ends, so a failed cycle still shows up in the
+	// run history. Deferred rather than repeated at each exit; it runs after the
+	// afterCycle hook, which therefore never sees the cycle it is closing.
+	defer fm.runtimeInfo.Cycles.Add(newCycle)
+
 	if err := fm.hooks.beforeCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := fmt.Errorf("failed to run cycle: beforeCycle hook failed: %w", err)
-		fm.runtimeInfo.Cycles.Add(newCycle)
-		return cycleErr
+		return fmt.Errorf("failed to run cycle: beforeCycle hook failed: %w", err)
 	}
 
 	fm.LogDebug("starting activation cycle #%d", newCycle.Number())
 
 	if fm.Components().IsEmpty() {
-		fm.runtimeInfo.Cycles.Add(newCycle)
 		return errors.New("failed to run cycle: no components found")
 	}
 
@@ -188,17 +191,35 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	}
 
 	if err := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		cycleErr := fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", err)
-		fm.runtimeInfo.Cycles.Add(newCycle)
-		return cycleErr
+		return fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", err)
 	}
 
-	fm.runtimeInfo.Cycles.Add(newCycle)
 	return nil
+}
+
+// activated yields the components that activated in the last cycle, paired with
+// their result, in the order given. A component with no result did not activate.
+func (fm *FMesh) activated(components []*component.Component) iter.Seq2[*component.Component, *component.ActivationResult] {
+	results := fm.runtimeInfo.Cycles.Last().ActivationResults()
+	return func(yield func(*component.Component, *component.ActivationResult) bool) {
+		for _, c := range components {
+			ar := results.ByName(c.Name())
+			if ar == nil || !ar.Activated() {
+				continue
+			}
+			if !yield(c, ar) {
+				return
+			}
+		}
+	}
 }
 
 // drainComponents drains the data from activated components.
 // Components are processed in name order so fan-in signal order is deterministic.
+//
+// Every input is cleared before any output is flushed, and the two passes cannot
+// be merged into one: flushing delivers signals into downstream input ports, so
+// a single pass would clear away what an earlier component had just delivered.
 func (fm *FMesh) drainComponents(ctx context.Context) error {
 	components := fm.Components().AllOrdered()
 
@@ -206,16 +227,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 		return errors.Join(ErrFailedToDrain, err)
 	}
 
-	lastCycle := fm.runtimeInfo.Cycles.Last()
-
-	for _, c := range components {
-		activationResult := lastCycle.ActivationResults().ByName(c.Name())
-
-		if activationResult == nil || !activationResult.Activated() {
-			// Component did not activate, so it did not create new output signals, hence nothing to drain
-			continue
-		}
-
+	for c, activationResult := range fm.activated(components) {
 		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
 			continue
@@ -230,16 +242,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Component) error {
-	lastCycle := fm.runtimeInfo.Cycles.Last()
-
-	for _, c := range components {
-		activationResult := lastCycle.ActivationResults().ByName(c.Name())
-
-		if activationResult == nil || !activationResult.Activated() {
-			// Component did not activate hence its inputs must be clear
-			continue
-		}
-
+	for c, activationResult := range fm.activated(components) {
 		if component.IsWaitingForInput(activationResult) && component.WantsToKeepInputs(activationResult) {
 			// Component wants to keep inputs for the next cycle
 			continue
@@ -437,31 +440,25 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 	}()
 
 	if err := fm.hooks.beforeRun.Trigger(ctx, fm); err != nil {
-		runErr = fmt.Errorf("beforeRun hook failed: %w", err)
-		return ri, runErr
+		return ri, fmt.Errorf("beforeRun hook failed: %w", err)
 	}
 
 	// An already-canceled context must not run a single cycle.
 	if err := fm.contextError(ctx); err != nil {
-		runErr = err
-		return ri, runErr
+		return ri, err
 	}
 
 	for {
-		cycleErr := fm.runCycle(ctx)
-		if cycleErr != nil {
-			runErr = cycleErr
-			return ri, runErr
+		if err := fm.runCycle(ctx); err != nil {
+			return ri, err
 		}
 
 		if mustStop, err := fm.mustStop(ctx); mustStop {
-			runErr = err
-			return ri, runErr
+			return ri, err
 		}
 
 		if err := fm.drainComponents(ctx); err != nil {
-			runErr = err
-			return ri, runErr
+			return ri, err
 		}
 	}
 }
@@ -487,69 +484,65 @@ func (fm *FMesh) contextError(ctx context.Context) error {
 	return fmt.Errorf("%w: %w", ErrRunCanceled, err)
 }
 
+// stop logs why the run is ending and reports it. A nil err is a natural stop.
+func (fm *FMesh) stop(err error) (bool, error) {
+	if err == nil {
+		fm.LogDebug("going to stop naturally")
+	} else {
+		fm.LogDebug("going to stop: %s", err)
+	}
+	return true, err
+}
+
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
+//
+// The order of the checks is load-bearing; see the comments on the ones where it
+// is not obvious.
 func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
-	// Check if cycles limit is hit
 	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
-		fm.LogDebug("going to stop: %s", ErrReachedMaxAllowedCycles)
-		return true, ErrReachedMaxAllowedCycles
+		return fm.stop(ErrReachedMaxAllowedCycles)
 	}
 
-	// Check if the time constraint is hit
-	if fm.config.TimeLimit > 0 {
-		if fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
-			fm.LogDebug("going to stop: %s", ErrTimeLimitExceeded)
-			return true, ErrTimeLimitExceeded
-		}
+	if fm.config.TimeLimit > 0 && fm.runtimeInfo.Duration() >= fm.config.TimeLimit {
+		return fm.stop(ErrTimeLimitExceeded)
 	}
 
-	// Check the context before the error strategy: when a run is canceled,
-	// activation functions typically return ctx.Err() and would otherwise be
-	// reported as ordinary activation errors, hiding why the mesh stopped.
+	// Before the error strategy: a canceled run makes activation functions return
+	// ctx.Err(), which would otherwise be reported as ordinary activation errors
+	// and hide why the mesh stopped.
 	if err := fm.contextError(ctx); err != nil {
-		fm.LogDebug("going to stop: %s", err)
-		return true, err
+		return fm.stop(err)
 	}
 
-	// Check if mesh must stop because of the configured error handling strategy.
-	// This is evaluated before the natural stop check so activation and hook errors
-	// are never silently swallowed when nothing activated in the last cycle.
+	// Before the natural stop check, so activation and hook errors are never
+	// silently swallowed when nothing activated in the last cycle.
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
-			runError := fmt.Errorf("%w, cycle # %d, %w",
-				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle))
-			fm.LogDebug("going to stop: %s", runError)
-			return true, runError
+			return fm.stop(fmt.Errorf("%w, cycle # %d, %w",
+				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle)))
 		}
 	case StopOnFirstPanic:
 		if lastCycle.HasActivationPanics() {
-			runError := fmt.Errorf("%w, cycle # %d, activation panics: %w",
-				ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined())
-			fm.LogDebug("going to stop: %s", runError)
-			return true, runError
+			return fm.stop(fmt.Errorf("%w, cycle # %d, activation panics: %w",
+				ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined()))
 		}
 	case IgnoreAll:
 	default:
-		fm.LogDebug("going to stop: %s", ErrUnsupportedErrorHandlingStrategy)
-		return true, ErrUnsupportedErrorHandlingStrategy
+		return fm.stop(ErrUnsupportedErrorHandlingStrategy)
 	}
 
-	// Check if the mesh finished naturally (no component activated during the last cycle)
 	if !lastCycle.HasActivatedComponents() {
-		fm.LogDebug("going to stop naturally")
-		return true, nil
+		return fm.stop(nil)
 	}
 
-	// Components activated, but did the mesh actually move? Checked after the
-	// natural stop because a livelock is by definition a cycle that activated
-	// something, and last because a real error is always the better explanation.
+	// Components activated, but did the mesh actually move? After the natural stop
+	// because a livelock is by definition a cycle that activated something, and
+	// last because a real error is always the better explanation.
 	if fm.detectLivelock(lastCycle) {
-		runError := fm.livelockError(lastCycle)
-		fm.LogDebug("going to stop: %s", runError)
-		return true, runError
+		return fm.stop(fm.livelockError(lastCycle))
 	}
 
 	return false, nil
