@@ -16,11 +16,11 @@ func TestNot(t *testing.T) {
 
 func TestAnd(t *testing.T) {
 	isPositive := func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int) > 0
 	}
 	isEven := func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int)%2 == 0
 	}
 
@@ -31,11 +31,11 @@ func TestAnd(t *testing.T) {
 
 func TestOr(t *testing.T) {
 	isZero := func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int) == 0
 	}
 	isNeg := func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int) < 0
 	}
 
@@ -87,7 +87,7 @@ func TestHasAnyLabel(t *testing.T) {
 
 func TestPredicateCombinators_composition(t *testing.T) {
 	g := NewGroup(1, 2, 3, 4, 5, 6).Map(func(s *Signal) *Signal {
-		v, _ := s.Payload()
+		v := s.Payload()
 		if v.(int)%2 == 0 {
 			return s.WithLabel("even", "true")
 		}
@@ -104,14 +104,14 @@ func TestPredicateCombinators_composition(t *testing.T) {
 
 	// And: even AND payload > 3  → 4, 6
 	bigEvens := g.Filter(And(HasLabel("even"), func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int) > 3
 	}))
 	assert.Equal(t, 2, bigEvens.Len())
 
 	// Or: has "odd" label OR payload == 6  → 1,3,5,6
 	oddOrSix := g.Filter(Or(HasLabel("odd"), func(s *Signal) bool {
-		v, _ := s.Payload()
+		v := s.Payload()
 		return v.(int) == 6
 	}))
 	assert.Equal(t, 4, oddOrSix.Len())

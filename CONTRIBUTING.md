@@ -27,7 +27,9 @@ Before opening a PR, please make sure `make test`, `make lint`, and `make fmt` a
 
 A few project-wide rules to be aware of:
 
-- **Copy-on-write vs. mutating:** `signal.Signal` and `signal.Group` are copy-on-write — mutating methods return a new value and never touch the receiver. `meta.Labels`/`meta.Scalars` and the `port`/`component`/`cycle` types mutate in place. Naming follows suit: `With*`/`Without*` return a new value; `Set*`/`Add*`/`Remove*` mutate. Don't mix them.
+- **Copy-on-write vs. mutating:** `signal.Signal` and `signal.Group` are copy-on-write — mutating methods return a new value and never touch the receiver. `meta.Labels`/`meta.Scalars` and the `port`/`component`/`cycle` types mutate in place. Naming follows suit, with no exceptions: `With*`/`Without*` return a new value (or are constructor options); `Set*`/`Add*`/`Remove*` mutate.
+- **Metadata on mutating types goes through the store:** `x.Labels().Set(k, v)`, not `x.AddLabel(k, v)`. Only the copy-on-write types (`signal.Signal`, `signal.Group`) carry `With*Label`/`With*Scalar` methods, because there they are the only way to produce a modified value.
+- **`Signal.Payload()` does not fail.** `nil` is a valid payload; a signal without one means someone skipped `New`. Use `signal.As[T]` when you need the type checked.
 - Fallible methods return `error` last; infallible transforms (`Filter`, `Map`, `With*`) return their type directly.
 - No generics in the core API, and keep `reflect` usage to a minimum.
 - Priority is **simplicity and a clean API, not performance**.

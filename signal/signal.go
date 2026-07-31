@@ -136,8 +136,7 @@ func (s *Signal) WithoutScalars(names ...string) *Signal {
 // MapPayload applies a mapper function to the signal's payload and returns a new signal.
 // The new signal preserves all labels and scalars from the original signal.
 func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
-	payload, _ := s.Payload()
-	out := New(mapper(payload))
+	out := New(mapper(s.Payload()))
 	out.labels = cloneLabels(s.labels)
 	out.scalars = cloneScalars(s.scalars)
 	return out
@@ -146,26 +145,20 @@ func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 // Payload returns the signal's payload. The value is shallow: if the payload is
 // a pointer, slice, or map, the caller must not mutate it — after fan-out the
 // same payload may be shared by components activating concurrently.
-// Returns ErrNoPayload for a zero-value Signal (use New to create signals).
-func (s *Signal) Payload() (any, error) {
+//
+// This does not fail. nil is a valid payload, and the only way to hold a signal
+// without one is to have built a zero-value Signal instead of calling New —
+// a construction bug, not a runtime condition, and not worth an error return on
+// the single most-called accessor in the library. Such a signal reads as nil.
+//
+// For the payload as a concrete type, and an error when it is not that type,
+// use As. For "was there a signal at all", check the group: Group.First returns
+// nil for an empty one.
+func (s *Signal) Payload() any {
 	if len(s.payload) == 0 {
-		return nil, ErrNoPayload
+		return nil
 	}
-	return s.payload[0], nil
-}
-
-// PayloadOrNil returns payload or nil in case of error.
-func (s *Signal) PayloadOrNil() any {
-	return s.PayloadOrDefault(nil)
-}
-
-// PayloadOrDefault returns payload or provided default value in case of error.
-func (s *Signal) PayloadOrDefault(defaultPayload any) any {
-	payload, err := s.Payload()
-	if err != nil {
-		return defaultPayload
-	}
-	return payload
+	return s.payload[0]
 }
 
 // Map applies a given mapper func and returns a new signal.

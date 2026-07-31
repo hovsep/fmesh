@@ -48,7 +48,7 @@ func (c *Component) addInputs(portNames ...string) error {
 	if err := c.inputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("failed to add input ports: %w", err)
 	}
-	c.inputPorts.WithParentComponent(c)
+	c.inputPorts.SetParentComponent(c)
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (c *Component) addOutputs(portNames ...string) error {
 	if err := c.outputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("failed to add output ports: %w", err)
 	}
-	c.outputPorts.WithParentComponent(c)
+	c.outputPorts.SetParentComponent(c)
 	return nil
 }
 
@@ -86,7 +86,7 @@ func (c *Component) addIndexedInputs(prefix string, startIndex, endIndex int) er
 	if err := c.inputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("failed to add indexed input ports: %w", err)
 	}
-	c.inputPorts.WithParentComponent(c)
+	c.inputPorts.SetParentComponent(c)
 	return nil
 }
 
@@ -107,7 +107,7 @@ func (c *Component) addIndexedOutputs(prefix string, startIndex, endIndex int) e
 	if err := c.outputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("failed to add indexed output ports: %w", err)
 	}
-	c.outputPorts.WithParentComponent(c)
+	c.outputPorts.SetParentComponent(c)
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (c *Component) AttachInputPorts(ports ...*port.Port) error {
 	if err := c.inputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("AttachInputPorts: %w", err)
 	}
-	c.inputPorts.WithParentComponent(c)
+	c.inputPorts.SetParentComponent(c)
 	return nil
 }
 
@@ -157,7 +157,7 @@ func (c *Component) AttachOutputPorts(ports ...*port.Port) error {
 	if err := c.outputPorts.Add(ports...); err != nil {
 		return fmt.Errorf("AttachOutputPorts: %w", err)
 	}
-	c.outputPorts.WithParentComponent(c)
+	c.outputPorts.SetParentComponent(c)
 	return nil
 }
 

@@ -45,7 +45,7 @@ func TestOrdering_AcrossPortsOfOneComponent(t *testing.T) {
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
 				_ = this.Inputs().Signals().ForEach(func(s *signal.Signal) error {
-					fmt.Fprint(&order, s.PayloadOrNil())
+					fmt.Fprint(&order, s.Payload())
 					return nil
 				})
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
@@ -96,7 +96,7 @@ func TestOrdering_FlushAcrossOutputPorts(t *testing.T) {
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
 				_ = this.InputByName("in").Signals().ForEach(func(s *signal.Signal) error {
-					fmt.Fprint(&order, s.PayloadOrNil())
+					fmt.Fprint(&order, s.Payload())
 					return nil
 				})
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
@@ -105,7 +105,7 @@ func TestOrdering_FlushAcrossOutputPorts(t *testing.T) {
 		fm, err := fmesh.New("fan-out-in")
 		require.NoError(t, err)
 		require.NoError(t, fm.AddComponents(source, sink))
-		require.NoError(t, source.Outputs().PipeTo(sink.InputByName("in")))
+		require.NoError(t, source.Outputs().PipeEachTo(sink.InputByName("in")))
 		require.NoError(t, source.InputByName("in").PutSignals(signal.New("go")))
 
 		_, err = fm.Run(context.Background())
@@ -141,7 +141,7 @@ func TestOrdering_MultipleUpstreamsIntoOnePort(t *testing.T) {
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
 				_ = this.InputByName("in").Signals().ForEach(func(s *signal.Signal) error {
-					fmt.Fprint(&order, s.PayloadOrNil())
+					fmt.Fprint(&order, s.Payload())
 					return nil
 				})
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
@@ -176,7 +176,7 @@ func TestOrdering_WithinOnePortIsFIFO(t *testing.T) {
 
 	var got []any
 	_ = in.Signals().ForEach(func(s *signal.Signal) error {
-		got = append(got, s.PayloadOrNil())
+		got = append(got, s.Payload())
 		return nil
 	})
 

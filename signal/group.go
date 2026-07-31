@@ -174,11 +174,7 @@ func (g *Group) ContainsPayload(payload any) (bool, error) {
 // ContainsPayloadFunc returns true if any signal's payload satisfies eq.
 func (g *Group) ContainsPayloadFunc(eq func(payload any) bool) bool {
 	for _, sig := range g.signals {
-		p, err := sig.Payload()
-		if err != nil {
-			continue
-		}
-		if eq(p) {
+		if eq(sig.Payload()) {
 			return true
 		}
 	}
@@ -191,7 +187,7 @@ func (g *Group) FirstPayload() (any, error) {
 	if first == nil {
 		return nil, ErrNoSignalsInGroup
 	}
-	return first.Payload()
+	return first.Payload(), nil
 }
 
 // FirstPayloadOrDefault returns the payload of the first signal or a default value.
@@ -209,16 +205,12 @@ func (g *Group) FirstPayloadOrNil() any {
 }
 
 // AllPayloads returns a slice with all payloads of all signals in the group.
-func (g *Group) AllPayloads() ([]any, error) {
+func (g *Group) AllPayloads() []any {
 	all := make([]any, g.Len())
 	for i, sig := range g.signals {
-		p, err := sig.Payload()
-		if err != nil {
-			return nil, err
-		}
-		all[i] = p
+		all[i] = sig.Payload()
 	}
-	return all, nil
+	return all
 }
 
 // With returns a new group with the given signals appended. The receiver is never modified.
@@ -361,11 +353,7 @@ func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
 func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 	acc := initial
 	for _, s := range g.signals {
-		p, err := s.Payload()
-		if err != nil {
-			continue
-		}
-		acc = fn(acc, p)
+		acc = fn(acc, s.Payload())
 	}
 	return acc
 }

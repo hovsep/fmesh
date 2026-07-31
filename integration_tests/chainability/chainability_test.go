@@ -20,27 +20,29 @@ func TestChainability_CrossPackage(t *testing.T) {
 			component.WithInputs("in1", "in2"),
 			component.WithOutputs("out1", "out2"),
 			component.WithDescription("main processor"),
-		).
-			AddLabel("env", "prod").
-			AddLabel("tier", "backend").
-			SetLabels(map[string]string{"reset": "true"}). // Reset all labels
-			AddLabel("final", "label")
+		)
+		c.Labels().
+			Set("env", "prod").
+			Set("tier", "backend").
+			Clear().SetMany(map[string]string{"reset": "true"}). // Reset all labels
+			Set("final", "label")
 
 		assert.Equal(t, "processor", c.Name())
 		assert.Equal(t, "main processor", c.Description())
 		assert.Equal(t, 2, c.Labels().Len())
 		assert.True(t, c.Labels().ValueIs("reset", "true"))
 		assert.True(t, c.Labels().ValueIs("final", "label"))
-		assert.False(t, c.Labels().Has("env"), "wiped by SetLabels")
+		assert.False(t, c.Labels().Has("env"), "wiped by Clear")
 		assert.Equal(t, 2, c.Inputs().Len())
 		assert.Equal(t, 2, c.Outputs().Len())
 	})
 
 	t.Run("port with signals and labels", func(t *testing.T) {
-		p := testutil.MustInputPort("data", port.WithDescription("data input")).
-			AddLabel("type", "data")
+		p := testutil.MustInputPort("data",
+			port.WithDescription("data input"),
+			port.WithLabel("type", "data"))
 		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
-		p.AddLabel("count", "2")
+		p.Labels().Set("count", "2")
 		require.NoError(t, p.PutSignals(signal.New(3)))
 
 		assert.Equal(t, "data", p.Name())
@@ -66,14 +68,15 @@ func TestChainability_CrossPackage(t *testing.T) {
 			component.WithInputs("tasks"),
 			component.WithOutputs("results"),
 			component.WithDescription("background worker"),
-		).
-			AddLabels(map[string]string{
+		)
+		c.Labels().
+			SetMany(map[string]string{
 				"env":      "prod",
 				"team":     "backend",
 				"debug":    "true",
 				"trace-id": "abc123",
 			}).
-			RemoveLabels("debug", "trace-id") // Clean up temporary labels
+			Remove("debug", "trace-id") // Clean up temporary labels
 
 		assert.Equal(t, 2, c.Labels().Len(), "should have only permanent labels")
 		assert.True(t, c.Labels().Has("env"))
@@ -84,15 +87,15 @@ func TestChainability_CrossPackage(t *testing.T) {
 
 	t.Run("port with label reset workflow", func(t *testing.T) {
 		// Port initially configured with temporary setup labels, then cleared for production
-		p := testutil.MustInputPort("input").
-			AddLabels(map[string]string{
-				"setup": "true",
-				"test":  "mode",
-				"debug": "enabled",
-			})
+		p := testutil.MustInputPort("input")
+		p.Labels().SetMany(map[string]string{
+			"setup": "true",
+			"test":  "mode",
+			"debug": "enabled",
+		})
 		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
-		p.ClearLabels(). // Clear all setup labels
-					AddLabels(map[string]string{
+		p.Labels().Clear(). // Clear all setup labels
+					SetMany(map[string]string{
 				"required":  "true",
 				"validated": "true",
 			})
@@ -135,19 +138,20 @@ func TestChainability_CrossPackage(t *testing.T) {
 			component.WithInputs("request"),
 			component.WithOutputs("response", "errors"),
 			component.WithDescription("HTTP API handler"),
-		).
-			AddLabels(map[string]string{
+		)
+		c.Labels().
+			SetMany(map[string]string{
 				"env":  "dev",
 				"team": "platform",
 			}).
-			AddLabels(map[string]string{ // Add debug labels
+			SetMany(map[string]string{ // Add debug labels
 				"debug":    "true",
 				"verbose":  "true",
 				"trace-id": "xyz789",
 			}).
-			RemoveLabels("debug", "verbose", "trace-id"). // Remove all debug labels
-			AddLabel("env", "prod").                      // Update env to prod
-			AddLabel("deployed", "true")                  // Add deployment marker
+			Remove("debug", "verbose", "trace-id"). // Remove all debug labels
+			Set("env", "prod").                     // Update env to prod
+			Set("deployed", "true")                 // Add deployment marker
 
 		assert.Equal(t, 3, c.Labels().Len())
 		assert.True(t, c.Labels().ValueIs("env", "prod"), "env updated to prod")
@@ -170,11 +174,10 @@ func TestChainability_CrossPackage(t *testing.T) {
 			WithNoLabels().
 			WithLabels(map[string]string{"priority": "high", "source": "validated"})
 
-		p := testutil.MustInputPort("validated-input").
-			AddLabel("type", "input")
+		p := testutil.MustInputPort("validated-input", port.WithLabel("type", "input"))
 		require.NoError(t, p.PutSignals(s1, s2))
-		p.AddLabel("count", "2").
-			RemoveLabels("type") // Remove type
+		p.Labels().Set("count", "2").
+			Remove("type") // Remove type
 
 		assert.Equal(t, 2, p.Signals().Len())
 		assert.Equal(t, 1, p.Labels().Len())

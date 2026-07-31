@@ -27,31 +27,19 @@ func NewCollection() *Collection {
 // Labels returns the collection's own labels store.
 func (c *Collection) Labels() *meta.Labels { return c.labels }
 
-// WithLabel adds or updates a single label on the collection itself.
-func (c *Collection) WithLabel(name, value string) *Collection {
-	c.labels.Set(name, value)
-	return c
-}
-
 // Scalars returns the collection's own scalars store.
 func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
 
-// WithScalar adds or updates a single scalar on the collection itself.
-func (c *Collection) WithScalar(name string, value float64) *Collection {
-	c.scalars.Set(name, value)
-	return c
-}
-
-// WithLabelOnEach sets a label on every component in the collection.
-func (c *Collection) WithLabelOnEach(name, value string) *Collection {
+// SetLabelOnEach sets a label on every component in the collection.
+func (c *Collection) SetLabelOnEach(name, value string) *Collection {
 	for _, comp := range c.components {
 		comp.labels.Set(name, value)
 	}
 	return c
 }
 
-// WithScalarOnEach sets a scalar on every component in the collection.
-func (c *Collection) WithScalarOnEach(name string, value float64) *Collection {
+// SetScalarOnEach sets a scalar on every component in the collection.
+func (c *Collection) SetScalarOnEach(name string, value float64) *Collection {
 	for _, comp := range c.components {
 		comp.scalars.Set(name, value)
 	}
@@ -91,8 +79,8 @@ func (c *Collection) Add(components ...*Component) error {
 	return nil
 }
 
-// Without removes components by name and returns the collection.
-func (c *Collection) Without(names ...string) *Collection {
+// Remove deletes components by name and returns the collection.
+func (c *Collection) Remove(names ...string) *Collection {
 	for _, name := range names {
 		delete(c.components, name)
 	}

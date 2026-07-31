@@ -114,19 +114,7 @@ func (c *Cycle) Labels() *meta.Labels {
 	return c.labels
 }
 
-// AddLabel adds or updates a single label.
-func (c *Cycle) AddLabel(name, value string) *Cycle {
-	c.labels.Set(name, value)
-	return c
-}
-
 // Scalars returns the cycle's scalars store.
 func (c *Cycle) Scalars() *meta.Scalars {
 	return c.scalars
-}
-
-// AddScalar adds or updates a single scalar.
-func (c *Cycle) AddScalar(name string, value float64) *Cycle {
-	c.scalars.Set(name, value)
-	return c
 }

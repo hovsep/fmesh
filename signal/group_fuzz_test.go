@@ -36,7 +36,7 @@ func FuzzGroupOps(f *testing.F) {
 		assert.Equal(t, lenBefore, withNil.Len(), "With should skip nil signals")
 
 		// Filter never grows the group and never mutates the receiver.
-		filtered := g.Filter(func(s *Signal) bool { return s.PayloadOrDefault(-1).(int)%2 == 0 })
+		filtered := g.Filter(func(s *Signal) bool { return s.Payload().(int)%2 == 0 })
 		assert.Equal(t, lenBefore, g.Len(), "Filter mutated receiver")
 		assert.LessOrEqual(t, filtered.Len(), lenBefore)
 

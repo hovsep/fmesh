@@ -50,16 +50,19 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 		// Advanced API: attach ports with descriptions and labels
 		require.NoError(t, processor.AttachInputPorts(
-			testutil.MustInputPort("config", port.WithDescription("Configuration parameters")).
-				AddLabel("required", "true").
-				AddLabel("type", "json"),
-			testutil.MustInputPort("metadata", port.WithDescription("Request metadata")).
-				AddLabel("required", "false"),
+			testutil.MustInputPort("config",
+				port.WithDescription("Configuration parameters"),
+				port.WithLabel("required", "true"),
+				port.WithLabel("type", "json")),
+			testutil.MustInputPort("metadata",
+				port.WithDescription("Request metadata"),
+				port.WithLabel("required", "false")),
 		))
 		require.NoError(t, processor.AttachOutputPorts(
-			testutil.MustOutputPort("errors", port.WithDescription("Error details if processing fails")).
-				AddLabel("severity", "high").
-				AddLabel("format", "structured"),
+			testutil.MustOutputPort("errors",
+				port.WithDescription("Error details if processing fails"),
+				port.WithLabel("severity", "high"),
+				port.WithLabel("format", "structured")),
 		))
 
 		// Put signals on all inputs
@@ -138,13 +141,13 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				inputPort := this.InputByName("input")
 
 				// Add a single label
-				inputPort.AddLabel("processed", "true")
+				inputPort.Labels().Set("processed", "true")
 
 				// Remove specific labels
-				inputPort.RemoveLabels("version")
+				inputPort.Labels().Remove("version")
 
 				// Update labels
-				inputPort.AddLabels(map[string]string{
+				inputPort.Labels().SetMany(map[string]string{
 					"env":   "prod", // update
 					"build": "123",  // add new
 				})
@@ -155,10 +158,10 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
-			testutil.MustInputPort("input").
-				AddLabel("env", "dev").
-				AddLabel("version", "1.0").
-				AddLabel("owner", "team-a"),
+			testutil.MustInputPort("input",
+				port.WithLabel("env", "dev"),
+				port.WithLabel("version", "1.0"),
+				port.WithLabel("owner", "team-a")),
 		))
 
 		// Set up and run
@@ -241,7 +244,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 				// Apply operation to all ports (add processing label)
 				if err := inputs.ForEach(func(p *port.Port) error {
-					p.AddLabel("checked", "true")
+					p.Labels().Set("checked", "true")
 					return nil
 				}); err != nil {
 					return err
@@ -255,8 +258,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
-			testutil.MustInputPort("i4").AddLabel("priority", "high"),
-			testutil.MustInputPort("i5").AddLabel("priority", "low"),
+			testutil.MustInputPort("i4", port.WithLabel("priority", "high")),
+			testutil.MustInputPort("i5", port.WithLabel("priority", "low")),
 		))
 
 		// Put signals on some ports

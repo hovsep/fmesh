@@ -379,7 +379,7 @@ func TestCollection_Clear(t *testing.T) {
 func TestCollection_Without(t *testing.T) {
 	t.Run("removes specified components", func(t *testing.T) {
 		collection := newCol("c1", "c2", "c3")
-		result := collection.Without("c1", "c3")
+		result := collection.Remove("c1", "c3")
 		assert.Equal(t, 1, result.Len())
 		assert.NotNil(t, result.ByName("c2"))
 		assert.Nil(t, result.ByName("c1"))
@@ -387,7 +387,7 @@ func TestCollection_Without(t *testing.T) {
 
 	t.Run("handles non-existent names gracefully", func(t *testing.T) {
 		collection := newCol("c1")
-		result := collection.Without("nonexistent")
+		result := collection.Remove("nonexistent")
 		assert.Equal(t, 1, result.Len())
 	})
 }

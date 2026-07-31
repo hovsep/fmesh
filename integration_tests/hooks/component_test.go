@@ -30,7 +30,7 @@ func TestComponentHooks_PracticalErrorLogging(t *testing.T) {
 		component.WithInputs("data"),
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			// Simulate validation logic
-			inputVal := c.InputByName("data").Signals().First().PayloadOrDefault(0).(int)
+			inputVal := c.InputByName("data").Signals().First().Payload().(int)
 			if inputVal < 0 {
 				return validationErr
 			}
@@ -66,8 +66,8 @@ func TestComponentHooks_PracticalOutputValidation(t *testing.T) {
 		component.WithInputs("x", "y"),
 		component.WithOutputs("result"),
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			x := c.InputByName("x").Signals().First().PayloadOrDefault(0).(int)
-			y := c.InputByName("y").Signals().First().PayloadOrDefault(0).(int)
+			x := c.InputByName("x").Signals().First().Payload().(int)
+			y := c.InputByName("y").Signals().First().Payload().(int)
 			result := x + y
 			return c.OutputByName("result").PutSignals(signal.New(result))
 		}),
@@ -110,7 +110,7 @@ func TestComponentHooks_PracticalMetricsCollection(t *testing.T) {
 		component.WithInputs("in"),
 		component.WithOutputs("success", "failure"),
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
+			val := c.InputByName("in").Signals().First().Payload().(int)
 			if val > 0 {
 				return c.OutputByName("success").PutSignals(signal.New(val * 2))
 			}
@@ -173,7 +173,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			// Process and output data
 			err := c.InputByName("raw").Signals().ForEach(func(s *signal.Signal) error {
-				processed := s.PayloadOrDefault(0).(int) * 10
+				processed := s.Payload().(int) * 10
 				return c.OutputByName("enriched").PutSignals(signal.New(processed))
 			})
 			return err
@@ -183,7 +183,7 @@ func TestComponentHooks_PracticalDataTransformation(t *testing.T) {
 			// Access output and create enriched version with metadata
 			err := ctx.Component.OutputByName("enriched").Signals().ForEach(func(s *signal.Signal) error {
 				enriched := map[string]any{
-					"value":         s.PayloadOrDefault(nil),
+					"value":         s.Payload(),
 					"component":     ctx.Component.Name(),
 					"timestamp":     "2024-01-01", // In real code, use time.Now()
 					"activation_ok": ctx.Result.Code() == component.ActivationCodeOK,
@@ -214,7 +214,7 @@ func TestComponentHooks_PracticalErrorRecovery(t *testing.T) {
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
-			val := c.InputByName("in").Signals().First().PayloadOrDefault(0).(int)
+			val := c.InputByName("in").Signals().First().Payload().(int)
 			if val == 0 {
 				return errors.New("division by zero")
 			}
@@ -260,7 +260,7 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 		component.WithActivationFunc(func(_ context.Context, c *component.Component) error {
 			sum := 0
 			if err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
-				sum += s.PayloadOrDefault(0).(int)
+				sum += s.Payload().(int)
 				return nil
 			}); err != nil {
 				return err
@@ -272,7 +272,7 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 			// Capture input state
 			trace.InputCount = c.InputByName("numbers").Signals().Len()
 			err := c.InputByName("numbers").Signals().ForEach(func(s *signal.Signal) error {
-				trace.InputValues = append(trace.InputValues, s.PayloadOrDefault(0).(int))
+				trace.InputValues = append(trace.InputValues, s.Payload().(int))
 				return nil
 			})
 			return err
@@ -283,7 +283,7 @@ func TestComponentHooks_PracticalInputOutputInspection(t *testing.T) {
 			trace.OutputCount = ctx.Component.OutputByName("sum").Signals().Len()
 			if trace.OutputCount > 0 {
 				trace.OutputSum = ctx.Component.OutputByName("sum").
-					Signals().First().PayloadOrDefault(0).(int)
+					Signals().First().Payload().(int)
 			}
 			return nil
 		})

@@ -41,7 +41,8 @@ func Test_LabelTransformation(t *testing.T) {
 		c := testutil.MustComponent("processor",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-		).SetLabels(map[string]string{
+		)
+		c.Labels().Clear().SetMany(map[string]string{
 			"version": "1.0",
 			"type":    "transformer",
 		})
@@ -108,7 +109,7 @@ func Test_LabelTransformation(t *testing.T) {
 					// Create a new signal with normalized labels
 					labelsMap := normalizedLabels.All()
 
-					newSignal := signal.New(sig.PayloadOrNil()).WithOnlyLabels(labelsMap)
+					newSignal := signal.New(sig.Payload()).WithOnlyLabels(labelsMap)
 					return outPort.PutSignals(newSignal)
 				})
 
