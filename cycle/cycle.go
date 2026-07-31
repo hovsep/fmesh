@@ -31,28 +31,23 @@ func (c *Cycle) HasActivationErrors() bool {
 
 // AllErrorsCombined returns all errors occurred within the cycle as one error.
 func (c *Cycle) AllErrorsCombined() error {
-	var allErrors error
-	activationResults := c.ActivationResults().All()
-	for _, ar := range activationResults {
-		if ar.IsError() {
-			allErrors = errors.Join(allErrors, ar.ActivationErrorWithComponentName())
-		}
-	}
-
-	return allErrors
+	return c.combine((*component.ActivationResult).IsError)
 }
 
 // AllPanicsCombined returns all panics occurred within the cycle as one error.
 func (c *Cycle) AllPanicsCombined() error {
-	var allPanics error
-	activationResults := c.ActivationResults().All()
-	for _, ar := range activationResults {
-		if ar.IsPanic() {
-			allPanics = errors.Join(allPanics, ar.ActivationErrorWithComponentName())
+	return c.combine((*component.ActivationResult).IsPanic)
+}
+
+// combine joins the activation errors of every result the predicate selects.
+func (c *Cycle) combine(selects func(*component.ActivationResult) bool) error {
+	var combined error
+	for _, ar := range c.ActivationResults().All() {
+		if selects(ar) {
+			combined = errors.Join(combined, ar.ActivationErrorWithComponentName())
 		}
 	}
-
-	return allPanics
+	return combined
 }
 
 // HasActivationPanics tells whether the cycle ended with at least one component panicking.

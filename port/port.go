@@ -39,28 +39,18 @@ type Port struct {
 
 // NewInput creates a new input port, applying any provided options.
 func NewInput(name string, opts ...Option) (*Port, error) {
-	p := &Port{
-		name:      name,
-		direction: DirectionIn,
-		labels:    meta.NewLabels(),
-		scalars:   meta.NewScalars(),
-		pipes:     NewGroup(),
-		signals:   signal.NewGroup(),
-		hooks:     newHooks(),
-	}
-	for _, opt := range opts {
-		if err := opt(p); err != nil {
-			return nil, fmt.Errorf("port %q option failed: %w", name, err)
-		}
-	}
-	return p, nil
+	return newPort(DirectionIn, name, opts...)
 }
 
 // NewOutput creates a new output port, applying any provided options.
 func NewOutput(name string, opts ...Option) (*Port, error) {
+	return newPort(DirectionOut, name, opts...)
+}
+
+func newPort(direction Direction, name string, opts ...Option) (*Port, error) {
 	p := &Port{
 		name:      name,
-		direction: DirectionOut,
+		direction: direction,
 		labels:    meta.NewLabels(),
 		scalars:   meta.NewScalars(),
 		pipes:     NewGroup(),
