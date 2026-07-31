@@ -114,6 +114,18 @@ func TestActivationResultCollection_All(t *testing.T) {
 	})
 }
 
+func TestActivationResultCollection_IsEmpty(t *testing.T) {
+	t.Run("empty collection", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		assert.True(t, collection.IsEmpty())
+	})
+
+	t.Run("non-empty collection", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(NewActivationResult("c1"))
+		assert.False(t, collection.IsEmpty())
+	})
+}
+
 func TestActivationResultCollection_Every(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(true)
@@ -144,6 +156,57 @@ func TestActivationResultCollection_Every(t *testing.T) {
 	})
 }
 
+func TestActivationResultCollection_Any(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+
+	t.Run("at least one matches", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.Any(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.True(t, result)
+	})
+
+	t.Run("none match", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		result := collection.Any(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("empty collection returns false", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		result := collection.Any(func(r *ActivationResult) bool {
+			return true
+		})
+		assert.False(t, result)
+	})
+}
+
+func TestActivationResultCollection_Count(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+	r3 := NewActivationResult("c3").SetActivated(true)
+
+	t.Run("counts matching results", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
+		count := collection.Count(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("no matches", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		count := collection.Count(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.Equal(t, 0, count)
+	})
+}
+
 func TestActivationResultCollection_ForEach(t *testing.T) {
 	r1 := NewActivationResult("c1")
 	r2 := NewActivationResult("c2")
@@ -167,6 +230,43 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 			return nil
 		}))
 		assert.Equal(t, 0, count)
+	})
+}
+
+func TestActivationResultCollection_Clear(t *testing.T) {
+	r1 := NewActivationResult("c1")
+	r2 := NewActivationResult("c2")
+
+	t.Run("clears all results", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		assert.Equal(t, 2, collection.Len())
+		collection.Clear()
+		assert.Equal(t, 0, collection.Len())
+		assert.True(t, collection.IsEmpty())
+	})
+}
+
+func TestActivationResultCollection_Without(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+	r3 := NewActivationResult("c3").SetActivated(true)
+
+	t.Run("removes by component name", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
+		result := collection.Without("c2")
+		assert.Equal(t, 2, result.Len())
+	})
+
+	t.Run("removes multiple", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2, r3)
+		result := collection.Without("c1", "c2")
+		assert.Equal(t, 1, result.Len())
+	})
+
+	t.Run("removes all", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.Without("c1", "c2")
+		assert.Equal(t, 0, result.Len())
 	})
 }
 
@@ -224,6 +324,82 @@ func TestActivationResult_WantsToKeepInputs(t *testing.T) {
 	})
 }
 
+func TestActivationResultCollection_FindAny(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+
+	t.Run("one found", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.Equal(t, "c1", result.ComponentName())
+	})
+
+	t.Run("none match", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return r.ComponentName() == "c3"
+		})
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty collection returns nil", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		result := collection.FindAny(func(r *ActivationResult) bool {
+			return true
+		})
+		assert.Nil(t, result)
+	})
+}
+
+func TestActivationResultCollection_Filter(t *testing.T) {
+	r1 := NewActivationResult("c1").SetActivated(true)
+	r2 := NewActivationResult("c2").SetActivated(false)
+
+	t.Run("one found", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r1, r2)
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return r.Activated()
+		})
+		assert.False(t, result.IsEmpty())
+		assert.Equal(t, 1, result.Len())
+	})
+
+	t.Run("none match", func(t *testing.T) {
+		collection := NewActivationResultCollection().Add(r2)
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return r.ComponentName() == "c3"
+		})
+		assert.True(t, result.IsEmpty())
+	})
+
+	t.Run("empty collection returns empty collection", func(t *testing.T) {
+		collection := NewActivationResultCollection()
+		result := collection.Filter(func(r *ActivationResult) bool {
+			return true
+		})
+		assert.True(t, result.IsEmpty())
+	})
+}
+
+// mustNew is a test helper that creates a component and panics on error.
+// mustNewLabeled builds a component and sets labels on it, for table entries
+// that need a *Component rather than the label store the chain now returns.
+func mustNewLabeled(name string, labels map[string]string) *Component {
+	c := mustNew(name)
+	c.Labels().SetMany(labels)
+	return c
+}
+
+func mustNew(name string, opts ...Option) *Component {
+	c, err := New(name, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
 func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 	err1 := errors.New("first error")
 	err2 := errors.New("second error")
@@ -252,13 +428,4 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 		assert.Empty(t, r.ActivationErrors())
 		assert.NoError(t, r.ActivationError())
 	})
-}
-
-// mustNew is a test helper that creates a component and panics on error.
-func mustNew(name string, opts ...Option) *Component {
-	c, err := New(name, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return c
 }

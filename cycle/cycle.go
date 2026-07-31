@@ -4,17 +4,22 @@ import (
 	"errors"
 
 	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Cycle contains the info about one activation cycle.
 type Cycle struct {
 	number            int
+	labels            *meta.Labels
+	scalars           *meta.Scalars
 	activationResults *component.ActivationResultCollection
 }
 
 // New creates a new cycle.
 func New() *Cycle {
 	return &Cycle{
+		labels:            meta.NewLabels(),
+		scalars:           meta.NewScalars(),
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -22,6 +27,16 @@ func New() *Cycle {
 // ActivationResults returns the cycle's activation results collection.
 func (c *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return c.activationResults
+}
+
+// Labels returns the cycle's labels store.
+func (c *Cycle) Labels() *meta.Labels {
+	return c.labels
+}
+
+// Scalars returns the cycle's scalars store.
+func (c *Cycle) Scalars() *meta.Scalars {
+	return c.scalars
 }
 
 // HasActivationErrors tells whether the cycle is ended with activation errors (at least one component returned an error).

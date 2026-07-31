@@ -3,17 +3,24 @@ package port
 import (
 	"fmt"
 	"slices"
+
+	"github.com/hovsep/fmesh/meta"
 )
 
 // Group represents a list of ports.
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
-	ports []*Port
+	ports   []*Port
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 // NewGroup creates an empty group.
 func NewGroup() *Group {
-	return &Group{}
+	return &Group{
+		labels:  meta.NewLabels(),
+		scalars: meta.NewScalars(),
+	}
 }
 
 // NewInputGroup creates a group of input ports with the given names.
@@ -37,6 +44,53 @@ func newGroupOfDirection(direction Direction, names ...string) *Group {
 func newPortOfDirection(direction Direction, name string) *Port {
 	p, _ := newPort(direction, name) // no opts, never fails
 	return p
+}
+
+// Labels returns the group's own labels store.
+func (g *Group) Labels() *meta.Labels { return g.labels }
+
+// WithLabel adds or updates a single label on the group itself.
+func (g *Group) WithLabel(name, value string) *Group { g.labels.Set(name, value); return g }
+
+// Scalars returns the group's own scalars store.
+func (g *Group) Scalars() *meta.Scalars { return g.scalars }
+
+// WithScalar adds or updates a single scalar on the group itself.
+func (g *Group) WithScalar(name string, value float64) *Group {
+	g.scalars.Set(name, value)
+	return g
+}
+
+// WithLabelOnEach sets a label on every port in the group.
+func (g *Group) WithLabelOnEach(name, value string) *Group {
+	for _, p := range g.ports {
+		p.labels.Set(name, value)
+	}
+	return g
+}
+
+// WithScalarOnEach sets a scalar on every port in the group.
+func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+	for _, p := range g.ports {
+		p.scalars.Set(name, value)
+	}
+	return g
+}
+
+// RemoveLabelOnEach removes a label from every port in the group.
+func (g *Group) RemoveLabelOnEach(names ...string) *Group {
+	for _, p := range g.ports {
+		p.labels.Remove(names...)
+	}
+	return g
+}
+
+// RemoveScalarOnEach removes a scalar from every port in the group.
+func (g *Group) RemoveScalarOnEach(names ...string) *Group {
+	for _, p := range g.ports {
+		p.scalars.Remove(names...)
+	}
+	return g
 }
 
 // NewIndexedInputGroup creates a group of input ports with the same prefix.
@@ -69,11 +123,30 @@ func (g *Group) add(ports ...*Port) {
 	g.ports = append(g.ports, ports...)
 }
 
+// Without removes ports matching the predicate and returns a new group.
+func (g *Group) Without(predicate Predicate) *Group {
+	return g.Filter(func(p *Port) bool {
+		return !predicate(p)
+	})
+}
+
 // ForEach applies the action to each port. Returns the first error encountered.
 func (g *Group) ForEach(action func(*Port) error) error {
 	for _, p := range g.ports {
 		if err := action(p); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// ForEachIf applies the action only to ports that match the predicate.
+func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) error {
+	for _, p := range g.ports {
+		if predicate(p) {
+			if err := action(p); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -118,6 +191,32 @@ func (g *Group) First() *Port {
 	return g.ports[0]
 }
 
+// Every returns true if all ports match the predicate.
+func (g *Group) Every(predicate Predicate) bool {
+	for _, port := range g.ports {
+		if !predicate(port) {
+			return false
+		}
+	}
+	return true
+}
+
+// Any returns true if any port matches the predicate.
+func (g *Group) Any(predicate Predicate) bool {
+	return slices.ContainsFunc(g.ports, predicate)
+}
+
+// Count returns the number of ports that match the predicate.
+func (g *Group) Count(predicate Predicate) int {
+	count := 0
+	for _, port := range g.ports {
+		if predicate(port) {
+			count++
+		}
+	}
+	return count
+}
+
 // Filter returns a new group with ports that match the predicate.
 func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := NewGroup()
@@ -127,4 +226,32 @@ func (g *Group) Filter(predicate Predicate) *Group {
 		}
 	}
 	return filtered
+}
+
+// MapIf is like Map but only applies the mapper to ports that match the predicate.
+// Non-matching ports are kept as-is. Nil mapper results are dropped.
+func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
+	mapped := NewGroup()
+	for _, p := range g.ports {
+		if predicate(p) {
+			if result := mapper(p); result != nil {
+				mapped.add(result)
+			}
+		} else {
+			mapped.add(p)
+		}
+	}
+	return mapped
+}
+
+// Map returns a new group with ports transformed by the mapper function.
+// Nil mapper results are dropped.
+func (g *Group) Map(mapper Mapper) *Group {
+	mapped := NewGroup()
+	for _, port := range g.ports {
+		if result := mapper(port); result != nil {
+			mapped.add(result)
+		}
+	}
+	return mapped
 }
