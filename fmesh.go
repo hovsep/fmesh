@@ -200,6 +200,12 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 		_ = newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
 			fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
 				ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError())
+			// The stack is kept out of the panic's message so logs stay readable,
+			// which would lose it entirely if debug mode did not print it here.
+			var panicErr *component.PanicError
+			if errors.As(ar.ActivationError(), &panicErr) {
+				fm.LogDebug("stack trace for component %s:\n%s", ar.ComponentName(), panicErr.StackTrace())
+			}
 			return nil
 		})
 	}
@@ -333,6 +339,29 @@ func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	fm.pendingSignals = pending
 
 	return fm.stalledCycles >= fm.config.LivelockThreshold
+}
+
+// cycleFailures describes what went wrong in a cycle, including only the parts
+// that actually happened.
+//
+// Passing a nil error to %w prints "%!w(<nil>)", and a cycle that had errors but
+// no panics (much the commoner case) hit exactly that: the message users saw
+// ended in "activation panics: %!w(<nil>)". Labeling each part and joining only
+// the non-nil ones keeps the labels and drops the noise. The caller only reaches
+// here when at least one of the two is present, but the nil guard stays so a
+// future caller cannot resurrect the same bug.
+func cycleFailures(c *cycle.Cycle) error {
+	var parts []error
+	if activationErrors := c.AllErrorsCombined(); activationErrors != nil {
+		parts = append(parts, fmt.Errorf("activation errors: %w", activationErrors))
+	}
+	if panics := c.AllPanicsCombined(); panics != nil {
+		parts = append(parts, fmt.Errorf("activation panics: %w", panics))
+	}
+	if len(parts) == 0 {
+		return errors.New("no activation errors or panics recorded")
+	}
+	return errors.Join(parts...)
 }
 
 // livelockError explains the stall by naming who is stuck and on what.
@@ -499,8 +528,8 @@ func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
-			runError := fmt.Errorf("%w, cycle # %d, activation errors: %w, activation panics: %w",
-				ErrHitAnErrorOrPanic, lastCycle.Number(), lastCycle.AllErrorsCombined(), lastCycle.AllPanicsCombined())
+			runError := fmt.Errorf("%w, cycle # %d, %w",
+				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle))
 			fm.LogDebug("going to stop: %s", runError)
 			return true, runError
 		}

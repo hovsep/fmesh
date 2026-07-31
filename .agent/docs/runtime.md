@@ -65,7 +65,7 @@ external store).
 `ActivationResultCode` (in `component/activation_result.go`): `OK`, `NoInput`,
 `ReturnedError`, `Panicked`, `WaitingForInputsClear`, `WaitingForInputsKeep`, `HookFailed`.
 Panics inside activation functions are recovered (with stack trace) and become `Panicked`
-results — a component panic never crashes the mesh; the error strategy decides whether the run
+results as a `*component.PanicError` — a component panic never crashes the mesh; the error strategy decides whether the run
 stops. `IsError()` is true for both `ReturnedError` and `HookFailed` results, so component-level
 hook failures stop the mesh under `StopOnFirstErrorOrPanic` and surface in `Run()`'s error.
 
@@ -121,6 +121,22 @@ papered over:
 - Therefore a mesh is only as interruptible as its slowest activation function. Pass the context
   to anything that blocks; poll `ctx.Err()` inside long loops.
 - An already-canceled context runs **zero** cycles.
+
+### Panic reporting
+
+A recovered panic becomes a `*component.PanicError` carrying the component name, the panic value
+and the stack. `Error()` is **one line** (`panicked: <value>`); the stack is reached with
+`errors.As` and `StackTrace()`, and is printed by the run loop when `WithDebug` is on.
+
+That split exists because the stack used to be formatted into the message, which produced
+multi-kilobyte single-line errors: unreadable in a log, useless in an assertion, impossible to
+grep. `Unwrap` returns the panic value when something threw an `error`, so `errors.Is` reaches
+through the panic to what was actually thrown.
+
+When building a run error from a cycle, use `cycleFailures` rather than passing
+`AllErrorsCombined`/`AllPanicsCombined` to `%w` directly. A nil error handed to `%w` renders
+`%!w(<nil>)`, and a cycle with errors but no panics — the commoner case — used to print exactly
+that to users.
 
 When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first — unless it is stalled rather than busy, in which case livelock detection ends it after 2 cycles.
 
