@@ -463,7 +463,7 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 		assert.Equal(t, "second input", c.InputByName("in2").Description())
 	})
 
-	t.Run("sequential attach calls", func(t *testing.T) {
+	t.Run("sequential attach calls for inputs", func(t *testing.T) {
 		c := mustNew("c1")
 		p1, err := port.NewInput("in1", port.WithDescription("input 1"))
 		require.NoError(t, err)
@@ -534,7 +534,7 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 		assert.Equal(t, "second output", c.OutputByName("out2").Description())
 	})
 
-	t.Run("sequential attach calls", func(t *testing.T) {
+	t.Run("sequential attach calls for outputs", func(t *testing.T) {
 		c := mustNew("c1")
 		p1, err := port.NewOutput("out1", port.WithDescription("output 1"))
 		require.NoError(t, err)

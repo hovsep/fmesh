@@ -11,25 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The headline throughput metric for f-mesh is activation cycles per second: how
-// many full run-loop ticks the scheduler can drive, with all components activating
-// every cycle. It measures the library overhead added on top of the user's activation
-// function, so the activation body here is deliberately near-empty.
+// Throughput in activation cycles per second, reported as cycles/s and
+// activations/s. The activation body is near-empty so the numbers measure f-mesh
+// rather than user code.
 //
-// Reported custom metrics:
-//   - cycles/s      — full activation cycles per second (the headline number)
-//   - activations/s — component activations per second (cycles/s × mesh size)
-//
-// Two activation kinds isolate different parts of the overhead:
-//   - dummy  — the activation returns ErrWaitKeepingInputs, so each component keeps
-//     its input and re-activates every cycle. No output ports, no pipes: this measures
-//     pure scheduling + activation-lifecycle overhead (goroutine fan-out, WaitGroup,
-//     result collection), with none of the drain/flush machinery.
-//   - bypass — the activation copies input signals to an output port that is piped back
-//     to its own input (self-loop), so one signal circulates per component forever. This
-//     adds the realistic per-cycle cost: PutSignals, drain, and pipe forwarding.
-//
-// bypass minus dummy therefore approximates the cost of f-mesh's signal-movement path.
+// Two kinds bracket the cost of moving signals: scheduling-only keeps its input
+// and emits nothing (goroutine fan-out and result collection only), while
+// with-signal-movement circulates one signal per component through a self-loop.
+// The difference between them is the price of the signal-movement path.
 
 // cyclesPerRun is how many activation cycles each fm.Run(context.Background()) executes. Large enough to
 // amortize per-Run setup so the measured rate reflects steady-state per-cycle overhead.
@@ -49,8 +38,8 @@ var throughputSizes = []struct {
 type activationKind int
 
 const (
-	activationDummy activationKind = iota
-	activationBypass
+	activationSchedulingOnly activationKind = iota
+	activationSignalMovement
 )
 
 // buildThroughputMesh builds a mesh of `size` components that all activate every cycle
@@ -60,14 +49,17 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 
 	fm, err := New("bench-throughput",
 		WithCyclesLimit(cyclesPerRun),
-		WithUnlimitedTime())
+		WithUnlimitedTime(),
+		// scheduling-only components wait forever on purpose — that is the point
+		// of the measurement, and exactly what the livelock detector exists to stop.
+		WithoutLivelockDetection())
 	require.NoError(b, err)
 
 	components := make([]*component.Component, size)
 	for i := range size {
 		name := "c" + strconv.Itoa(i)
 		switch kind {
-		case activationDummy:
+		case activationSchedulingOnly:
 			c, err := component.New(name,
 				component.WithInputs("in"),
 				component.WithActivationFunc(func(context.Context, *component.Component) error {
@@ -76,7 +68,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 				}))
 			require.NoError(b, err)
 			components[i] = c
-		case activationBypass:
+		case activationSignalMovement:
 			c, err := component.New(name,
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
@@ -89,7 +81,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 	}
 	require.NoError(b, fm.AddComponents(components...))
 
-	if kind == activationBypass {
+	if kind == activationSignalMovement {
 		// Self-loop: each output feeds its own input so a signal circulates forever.
 		for _, c := range components {
 			require.NoError(b, c.OutputByName("out").PipeTo(c.InputByName("in")))
@@ -130,18 +122,22 @@ func benchmarkThroughput(b *testing.B, size int, kind activationKind) {
 	b.ReportMetric(float64(totalCycles*size)/secs, "activations/s")
 }
 
-// BenchmarkMeshThroughputDummy measures cycles/s with a near-empty activation function
-// (no signal movement) — the scheduling/activation-lifecycle overhead floor.
-func BenchmarkMeshThroughputDummy(b *testing.B) {
-	for _, s := range throughputSizes {
-		b.Run(s.name, func(b *testing.B) { benchmarkThroughput(b, s.size, activationDummy) })
+// BenchmarkMeshCyclesPerSecond reports how fast the run loop ticks, with and
+// without the signal-movement path.
+func BenchmarkMeshCyclesPerSecond(b *testing.B) {
+	kinds := []struct {
+		name string
+		kind activationKind
+	}{
+		{"scheduling-only", activationSchedulingOnly},
+		{"with-signal-movement", activationSignalMovement},
 	}
-}
 
-// BenchmarkMeshThroughputBypass measures cycles/s with a passthrough activation and a
-// self-loop, exercising the full per-cycle drain/flush/pipe path.
-func BenchmarkMeshThroughputBypass(b *testing.B) {
-	for _, s := range throughputSizes {
-		b.Run(s.name, func(b *testing.B) { benchmarkThroughput(b, s.size, activationBypass) })
+	for _, k := range kinds {
+		b.Run(k.name, func(b *testing.B) {
+			for _, size := range throughputSizes {
+				b.Run(size.name, func(b *testing.B) { benchmarkThroughput(b, size.size, k.kind) })
+			}
+		})
 	}
 }

@@ -14,21 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Documentation drifts silently. A renamed method leaves the wiki telling users
-// to call something that no longer exists, and nothing fails until someone
-// copies the snippet — which is how `go get` served a version whose quick start
-// did not compile.
+// Documentation drifts silently: a rename leaves the wiki telling users to call
+// something that no longer exists, and nothing fails until someone copies it.
 //
-// The README is already compile-checked by Example in example_test.go. The wiki
-// is not, and cannot easily be: its snippets are fragments with elisions, so
-// wrapping them into buildable files is guesswork. What is checkable without
-// guessing is every qualified reference to this project's own API — every
-// `component.X`, `signal.X`, `port.X` in a Go block must be a real exported
-// symbol of that package. That is exactly the drift a rename causes, and it has
-// no false positives: either the symbol is there or it is not.
+// The README is compile-checked by Example in example_test.go. Wiki snippets are
+// fragments with elisions, so compiling them is guesswork — but every qualified
+// reference to this project's API in them must name a real exported symbol, which
+// is exactly the drift a rename causes and has no false positives.
 //
-// Not covered: argument counts, method calls on a receiver (the receiver's type
-// is not knowable from a fragment), and prose outside Go blocks.
+// Not covered: argument counts, method calls (the receiver type is unknowable in
+// a fragment), and prose outside Go blocks.
 
 // docPackages maps the import qualifier used in docs to its directory.
 var docPackages = map[string]string{
@@ -47,13 +42,10 @@ var (
 	lineComment = regexp.MustCompile(`//.*`)
 )
 
-// exportedSymbols parses a package directory and returns its exported top-level
-// names — funcs, types, vars, consts — plus its exported method names.
-//
-// Methods are included because docs shadow package names with variables:
-// `port.Signals()` in a snippet is a *Port variable called port, not the package.
-// Accepting method names resolves that ambiguity without guessing, and costs
-// little: a deleted name is gone from both sets, so a rename is still caught.
+// exportedSymbols returns a package's exported top-level names plus its method
+// names. Methods count because docs shadow package names with variables —
+// `port.Signals()` is a *Port called port. A deleted name is gone from both sets,
+// so a rename is still caught.
 func exportedSymbols(t *testing.T, dir string) map[string]bool {
 	t.Helper()
 

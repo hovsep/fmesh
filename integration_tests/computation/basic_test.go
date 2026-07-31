@@ -2,9 +2,6 @@ package computation
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -86,7 +83,6 @@ func Test_Math(t *testing.T) {
 					component.WithOutputs("logs"),
 					component.WithDescription("processes data using mixed ports"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-						// Check if all required inputs have signals
 						if !this.Inputs().AllHaveSignals() {
 							return nil // Wait for all inputs
 						}
@@ -108,7 +104,6 @@ func Test_Math(t *testing.T) {
 					}),
 				)
 
-				// Add advanced ports
 				if err := processor.AttachInputPorts(
 					testutil.MustInputPort("config",
 						port.WithDescription("Configuration parameters"),
@@ -182,7 +177,6 @@ func Test_Math(t *testing.T) {
 				proc := fm.Components().ByName("processor")
 				verif := fm.Components().ByName("verifier")
 
-				// Verify mesh executed successfully
 				assert.Len(t, cycles, 3, "should take 3 cycles: processor -> verifier -> done")
 
 				// Verify port metadata (only advanced ports have descriptions/labels)
@@ -213,60 +207,4 @@ func Test_Math(t *testing.T) {
 			tt.assertions(t, fm, cycles, err)
 		})
 	}
-}
-
-func Test_Readme(t *testing.T) {
-	t.Run("readme test", func(t *testing.T) {
-		fm := testutil.MustFMesh("hello world", fmesh.WithConfig(fmesh.Config{
-			ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-			CyclesLimit:           10,
-		}))
-
-		concat := testutil.MustComponent("concat",
-			component.WithInputs("i1", "i2"),
-			component.WithOutputs("res"),
-			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-				word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("").(string)
-				return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
-			}),
-		)
-
-		caseC := testutil.MustComponent("case",
-			component.WithInputs("i1"),
-			component.WithOutputs("res"),
-			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				inputString := this.InputByName("i1").Signals().FirstPayloadOrDefault("").(string)
-				return this.OutputByName("res").PutSignals(signal.New(strings.ToTitle(inputString)))
-			}),
-		)
-
-		if err := fm.AddComponents(concat, caseC); err != nil {
-			panic(err)
-		}
-
-		if err := fm.Components().ByName("concat").OutputByName("res").PipeTo(
-			fm.Components().ByName("case").InputByName("i1"),
-		); err != nil {
-			panic(err)
-		}
-
-		// Init inputs
-		testutil.MustPutSignals(fm.Components().ByName("concat").InputByName("i1"), signal.New("hello "))
-		testutil.MustPutSignals(fm.Components().ByName("concat").InputByName("i2"), signal.New("world !"))
-
-		// Run the mesh
-		_, err := fm.Run(context.Background())
-
-		// Check for errors
-		if err != nil {
-			fmt.Println("F-Mesh returned an error")
-			os.Exit(1)
-		}
-
-		// Extract results
-		results := fm.ComponentByName("case").OutputByName("res").Signals().FirstPayloadOrNil()
-		fmt.Printf("Result is :%v", results)
-		assert.Equal(t, "HELLO WORLD !", results)
-	})
 }
