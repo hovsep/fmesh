@@ -14,7 +14,14 @@ go get github.com/hovsep/fmesh
 
 F-Mesh releases are named after 17 historical capitals of Armenia, honouring the ancient cities that played foundational roles in Armenian history. This tradition highlights the project's growth with each version, paralleling Armenia's own historical progression.
 
-F-Mesh follows semantic versioning. See [releases page](https://github.com/hovsep/fmesh/releases) for the latest version and changelog.
+F-Mesh follows semantic versioning, with one caveat while the project is pre-production: **minor
+versions may contain breaking changes**. Breaking changes are listed explicitly per release in
+[CHANGELOG.md](https://github.com/hovsep/fmesh/blob/main/CHANGELOG.md). Pin an exact version if
+that matters to you.
+
+Release **tags** are plain semver (`v1.12.0`); the Armenian capital naming lives in the release
+title, because a tag suffix would make Go treat the release as a pre-release and hide it from
+`go get`. See [releases page](https://github.com/hovsep/fmesh/releases).
 
 # User guide
 
@@ -33,6 +40,7 @@ F-Mesh follows semantic versioning. See [releases page](https://github.com/hovse
 | Plugins | [502. Plugins](https://github.com/hovsep/fmesh/wiki/502.-Plugins) |
 | Configuration & tips | [601. Tips & tricks](https://github.com/hovsep/fmesh/wiki/601.-Tips-&-tricks) |
 | Patterns & recipes | [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes) |
+| Caveats & trade-offs | [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats) |
 | Export / visualization | [701. Export](https://github.com/hovsep/fmesh/wiki/701.-Export) |
 
 # API reference (user-facing packages)

@@ -216,9 +216,9 @@ Also fixed a silent test gap: the panic cases in `TestComponent_MaybeActivate` a
 message that was never compared, because the table only checked errors when `IsError()` — false for
 panics. They now assert for real, and `integration_tests/diagnostics/` covers both fixes end to end.
 
-## Phase 6 — docs and release
+## Phase 6 — docs and release ✅ DONE
 
-- [ ] README:
+- [x] README:
       - delete the "type-safe API" claim; add an **Untyped by design** section (mixed payloads in
         one pipe is the point; mismatches surface at read time; prefer `As[T]` over `AsOrDefault`)
       - resolve the contradiction: "Stream processing" in Use Cases vs. "not suitable for
@@ -226,18 +226,26 @@ panics. They now assert for real, and `integration_tests/diagnostics/` covers bo
       - replace "no surprises" with the determinism guarantee earned in Phase 2
       - promote the four rules a user needs before writing component #2: the golden rule, fan-in
         ordering, the payload immutability contract, cancellation semantics
-- [ ] `signal.AsOrDefault` docs demote it to "when a fallback is genuinely correct"; `As[T]` becomes
+- [x] `signal.AsOrDefault` docs demote it to "when a fallback is genuinely correct"; `As[T]` becomes
       the documented default (this is what silently turned `int64(1000)` into `0`)
-- [ ] New wiki **Caveats** page, risks explicitly on users:
+- [x] New wiki **Caveats** page, risks explicitly on users:
       - output written before returning a wait error is retained and re-emitted on the next
         activation — do not write outputs before deciding to wait
       - fan-out shares payload pointers; treat payloads as immutable, read-only, and produce new
         signals rather than mutating received ones; run mesh tests with `-race`
       - one component's error discards siblings' completed work (see backlog)
-- [ ] CI step compiling ```go blocks extracted from `docs/wiki/**` (the README is already covered by
-      `example_test.go`; the wiki is not covered at all)
-- [ ] Migration guide + `CHANGELOG.md` `BREAKING` entry, then cut the single release carrying
-      phases 1–5
+- [x] Doc-drift check — **not** a compiler. Wiki snippets are fragments with elisions, so wrapping
+      them into buildable files is guesswork with false failures. `docs_test.go` instead asserts that
+      every qualified reference to this project's API in a Go block (`component.X`, `signal.X`, …)
+      is a symbol that exists. That is precisely the drift a rename causes, and it has no false
+      positives. Verified by deleting a symbol and watching it fail.
+- [x] `CHANGELOG.md` with a `BREAKING` section covering phases 1–5, before/after for every change,
+      and an 8-step migration checklist
+- [x] Phase 0 repo-side artifacts landed here rather than left loose: `.github/workflows/release-guard.yml`
+      (rejects pre-release tags and mismatched `/vN` module paths), the release rule in `CLAUDE.md`,
+      and the versioning notice in `README.md` + wiki `Home.md`
+
+**Remaining, and only the user can do it:** tag and push `v1.12.0`.
 
 ## Backlog (GitHub issues, not this plan)
 
