@@ -23,8 +23,46 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      # -race because concurrency is the core of the scheduler: components in a
+      # cycle activate on separate goroutines, so a data race is a correctness
+      # bug this suite is expected to catch.
+      #
+      # -coverpkg=./... because the integration suites live in their own
+      # packages and would otherwise contribute nothing to the figures — the
+      # per-package numbers land in the mid-70s without it.
       - name: Run tests
-        run: go test ./...
+        run: go test -race -coverpkg=./... -coverprofile=coverage.out ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
+
+  fmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+
+      # CONTRIBUTING asks for `make fmt`, which rewrites files; CI has to check
+      # rather than rewrite, so it asserts gofmt finds nothing to change.
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi

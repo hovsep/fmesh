@@ -13,15 +13,14 @@ Thanks for your interest in improving F-Mesh! Contributions of all kinds are wel
 F-Mesh requires Go 1.26+. Common tasks are wrapped in the Makefile:
 
 ```bash
+make check   # race + lint + fmt-check — the same gate CI applies
 make test    # go test ./...
-make race    # go test -race ./...  (run this for scheduler/port changes — concurrency is core)
-make lint    # golangci-lint run ./...
-make fmt     # go fmt ./...
-make check   # race + lint
+make fix     # golangci-lint run --fix
 make bench   # benchmarks with -benchmem
 ```
 
-Before opening a PR, please make sure `make test`, `make lint`, and `make fmt` are clean. Linter configuration lives in `.golangci.yml`.
+Before opening a PR, run **`make check`**. It is exactly what CI runs, so a green `make check`
+should mean a green build. Linter configuration lives in `.golangci.yml`.
 
 ## Code conventions
 
@@ -31,7 +30,7 @@ A few project-wide rules to be aware of:
 - **Metadata on mutating types goes through the store:** `x.Labels().Set(k, v)`, not `x.AddLabel(k, v)`. Only the copy-on-write types (`signal.Signal`, `signal.Group`) carry `With*Label`/`With*Scalar` methods, because there they are the only way to produce a modified value.
 - **`Signal.Payload()` does not fail.** `nil` is a valid payload; a signal without one means someone skipped `New`. Use `signal.As[T]` when you need the type checked.
 - Fallible methods return `error` last; infallible transforms (`Filter`, `Map`, `With*`) return their type directly.
-- No generics in the core API, and keep `reflect` usage to a minimum.
+- The signal **payload** stays `any` — one pipe has to carry mixed types. Generics are fine elsewhere where they remove real duplication. Keep `reflect` usage to a minimum.
 - Priority is **simplicity and a clean API, not performance**.
 
 New code should come with tests. Integration suites live in `integration_tests/<topic>/`.

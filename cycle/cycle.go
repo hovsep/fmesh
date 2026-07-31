@@ -76,18 +76,11 @@ func (c *Cycle) HasActivatedComponents() bool {
 }
 
 // AllActivatedAreWaiting reports whether every component that activated in this
-// cycle did so only to say it is waiting for inputs.
+// cycle did so only to say it is waiting for inputs — half the livelock test, the
+// other half being that no signal moved (see FMesh.detectLivelock).
 //
-// This is the shape of a stalled cycle. Waiting components are never drained, so
-// such a cycle moves no signals at all: whatever the mesh was holding when the
-// cycle began, it is still holding. On its own that does not prove a livelock —
-// a component accumulating input is legitimately waiting — which is why the run
-// loop pairs this with a check that the signals really did not move.
-//
-// Components that did not activate at all are not recorded (see runCycle), so an
-// idle component does not make a cycle look stalled. A result that is anything
-// other than waiting — an error, a panic, a hook failure, a plain success —
-// makes this false.
+// Components that did not activate are not recorded at all, so an idle mesh does
+// not read as stalled.
 func (c *Cycle) AllActivatedAreWaiting() bool {
 	if !c.HasActivatedComponents() {
 		return false
