@@ -19,6 +19,14 @@ type ClearContext struct {
 	SignalsCleared int
 }
 
+// SignalsDeliveredContext provides context when signals are delivered from this
+// port through one pipe. One event per pipe, not one per flush.
+type SignalsDeliveredContext struct {
+	SourcePort       *Port
+	DestinationPort  *Port
+	SignalsDelivered []*signal.Signal
+}
+
 // InboundPipeContext provides context when a pipe is created TO this port.
 type InboundPipeContext struct {
 	DestinationPort *Port
@@ -36,25 +44,41 @@ type OutboundPipeContext struct {
 // PutSignals on their own ports while activating), so hook functions must be
 // safe for concurrent use when they touch shared state.
 type Hooks struct {
-	onSignalsAdded *hook.Group[*SignalsAddedContext]
-	onClear        *hook.Group[*ClearContext]
-	onInboundPipe  *hook.Group[*InboundPipeContext]
-	onOutboundPipe *hook.Group[*OutboundPipeContext]
+	onSignalsAdded     *hook.Group[*SignalsAddedContext]
+	onSignalsDelivered *hook.Group[*SignalsDeliveredContext]
+	onClear            *hook.Group[*ClearContext]
+	onInboundPipe      *hook.Group[*InboundPipeContext]
+	onOutboundPipe     *hook.Group[*OutboundPipeContext]
 }
 
 // newHooks creates a new hooks registry.
 func newHooks() *Hooks {
 	return &Hooks{
-		onSignalsAdded: hook.NewGroup[*SignalsAddedContext](),
-		onClear:        hook.NewGroup[*ClearContext](),
-		onInboundPipe:  hook.NewGroup[*InboundPipeContext](),
-		onOutboundPipe: hook.NewGroup[*OutboundPipeContext](),
+		onSignalsAdded:     hook.NewGroup[*SignalsAddedContext](),
+		onSignalsDelivered: hook.NewGroup[*SignalsDeliveredContext](),
+		onClear:            hook.NewGroup[*ClearContext](),
+		onInboundPipe:      hook.NewGroup[*InboundPipeContext](),
+		onOutboundPipe:     hook.NewGroup[*OutboundPipeContext](),
 	}
 }
 
 // OnSignalsAdded registers a hook called when signals are added to the port.
 func (h *Hooks) OnSignalsAdded(fn func(context.Context, *SignalsAddedContext) error) *Hooks {
 	h.onSignalsAdded.Add(fn)
+	return h
+}
+
+// OnSignalsDelivered registers a hook called when signals are delivered from
+// this port to one destination. Only [Port.Flush] fires it, once per pipe, after
+// the destination has accepted the signals -- a refused delivery is not reported
+// as delivered, and the standalone [ForwardSignals], [ForwardWithFilter] and
+// [ForwardWithMap] stay silent because they are not pipe deliveries.
+//
+// Unlike OnSignalsAdded, which gates the put and rolls the port back when it
+// fails, this hook is an observer: the destination already holds the signals by
+// the time it runs, so a failure fails the flush without undoing the delivery.
+func (h *Hooks) OnSignalsDelivered(fn func(context.Context, *SignalsDeliveredContext) error) *Hooks {
+	h.onSignalsDelivered.Add(fn)
 	return h
 }
 

@@ -33,6 +33,15 @@ func (g *Group[T]) All() []func(context.Context, T) error {
 	return g.hooks
 }
 
+// IsEmpty reports whether the group has no hooks.
+//
+// Hot paths use it to skip building a context struct that nothing will read:
+// Trigger's argument reaches an indirect call, so it escapes to the heap whether
+// or not any hook is registered.
+func (g *Group[T]) IsEmpty() bool {
+	return len(g.hooks) == 0
+}
+
 // Trigger executes all hooks in order with the provided argument.
 // Returns the first error encountered (fail-fast).
 func (g *Group[T]) Trigger(ctx context.Context, arg T) error {

@@ -38,7 +38,7 @@ through a pipe during drain, and `context.Background()` when a caller puts them 
 |---|---|---|---|
 | Mesh | `fm.SetupHooks(...)` | `OnComponentAdded`, `BeforeRun`, `AfterRun`, `BeforeCycle`, `AfterCycle` | `*FMesh` / `*CycleContext` / `*ComponentAddedContext` |
 | Component | `component.WithHooks(...)` option or `c.SetupHooks(...)` | `OnCreation`, `BeforeActivation`, `OnActivation`, `OnSuccess`, `OnError`, `OnPanic`, `OnWaitingForInputs`, `AfterActivation` | `*Component` / `*ActivationContext` |
-| Port | `port.Hooks` via port options | `OnSignalsAdded`, `OnClear`, `OnInboundPipe`, `OnOutboundPipe` | per-event context structs |
+| Port | `p.SetupHooks(...)` | `OnSignalsAdded`, `OnSignalsDelivered`, `OnClear`, `OnInboundPipe`, `OnOutboundPipe` | per-event context structs |
 
 ## Semantics worth knowing
 
@@ -106,10 +106,11 @@ Two consequences of the arrival-hook pattern, both learned the hard way in `plug
 
 ## Bundled plugins (`plugin/`)
 
-Package `plugin` ships mesh-level plugins built on exactly the pattern above. It imports `fmesh`, so
-`fmesh` can never import it.
+The packages under `plugin/` ship mesh-level plugins built on exactly the pattern above. Each plugin
+is its own package (`plugin` itself holds only a doc comment); they import `fmesh`, so `fmesh` can
+never import them.
 
 | Plugin | What it does |
 |---|---|
-| `plugin.NewProfiler()` | Times whole runs, single cycles, and each component's activations. `Runs()`, `Cycles()`, `Components()`, `TopN(n)`, `Report()`, `Reset()`. One instance belongs to one mesh. |
-| `plugin.AutowirePrefixed(prefix)` / `AutowireBroadcast(name)` / `AutowireBroadcastAs(out, in)` / `&Autowire{Name: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |
+| `plugin/profiler` — `profiler.New(modes...)` | Measures whichever `profiler.Mode`s are asked for, defaulting to `ModeTiming` — runs, cycles, activations (`Runs()`, `Cycles()`, `Components()`, `TopN(n)`). `ModeThroughput` adds per-pipe counts (`Pipes()`, `TopNPipes(n)`), `ModeTimeline` a record per cycle (`Timeline()`, `SetTimelineLimit(n)`), `ModeRuntime` Go runtime deltas (`Resources()`). `Report()`, `Reset()`. One instance belongs to one mesh. |
+| `plugin/autowire` — `autowire.Prefixed(prefix)` / `Broadcast(name)` / `BroadcastAs(out, in)` / `&autowire.Plugin{Name: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |

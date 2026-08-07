@@ -147,3 +147,89 @@ func TestPortHooks_FireDuringDelivery(t *testing.T) {
 
 	assert.Equal(t, 1, deliveries, "the hook must see the signal arrive through the pipe")
 }
+
+func TestPortHooks_OnSignalsDeliveredNamesBothEnds(t *testing.T) {
+	// OnSignalsAdded fires on the destination and cannot say who sent the batch.
+	// This is the hook that can, and it fires once per pipe.
+	type edge struct{ from, to string }
+	var edges []edge
+
+	producer := testutil.MustComponent("producer",
+		component.WithInputs("in"), component.WithOutputs("out"),
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+			return this.OutputByName("out").PutSignals(signal.New("delivered"))
+		}))
+	left := testutil.MustComponent("left",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
+	right := testutil.MustComponent("right",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
+
+	var hasDeadline bool
+	producer.OutputByName("out").SetupHooks(func(h *port.Hooks) {
+		h.OnSignalsDelivered(func(ctx context.Context, d *port.SignalsDeliveredContext) error {
+			_, hasDeadline = ctx.Deadline()
+			edges = append(edges, edge{
+				from: d.SourcePort.ParentComponent().Name() + "." + d.SourcePort.Name(),
+				to:   d.DestinationPort.ParentComponent().Name() + "." + d.DestinationPort.Name(),
+			})
+			return nil
+		})
+	})
+
+	fm := testutil.MustFMesh("delivery")
+	require.NoError(t, fm.AddComponents(producer, left, right))
+	require.NoError(t, producer.OutputByName("out").
+		PipeTo(left.InputByName("in"), right.InputByName("in")))
+	require.NoError(t, producer.InputByName("in").PutSignals(signal.New("go")))
+
+	_, err := fm.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, []edge{
+		{from: "producer.out", to: "left.in"},
+		{from: "producer.out", to: "right.in"},
+	}, edges)
+	// Delivery only ever happens inside a run, so the hook always gets the run
+	// context -- narrowed by TimeLimit, never context.Background().
+	assert.True(t, hasDeadline, "the drain passes the run context, deadline and all")
+}
+
+func TestPortHooks_DeliveredFiresAfterTheDestinationAccepted(t *testing.T) {
+	// Ordering matters for anyone counting: the destination's gate runs first and
+	// may still reject, so the source-side event is the one that means "moved".
+	var log recorder
+
+	producer := testutil.MustComponent("producer",
+		component.WithInputs("in"), component.WithOutputs("out"),
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+			return this.OutputByName("out").PutSignals(signal.New("delivered"))
+		}))
+	consumer := testutil.MustComponent("consumer",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
+
+	consumer.InputByName("in").SetupHooks(func(h *port.Hooks) {
+		h.OnSignalsAdded(func(context.Context, *port.SignalsAddedContext) error {
+			log.add("added")
+			return nil
+		})
+	})
+	producer.OutputByName("out").SetupHooks(func(h *port.Hooks) {
+		h.OnSignalsDelivered(func(context.Context, *port.SignalsDeliveredContext) error {
+			log.add("delivered")
+			return nil
+		})
+	})
+
+	fm := testutil.MustFMesh("ordering")
+	require.NoError(t, fm.AddComponents(producer, consumer))
+	require.NoError(t, producer.OutputByName("out").PipeTo(consumer.InputByName("in")))
+	require.NoError(t, producer.InputByName("in").PutSignals(signal.New("go")))
+
+	_, err := fm.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"added", "delivered"}, log.events)
+}

@@ -1,4 +1,4 @@
-package plugin
+package autowire
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/hovsep/fmesh/port"
 )
 
-// Autowire pipes components together by naming convention instead of by hand: an
+// Plugin pipes components together by naming convention instead of by hand: an
 // input port named by Name(output) is wired to that output. See the wiki page on
 // plugins for when to reach for it.
 //
@@ -21,7 +21,7 @@ import (
 //
 // One convention per instance, each with its own PluginName; a mesh that wants
 // two rules registers two plugins.
-type Autowire struct {
+type Plugin struct {
 	// Name maps a source component and one of its output ports to the input
 	// port name that should receive it. Returning "" declines to wire.
 	Name func(source *component.Component, output *port.Port) string
@@ -31,12 +31,12 @@ type Autowire struct {
 	PluginName string
 }
 
-// AutowirePrefixed wires an output to any input named "<prefix><component>_<port>".
+// Prefixed wires an output to any input named "<prefix><component>_<port>".
 //
 // It is the shape most meshes converge on: "habitat_gas_environmental_gas" is
 // the gas factor's environmental_gas output, and reads as one.
-func AutowirePrefixed(prefix string) *Autowire {
-	return &Autowire{
+func Prefixed(prefix string) *Plugin {
+	return &Plugin{
 		PluginName: "autowire:prefixed:" + prefix,
 		Name: func(source *component.Component, output *port.Port) string {
 			return fmt.Sprintf("%s%s_%s", prefix, source.Name(), output.Name())
@@ -44,20 +44,20 @@ func AutowirePrefixed(prefix string) *Autowire {
 	}
 }
 
-// AutowireBroadcast wires every output named portName to every input of the
+// Broadcast wires every output named portName to every input of the
 // same name.
-func AutowireBroadcast(portName string) *Autowire {
-	return AutowireBroadcastAs(portName, portName)
+func Broadcast(portName string) *Plugin {
+	return BroadcastAs(portName, portName)
 }
 
-// AutowireBroadcastAs wires every output named outputName to every input named
+// BroadcastAs wires every output named outputName to every input named
 // inputName.
 //
 // This is the clock case, where the two differ: a component emitting "tick"
 // feeds everything that declared an input called "time", including the
 // components added after it.
-func AutowireBroadcastAs(outputName, inputName string) *Autowire {
-	return &Autowire{
+func BroadcastAs(outputName, inputName string) *Plugin {
+	return &Plugin{
 		PluginName: "autowire:broadcast:" + outputName + "->" + inputName,
 		Name: func(_ *component.Component, output *port.Port) string {
 			if output.Name() != outputName {
@@ -69,7 +69,7 @@ func AutowireBroadcastAs(outputName, inputName string) *Autowire {
 }
 
 // GetName implements fmesh.Plugin.
-func (a *Autowire) GetName() string {
+func (a *Plugin) GetName() string {
 	if a.PluginName == "" {
 		return "autowire"
 	}
@@ -77,7 +77,7 @@ func (a *Autowire) GetName() string {
 }
 
 // Init implements fmesh.Plugin.
-func (a *Autowire) Init(fm *fmesh.FMesh) error {
+func (a *Plugin) Init(fm *fmesh.FMesh) error {
 	if a.Name == nil {
 		return errors.New("autowire: Name must be set")
 	}
@@ -103,7 +103,7 @@ func (a *Autowire) Init(fm *fmesh.FMesh) error {
 }
 
 // connect pipes every output of source to the matching input of destination.
-func (a *Autowire) connect(source, destination *component.Component) error {
+func (a *Plugin) connect(source, destination *component.Component) error {
 	return source.Outputs().ForEach(func(out *port.Port) error {
 		name := a.Name(source, out)
 		if name == "" {

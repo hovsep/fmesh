@@ -25,6 +25,16 @@ func TestGroup_TriggersInRegistrationOrder(t *testing.T) {
 	assert.Equal(t, []int{10, 20, 30}, log)
 }
 
+// Port.Flush skips building its hook context when the group is empty, because
+// Trigger's argument escapes to the heap even with nothing registered.
+func TestGroup_IsEmpty(t *testing.T) {
+	hg := NewGroup[int]()
+	assert.True(t, hg.IsEmpty())
+
+	hg.Add(func(context.Context, int) error { return nil })
+	assert.False(t, hg.IsEmpty())
+}
+
 // Trigger is fail-fast: the first error stops the remaining hooks. Callers rely
 // on this to abort a run rather than continue past a failed hook.
 func TestGroup_TriggerStopsOnFirstError(t *testing.T) {
