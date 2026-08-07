@@ -205,6 +205,7 @@ func (p *Port) Clear(ctx context.Context) error {
 // joined and the port is cleared only when all deliveries succeeded, so
 // successfully delivered signals are never lost, but a retry after a partial
 // failure re-delivers to the destinations that already received them.
+// Each successful delivery fires the OnSignalsDelivered hook on this port.
 func (p *Port) Flush(ctx context.Context) error {
 	if p.IsInput() {
 		return fmt.Errorf("cannot flush input port %q: only output ports can be flushed", p.Name())
@@ -214,12 +215,29 @@ func (p *Port) Flush(ctx context.Context) error {
 		return nil
 	}
 
+	// Materialized once for the whole fan-out rather than per destination.
+	signals := p.Signals().All()
+	// The hook context escapes to the heap whether or not anything reads it, so
+	// the common case of no hook must not reach the composite literal.
+	notifyDelivery := !p.hooks.onSignalsDelivered.IsEmpty()
+
 	var deliveryErrs error
 	// ForEach avoids cloning the pipe slice on every flush (hot path)
 	_ = p.pipes.ForEach(func(outboundPort *Port) error {
 		// Fan-Out
-		if err := ForwardSignals(ctx, p, outboundPort); err != nil {
+		if err := outboundPort.putSignals(ctx, signals); err != nil {
 			deliveryErrs = errors.Join(deliveryErrs, err)
+			return nil
+		}
+
+		if notifyDelivery {
+			if err := p.hooks.onSignalsDelivered.Trigger(ctx, &SignalsDeliveredContext{
+				SourcePort:       p,
+				DestinationPort:  outboundPort,
+				SignalsDelivered: signals,
+			}); err != nil {
+				deliveryErrs = errors.Join(deliveryErrs, fmt.Errorf("onSignalsDelivered hook failed: %w", err))
+			}
 		}
 		return nil
 	})

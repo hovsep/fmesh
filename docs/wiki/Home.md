@@ -50,7 +50,8 @@ title, because a tag suffix would make Go treat the release as a pre-release and
 * [Port](https://pkg.go.dev/github.com/hovsep/fmesh/port)
 * [Signal](https://pkg.go.dev/github.com/hovsep/fmesh/signal)
 * [Meta (labels & scalars)](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
-* [Plugin (bundled mesh plugins)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin)
+* [profiler (bundled mesh plugin)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler)
+* [autowire (bundled mesh plugin)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire)
 
 The `cycle` package surfaces in the run-time report — see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run); hooks are covered in [501. Hooks](https://github.com/hovsep/fmesh/wiki/501.-Hooks).
 

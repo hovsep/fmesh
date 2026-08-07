@@ -38,12 +38,13 @@ var docPackages = map[string]string{
 	"signal":    "signal",
 	"meta":      "meta",
 	"cycle":     "cycle",
-	"plugin":    "plugin",
+	"profiler":  "plugin/profiler",
+	"autowire":  "plugin/autowire",
 }
 
 var (
 	goBlockRe   = regexp.MustCompile("(?s)```go\n(.*?)\n```")
-	qualifiedRe = regexp.MustCompile(`\b(fmesh|component|port|signal|meta|cycle|plugin)\.([A-Z]\w*)`)
+	qualifiedRe = regexp.MustCompile(`\b(fmesh|component|port|signal|meta|cycle|profiler|autowire)\.([A-Z]\w*)`)
 	lineComment = regexp.MustCompile(`//.*`)
 )
 

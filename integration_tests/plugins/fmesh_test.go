@@ -11,7 +11,8 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
-	"github.com/hovsep/fmesh/plugin"
+	"github.com/hovsep/fmesh/plugin/autowire"
+	"github.com/hovsep/fmesh/plugin/profiler"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -24,15 +25,15 @@ import (
 // Adding a fifth component that declares an input named "time" would wire it to
 // the clock with no edit anywhere.
 func TestPlugins_ConventionWiredMesh(t *testing.T) {
-	profiler := plugin.NewProfiler()
+	prof := profiler.New()
 
 	fm := testutil.MustFMesh("habitat", fmesh.WithPlugins(
-		profiler,
+		prof,
 		// Everything that declared an input called "time" hears the clock.
-		plugin.AutowireBroadcastAs("tick", "time"),
+		autowire.BroadcastAs("tick", "time"),
 		// Everything that asked for a factor by name gets it:
 		// sun's "uvi" output reaches the input named "env_sun_uvi".
-		plugin.AutowirePrefixed("env_"),
+		autowire.Prefixed("env_"),
 	))
 
 	assert.True(t, fm.PluginRegistered("profiler"))
@@ -118,11 +119,11 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 	})
 
 	t.Run("the profiler measured every component", func(t *testing.T) {
-		assert.Equal(t, 1, profiler.Runs().Count)
-		assert.Positive(t, profiler.Cycles().Count)
+		assert.Equal(t, 1, prof.Runs().Count)
+		assert.Positive(t, prof.Cycles().Count)
 
 		measured := make(map[string]int)
-		for _, s := range profiler.Components() {
+		for _, s := range prof.Components() {
 			measured[s.Component] = s.Count
 			assert.Positive(t, s.Total, "%s was timed", s.Component)
 			assert.LessOrEqual(t, s.Min, s.Max)
@@ -130,11 +131,11 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 		assert.Equal(t, map[string]int{"clock": 3, "sun": 3, "air": 3, "body": 4}, measured,
 			"no component opted in to being measured")
 
-		require.NotEmpty(t, profiler.TopN(1))
-		assert.Equal(t, "body", profiler.TopN(1)[0].Component,
+		require.NotEmpty(t, prof.TopN(1))
+		assert.Equal(t, "body", prof.TopN(1)[0].Component,
 			"the body activates once more than the rest: a final pass on the last readings")
 
-		assert.Contains(t, profiler.Report(), "clock")
+		assert.Contains(t, prof.Report(), "clock")
 	})
 
 	t.Run("a second run pools into the same profile", func(t *testing.T) {
@@ -143,11 +144,11 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
-		assert.Equal(t, 2, profiler.Runs().Count)
+		assert.Equal(t, 2, prof.Runs().Count)
 
-		profiler.Reset()
-		assert.Zero(t, profiler.Runs().Count)
-		assert.Empty(t, profiler.Components())
+		prof.Reset()
+		assert.Zero(t, prof.Runs().Count)
+		assert.Empty(t, prof.Components())
 	})
 }
 

@@ -113,6 +113,43 @@ if errors.As(err, &panicErr) {
 **`ErrRunCanceled`, not `ErrRunCancelled`** — US spelling, matching `context.Canceled` and the
 repo's linter.
 
+**Each bundled plugin has its own package.** `plugin` now holds no code; it groups
+`plugin/profiler` and `plugin/autowire`. Every symbol lost the prefix it only carried to stay
+distinct inside one shared package.
+
+```go
+import "github.com/hovsep/fmesh/plugin"                    // before
+import "github.com/hovsep/fmesh/plugin/profiler"           // after
+import "github.com/hovsep/fmesh/plugin/autowire"           // after
+```
+
+| Before | After |
+|---|---|
+| `plugin.NewProfiler()` | `profiler.New()` |
+| `plugin.Profiler` | `profiler.Plugin` |
+| `plugin.ProfileMode` | `profiler.Mode` |
+| `plugin.ProfileTiming` / `ProfileThroughput` / `ProfileTimeline` / `ProfileRuntime` / `ProfileAll` | `profiler.ModeTiming` / `ModeThroughput` / `ModeTimeline` / `ModeRuntime` / `ModeAll` |
+| `plugin.Stat`, `ComponentStat`, `Flow`, `PipeStat`, `CycleRecord`, `ResourceStat` | `profiler.Stat`, `ComponentStat`, … |
+| `plugin.Autowire` | `autowire.Plugin` |
+| `plugin.AutowireBroadcast(name)` | `autowire.Broadcast(name)` |
+| `plugin.AutowireBroadcastAs(out, in)` | `autowire.BroadcastAs(out, in)` |
+| `plugin.AutowirePrefixed(prefix)` | `autowire.Prefixed(prefix)` |
+
+```go
+fm, err := fmesh.New("mesh", fmesh.WithPlugins(   // before
+    plugin.NewProfiler(),
+    plugin.AutowireBroadcast("time"),
+))
+
+fm, err := fmesh.New("mesh", fmesh.WithPlugins(   // after
+    profiler.New(),
+    autowire.Broadcast("time"),
+))
+```
+
+The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
+`PluginRegistered("autowire:broadcast:tick->time")` still answer the same.
+
 ### Added
 
 - `fmesh.ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works.
@@ -124,6 +161,46 @@ repo's linter.
 - `cycle.Cycle.AllActivatedAreWaiting()`.
 - `component.PanicError` with `StackTrace()` and `Unwrap()`.
 - Wiki page [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats).
+- **`port.Hooks.OnSignalsDelivered`** and `port.SignalsDeliveredContext` — the first event that
+  names both ends of a pipe. It fires on the *source* port, once per destination, after the
+  destination accepted the signals. `OnSignalsAdded` fires on the destination and cannot say who
+  sent the batch, or tell a pipe delivery apart from a hand-written `PutSignals`.
+
+  ```go
+  out.SetupHooks(func(h *port.Hooks) {
+      h.OnSignalsDelivered(func(ctx context.Context, d *port.SignalsDeliveredContext) error {
+          fmt.Printf("%s -> %s carried %d\n",
+              d.SourcePort.Name(), d.DestinationPort.Name(), len(d.SignalsDelivered))
+          return nil
+      })
+  })
+  ```
+
+  Unlike `OnSignalsAdded`, which gates the put and rolls the port back on failure, this hook is an
+  observer: the delivery has already happened, so a failure fails the flush without undoing it.
+- **`profiler.Mode`** — the profiler now measures four dimensions, selected by bit flag.
+  `profiler.New()` with no arguments measures `ModeTiming` and behaves exactly as the old
+  `plugin.NewProfiler()` did. `ModeThroughput`, `ModeTimeline` and `ModeRuntime` are opt-in, and
+  `ModeAll` enables everything. Each dimension has a real cost, which is why none of them is on by
+  default — the same reason Go's own block and mutex profiles must be switched on deliberately.
+
+  ```go
+  prof := profiler.New()                                       // timing only
+  prof := profiler.New(profiler.ModeAll)                       // everything
+  prof := profiler.New(profiler.ModeTiming, profiler.ModeRuntime)
+  ```
+
+- `profiler.Plugin.Pipes()` and `TopNPipes(n)`, with `profiler.Flow` and `profiler.PipeStat` —
+  per-pipe signal throughput under `ModeThroughput`. `Pipes()` is volume-sorted, so the hottest
+  pipes are at the head and the coldest at the tail; a pipe that was wired but never used still
+  appears, with zero transfers.
+- `profiler.Plugin.Timeline()`, `SetTimelineLimit(n)` and `profiler.CycleRecord` — one record per
+  cycle under `ModeTimeline`, for plotting any cycle-level stat against the cycle number.
+- `profiler.Plugin.Resources()` and `profiler.ResourceStat` — Go runtime deltas (heap, allocations,
+  GC, goroutines, CPU) under `ModeRuntime`, sampled through `runtime/metrics`. They are
+  process-wide, not mesh-attributed.
+- `profiler.Plugin.Report()` grew a pipe table, a resources block and a timeline summary — each
+  printed only when its mode is enabled, so a timing-only profiler's report is unchanged.
 
 ### Changed
 
