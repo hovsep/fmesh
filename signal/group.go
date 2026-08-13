@@ -4,22 +4,31 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/hovsep/fmesh/internal/collection"
 	"github.com/hovsep/fmesh/meta"
 )
 
 // Group represents an ordered list of signals.
+// Like Signal it is copy-on-write: the embedded slice is never mutated after
+// construction; every mutator builds a new group.
+// signalSlice hides the embedded field name so it cannot be reached or
+// reassigned from outside; only the base's exported read methods promote.
+type signalSlice = collection.Slice[*Signal]
+
+// Group represents an ordered list of signals.
 type Group struct {
-	signals []*Signal
+	signalSlice
 	labels  *meta.Labels
 	scalars *meta.Scalars
 }
 
 func newGroupFromSignals(signals []*Signal) *Group {
-	return &Group{
-		signals: slices.Clone(signals),
+	g := &Group{
 		labels:  meta.NewLabels(),
 		scalars: meta.NewScalars(),
 	}
+	g.replace(slices.Clone(signals))
+	return g
 }
 
 // NewGroup creates a new group from the given payloads.
@@ -31,13 +40,19 @@ func NewGroup(payloads ...any) *Group {
 	return newGroupFromSignals(signals)
 }
 
+// raw and replace are the only touchpoints with the backing slice; Group is
+// copy-on-write, so raw's result is never mutated.
+func (g *Group) raw() []*Signal { return collection.Items(&g.signalSlice) }
+
+func (g *Group) replace(items []*Signal) { collection.SetItems(&g.signalSlice, items) }
+
 // Labels returns a copy of the group's own labels. Group is copy-on-write:
 // mutate via WithLabel, which returns a new group — matching Signal.Labels.
 func (g *Group) Labels() *meta.Labels { return cloneLabels(g.labels) }
 
 // WithLabel adds or updates a single label on the group and returns a new group.
 func (g *Group) WithLabel(name, value string) *Group {
-	next := newGroupFromSignals(g.signals)
+	next := newGroupFromSignals(g.raw())
 	next.labels = cloneLabels(g.labels)
 	next.scalars = cloneScalars(g.scalars)
 	next.labels.Set(name, value)
@@ -50,7 +65,7 @@ func (g *Group) Scalars() *meta.Scalars { return cloneScalars(g.scalars) }
 
 // WithScalar adds or updates a single scalar on the group and returns a new group.
 func (g *Group) WithScalar(name string, value float64) *Group {
-	next := newGroupFromSignals(g.signals)
+	next := newGroupFromSignals(g.raw())
 	next.labels = cloneLabels(g.labels)
 	next.scalars = cloneScalars(g.scalars)
 	next.scalars.Set(name, value)
@@ -96,70 +111,9 @@ func (g *Group) RemoveScalarOnEach(names ...string) *Group {
 	}))
 }
 
-// First returns the first signal in the group, or nil if empty.
-func (g *Group) First() *Signal {
-	if g.IsEmpty() {
-		return nil
-	}
-	return g.signals[0]
-}
-
-// Last returns the last signal in the group, or nil if empty.
-func (g *Group) Last() *Signal {
-	if g.IsEmpty() {
-		return nil
-	}
-	return g.signals[len(g.signals)-1]
-}
-
-// IsEmpty returns true when there are no signals in the group.
-func (g *Group) IsEmpty() bool {
-	return g.Len() == 0
-}
-
-// Find returns the first signal matching the predicate, or nil if none match.
-func (g *Group) Find(predicate Predicate) *Signal {
-	if g.IsEmpty() {
-		return nil
-	}
-	for _, s := range g.signals {
-		if predicate(s) {
-			return s
-		}
-	}
-	return nil
-}
-
-// Any returns true if at least one signal matches the predicate.
-func (g *Group) Any(p Predicate) bool {
-	return slices.ContainsFunc(g.signals, p)
-}
-
-// Every returns true if all signals match the predicate.
-// Returns true for an empty group (vacuous truth).
-func (g *Group) Every(p Predicate) bool {
-	for _, sig := range g.signals {
-		if !p(sig) {
-			return false
-		}
-	}
-	return true
-}
-
-// Count returns the number of signals that match the predicate.
-func (g *Group) Count(predicate Predicate) int {
-	n := 0
-	for _, sig := range g.signals {
-		if predicate(sig) {
-			n++
-		}
-	}
-	return n
-}
-
 // Contains returns true if the group contains the exact signal (pointer identity).
 func (g *Group) Contains(s *Signal) bool {
-	return slices.Contains(g.signals, s)
+	return slices.Contains(g.raw(), s)
 }
 
 // ContainsPayload returns true if any signal's payload equals the given value.
@@ -175,7 +129,7 @@ func (g *Group) ContainsPayload(payload any) (bool, error) {
 
 // ContainsPayloadFunc returns true if any signal's payload satisfies eq.
 func (g *Group) ContainsPayloadFunc(eq func(payload any) bool) bool {
-	for _, sig := range g.signals {
+	for _, sig := range g.raw() {
 		if eq(sig.Payload()) {
 			return true
 		}
@@ -209,7 +163,7 @@ func (g *Group) FirstPayloadOrNil() any {
 // AllPayloads returns a slice with all payloads of all signals in the group.
 func (g *Group) AllPayloads() []any {
 	all := make([]any, g.Len())
-	for i, sig := range g.signals {
+	for i, sig := range g.raw() {
 		all[i] = sig.Payload()
 	}
 	return all
@@ -219,7 +173,7 @@ func (g *Group) AllPayloads() []any {
 // Nil signals are silently skipped.
 func (g *Group) With(signals ...*Signal) *Group {
 	newSignals := make([]*Signal, 0, g.Len()+len(signals))
-	newSignals = append(newSignals, g.signals...)
+	newSignals = append(newSignals, g.raw()...)
 	for _, sig := range signals {
 		if sig == nil {
 			continue
@@ -232,7 +186,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 // WithPayloads returns a new group with signals created from the given payloads appended.
 func (g *Group) WithPayloads(payloads ...any) *Group {
 	newSignals := make([]*Signal, g.Len()+len(payloads))
-	copy(newSignals, g.signals)
+	copy(newSignals, g.raw())
 	for i, p := range payloads {
 		newSignals[g.Len()+i] = New(p)
 	}
@@ -243,52 +197,18 @@ func (g *Group) WithPayloads(payloads ...any) *Group {
 // treated as empty, matching With's treatment of nil signals.
 func (g *Group) Join(other *Group) *Group {
 	if other == nil {
-		return newGroupFromSignals(slices.Clone(g.signals))
+		return newGroupFromSignals(g.raw())
 	}
 	newSignals := make([]*Signal, g.Len()+other.Len())
-	copy(newSignals, g.signals)
-	copy(newSignals[g.Len():], other.signals)
+	copy(newSignals, g.raw())
+	copy(newSignals[g.Len():], other.raw())
 	return newGroupFromSignals(newSignals)
-}
-
-// All returns a cloned slice of signals. The slice is independent of the group;
-// the *Signal pointers inside are shared, but Signal is copy-on-write so callers
-// cannot corrupt group state through the returned pointers.
-func (g *Group) All() []*Signal {
-	return slices.Clone(g.signals)
-}
-
-// Len returns the number of signals in the group.
-func (g *Group) Len() int {
-	return len(g.signals)
-}
-
-// ForEach applies the action to each signal. Returns the first error encountered (if any).
-func (g *Group) ForEach(action func(*Signal) error) error {
-	for _, s := range g.signals {
-		if err := action(s); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ForEachIf applies the action only to signals that match the predicate.
-func (g *Group) ForEachIf(predicate Predicate, action func(*Signal) error) error {
-	for _, s := range g.signals {
-		if predicate(s) {
-			if err := action(s); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // Filter returns a new group with signals that pass the predicate.
 func (g *Group) Filter(p Predicate) *Group {
-	filtered := make([]*Signal, 0, len(g.signals))
-	for _, s := range g.signals {
+	filtered := make([]*Signal, 0, g.Len())
+	for _, s := range g.raw() {
 		if p(s) {
 			filtered = append(filtered, s)
 		}
@@ -299,8 +219,8 @@ func (g *Group) Filter(p Predicate) *Group {
 // Map returns a new group with every signal transformed by the mapper.
 // Nil mapper results are dropped.
 func (g *Group) Map(m Mapper) *Group {
-	mapped := make([]*Signal, 0, len(g.signals))
-	for _, s := range g.signals {
+	mapped := make([]*Signal, 0, g.Len())
+	for _, s := range g.raw() {
 		if result := m(cloneSignal(s)); result != nil {
 			mapped = append(mapped, result)
 		}
@@ -311,8 +231,8 @@ func (g *Group) Map(m Mapper) *Group {
 // MapIf is like Map but applies the mapper only to signals matching the predicate.
 // Nil mapper results are dropped.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	mapped := make([]*Signal, 0, len(g.signals))
-	for _, s := range g.signals {
+	mapped := make([]*Signal, 0, g.Len())
+	for _, s := range g.raw() {
 		cloned := cloneSignal(s)
 		if predicate(s) {
 			cloned = mapper(cloned)
@@ -326,8 +246,8 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 
 // MapPayloads returns a new group with every payload transformed by the mapper.
 func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
-	mapped := make([]*Signal, 0, len(g.signals))
-	for _, s := range g.signals {
+	mapped := make([]*Signal, 0, g.Len())
+	for _, s := range g.raw() {
 		mapped = append(mapped, s.MapPayload(mapper))
 	}
 	return newGroupFromSignals(mapped)
@@ -335,8 +255,8 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 
 // MapPayloadsIf is like MapPayloads but applies the mapper only to signals matching the predicate.
 func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group {
-	mapped := make([]*Signal, len(g.signals))
-	for i, s := range g.signals {
+	mapped := make([]*Signal, g.Len())
+	for i, s := range g.raw() {
 		if predicate(s) {
 			mapped[i] = s.MapPayload(mapper)
 		} else {
@@ -349,7 +269,7 @@ func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group 
 // Reduce accumulates all signals into a single signal using the given function.
 func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
 	acc := initial
-	for _, s := range g.signals {
+	for _, s := range g.raw() {
 		acc = fn(acc, s)
 	}
 	return acc
@@ -358,7 +278,7 @@ func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
 // ReducePayloads accumulates all signal payloads into a single value using the given function.
 func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 	acc := initial
-	for _, s := range g.signals {
+	for _, s := range g.raw() {
 		acc = fn(acc, s.Payload())
 	}
 	return acc

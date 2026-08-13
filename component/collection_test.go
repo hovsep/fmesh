@@ -95,7 +95,7 @@ func TestCollection_Add(t *testing.T) {
 			toAdd:      []string{"existing"},
 			assertions: func(t *testing.T, collection *Collection, addErr error) {
 				require.Error(t, addErr)
-				require.ErrorContains(t, addErr, `component with name "existing" already exists`)
+				require.ErrorContains(t, addErr, `component "existing" already exists`)
 			},
 		},
 	}

@@ -1,15 +1,18 @@
 package port
 
 import (
-	"slices"
-
+	"github.com/hovsep/fmesh/internal/collection"
 	"github.com/hovsep/fmesh/meta"
 )
+
+// portSlice hides the embedded field name so it cannot be reached or
+// reassigned from outside; only the base's exported read methods promote.
+type portSlice = collection.Slice[*Port]
 
 // Group represents a list of ports.
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
-	ports   []*Port
+	portSlice
 	labels  *meta.Labels
 	scalars *meta.Scalars
 }
@@ -45,6 +48,8 @@ func newPortOfDirection(direction Direction, name string) *Port {
 	return p
 }
 
+func (g *Group) raw() []*Port { return collection.Items(&g.portSlice) }
+
 // Labels returns the group's own labels store.
 func (g *Group) Labels() *meta.Labels { return g.labels }
 
@@ -62,7 +67,7 @@ func (g *Group) SetScalar(name string, value float64) *Group {
 
 // add appends ports to the group in place. Internal use only; always succeeds.
 func (g *Group) add(ports ...*Port) {
-	g.ports = append(g.ports, ports...)
+	collection.AppendItems(&g.portSlice, ports...)
 }
 
 // Without removes ports matching the predicate and returns a new group.
@@ -72,97 +77,15 @@ func (g *Group) Without(predicate Predicate) *Group {
 	})
 }
 
-// ForEach applies the action to each port. Returns the first error encountered.
-func (g *Group) ForEach(action func(*Port) error) error {
-	for _, p := range g.ports {
-		if err := action(p); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ForEachIf applies the action only to ports that match the predicate.
-func (g *Group) ForEachIf(predicate Predicate, action func(*Port) error) error {
-	for _, p := range g.ports {
-		if predicate(p) {
-			if err := action(p); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (g *Group) setPorts(ports []*Port) *Group {
-	g.ports = ports
+	collection.SetItems(&g.portSlice, ports)
 	return g
-}
-
-// All returns a cloned slice of ports. The slice is independent of the group;
-// the *Port pointers inside are shared.
-func (g *Group) All() []*Port {
-	return slices.Clone(g.ports)
-}
-
-// Len returns the number of ports in a group.
-func (g *Group) Len() int {
-	return len(g.ports)
-}
-
-// IsEmpty returns true when there are no ports in the group.
-func (g *Group) IsEmpty() bool {
-	return g.Len() == 0
-}
-
-// Find returns the first port matching the predicate, or nil if none match.
-func (g *Group) Find(predicate Predicate) *Port {
-	for _, p := range g.ports {
-		if predicate(p) {
-			return p
-		}
-	}
-	return nil
-}
-
-// First returns the first port in the group, or nil if empty.
-func (g *Group) First() *Port {
-	if g.IsEmpty() {
-		return nil
-	}
-	return g.ports[0]
-}
-
-// Every returns true if all ports match the predicate.
-func (g *Group) Every(predicate Predicate) bool {
-	for _, port := range g.ports {
-		if !predicate(port) {
-			return false
-		}
-	}
-	return true
-}
-
-// Any returns true if any port matches the predicate.
-func (g *Group) Any(predicate Predicate) bool {
-	return slices.ContainsFunc(g.ports, predicate)
-}
-
-// Count returns the number of ports that match the predicate.
-func (g *Group) Count(predicate Predicate) int {
-	count := 0
-	for _, port := range g.ports {
-		if predicate(port) {
-			count++
-		}
-	}
-	return count
 }
 
 // Filter returns a new group with ports that match the predicate.
 func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := NewGroup()
-	for _, port := range g.ports {
+	for _, port := range g.raw() {
 		if predicate(port) {
 			filtered.add(port)
 		}
@@ -174,7 +97,7 @@ func (g *Group) Filter(predicate Predicate) *Group {
 // Non-matching ports are kept as-is. Nil mapper results are dropped.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	mapped := NewGroup()
-	for _, p := range g.ports {
+	for _, p := range g.raw() {
 		if predicate(p) {
 			if result := mapper(p); result != nil {
 				mapped.add(result)
@@ -190,7 +113,7 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 // Nil mapper results are dropped.
 func (g *Group) Map(mapper Mapper) *Group {
 	mapped := NewGroup()
-	for _, port := range g.ports {
+	for _, port := range g.raw() {
 		if result := mapper(port); result != nil {
 			mapped.add(result)
 		}

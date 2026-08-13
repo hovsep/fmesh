@@ -9,7 +9,7 @@ import (
 // FlushOutputs), and it is ordered so that runs are reproducible. These guard
 // the cost of that ordering: it must stay allocation-free. A non-zero allocs/op
 // here means a traversal started materializing the port list — see
-// Collection.each.
+// collection.Keyed.Each.
 func benchmarkCollection(b *testing.B, portCount int) *Collection {
 	b.Helper()
 	c := NewCollection()

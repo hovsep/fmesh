@@ -309,6 +309,10 @@ g = g.WithLabel("k", "v")  // after
   `StopOnFirstErrorOrPanic`, so it now also names any activation errors from the failing cycle.
 - Debug-mode activation logging moved from the run loop into a default `AfterCycle` hook — same
   output, but the scheduler no longer carries logging code.
+- **`component.Collection` traversal is deterministic.** `Any`, `FindAny`, `Every`, `AnyMatch`,
+  `Count`, `Filter`, `Map` and `ForEach` now go in component-name order, matching
+  `port.Collection`; `Any`/`FindAny` no longer return different components on identical calls.
+  `AllOrdered` reads a cached sorted slice instead of sorting per call.
 
 ### Fixed
 

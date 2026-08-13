@@ -1,26 +1,29 @@
 package component
 
 import (
-	"fmt"
-	"maps"
-	"slices"
-
+	"github.com/hovsep/fmesh/internal/collection"
 	"github.com/hovsep/fmesh/meta"
 )
 
+// keyedComponents hides the embedded field name so it cannot be reached or
+// reassigned from outside; only the base's exported methods promote.
+type keyedComponents = collection.Keyed[*Component]
+
 // Collection is a collection of components with useful methods.
+// Every traversal goes in component-name order, matching port.Collection —
+// see .agent/docs/design.md for the ordering guarantees this upholds.
 type Collection struct {
-	components map[string]*Component
-	labels     *meta.Labels
-	scalars    *meta.Scalars
+	*keyedComponents
+	labels  *meta.Labels
+	scalars *meta.Scalars
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
-		components: make(map[string]*Component),
-		labels:     meta.NewLabels(),
-		scalars:    meta.NewScalars(),
+		keyedComponents: collection.NewKeyed[*Component]("component"),
+		labels:          meta.NewLabels(),
+		scalars:         meta.NewScalars(),
 	}
 }
 
@@ -30,150 +33,52 @@ func (c *Collection) Labels() *meta.Labels { return c.labels }
 // Scalars returns the collection's own scalars store.
 func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
 
-// ByName returns a component by its name.
-// Returns nil if not found.
-func (c *Collection) ByName(name string) *Component {
-	return c.components[name]
-}
-
-// Add adds components and returns an error if a duplicate name is found.
-func (c *Collection) Add(components ...*Component) error {
-	for _, comp := range components {
-		if _, exists := c.components[comp.Name()]; exists {
-			return fmt.Errorf("component with name %q already exists", comp.Name())
-		}
-		c.components[comp.Name()] = comp
-	}
-	return nil
-}
-
 // Remove deletes components by name and returns the collection.
 func (c *Collection) Remove(names ...string) *Collection {
-	for _, name := range names {
-		delete(c.components, name)
-	}
+	c.keyedComponents.Remove(names...)
 	return c
 }
 
-// Len returns the number of components in the collection.
-func (c *Collection) Len() int {
-	return len(c.components)
-}
-
-// IsEmpty returns true when there are no components in the collection.
-func (c *Collection) IsEmpty() bool {
-	return c.Len() == 0
-}
-
-// Any returns any arbitrary component from the collection.
-// Returns nil if the collection is empty.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
+// Any returns the first component in the collection by name order.
+// Returns nil if the collection is empty. Stable across runs.
 func (c *Collection) Any() *Component {
-	for _, comp := range c.components {
+	for comp := range c.Each {
 		return comp
-	}
-	return nil
-}
-
-// All returns a shallow copy of all components as a map.
-// A copy is returned so the caller cannot mutate the internal state.
-func (c *Collection) All() map[string]*Component {
-	return maps.Clone(c.components)
-}
-
-// AllOrdered returns all components sorted by name.
-// Use this when iteration order must be deterministic (e.g. the drain phase).
-func (c *Collection) AllOrdered() []*Component {
-	names := slices.Sorted(maps.Keys(c.components))
-	ordered := make([]*Component, len(names))
-	for i, name := range names {
-		ordered[i] = c.components[name]
-	}
-	return ordered
-}
-
-// Every returns true if all components match the predicate.
-func (c *Collection) Every(predicate Predicate) bool {
-	for _, comp := range c.components {
-		if !predicate(comp) {
-			return false
-		}
-	}
-	return true
-}
-
-// AnyMatch returns true if any component matches the predicate.
-// Note: AnyMatch is used instead of Any to avoid conflict with the no-arg Any() *Component method.
-func (c *Collection) AnyMatch(predicate Predicate) bool {
-	for _, comp := range c.components {
-		if predicate(comp) {
-			return true
-		}
-	}
-	return false
-}
-
-// Count returns the number of components that match the predicate.
-func (c *Collection) Count(predicate Predicate) int {
-	count := 0
-	for _, comp := range c.components {
-		if predicate(comp) {
-			count++
-		}
-	}
-	return count
-}
-
-// FindAny returns any arbitrary component that matches the predicate.
-// Returns nil if no match found.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
-func (c *Collection) FindAny(predicate Predicate) *Component {
-	for _, comp := range c.components {
-		if predicate(comp) {
-			return comp
-		}
 	}
 	return nil
 }
 
 // Filter returns a new collection with components that match the predicate.
 func (c *Collection) Filter(predicate Predicate) *Collection {
-	filtered := NewCollection()
-	for _, comp := range c.components {
+	matched := make([]*Component, 0, c.Len())
+	for comp := range c.Each {
 		if predicate(comp) {
-			filtered.components[comp.Name()] = comp
+			matched = append(matched, comp)
 		}
 	}
+	filtered := NewCollection()
+	_ = filtered.Add(matched...) // components come from existing collection — names are unique by construction
 	return filtered
 }
 
 // Map returns a new collection with components transformed by the mapper function.
 // Returns an error if a mapped component has a duplicate name.
 func (c *Collection) Map(mapper Mapper) (*Collection, error) {
-	mapped := NewCollection()
-	for _, comp := range c.components {
-		transformedComp := mapper(comp)
-		if transformedComp != nil {
-			if err := mapped.Add(transformedComp); err != nil {
-				return nil, err
-			}
+	transformed := make([]*Component, 0, c.Len())
+	for comp := range c.Each {
+		if transformedComp := mapper(comp); transformedComp != nil {
+			transformed = append(transformed, transformedComp)
 		}
+	}
+	mapped := NewCollection()
+	if err := mapped.Add(transformed...); err != nil {
+		return nil, err
 	}
 	return mapped, nil
 }
 
-// ForEach applies the action to each component. Returns the first error encountered.
-func (c *Collection) ForEach(action func(*Component) error) error {
-	for _, comp := range c.components {
-		if err := action(comp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Clear removes all components from the collection.
 func (c *Collection) Clear() *Collection {
-	c.components = make(map[string]*Component)
+	collection.Reset(c.keyedComponents)
 	return c
 }

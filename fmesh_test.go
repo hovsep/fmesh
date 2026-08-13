@@ -419,7 +419,7 @@ func TestFMesh_AddComponents(t *testing.T) {
 				},
 			},
 			wantErr:    true,
-			wantErrMsg: `component with name "c1" already exists`,
+			wantErrMsg: `component "c1" already exists`,
 		},
 		{
 			name: "adding invalid component",
