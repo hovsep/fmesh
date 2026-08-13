@@ -908,3 +908,40 @@ func TestPort_Chainability(t *testing.T) {
 		assert.True(t, p.Labels().ValueIs("k4", "v4"))
 	})
 }
+
+func TestPort_NilReceiverNamesTheCause(t *testing.T) {
+	// A lookup by a name no port has returns nil, deliberately. Before the guard
+	// that nil reached a field access several frames later, and the panic read
+	// "invalid memory address" at a line that was not the mistake.
+	var missing *Port
+
+	calls := map[string]func(){
+		"Signals":     func() { missing.Signals() },
+		"HasSignals":  func() { missing.HasSignals() },
+		"PutSignals":  func() { _ = missing.PutSignals(signal.New(1)) },
+		"PutPayloads": func() { _ = missing.PutPayloads(1) },
+		"PutSignalGroups": func() {
+			_ = missing.PutSignalGroups(signal.NewGroup(1))
+		},
+		// With no groups the loop never runs, so only the guard stops a nil port
+		// from reporting success.
+		"PutSignalGroups without groups": func() { _ = missing.PutSignalGroups() },
+	}
+
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			assert.PanicsWithError(t, ErrNilPort.Error(), call)
+		})
+	}
+}
+
+func TestPort_NilSourceStillReportsPipeToAsError(t *testing.T) {
+	// PipeTo is the one lookup-adjacent method that already handled nil, through
+	// validatePipe. It must keep returning an error rather than joining the
+	// panicking group above.
+	var missing *Port
+
+	err := missing.PipeTo(mustInput("in"))
+
+	require.ErrorIs(t, err, ErrNilPort)
+}

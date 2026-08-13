@@ -133,8 +133,26 @@ func (p *Port) setSignals(signalsGroup *signal.Group) {
 	p.signals = signalsGroup
 }
 
+// mustExist panics when the receiver is nil.
+//
+// Name lookups return nil for a name no port has, and that is deliberate — see
+// the note on forgiving lookups in design.md. What is not useful is where the
+// nil surfaces: it reaches a field access several frames later, and the panic
+// reads "invalid memory address" at a line that is not the mistake.
+//
+// This is not a new failure mode. The dereference panicked anyway; this one
+// names the cause, and component activation recovers it into a PanicError that
+// already carries the component name. A nil pointer has no identity, so the
+// message cannot name the port itself.
+func (p *Port) mustExist() {
+	if p == nil {
+		panic(ErrNilPort)
+	}
+}
+
 // Signals returns all signals in the port.
 func (p *Port) Signals() *signal.Group {
+	p.mustExist()
 	return p.signals
 }
 
@@ -145,12 +163,14 @@ func (p *Port) Signals() *signal.Group {
 // context and the OnSignalsAdded hook receives context.Background(). Delivery
 // during a run goes through Flush, which passes the run context along.
 func (p *Port) PutSignals(signals ...*signal.Signal) error {
+	p.mustExist()
 	return p.putSignals(context.Background(), signals)
 }
 
 // PutPayloads creates signals from given payloads.
 // When the OnSignalsAdded hook fails, the port is restored to its previous state.
 func (p *Port) PutPayloads(payloads ...any) error {
+	p.mustExist()
 	return p.putSignals(context.Background(), signal.NewGroup(payloads...).All())
 }
 
@@ -173,6 +193,10 @@ func (p *Port) putSignals(ctx context.Context, signals []*signal.Signal) error {
 
 // PutSignalGroups adds all signals from signal groups.
 func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
+	// Guarded here as well as in PutSignals: with no groups the loop never runs,
+	// and a nil port would report success.
+	p.mustExist()
+
 	for _, group := range signalGroups {
 		signals := group.All()
 		if err := p.PutSignals(signals...); err != nil {
