@@ -111,6 +111,9 @@ func TestDocs_ReferenceOnlyExistingAPI(t *testing.T) {
 	files, err := filepath.Glob("docs/wiki/*.md")
 	require.NoError(t, err)
 	files = append(files, "README.md", "CHANGELOG.md", "CONTRIBUTING.md")
+	pluginReadmes, err := filepath.Glob("plugin/*/README.md")
+	require.NoError(t, err)
+	files = append(files, pluginReadmes...)
 
 	type reference struct {
 		file, qualifier, symbol string
@@ -195,6 +198,9 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 	files, err := filepath.Glob("docs/wiki/*.md")
 	require.NoError(t, err)
 	files = append(files, "README.md", "CONTRIBUTING.md")
+	pluginReadmes, err := filepath.Glob("plugin/*/README.md")
+	require.NoError(t, err)
+	files = append(files, pluginReadmes...)
 
 	// Go sources too. A removed method cannot appear in compiling code, so any
 	// hit here is necessarily a comment — which is exactly where one survived
@@ -310,6 +316,9 @@ func TestDocs_MethodCallsExistSomewhere(t *testing.T) {
 	// CHANGELOG.md is deliberately absent: its fenced blocks show removed API as
 	// "before" migration examples.
 	files = append(files, "README.md", "CONTRIBUTING.md")
+	pluginReadmes, err := filepath.Glob("plugin/*/README.md")
+	require.NoError(t, err)
+	files = append(files, pluginReadmes...)
 
 	var unknown []string
 	seen := make(map[string]bool)
