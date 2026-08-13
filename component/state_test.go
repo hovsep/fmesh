@@ -424,3 +424,46 @@ func TestState_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestState_UpdateAndGet(t *testing.T) {
+	tests := []struct {
+		name      string
+		initState func(State)
+		key       string
+		fn        func(any) any
+		want      any
+	}{
+		{
+			name:      "returns the value it stored",
+			initState: func(s State) { s.Set("val", 10) },
+			key:       "val",
+			fn:        func(old any) any { return old.(int) + 5 },
+			want:      15,
+		},
+		{
+			// Unlike Update, which reports a miss and changes nothing.
+			name:      "creates a missing key and hands back the new value",
+			initState: func(State) {},
+			key:       "counter",
+			fn: func(old any) any {
+				if old == nil {
+					return 1
+				}
+				return old.(int) + 1
+			},
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newState()
+			tt.initState(s)
+
+			got := s.UpdateAndGet(tt.key, tt.fn)
+
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, s.Get(tt.key), "the returned value is the stored one")
+		})
+	}
+}

@@ -104,3 +104,17 @@ func (s State) Update(key string, fn func(old any) any) bool {
 	s[key] = fn(old)
 	return true
 }
+
+// UpdateAndGet is Upsert plus the value it stored, for the common case where the
+// new value is needed immediately — a counter that has to be emitted in the same
+// activation, say. Reading it back with Get would work but repeats the key, and
+// a second map lookup is a second chance to mistype it.
+//
+// Like Upsert and unlike Update, this creates the key when absent: fn receives
+// nil and its result is stored, so the returned value is always the one now in
+// the state.
+func (s State) UpdateAndGet(key string, fn func(old any) any) any {
+	updated := fn(s[key])
+	s[key] = updated
+	return updated
+}
