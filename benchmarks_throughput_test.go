@@ -103,6 +103,7 @@ func primeInputs(b *testing.B, fm *FMesh, size int) {
 }
 
 func benchmarkThroughput(b *testing.B, size int, kind activationKind) {
+	b.Helper()
 	fm := buildThroughputMesh(b, size, kind)
 
 	var totalCycles int

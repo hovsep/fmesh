@@ -460,12 +460,6 @@ func TestFMesh_Run(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name:       "empty mesh stops after first cycle",
-			getFM:      func() *FMesh { return mustNewFMesh("fm") },
-			wantCycles: cycle.NewGroup().Add(cycle.New().SetNumber(1)),
-			wantErr:    true,
-		},
-		{
 			name: "unsupported error handling strategy",
 			getFM: func() *FMesh {
 				fm := mustNewFMesh("fm", WithConfig(Config{
@@ -871,6 +865,54 @@ func TestFMesh_Run(t *testing.T) {
 	}
 }
 
+func TestFMesh_Run_EmptyMeshFailsValidation(t *testing.T) {
+	fm := mustNewFMesh("empty")
+	ri, err := fm.Run(context.Background())
+	require.ErrorIs(t, err, ErrNoComponents)
+	assert.Zero(t, ri.Cycles.Len(), "validation fails before any cycle runs")
+}
+
+func TestFMesh_Run_CyclesLimitBoundary(t *testing.T) {
+	// A looped component never stops naturally, so the limit is the only brake.
+	perpetual := func() *FMesh {
+		c1 := mustNewComponent("c1",
+			component.WithInputs("i1"),
+			component.WithOutputs("o1"),
+			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+				return this.OutputByName("o1").PutSignals(signal.New(1))
+			}),
+		)
+		require.NoError(t, c1.OutputByName("o1").PipeTo(c1.InputByName("i1")))
+		fm := mustNewFMesh("fm", WithCyclesLimit(3), WithoutLivelockDetection())
+		require.NoError(t, fm.AddComponents(c1))
+		mustPutSignals(c1.InputByName("i1"), signal.New(0))
+		return fm
+	}
+
+	t.Run("limit is the number of cycles that execute", func(t *testing.T) {
+		ri, err := perpetual().Run(context.Background())
+		require.ErrorIs(t, err, ErrReachedMaxAllowedCycles)
+		assert.Equal(t, 3, ri.Cycles.Len())
+	})
+
+	t.Run("natural stop on the last allowed cycle is not an error", func(t *testing.T) {
+		// One productive cycle plus one empty control cycle: exactly the limit.
+		c1 := mustNewComponent("c1",
+			component.WithInputs("i1"),
+			component.WithActivationFunc(func(context.Context, *component.Component) error {
+				return nil
+			}),
+		)
+		fm := mustNewFMesh("fm", WithCyclesLimit(2))
+		require.NoError(t, fm.AddComponents(c1))
+		mustPutSignals(c1.InputByName("i1"), signal.New(0))
+
+		ri, err := fm.Run(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, 2, ri.Cycles.Len())
+	})
+}
+
 func TestFMesh_runCycle(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -880,10 +922,11 @@ func TestFMesh_runCycle(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "empty mesh",
-			getFM:     func() *FMesh { return mustNewFMesh("empty mesh") },
-			want:      nil,
-			wantError: true,
+			// Emptiness is rejected by validateMeshStructure before any cycle;
+			// runCycle itself just records an empty cycle.
+			name:  "empty mesh runs an empty cycle",
+			getFM: func() *FMesh { return mustNewFMesh("empty mesh") },
+			want:  cycle.New().SetNumber(1),
 		},
 		{
 			name: "all components activated in one cycle (concurrently)",

@@ -31,8 +31,9 @@ func NewGroup(payloads ...any) *Group {
 	return newGroupFromSignals(signals)
 }
 
-// Labels returns the group's own labels store.
-func (g *Group) Labels() *meta.Labels { return g.labels }
+// Labels returns a copy of the group's own labels. Group is copy-on-write:
+// mutate via WithLabel, which returns a new group — matching Signal.Labels.
+func (g *Group) Labels() *meta.Labels { return cloneLabels(g.labels) }
 
 // WithLabel adds or updates a single label on the group and returns a new group.
 func (g *Group) WithLabel(name, value string) *Group {
@@ -43,8 +44,9 @@ func (g *Group) WithLabel(name, value string) *Group {
 	return next
 }
 
-// Scalars returns the group's own scalars store.
-func (g *Group) Scalars() *meta.Scalars { return g.scalars }
+// Scalars returns a copy of the group's own scalars. Group is copy-on-write:
+// mutate via WithScalar, which returns a new group — matching Signal.Scalars.
+func (g *Group) Scalars() *meta.Scalars { return cloneScalars(g.scalars) }
 
 // WithScalar adds or updates a single scalar on the group and returns a new group.
 func (g *Group) WithScalar(name string, value float64) *Group {
@@ -237,8 +239,12 @@ func (g *Group) WithPayloads(payloads ...any) *Group {
 	return newGroupFromSignals(newSignals)
 }
 
-// Join returns a new group containing signals from both groups.
+// Join returns a new group containing signals from both groups. A nil other is
+// treated as empty, matching With's treatment of nil signals.
 func (g *Group) Join(other *Group) *Group {
+	if other == nil {
+		return newGroupFromSignals(slices.Clone(g.signals))
+	}
 	newSignals := make([]*Signal, g.Len()+other.Len())
 	copy(newSignals, g.signals)
 	copy(newSignals[g.Len():], other.signals)
@@ -356,65 +362,4 @@ func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
 		acc = fn(acc, s.Payload())
 	}
 	return acc
-}
-
-// SumScalar returns the sum of the named scalar across all signals in the group.
-// Signals that do not have the scalar contribute 0. Returns 0 for an empty group.
-func (g *Group) SumScalar(name string) float64 {
-	sum := 0.0
-	for _, s := range g.signals {
-		sum += s.scalars.ValueOrDefault(name, 0.0)
-	}
-	return sum
-}
-
-// MinScalar returns the minimum value of the named scalar across all signals.
-// Returns ErrScalarNotFoundInGroup when no signal has the scalar.
-func (g *Group) MinScalar(name string) (float64, error) {
-	minValue, _, err := g.scalarStats(name)
-	return minValue, err
-}
-
-// MaxScalar returns the maximum value of the named scalar across all signals.
-// Returns ErrScalarNotFoundInGroup when no signal has the scalar.
-func (g *Group) MaxScalar(name string) (float64, error) {
-	_, maxValue, err := g.scalarStats(name)
-	return maxValue, err
-}
-
-// AvgScalar returns the mean value of the named scalar across all signals that have it.
-// Returns ErrScalarNotFoundInGroup when no signal has the scalar.
-func (g *Group) AvgScalar(name string) (float64, error) {
-	sum, count := 0.0, 0
-	for _, s := range g.signals {
-		if s.scalars.Has(name) {
-			sum += s.scalars.ValueOrDefault(name, 0.0)
-			count++
-		}
-	}
-	if count == 0 {
-		return 0, ErrScalarNotFoundInGroup
-	}
-	return sum / float64(count), nil
-}
-
-// scalarStats returns the min and max of the named scalar across signals that have it.
-func (g *Group) scalarStats(name string) (minValue, maxValue float64, err error) {
-	found := false
-	for _, s := range g.signals {
-		if !s.scalars.Has(name) {
-			continue
-		}
-		value := s.scalars.ValueOrDefault(name, 0.0)
-		if !found {
-			minValue, maxValue, found = value, value, true
-			continue
-		}
-		minValue = min(minValue, value)
-		maxValue = max(maxValue, value)
-	}
-	if !found {
-		return 0, 0, ErrScalarNotFoundInGroup
-	}
-	return minValue, maxValue, nil
 }

@@ -16,67 +16,8 @@ import (
 )
 
 // Test_ScalarsOnSignals verifies that scalars can be attached to signals and
-// aggregate methods on signal.Group work as expected.
+// batch-stamped across a group.
 func Test_ScalarsOnSignals(t *testing.T) {
-	t.Run("scalars flow through a mesh and are aggregated at the sink", func(t *testing.T) {
-		// Scenario: a sensor component emits temperature readings as signals with
-		// a "temp" scalar. A monitor component collects them and checks the average.
-
-		var collectedGroup *signal.Group
-
-		sensor := testutil.MustComponent("sensor",
-			component.WithInputs("trigger"),
-			component.WithOutputs("out"),
-			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				readings := []float64{36.6, 37.1, 38.2, 36.9}
-				for _, r := range readings {
-					sig := signal.New("reading").WithScalar("temp", r)
-					if err := this.Outputs().ByName("out").PutSignals(sig); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
-		)
-
-		monitor := testutil.MustComponent("monitor",
-			component.WithInputs("in"),
-			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				grp := this.Inputs().ByName("in").Signals()
-				collectedGroup = grp
-				return nil
-			}),
-		)
-
-		fm := testutil.MustFMesh("temp-mesh")
-		require.NoError(t, fm.AddComponents(sensor, monitor))
-		require.NoError(t, sensor.Outputs().ByName("out").PipeTo(monitor.Inputs().ByName("in")))
-
-		// Seed the sensor trigger to kick off activation
-		require.NoError(t, sensor.Inputs().ByName("trigger").PutSignals(signal.New("go")))
-
-		_, err := fm.Run(context.Background())
-		require.NoError(t, err)
-
-		require.NotNil(t, collectedGroup)
-		assert.Equal(t, 4, collectedGroup.Len())
-
-		avg, err := collectedGroup.AvgScalar("temp")
-		require.NoError(t, err)
-		assert.InDelta(t, 37.2, avg, 0.01)
-
-		minTemp, err := collectedGroup.MinScalar("temp")
-		require.NoError(t, err)
-		assert.InDelta(t, 36.6, minTemp, 1e-9)
-
-		maxTemp, err := collectedGroup.MaxScalar("temp")
-		require.NoError(t, err)
-		assert.InDelta(t, 38.2, maxTemp, 1e-9)
-
-		sum := collectedGroup.SumScalar("temp")
-		assert.InDelta(t, 148.8, sum, 0.01)
-	})
-
 	t.Run("WithScalarOnEach stamps every signal in a group", func(t *testing.T) {
 		grp := signal.NewGroup(1, 2, 3).WithScalarOnEach("priority", 5.0)
 		assert.Equal(t, 3, grp.Len())
@@ -100,12 +41,6 @@ func Test_ScalarsOnSignals(t *testing.T) {
 			assert.True(t, s.Scalars().Has("temp"))
 			assert.False(t, s.Scalars().Has("humidity"))
 		}
-	})
-
-	t.Run("AvgScalar returns ok=false when no signal has the scalar", func(t *testing.T) {
-		grp := signal.NewGroup(1, 2, 3)
-		_, err := grp.AvgScalar("nonexistent")
-		require.Error(t, err)
 	})
 }
 

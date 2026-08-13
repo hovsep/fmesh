@@ -36,11 +36,3 @@ func BenchmarkCollectionForEach(b *testing.B) {
 		})
 	}
 }
-
-func BenchmarkCollectionAnyHasSignals(b *testing.B) {
-	c := benchmarkCollection(b, 8)
-	b.ReportAllocs()
-	for b.Loop() {
-		_ = c.AnyHasSignals()
-	}
-}

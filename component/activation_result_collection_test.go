@@ -246,26 +246,26 @@ func TestActivationResultCollection_Clear(t *testing.T) {
 	})
 }
 
-func TestActivationResultCollection_Without(t *testing.T) {
+func TestActivationResultCollection_Remove(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(false)
 	r3 := NewActivationResult("c3").SetActivated(true)
 
 	t.Run("removes by component name", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2, r3)
-		result := collection.Without("c2")
+		result := collection.Remove("c2")
 		assert.Equal(t, 2, result.Len())
 	})
 
 	t.Run("removes multiple", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2, r3)
-		result := collection.Without("c1", "c2")
+		result := collection.Remove("c1", "c2")
 		assert.Equal(t, 1, result.Len())
 	})
 
 	t.Run("removes all", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
-		result := collection.Without("c1", "c2")
+		result := collection.Remove("c1", "c2")
 		assert.Equal(t, 0, result.Len())
 	})
 }

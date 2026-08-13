@@ -18,7 +18,7 @@ type recorder struct {
 	err  error
 }
 
-func (r recorder) GetName() string { return r.name }
+func (r recorder) Name() string { return r.name }
 
 func (r recorder) Init(t *target) error {
 	t.seen = append(t.seen, r.name)

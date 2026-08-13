@@ -171,10 +171,6 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 	fm.LogDebug("starting activation cycle #%d", newCycle.Number())
 
-	if fm.Components().IsEmpty() {
-		return errors.New("failed to run cycle: no components found")
-	}
-
 	var wg sync.WaitGroup
 
 	// ForEach avoids cloning the component map on every cycle (hot path)
@@ -197,20 +193,6 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	})
 
 	wg.Wait()
-
-	if fm.IsDebug() {
-		_ = newCycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
-			fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
-				ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError())
-			// The stack is kept out of the panic's message so logs stay readable,
-			// which would lose it entirely if debug mode did not print it here.
-			var panicErr *component.PanicError
-			if errors.As(ar.ActivationError(), &panicErr) {
-				fm.LogDebug("stack trace for component %s:\n%s", ar.ComponentName(), panicErr.StackTrace())
-			}
-			return nil
-		})
-	}
 
 	if err := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		return fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", err)
@@ -255,7 +237,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 	components := fm.Components().AllOrdered()
 
 	if err := fm.clearInputs(ctx, components); err != nil {
-		return errors.Join(ErrFailedToDrain, err)
+		return fmt.Errorf("%w: %w", ErrFailedToDrain, err)
 	}
 
 	return fm.forEachActivatedComponent(components, func(c *component.Component, activationResult *component.ActivationResult) error {
@@ -265,7 +247,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 		}
 
 		if err := c.FlushOutputs(ctx); err != nil {
-			return errors.Join(ErrFailedToDrain, fmt.Errorf("failed to flush outputs of component %q: %w", c.Name(), err))
+			return fmt.Errorf("%w: failed to flush outputs of component %q: %w", ErrFailedToDrain, c.Name(), err)
 		}
 		return nil
 	})
@@ -440,6 +422,11 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 //
 // A configured TimeLimit becomes a deadline on this context, so it reaches
 // activation functions instead of only being checked between cycles.
+//
+// Run is not reentrant: it resets per-run state on the mesh, so a mesh must
+// finish one Run before starting another. Between runs, output ports are
+// cleared but input ports are not — signals a failed or interrupted run left
+// on inputs become part of the next run's seed.
 func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 	if fm.config.TimeLimit > 0 {
 		var cancel context.CancelFunc
@@ -524,7 +511,10 @@ func (fm *FMesh) stop(err error) (bool, error) {
 func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 	lastCycle := fm.runtimeInfo.Cycles.Last()
 
-	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() > fm.config.CyclesLimit) {
+	// >= so the limit is the number of cycles that execute, not limit+1. The
+	// HasActivatedComponents guard lets a mesh whose last allowed cycle was
+	// already empty fall through to the natural stop instead of a false error.
+	if (fm.config.CyclesLimit > 0) && (lastCycle.Number() >= fm.config.CyclesLimit) && lastCycle.HasActivatedComponents() {
 		return fm.stop(ErrReachedMaxAllowedCycles)
 	}
 
@@ -549,8 +539,8 @@ func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 		}
 	case StopOnFirstPanic:
 		if lastCycle.HasActivationPanics() {
-			return fm.stop(fmt.Errorf("%w, cycle # %d, activation panics: %w",
-				ErrHitAPanic, lastCycle.Number(), lastCycle.AllPanicsCombined()))
+			return fm.stop(fmt.Errorf("%w, cycle # %d, %w",
+				ErrHitAPanic, lastCycle.Number(), cycleFailures(lastCycle)))
 		}
 	case IgnoreAll:
 	default:

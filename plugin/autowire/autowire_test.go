@@ -120,8 +120,8 @@ func TestAutowire(t *testing.T) {
 		// Pipes are not deduplicated and a port flushes once per pipe, so a
 		// second identical pipe would deliver every signal twice.
 		everythingIsTime := &Plugin{
-			PluginName: "autowire:everything-is-time",
-			Name:       func(*component.Component, *port.Port) string { return "time" },
+			PluginName:   "autowire:everything-is-time",
+			InputNameFor: func(*component.Component, *port.Port) string { return "time" },
 		}
 
 		fm, err := fmesh.New("m", fmesh.WithPlugins(Broadcast("time"), everythingIsTime))

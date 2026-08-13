@@ -12,7 +12,6 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/plugin/autowire"
-	"github.com/hovsep/fmesh/plugin/profiler"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -21,14 +20,11 @@ import (
 //
 // The point of the test is what is absent. Four components, five connections,
 // and not one PipeTo between components -- two naming conventions derive the
-// whole graph as the components arrive, and a profiler measures the result.
+// whole graph as the components arrive.
 // Adding a fifth component that declares an input named "time" would wire it to
 // the clock with no edit anywhere.
 func TestPlugins_ConventionWiredMesh(t *testing.T) {
-	prof := profiler.New()
-
 	fm := testutil.MustFMesh("habitat", fmesh.WithPlugins(
-		prof,
 		// Everything that declared an input called "time" hears the clock.
 		autowire.BroadcastAs("tick", "time"),
 		// Everything that asked for a factor by name gets it:
@@ -36,7 +32,6 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 		autowire.Prefixed("env_"),
 	))
 
-	assert.True(t, fm.PluginRegistered("profiler"))
 	assert.True(t, fm.PluginRegistered("autowire:broadcast:tick->time"))
 	assert.True(t, fm.PluginRegistered("autowire:prefixed:env_"))
 
@@ -118,37 +113,13 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 		assert.Equal(t, 3*21, body.State().Get("gas"))
 	})
 
-	t.Run("the profiler measured every component", func(t *testing.T) {
-		assert.Equal(t, 1, prof.Runs().Count)
-		assert.Positive(t, prof.Cycles().Count)
-
-		measured := make(map[string]int)
-		for _, s := range prof.Components() {
-			measured[s.Component] = s.Count
-			assert.Positive(t, s.Total, "%s was timed", s.Component)
-			assert.LessOrEqual(t, s.Min, s.Max)
-		}
-		assert.Equal(t, map[string]int{"clock": 3, "sun": 3, "air": 3, "body": 4}, measured,
-			"no component opted in to being measured")
-
-		require.NotEmpty(t, prof.TopN(1))
-		assert.Equal(t, "body", prof.TopN(1)[0].Component,
-			"the body activates once more than the rest: a final pass on the last readings")
-
-		assert.Contains(t, prof.Report(), "clock")
-	})
-
-	t.Run("a second run pools into the same profile", func(t *testing.T) {
+	t.Run("a second run works on the same wiring", func(t *testing.T) {
 		clock.State().Delete("left")
 		testutil.MustPutSignals(clock.InputByName("i1"), signal.New("start"))
 		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
-		assert.Equal(t, 2, prof.Runs().Count)
-
-		prof.Reset()
-		assert.Zero(t, prof.Runs().Count)
-		assert.Empty(t, prof.Components())
+		assert.Equal(t, 6, body.State().Get("ticks"), "three more ticks reached the body")
 	})
 }
 

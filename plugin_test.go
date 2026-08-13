@@ -85,7 +85,7 @@ type activationCounter struct {
 	activations  int
 }
 
-func (p *activationCounter) GetName() string { return "activationCounter" }
+func (p *activationCounter) Name() string { return "activationCounter" }
 
 func (p *activationCounter) Init(fm *FMesh) error {
 	fm.Labels().Set("plugin/counter/version", "v1")
@@ -107,7 +107,7 @@ func (p *activationCounter) Init(fm *FMesh) error {
 
 type brokenPlugin struct{}
 
-func (brokenPlugin) GetName() string   { return "brokenPlugin" }
+func (brokenPlugin) Name() string      { return "brokenPlugin" }
 func (brokenPlugin) Init(*FMesh) error { return errors.New("no") }
 
 type recordingPlugin struct {
@@ -115,7 +115,7 @@ type recordingPlugin struct {
 	seen *[]string
 }
 
-func (p *recordingPlugin) GetName() string { return p.name }
+func (p *recordingPlugin) Name() string { return p.name }
 
 func (p *recordingPlugin) Init(*FMesh) error {
 	*p.seen = append(*p.seen, p.name)

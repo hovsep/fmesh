@@ -134,6 +134,20 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 		"mutating output group's signal must not change original group's signal (#203)")
 }
 
+func TestGroup_Labels_and_Scalars_return_copies(t *testing.T) {
+	// The one back door through CoW used to be Labels()/Scalars() handing out
+	// the live stores; mutating the returned store must not touch the group.
+	g := NewGroup(1).WithLabel("k", "v").WithScalar("s", 1)
+
+	g.Labels().Set("k", "changed")
+	g.Scalars().Set("s", 2)
+
+	assert.True(t, g.Labels().ValueIs("k", "v"))
+	v, err := g.Scalars().Value("s")
+	require.NoError(t, err)
+	assert.InDelta(t, 1.0, v, 1e-9)
+}
+
 func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
 	g := NewGroup(1, 2)
 	identity := func(s *Signal) *Signal { return s }

@@ -21,7 +21,7 @@ import (
 // trick, and it is why a mesh plugin can observe every activation in a mesh
 // without a single component knowing it exists.
 type Plugin interface {
-	GetName() string
+	Name() string
 	Init(*FMesh) error
 }
 

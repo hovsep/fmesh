@@ -31,20 +31,6 @@ func BenchmarkGroupCoWOps(b *testing.B) {
 	}
 }
 
-// BenchmarkGroupScalarAggregation measures cross-signal scalar aggregation:
-// SumScalar + AvgScalar over a 100-signal group.
-func BenchmarkGroupScalarAggregation(b *testing.B) {
-	g := benchGroup(100)
-
-	b.ReportAllocs()
-	for b.Loop() {
-		_ = g.SumScalar("v")
-		if _, err := g.AvgScalar("v"); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 // groupBenchSizes is the size sweep for group scale benchmarks.
 var groupBenchSizes = []int{10, 100, 1_000, 10_000}
 

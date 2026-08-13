@@ -926,6 +926,8 @@ func TestPort_NilReceiverNamesTheCause(t *testing.T) {
 		// With no groups the loop never runs, so only the guard stops a nil port
 		// from reporting success.
 		"PutSignalGroups without groups": func() { _ = missing.PutSignalGroups() },
+		"Flush":                          func() { _ = missing.Flush(context.Background()) },
+		"Pipes":                          func() { _ = missing.Pipes() },
 	}
 
 	for name, call := range calls {

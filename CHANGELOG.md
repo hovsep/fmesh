@@ -150,6 +150,61 @@ fm, err := fmesh.New("mesh", fmesh.WithPlugins(   // after
 The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
 `PluginRegistered("autowire:broadcast:tick->time")` still answer the same.
 
+**The profiler moved to its own module.** Like the DOT exporter (`fmesh-graphviz`), it consumes
+only the public API and now lives at `github.com/hovsep/fmesh-profiler`. Its API is unchanged
+apart from the `Name()` rename below.
+
+```go
+import "github.com/hovsep/fmesh/plugin/profiler"   // before
+import profiler "github.com/hovsep/fmesh-profiler" // after
+```
+
+**Plugins implement `Name()`, not `GetName()`.** Both plugin interfaces (`fmesh.Plugin`,
+`component.Plugin`) now follow Go's getter convention. `autowire.Plugin`'s convention field is
+renamed `Name` → `InputNameFor` to make room (and because it names what the function answers:
+the input-port name an output should be wired to).
+
+```go
+func (p *MyPlugin) GetName() string { return "my-plugin" }   // before
+func (p *MyPlugin) Name() string { return "my-plugin" }      // after
+
+&autowire.Plugin{Name: func(...) string {...}}               // before
+&autowire.Plugin{InputNameFor: func(...) string {...}}       // after
+```
+
+**`port.Group`'s own-metadata setters are `Set*`, because they mutate.** The `With` prefix is
+reserved for copy-on-write and constructor options; `port.Group` was the one type violating that.
+
+```go
+group.WithLabel("k", "v").WithScalar("s", 1)   // before
+group.SetLabel("k", "v").SetScalar("s", 1)     // after
+```
+
+**`ActivationResultCollection.Without` is now `Remove`.** It deletes from the receiver in place;
+`Without` on the other collection types returns a new value.
+
+**`signal.Group.Labels()` and `Scalars()` return copies.** `signal.Group` is copy-on-write, and
+these were the one back door: mutating the returned store changed the group in place. They now
+match `Signal.Labels()`; mutate via `WithLabel`/`WithScalar`, which return a new group.
+
+```go
+g.Labels().Set("k", "v")   // before: mutated g. Now: mutates a copy, g unchanged
+g = g.WithLabel("k", "v")  // after
+```
+
+**Removed API.** Each of these had no callers in the repo, the examples, or the exporter:
+
+- Batch metadata on the mutating collections — `SetLabelOnEach`, `SetScalarOnEach`,
+  `RemoveLabelOnEach`, `RemoveScalarOnEach` on `port.Group`, `port.Collection`,
+  `component.Collection` and `cycle.Group`. Iterate with `ForEach` and use each element's own
+  store. The copy-on-write batch methods on `signal.Group` (`WithLabelOnEach` …) stay.
+- Scalar statistics — `meta.Scalars.Min`/`Max`/`Sum`/`Average`/`Scale`, and `signal.Group`'s
+  cross-signal aggregation `SumScalar`/`MinScalar`/`MaxScalar`/`AvgScalar` with its sentinel
+  `signal.ErrScalarNotFoundInGroup`. Scalars are a metadata store, not a statistics library;
+  aggregate with `ForEach` where needed.
+- `port.NewIndexedInputGroup` / `NewIndexedOutputGroup` — indexed ports are created on components
+  via `component.WithIndexedInputs` / `WithIndexedOutputs`, which never went through these.
+
 ### Added
 
 - `fmesh.ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works.
@@ -228,8 +283,8 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
   `ErrRunCanceled`, not `ErrTimeLimitExceeded`.
 - **A port-name typo says so.** `InputByName`, `OutputByName` and `Collection.ByName` still return
   `nil` for a name no port has — that is deliberate. What changed is what happens next: `Signals`,
-  `HasSignals`, `PutSignals`, `PutPayloads` and `PutSignalGroups` now panic with `port.ErrNilPort`
-  instead of dereferencing the nil several frames later.
+  `HasSignals`, `PutSignals`, `PutPayloads`, `PutSignalGroups`, `Flush` and `Pipes` now panic with
+  `port.ErrNilPort` instead of dereferencing the nil several frames later.
 
   ```
   panicked: invalid memory address or nil pointer dereference          // before
@@ -240,6 +295,20 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
   Inside an activation the panic is recovered as before, so the run error names the component too,
   and `errors.Is(err, port.ErrNilPort)` reaches it. `PipeTo` is unchanged: `validatePipe` already
   returned `ErrNilPort` for a nil source, and it still returns rather than panics.
+- **An empty mesh fails validation, not the first cycle.** `Run` on a mesh with no components now
+  returns the sentinel `fmesh.ErrNoComponents` from structure validation, before any cycle runs.
+  Previously it returned an unmatchable ad-hoc error after recording a phantom cycle in
+  `RuntimeInfo`. Since validation runs first, user `BeforeRun` hooks no longer fire for an empty
+  mesh.
+- **`CyclesLimit` is the number of cycles that execute.** A limit of 1000 used to run 1001 cycles
+  before stopping. A mesh whose last allowed cycle was already empty now stops naturally instead of
+  reporting `ErrReachedMaxAllowedCycles`.
+- Drain failures wrap inline (`failed to drain: ...`) instead of `errors.Join`'s newline format, so
+  they print like every other stop reason. `errors.Is(err, ErrFailedToDrain)` still matches.
+- Under `StopOnFirstPanic`, the stop error is built by the same helper as
+  `StopOnFirstErrorOrPanic`, so it now also names any activation errors from the failing cycle.
+- Debug-mode activation logging moved from the run loop into a default `AfterCycle` hook — same
+  output, but the scheduler no longer carries logging code.
 
 ### Fixed
 
@@ -251,6 +320,13 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
   50ms sleep against a fixed 100ms ceiling.
 - The panic cases in `TestComponent_MaybeActivate` were asserting nothing — the table only compared
   errors when `IsError()`, which is false for panics.
+- `cycle.Group.Filter`/`Map`/`MapIf` no longer drop the group's own length limit, labels and
+  scalars from the returned group.
+- `signal.Group.Join(nil)` no longer panics; a nil group joins as empty, matching `With`'s
+  treatment of nil signals.
+- The no-hook fast path no longer allocates: the hook-context structs for `OnSignalsAdded`,
+  `OnClear` and the component activation hooks are only built when a hook is registered, saving
+  four heap allocations per component per cycle.
 
 ### Migration checklist
 
@@ -263,8 +339,13 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
 5. Drop the error return from `Payload()` and `AllPayloads()` call sites.
 6. Replace `ErrWaitingForInputsKeep` with `ErrWaitKeepingInputs`; if you returned bare
    `ErrWaitingForInputs`, say `ErrWaitDroppingInputs` instead.
-7. Run `go build ./...` — the compiler finds every remaining site.
-8. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
+7. Rename `GetName()` → `Name()` on your plugins; `autowire.Plugin{Name: ...}` → `InputNameFor`.
+8. Import the profiler from `github.com/hovsep/fmesh-profiler` instead of
+   `github.com/hovsep/fmesh/plugin/profiler`.
+9. If you mutated a `signal.Group`'s own metadata through `Labels()`/`Scalars()`, switch to
+   `WithLabel`/`WithScalar` and assign the result.
+10. Run `go build ./...` — the compiler finds every remaining site.
+11. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
 
 ## Earlier releases
 

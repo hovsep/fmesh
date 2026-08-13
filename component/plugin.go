@@ -8,7 +8,7 @@ import (
 
 // Plugin defines the component plugin interface.
 type Plugin interface {
-	GetName() string
+	Name() string
 	Init(*Component) error
 }
 

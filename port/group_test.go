@@ -51,60 +51,6 @@ func TestNewDirectedGroups(t *testing.T) {
 	}
 }
 
-func TestNewIndexedOutputGroup(t *testing.T) {
-	type args struct {
-		prefix     string
-		startIndex int
-		endIndex   int
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantLen int
-		wantErr bool
-	}{
-		{
-			name: "empty prefix is valid",
-			args: args{
-				prefix:     "",
-				startIndex: 0,
-				endIndex:   3,
-			},
-			wantLen: 4,
-		},
-		{
-			name: "with prefix",
-			args: args{
-				prefix:     "in_",
-				startIndex: 4,
-				endIndex:   5,
-			},
-			wantLen: 2,
-		},
-		{
-			name: "with invalid start index",
-			args: args{
-				prefix:     "",
-				startIndex: 999,
-				endIndex:   5,
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g, err := NewIndexedOutputGroup(tt.args.prefix, tt.args.startIndex, tt.args.endIndex)
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.Nil(t, g)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.wantLen, g.Len())
-			}
-		})
-	}
-}
-
 func TestGroup_With(t *testing.T) {
 	type args struct {
 		ports []*Port
@@ -136,12 +82,8 @@ func TestGroup_With(t *testing.T) {
 			},
 		},
 		{
-			name: "adding to non-empty group",
-			group: func() *Group {
-				g, err := NewIndexedOutputGroup("p", 1, 3)
-				require.NoError(t, err)
-				return g
-			}(),
+			name:  "adding to non-empty group",
+			group: NewOutputGroup("p1", "p2", "p3"),
 			args: args{
 				ports: NewOutputGroup("p4", "p5", "p6").All(),
 			},

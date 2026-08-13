@@ -1,9 +1,11 @@
 name: Benchmarks
 
 # Reports performance deltas (PR head vs. base branch) as a sticky PR comment.
-# Advisory only: this workflow never fails the check — GitHub-hosted runners are
-# noisy shared VMs, so benchmark numbers are guidance, not a merge gate.
-# See .agent/docs/benchmarking.md for how to read the output.
+# Advisory about *numbers*: benchstat never fails on a regression — GitHub-hosted
+# runners are noisy shared VMs, so benchmark numbers are guidance, not a merge
+# gate. Tooling breakage (benchmarks failing to compile or run) does fail the
+# job; only the comment-posting step is best-effort, because fork PRs get a
+# read-only token. See .agent/docs/benchmarking.md for how to read the output.
 
 on:
   pull_request
@@ -30,27 +32,35 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version-file: go.mod
 
+      # Pinned (x/perf has no tagged releases, so a pseudo-version) so a
+      # benchstat release cannot silently change the output this workflow parses.
       - name: Install benchstat
-        run: go install golang.org/x/perf/cmd/benchstat@latest
+        run: go install golang.org/x/perf/cmd/benchstat@v0.0.0-20260709024250-82a0b07e230d
 
       # -count=8 lets benchstat estimate variance and mark insignificant deltas as "~".
+      # `go test` exits non-zero if the benchmarks fail to build or run, and
+      # pipefail makes that fail the step instead of feeding benchstat an empty file.
       - name: Benchmark base branch
-        continue-on-error: true
+        shell: bash
         run: |
+          set -o pipefail
           git checkout --quiet ${{ github.event.pull_request.base.sha }}
           go test -run='^$' -bench=. -benchmem -count=8 ./... | tee base.txt
 
       - name: Benchmark PR head
-        continue-on-error: true
+        shell: bash
         run: |
+          set -o pipefail
           git checkout --quiet ${{ github.event.pull_request.head.sha }}
           go test -run='^$' -bench=. -benchmem -count=8 ./... | tee pr.txt
 
       - name: Compare with benchstat
-        continue-on-error: true
-        run: benchstat base.txt pr.txt | tee bench.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          benchstat base.txt pr.txt | tee bench.txt
 
       # Upsert a single sticky comment (identified by the marker): a short
       # summary of statistically significant deltas up top, the full benchstat

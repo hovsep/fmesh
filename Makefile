@@ -27,6 +27,10 @@ cover:
 	go test -coverpkg=./... -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out | tail -1
 
+# race + cover in one pass; what CI's test job runs.
+ci-test:
+	go test -race -coverpkg=./... -coverprofile=coverage.out ./...
+
 cover-html: cover
 	go tool cover -html=coverage.out
 

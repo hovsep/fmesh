@@ -3,8 +3,11 @@ package component
 // State is a key-value storage that persists between activation cycles of a component.
 // It allows storing and retrieving arbitrary data using string keys.
 //
-// This type is inherently thread-safe as each component has a unique instance of State,
-// and no two instances of the same component exist concurrently.
+// State is a plain map with no locking. That is safe for the common case —
+// each component has its own instance and activates on one goroutine at a
+// time — but not in general: sharing one State between components, or touching
+// it from port hooks (which can fire concurrently during a flush), is a data
+// race.
 type State map[string]any
 
 // newState creates a new component state.

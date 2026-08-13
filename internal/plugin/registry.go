@@ -17,7 +17,7 @@ import (
 // Plugin is the shape every plugin has: a name, and an Init that receives the
 // thing being constructed.
 type Plugin[T any] interface {
-	GetName() string
+	Name() string
 	Init(T) error
 }
 
@@ -34,7 +34,7 @@ func NewRegistry[T any]() *Registry[T] {
 // Add registers plugins, failing on the first duplicate name.
 func (r *Registry[T]) Add(plugins ...Plugin[T]) error {
 	for _, p := range plugins {
-		name := p.GetName()
+		name := p.Name()
 		if _, exists := r.plugins[name]; exists {
 			return fmt.Errorf("plugin %s already registered", name)
 		}

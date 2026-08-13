@@ -41,4 +41,6 @@ var (
 	ErrRunCanceled = errors.New("run canceled")
 	// ErrFailedToDrain is returned when failed to drain.
 	ErrFailedToDrain = errors.New("failed to drain")
+	// ErrNoComponents is returned when Run is called on a mesh with no components.
+	ErrNoComponents = errors.New("no components found")
 )

@@ -2,6 +2,7 @@ package fmesh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hovsep/fmesh/component"
@@ -38,14 +39,37 @@ func newHooks() *Hooks {
 		beforeRun:        hook.NewGroup[*FMesh]().Add(validateMeshStructure),
 		afterRun:         hook.NewGroup[*FMesh](),
 		beforeCycle:      hook.NewGroup[*CycleContext](),
-		afterCycle:       hook.NewGroup[*CycleContext](),
+		afterCycle:       hook.NewGroup[*CycleContext]().Add(logActivationResultsInDebug),
 	}
+}
+
+// logActivationResultsInDebug is a default afterCycle hook: in debug mode it
+// logs every recorded activation result. The stack is kept out of a panic's
+// message so logs stay readable, which would lose it entirely if debug mode did
+// not print it here.
+func logActivationResultsInDebug(_ context.Context, cc *CycleContext) error {
+	fm := cc.FMesh
+	if !fm.IsDebug() {
+		return nil
+	}
+	_ = cc.Cycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
+		fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
+			ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError())
+		if panicErr, ok := errors.AsType[*component.PanicError](ar.ActivationError()); ok {
+			fm.LogDebug("stack trace for component %s:\n%s", ar.ComponentName(), panicErr.StackTrace())
+		}
+		return nil
+	})
+	return nil
 }
 
 // validateMeshStructure runs before every run, so components added between runs
 // are validated too. Components are validated in name order so errors are
 // deterministic.
 func validateMeshStructure(_ context.Context, fm *FMesh) error {
+	if fm.Components().IsEmpty() {
+		return ErrNoComponents
+	}
 	for _, c := range fm.Components().AllOrdered() {
 		if err := validateComponentStructure(fm, c); err != nil {
 			return err

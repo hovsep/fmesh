@@ -30,38 +30,6 @@ func (c *Collection) Labels() *meta.Labels { return c.labels }
 // Scalars returns the collection's own scalars store.
 func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
 
-// SetLabelOnEach sets a label on every component in the collection.
-func (c *Collection) SetLabelOnEach(name, value string) *Collection {
-	for _, comp := range c.components {
-		comp.labels.Set(name, value)
-	}
-	return c
-}
-
-// SetScalarOnEach sets a scalar on every component in the collection.
-func (c *Collection) SetScalarOnEach(name string, value float64) *Collection {
-	for _, comp := range c.components {
-		comp.scalars.Set(name, value)
-	}
-	return c
-}
-
-// RemoveLabelOnEach removes a label from every component in the collection.
-func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
-	for _, comp := range c.components {
-		comp.labels.Remove(names...)
-	}
-	return c
-}
-
-// RemoveScalarOnEach removes a scalar from every component in the collection.
-func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
-	for _, comp := range c.components {
-		comp.scalars.Remove(names...)
-	}
-	return c
-}
-
 // ByName returns a component by its name.
 // Returns nil if not found.
 func (c *Collection) ByName(name string) *Component {

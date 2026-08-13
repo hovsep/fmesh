@@ -52,10 +52,3 @@ func MustPutSignals(p *port.Port, signals ...*signal.Signal) {
 		panic(err)
 	}
 }
-
-// MustPipeTo pipes src to dsts or panics.
-func MustPipeTo(src *port.Port, dsts ...*port.Port) {
-	if err := src.PipeTo(dsts...); err != nil {
-		panic(err)
-	}
-}

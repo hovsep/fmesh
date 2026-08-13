@@ -31,38 +31,6 @@ func (g *Group) Labels() *meta.Labels { return g.labels }
 // Scalars returns the group's own scalars store.
 func (g *Group) Scalars() *meta.Scalars { return g.scalars }
 
-// SetLabelOnEach sets a label on every cycle in the group.
-func (g *Group) SetLabelOnEach(name, value string) *Group {
-	for _, c := range g.cycles {
-		c.labels.Set(name, value)
-	}
-	return g
-}
-
-// SetScalarOnEach sets a scalar on every cycle in the group.
-func (g *Group) SetScalarOnEach(name string, value float64) *Group {
-	for _, c := range g.cycles {
-		c.scalars.Set(name, value)
-	}
-	return g
-}
-
-// RemoveLabelOnEach removes a label from every cycle in the group.
-func (g *Group) RemoveLabelOnEach(names ...string) *Group {
-	for _, c := range g.cycles {
-		c.labels.Remove(names...)
-	}
-	return g
-}
-
-// RemoveScalarOnEach removes a scalar from every cycle in the group.
-func (g *Group) RemoveScalarOnEach(names ...string) *Group {
-	for _, c := range g.cycles {
-		c.scalars.Remove(names...)
-	}
-	return g
-}
-
 // SetLenLimit caps how many cycles the group retains and returns the group.
 // A limit of 0 (or negative) means unlimited. When an Add pushes the group past
 // the limit, the oldest cycles are evicted; the limit is also applied
@@ -110,6 +78,16 @@ func (g *Group) RemoveOldest(count int) *Group {
 	g.cycles = g.cycles[:g.Len()-count]
 
 	return g
+}
+
+// derive returns an empty group carrying the receiver's length limit and copies
+// of its own labels and scalars, so Filter/Map/MapIf results keep them.
+func (g *Group) derive() *Group {
+	derived := NewGroup()
+	derived.lenLimit = g.lenLimit
+	derived.labels = meta.NewLabels().Merge(g.labels)
+	derived.scalars = meta.NewScalars().Merge(g.scalars)
+	return derived
 }
 
 // Without removes cycles matching the predicate and returns a new group.
@@ -211,9 +189,10 @@ func (g *Group) Count(predicate Predicate) int {
 	return count
 }
 
-// Filter returns a new group with cycles that match the predicate.
+// Filter returns a new group with cycles that match the predicate. The group's
+// own length limit, labels and scalars are preserved on the returned group.
 func (g *Group) Filter(predicate Predicate) *Group {
-	filtered := NewGroup()
+	filtered := g.derive()
 	for _, cyc := range g.cycles {
 		if predicate(cyc) {
 			filtered = filtered.Add(cyc)
@@ -223,9 +202,10 @@ func (g *Group) Filter(predicate Predicate) *Group {
 }
 
 // MapIf is like Map but only applies the mapper to cycles that match the predicate.
-// Non-matching cycles are kept as-is. Nil mapper results are dropped.
+// Non-matching cycles are kept as-is. Nil mapper results are dropped. The group's
+// own length limit, labels and scalars are preserved on the returned group.
 func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	mapped := NewGroup()
+	mapped := g.derive()
 	for _, c := range g.cycles {
 		if predicate(c) {
 			if transformedCyc := mapper(c); transformedCyc != nil {
@@ -238,9 +218,10 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	return mapped
 }
 
-// Map returns a new group with cycles transformed by the mapper function.
+// Map returns a new group with cycles transformed by the mapper function. The
+// group's own length limit, labels and scalars are preserved on the returned group.
 func (g *Group) Map(mapper Mapper) *Group {
-	mapped := NewGroup()
+	mapped := g.derive()
 	for _, cyc := range g.cycles {
 		if transformedCyc := mapper(cyc); transformedCyc != nil {
 			mapped = mapped.Add(transformedCyc)

@@ -525,6 +525,21 @@ func TestGroup_Filter(t *testing.T) {
 		})
 		assert.Equal(t, 0, filtered.Len())
 	})
+
+	t.Run("preserves group meta and len limit", func(t *testing.T) {
+		group := NewGroup().SetLenLimit(5).Add(c1, c2, c3)
+		group.Labels().Set("k", "v")
+
+		filtered := group.Filter(func(c *Cycle) bool {
+			return c.HasActivatedComponents()
+		})
+
+		assert.Equal(t, 5, filtered.lenLimit)
+		assert.True(t, filtered.Labels().ValueIs("k", "v"))
+		// The derived stores are copies, not shared with the source group.
+		filtered.Labels().Set("k2", "v2")
+		assert.False(t, group.Labels().Has("k2"))
+	})
 }
 
 func TestGroup_MapIf(t *testing.T) {

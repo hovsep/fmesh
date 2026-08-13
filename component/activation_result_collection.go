@@ -30,8 +30,8 @@ func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult)
 	return c
 }
 
-// Without removes activation results by component name and returns the collection.
-func (c *ActivationResultCollection) Without(componentNames ...string) *ActivationResultCollection {
+// Remove removes activation results by component name and returns the collection.
+func (c *ActivationResultCollection) Remove(componentNames ...string) *ActivationResultCollection {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

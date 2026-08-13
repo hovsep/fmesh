@@ -156,8 +156,15 @@ func TestMeshHooks_AccumulateInRegistrationOrder(t *testing.T) {
 func TestMeshHooks_AfterRunFiresOnAFailedRun(t *testing.T) {
 	var beforeRun, afterRun bool
 
-	// An empty mesh fails on the first cycle.
-	fm := testutil.MustFMesh("empty")
+	// A component whose activation errors fails the run under the default strategy.
+	failing := testutil.MustComponent("failing",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error {
+			return errors.New("activation failed")
+		}))
+	fm := testutil.MustFMesh("failing-mesh")
+	require.NoError(t, fm.AddComponents(failing))
+	testutil.MustPutSignals(failing.InputByName("in"), signal.New(1))
 	fm.SetupHooks(func(h *fmesh.Hooks) {
 		h.BeforeRun(func(context.Context, *fmesh.FMesh) error {
 			beforeRun = true

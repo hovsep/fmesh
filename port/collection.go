@@ -80,38 +80,6 @@ func (c *Collection) Labels() *meta.Labels { return c.labels }
 // Scalars returns the collection's own scalars store.
 func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
 
-// SetLabelOnEach sets a label on every port in the collection.
-func (c *Collection) SetLabelOnEach(name, value string) *Collection {
-	for p := range c.each {
-		p.labels.Set(name, value)
-	}
-	return c
-}
-
-// SetScalarOnEach sets a scalar on every port in the collection.
-func (c *Collection) SetScalarOnEach(name string, value float64) *Collection {
-	for p := range c.each {
-		p.scalars.Set(name, value)
-	}
-	return c
-}
-
-// RemoveLabelOnEach removes a label from every port in the collection.
-func (c *Collection) RemoveLabelOnEach(names ...string) *Collection {
-	for p := range c.each {
-		p.labels.Remove(names...)
-	}
-	return c
-}
-
-// RemoveScalarOnEach removes a scalar from every port in the collection.
-func (c *Collection) RemoveScalarOnEach(names ...string) *Collection {
-	for p := range c.each {
-		p.scalars.Remove(names...)
-	}
-	return c
-}
-
 // ByName retrieves a specific port from the collection by its name.
 // Returns nil if not found, so callers must nil-check.
 func (c *Collection) ByName(name string) *Port {

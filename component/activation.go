@@ -84,7 +84,12 @@ func (c *Component) buildResultAndTriggerHook(ctx context.Context, err error) *A
 }
 
 // triggerHooksForResult triggers the outcome-specific hook with the activation context.
+// The IsEmpty guard keeps the context struct off the heap in the common no-hook
+// case — it escapes whether or not anything reads it, once per activation.
 func (c *Component) triggerHooksForResult(ctx context.Context, result *ActivationResult, hookGroup *hook.Group[*ActivationContext]) {
+	if hookGroup.IsEmpty() {
+		return
+	}
 	if err := hookGroup.Trigger(ctx, &ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
 			AddActivationError(fmt.Errorf("activation hook failed: %w", err))
@@ -93,6 +98,9 @@ func (c *Component) triggerHooksForResult(ctx context.Context, result *Activatio
 
 // triggerAfterActivation triggers the AfterActivation hook.
 func (c *Component) triggerAfterActivation(ctx context.Context, result *ActivationResult) {
+	if c.hooks.afterActivation.IsEmpty() {
+		return
+	}
 	if err := c.hooks.afterActivation.Trigger(ctx, &ActivationContext{Component: c, Result: result}); err != nil {
 		result.SetActivationCode(ActivationCodeHookFailed).
 			AddActivationError(fmt.Errorf("afterActivation hook failed: %w", err))

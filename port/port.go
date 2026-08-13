@@ -126,6 +126,7 @@ func WithScalar(name string, value float64) Option {
 
 // Pipes returns outbound pipes. Input ports always return an empty group.
 func (p *Port) Pipes() *Group {
+	p.mustExist()
 	return p.pipes
 }
 
@@ -180,6 +181,13 @@ func (p *Port) putSignals(ctx context.Context, signals []*signal.Signal) error {
 	previousSignals := p.Signals()
 	p.setSignals(previousSignals.With(signals...))
 
+	// The hook context escapes to the heap whether or not anything reads it, so
+	// the common case of no hook must not reach the composite literal (this runs
+	// once per pipe delivery, per cycle).
+	if p.hooks.onSignalsAdded.IsEmpty() {
+		return nil
+	}
+
 	if err := p.hooks.onSignalsAdded.Trigger(ctx, &SignalsAddedContext{
 		Port:         p,
 		SignalsAdded: signals,
@@ -211,7 +219,12 @@ func (p *Port) Clear(ctx context.Context) error {
 	signalsCleared := p.Signals().Len()
 	p.setSignals(signal.NewGroup())
 
-	// Trigger OnClear hook
+	// Same allocation guard as putSignals: this runs for every port on every
+	// cycle, and the context struct escapes even with no hooks registered.
+	if p.hooks.onClear.IsEmpty() {
+		return nil
+	}
+
 	if err := p.hooks.onClear.Trigger(ctx, &ClearContext{
 		Port:           p,
 		SignalsCleared: signalsCleared,
@@ -231,6 +244,7 @@ func (p *Port) Clear(ctx context.Context) error {
 // failure re-delivers to the destinations that already received them.
 // Each successful delivery fires the OnSignalsDelivered hook on this port.
 func (p *Port) Flush(ctx context.Context) error {
+	p.mustExist()
 	if p.IsInput() {
 		return fmt.Errorf("cannot flush input port %q: only output ports can be flushed", p.Name())
 	}

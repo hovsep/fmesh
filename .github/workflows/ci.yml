@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version-file: go.mod
 
       - name: Install dependencies
         run: go mod download
@@ -36,7 +36,7 @@ jobs:
       # packages and would otherwise contribute nothing to the figures — the
       # per-package numbers land in the mid-70s without it.
       - name: Run tests
-        run: go test -race -coverpkg=./... -coverprofile=coverage.out ./...
+        run: make ci-test
 
       # Coverage is measured but not published to a third party. The profile is
       # kept as a build artifact so the number for any run stays retrievable:
@@ -49,8 +49,12 @@ jobs:
           path: coverage.out
           retention-days: 14
 
+      # Pinned so a new golangci-lint release cannot turn CI red without a repo
+      # change; keep in step with the version developers run locally.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
 
   fmt:
     name: Check formatting
@@ -62,15 +66,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version-file: go.mod
 
       # CONTRIBUTING asks for `make fmt`, which rewrites files; CI has to check
       # rather than rewrite, so it asserts gofmt finds nothing to change.
       - name: gofmt
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "These files need gofmt:"
-            echo "$unformatted"
-            exit 1
-          fi
+        run: make fmt-check

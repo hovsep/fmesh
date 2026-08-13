@@ -16,6 +16,7 @@ linters:
     - asasalint
     - copyloopvar
     - reassign
+    - exhaustive
     # --- complexity ---
     - gocyclo
     # --- style ---
@@ -32,6 +33,7 @@ linters:
     - whitespace
     - dupword
     - recvcheck
+    - errname
     # --- security ---
     - gosec
     # --- performance ---
@@ -39,6 +41,9 @@ linters:
     - prealloc
     - mirror
     # --- best practices ---
+    # thelper is deliberately absent: it cannot tell named helpers from
+    # table-driven assertion closures, and t.Helper() in those closures makes
+    # failures point at the dispatch line instead of the assert.
     - gochecknoinits
     - testifylint
     - usestdlibvars
@@ -46,7 +51,10 @@ linters:
     - modernize
   settings:
     dupl:
-      threshold: 200
+      threshold: 150
+    exhaustive:
+      # A switch with a default arm has made its choice about the other values.
+      default-signifies-exhaustive: true
     gocyclo:
       min-complexity: 15
     goconst:

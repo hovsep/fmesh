@@ -11,8 +11,8 @@ import (
 )
 
 // Plugin pipes components together by naming convention instead of by hand: an
-// input port named by Name(output) is wired to that output. See the wiki page on
-// plugins for when to reach for it.
+// input port named by InputNameFor(source, output) is wired to that output. See
+// the wiki page on plugins for when to reach for it.
 //
 // Wiring happens in both directions as components are added, so the order of
 // AddComponents does not matter. A component must carry its ports when it is
@@ -22,9 +22,9 @@ import (
 // One convention per instance, each with its own PluginName; a mesh that wants
 // two rules registers two plugins.
 type Plugin struct {
-	// Name maps a source component and one of its output ports to the input
-	// port name that should receive it. Returning "" declines to wire.
-	Name func(source *component.Component, output *port.Port) string
+	// InputNameFor maps a source component and one of its output ports to the
+	// input port name that should receive it. Returning "" declines to wire.
+	InputNameFor func(source *component.Component, output *port.Port) string
 
 	// PluginName distinguishes one convention from another on the same mesh.
 	// Defaults to "autowire".
@@ -38,7 +38,7 @@ type Plugin struct {
 func Prefixed(prefix string) *Plugin {
 	return &Plugin{
 		PluginName: "autowire:prefixed:" + prefix,
-		Name: func(source *component.Component, output *port.Port) string {
+		InputNameFor: func(source *component.Component, output *port.Port) string {
 			return fmt.Sprintf("%s%s_%s", prefix, source.Name(), output.Name())
 		},
 	}
@@ -59,7 +59,7 @@ func Broadcast(portName string) *Plugin {
 func BroadcastAs(outputName, inputName string) *Plugin {
 	return &Plugin{
 		PluginName: "autowire:broadcast:" + outputName + "->" + inputName,
-		Name: func(_ *component.Component, output *port.Port) string {
+		InputNameFor: func(_ *component.Component, output *port.Port) string {
 			if output.Name() != outputName {
 				return ""
 			}
@@ -68,8 +68,8 @@ func BroadcastAs(outputName, inputName string) *Plugin {
 	}
 }
 
-// GetName implements fmesh.Plugin.
-func (a *Plugin) GetName() string {
+// Name implements fmesh.Plugin.
+func (a *Plugin) Name() string {
 	if a.PluginName == "" {
 		return "autowire"
 	}
@@ -78,7 +78,7 @@ func (a *Plugin) GetName() string {
 
 // Init implements fmesh.Plugin.
 func (a *Plugin) Init(fm *fmesh.FMesh) error {
-	if a.Name == nil {
+	if a.InputNameFor == nil {
 		return errors.New("autowire: Name must be set")
 	}
 
@@ -105,7 +105,7 @@ func (a *Plugin) Init(fm *fmesh.FMesh) error {
 // connect pipes every output of source to the matching input of destination.
 func (a *Plugin) connect(source, destination *component.Component) error {
 	return source.Outputs().ForEach(func(out *port.Port) error {
-		name := a.Name(source, out)
+		name := a.InputNameFor(source, out)
 		if name == "" {
 			return nil
 		}

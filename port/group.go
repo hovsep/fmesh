@@ -1,7 +1,6 @@
 package port
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/hovsep/fmesh/meta"
@@ -49,73 +48,16 @@ func newPortOfDirection(direction Direction, name string) *Port {
 // Labels returns the group's own labels store.
 func (g *Group) Labels() *meta.Labels { return g.labels }
 
-// WithLabel adds or updates a single label on the group itself.
-func (g *Group) WithLabel(name, value string) *Group { g.labels.Set(name, value); return g }
+// SetLabel adds or updates a single label on the group itself.
+func (g *Group) SetLabel(name, value string) *Group { g.labels.Set(name, value); return g }
 
 // Scalars returns the group's own scalars store.
 func (g *Group) Scalars() *meta.Scalars { return g.scalars }
 
-// WithScalar adds or updates a single scalar on the group itself.
-func (g *Group) WithScalar(name string, value float64) *Group {
+// SetScalar adds or updates a single scalar on the group itself.
+func (g *Group) SetScalar(name string, value float64) *Group {
 	g.scalars.Set(name, value)
 	return g
-}
-
-// WithLabelOnEach sets a label on every port in the group.
-func (g *Group) WithLabelOnEach(name, value string) *Group {
-	for _, p := range g.ports {
-		p.labels.Set(name, value)
-	}
-	return g
-}
-
-// WithScalarOnEach sets a scalar on every port in the group.
-func (g *Group) WithScalarOnEach(name string, value float64) *Group {
-	for _, p := range g.ports {
-		p.scalars.Set(name, value)
-	}
-	return g
-}
-
-// RemoveLabelOnEach removes a label from every port in the group.
-func (g *Group) RemoveLabelOnEach(names ...string) *Group {
-	for _, p := range g.ports {
-		p.labels.Remove(names...)
-	}
-	return g
-}
-
-// RemoveScalarOnEach removes a scalar from every port in the group.
-func (g *Group) RemoveScalarOnEach(names ...string) *Group {
-	for _, p := range g.ports {
-		p.scalars.Remove(names...)
-	}
-	return g
-}
-
-// NewIndexedInputGroup creates a group of input ports with the same prefix.
-// NOTE: endIndex is inclusive, e.g. NewIndexedInputGroup("p", 0, 0) will create one port with name "p0".
-func NewIndexedInputGroup(prefix string, startIndex, endIndex int) (*Group, error) {
-	return newIndexedGroupOfDirection(DirectionIn, prefix, startIndex, endIndex)
-}
-
-// NewIndexedOutputGroup creates a group of output ports with the same prefix.
-// NOTE: endIndex is inclusive, e.g. NewIndexedOutputGroup("p", 0, 0) will create one port with name "p0".
-func NewIndexedOutputGroup(prefix string, startIndex, endIndex int) (*Group, error) {
-	return newIndexedGroupOfDirection(DirectionOut, prefix, startIndex, endIndex)
-}
-
-func newIndexedGroupOfDirection(direction Direction, prefix string, startIndex, endIndex int) (*Group, error) {
-	if startIndex > endIndex {
-		return nil, ErrInvalidRangeForIndexedGroup
-	}
-
-	ports := make([]*Port, endIndex-startIndex+1)
-	for i := startIndex; i <= endIndex; i++ {
-		ports[i-startIndex] = newPortOfDirection(direction, fmt.Sprintf("%s%d", prefix, i))
-	}
-
-	return NewGroup().setPorts(ports), nil
 }
 
 // add appends ports to the group in place. Internal use only; always succeeds.

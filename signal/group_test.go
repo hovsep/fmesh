@@ -277,6 +277,12 @@ func TestGroup_Join(t *testing.T) {
 		_ = a.Join(NewGroup(3, 4))
 		assert.Equal(t, 2, a.Len())
 	})
+
+	t.Run("join with nil group is treated as empty", func(t *testing.T) {
+		a := NewGroup(1, 2)
+		got := a.Join(nil)
+		assert.Equal(t, NewGroup(1, 2), got)
+	})
 }
 
 func TestGroup_Contains(t *testing.T) {

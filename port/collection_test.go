@@ -300,11 +300,7 @@ func TestCollection_PipeTo(t *testing.T) {
 			name:       "empty collection",
 			collection: NewCollection(),
 			args: args{
-				destPorts: func() []*Port {
-					g, err := NewIndexedOutputGroup("dest_", 1, 3)
-					require.NoError(t, err)
-					return g.All()
-				}(),
+				destPorts: NewOutputGroup("dest_1", "dest_2", "dest_3").All(),
 			},
 			assertions: func(t *testing.T, collection *Collection) {
 				assert.Zero(t, collection.Len())
@@ -360,9 +356,7 @@ func TestCollection_Signals(t *testing.T) {
 		{
 			name: "non-empty collection",
 			collection: func() *Collection {
-				indexedPorts, err := NewIndexedOutputGroup("p", 1, 3)
-				require.NoError(t, err)
-				c := mustNewCollection(indexedPorts.All()...)
+				c := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
 				require.NoError(t, c.PutSignalsOnEach(signal.New(1), signal.New(2), signal.New(3)))
 				require.NoError(t, c.PutSignalsOnEach(signal.New("test")))
 				return c

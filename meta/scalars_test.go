@@ -55,102 +55,6 @@ func TestScalars_SharedStoreWithFloat64Values(t *testing.T) {
 	assert.True(t, s.Clear().IsEmpty())
 }
 
-func TestScalars_Min(t *testing.T) {
-	t.Run("empty store returns ok=false", func(t *testing.T) {
-		_, _, ok := NewScalars().Min()
-		assert.False(t, ok)
-	})
-	t.Run("single entry", func(t *testing.T) {
-		name, v, ok := NewScalars().Set("only", 3.14).Min()
-		require.True(t, ok)
-		assert.Equal(t, "only", name)
-		assert.InDelta(t, 3.14, v, 1e-9)
-	})
-	t.Run("multiple entries", func(t *testing.T) {
-		s := NewScalars().SetMany(map[string]float64{"a": 5, "b": 2, "c": 8})
-		name, v, ok := s.Min()
-		require.True(t, ok)
-		assert.Equal(t, "b", name)
-		assert.InDelta(t, 2.0, v, 1e-9)
-	})
-	t.Run("negative values", func(t *testing.T) {
-		s := NewScalars().SetMany(map[string]float64{"x": -100, "y": 0, "z": 50})
-		name, v, ok := s.Min()
-		require.True(t, ok)
-		assert.Equal(t, "x", name)
-		assert.InDelta(t, -100.0, v, 1e-9)
-	})
-}
-
-func TestScalars_Max(t *testing.T) {
-	t.Run("empty store returns ok=false", func(t *testing.T) {
-		_, _, ok := NewScalars().Max()
-		assert.False(t, ok)
-	})
-	t.Run("multiple entries", func(t *testing.T) {
-		s := NewScalars().SetMany(map[string]float64{"a": 5, "b": 2, "c": 8})
-		name, v, ok := s.Max()
-		require.True(t, ok)
-		assert.Equal(t, "c", name)
-		assert.InDelta(t, 8.0, v, 1e-9)
-	})
-	t.Run("all negative values", func(t *testing.T) {
-		s := NewScalars().SetMany(map[string]float64{"x": -10, "y": -3, "z": -50})
-		name, v, ok := s.Max()
-		require.True(t, ok)
-		assert.Equal(t, "y", name)
-		assert.InDelta(t, -3.0, v, 1e-9)
-	})
-}
-
-func TestScalars_Sum(t *testing.T) {
-	s := NewScalars().SetMany(map[string]float64{"a": 1, "b": 2, "c": 3})
-
-	t.Run("sum all when no names given", func(t *testing.T) {
-		assert.InDelta(t, 6.0, s.Sum(), 1e-9)
-	})
-	t.Run("sum named subset", func(t *testing.T) {
-		assert.InDelta(t, 3.0, s.Sum("a", "b"), 1e-9)
-	})
-	t.Run("missing name contributes 0", func(t *testing.T) {
-		assert.InDelta(t, 1.0, s.Sum("a", "missing"), 1e-9)
-	})
-	t.Run("empty store sum = 0", func(t *testing.T) {
-		assert.InDelta(t, 0.0, NewScalars().Sum(), 1e-9)
-	})
-}
-
-func TestScalars_Average(t *testing.T) {
-	s := NewScalars().SetMany(map[string]float64{"a": 1, "b": 3})
-
-	t.Run("average all", func(t *testing.T) {
-		avg, ok := s.Average()
-		require.True(t, ok)
-		assert.InDelta(t, 2.0, avg, 1e-9)
-	})
-	t.Run("average named subset", func(t *testing.T) {
-		avg, ok := s.Average("a", "b")
-		require.True(t, ok)
-		assert.InDelta(t, 2.0, avg, 1e-9)
-	})
-	t.Run("empty store returns ok=false", func(t *testing.T) {
-		_, ok := NewScalars().Average()
-		assert.False(t, ok)
-	})
-}
-
-func TestScalars_Scale(t *testing.T) {
-	t.Run("scales existing entry", func(t *testing.T) {
-		s := NewScalars().Set("x", 5.0).Scale("x", 3.0)
-		v, _ := s.Value("x")
-		assert.InDelta(t, 15.0, v, 1e-9)
-	})
-	t.Run("missing name is no-op", func(t *testing.T) {
-		s := NewScalars().Set("x", 5.0).Scale("missing", 100.0)
-		assert.Equal(t, 1, s.Len())
-	})
-}
-
 func TestScalars_Merge(t *testing.T) {
 	t.Run("merges two stores", func(t *testing.T) {
 		a := NewScalars().SetMany(map[string]float64{"x": 1, "y": 2})
@@ -192,11 +96,10 @@ func TestScalars_Chainable(t *testing.T) {
 		Set("a", 1.0).
 		Set("b", 2.0).
 		SetMany(map[string]float64{"c": 3.0, "d": 4.0}).
-		Remove("d").
-		Scale("a", 10.0)
+		Remove("d")
 
 	assert.Equal(t, 3, s.Len())
 	v, _ := s.Value("a")
-	assert.InDelta(t, 10.0, v, 1e-9)
+	assert.InDelta(t, 1.0, v, 1e-9)
 	assert.False(t, s.Has("d"))
 }

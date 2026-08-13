@@ -100,7 +100,7 @@ type recordingPlugin struct {
 	seen *[]string
 }
 
-func (p recordingPlugin) GetName() string { return p.name }
+func (p recordingPlugin) Name() string { return p.name }
 
 func (p recordingPlugin) Init(*Component) error {
 	*p.seen = append(*p.seen, p.name)
@@ -109,13 +109,13 @@ func (p recordingPlugin) Init(*Component) error {
 
 type brokenPlugin struct{}
 
-func (brokenPlugin) GetName() string       { return "brokenPlugin" }
+func (brokenPlugin) Name() string          { return "brokenPlugin" }
 func (brokenPlugin) Init(*Component) error { return errors.New("no") }
 
 type PricePlugin struct {
 }
 
-func (pp PricePlugin) GetName() string {
+func (pp PricePlugin) Name() string {
 	return "PricePlugin"
 }
 
