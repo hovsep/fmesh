@@ -6,20 +6,12 @@ import (
 	"github.com/hovsep/fmesh/internal/plugin"
 )
 
-// Plugin defines the mesh plugin interface.
+// Plugin defines the mesh plugin interface — the home for cross-cutting
+// concerns (component.Plugin is the per-component counterpart).
 //
-// The component-level counterpart (component.Plugin) bundles initialization for
-// one component. This one bundles it for a whole mesh, which makes it the
-// natural home for anything cross-cutting: measuring, tracing, exporting,
-// asserting. None of those belong to any single component, and all of them would
-// otherwise have to be wired into every one by hand.
-//
-// A plugin that wants to reach the components cannot simply walk them in Init:
-// a mesh is constructed empty and filled by AddComponents afterwards, so at Init
-// time there is nothing to walk. It registers an OnComponentAdded hook instead
-// and instruments each component as it arrives. That indirection is the whole
-// trick, and it is why a mesh plugin can observe every activation in a mesh
-// without a single component knowing it exists.
+// Init cannot walk components: a mesh is constructed empty and filled by
+// AddComponents afterwards. Register an OnComponentAdded hook instead and
+// instrument each component as it arrives.
 type Plugin interface {
 	Name() string
 	Init(*FMesh) error

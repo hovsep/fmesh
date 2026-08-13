@@ -40,19 +40,20 @@ Use `Set` for **everything else** that is a plain `field = value; return receive
 Replacing all labels is `x.Labels().Clear().SetMany(m)` — two calls, and it reads as what it does.
 
 `meta.Labels` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Merge(other)` returns a new collection.
-`meta.Scalars` (mutating): `Set`, `SetMany`, `Remove`, `Clear`, `Scale`. `Merge(other)` returns a new collection.
+`meta.Scalars` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Merge(other)` returns a new collection.
 
 ## Group/Collection metadata batch methods
 
+Batch metadata on contents exists on `signal.Group` **only** (the mutating collections' `Set*OnEach` batch methods were removed — iterate with `ForEach` instead):
+
 | Method | Effect |
 |---|---|
-| `WithLabelOnEach(k, v)` / `WithScalarOnEach(k, v)` | **CoW only** (`signal.Group`): returns a new group with the metadata set on each contained signal |
-| `SetLabelOnEach(k, v)` / `SetScalarOnEach(k, v)` | **Mutating collections**: sets metadata on each contained element in place |
-| `RemoveLabelOnEach(names...)` / `RemoveScalarOnEach(names...)` | Removes metadata from each contained element |
+| `WithLabelOnEach(k, v)` / `WithScalarOnEach(k, v)` | Returns a new group with the metadata set on each contained signal |
+| `RemoveLabelOnEach(names...)` / `RemoveScalarOnEach(names...)` | Returns a new group with the metadata removed from each contained signal |
+
+The batch methods preserve the group's own metadata on the returned group via `copyGroupMeta`.
 
 A collection's own metadata is reached the same way as any other mutating type: `c.Labels().Set(k, v)`.
-
-For `signal.Group` (fully CoW): the batch methods return a new group and preserve the group's own metadata via `copyGroupMeta`.
 
 ## Constructor options
 

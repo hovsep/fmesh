@@ -102,7 +102,7 @@ Never mix them, and there is no exception: mutating types carry no metadata meth
 `x.Labels().Set(k, v)` reaches the live store. `Signal.Payload()` returns `any` and cannot fail.
 
 The signal **payload** stays `any` — FBP needs mixed-type signals in one group, so pipes cannot be
-typed. Generics are otherwise fine where they remove real duplication (`meta.store[T, S]` is the
+typed. Generics are otherwise fine where they remove real duplication (`meta.store[T]` is the
 worked example); weigh per-instance cost and godoc rendering first — see `design.md`. Minimise
 `reflect`; no chainable error/"poison object" pattern — fallible methods return `error` last,
 infallible transforms (`Filter`, `Map`, `With*`) return their type directly for fluency.

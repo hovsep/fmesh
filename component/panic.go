@@ -6,20 +6,12 @@ import (
 
 // PanicError is what a recovered panic becomes.
 //
-// The stack is deliberately not part of Error(). Formatting a full debug.Stack()
-// into the message produced multi-kilobyte single-line errors: unreadable in a
-// log, useless in a test assertion, and impossible to grep. Error() is one line
-// naming what was thrown; the stack is still there, reachable with errors.As.
-//
-//	var panicErr *component.PanicError
-//	if errors.As(err, &panicErr) {
-//	    log.Printf("%s in %s\n%s", panicErr, panicErr.ComponentName, panicErr.StackTrace())
-//	}
+// Error() is one line naming what was thrown; the stack is deliberately not in
+// the message (a full stack made errors unreadable and ungreppable) and is
+// reached with errors.As and StackTrace.
 type PanicError struct {
-	// ComponentName is the component whose activation panicked. It is not part
-	// of Error() because ActivationResult.ActivationErrorWithComponentName
-	// already prefixes it; keeping it here makes it reachable programmatically
-	// rather than only by parsing a message.
+	// ComponentName is the component whose activation panicked. Not part of
+	// Error(), which the activation result already prefixes with it.
 	ComponentName string
 
 	// Value is whatever was passed to panic().

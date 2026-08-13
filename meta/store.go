@@ -7,15 +7,10 @@ import (
 
 // store is the map[string]T behavior shared by Labels and Scalars.
 //
-// It holds the map and nothing else, so a Labels is exactly the size of the map
-// header it wraps — an earlier version also carried a pointer back to the
-// embedding type so that promoted mutators could return it, and that doubled
-// every store from 8 bytes to 16. Signals own two apiece, which showed up as ~6%
-// more bytes per mesh run.
-//
-// The price is that the four chainable mutators are declared on Labels and
-// Scalars rather than promoted from here: they need a concrete return type. Read
-// methods are promoted, because their return types do not name the receiver.
+// It holds the map and nothing else — an earlier self pointer for promoted
+// mutators doubled every store's size, and signals own two apiece. The chainable
+// mutators are therefore declared on Labels and Scalars, which can name their
+// concrete return type; read methods are promoted.
 type store[T comparable] struct {
 	entries map[string]T
 }

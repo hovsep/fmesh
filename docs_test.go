@@ -11,6 +11,11 @@
 //   - TestDocs_NoRemovedMethodNames — catches what the first one cannot: calls on
 //     a variable, like c.Labels().AddLabel(...), whose receiver type a fragment
 //     does not reveal. It works by refusing a list of names that were removed.
+//   - TestDocs_MethodCallsExistSomewhere — the positive version of the same idea:
+//     every `.SomeExported(` call in a fenced Go block must name a method or
+//     function defined somewhere in this module, or sit on a small allowlist of
+//     external names (stdlib, the profiler module) that snippets legitimately use.
+//     The denylist test stays because it also scans Go source comments.
 //
 // Deliberately not checked: argument counts, and prose outside Go blocks — the
 // wiki discusses removed API on purpose when explaining a migration.
@@ -230,5 +235,106 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		sort.Strings(stale)
 		t.Fatalf("documentation calls %d removed method(s):\n  %s",
 			len(stale), strings.Join(stale, "\n  "))
+	}
+}
+
+// moduleDefinedNames returns every exported method and function name defined in
+// any non-test .go file in this module, subpackages and internal/ included —
+// promoted methods (collection.Keyed, meta.store) are defined there.
+func moduleDefinedNames(t *testing.T) map[string]bool {
+	t.Helper()
+
+	names := make(map[string]bool)
+	fset := token.NewFileSet()
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			if name := d.Name(); name != "." && (strings.HasPrefix(name, ".") || name == "testdata") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+		if err != nil {
+			return err
+		}
+		for _, decl := range file.Decls {
+			if fd, ok := decl.(*ast.FuncDecl); ok && fd.Name.IsExported() {
+				names[fd.Name.Name] = true
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	return names
+}
+
+// docsExternalNames is the allowlist for TestDocs_MethodCallsExistSomewhere:
+// names that exist outside this module but appear as calls in snippets. Keep it
+// minimal — every entry is a name the check can no longer question.
+var docsExternalNames = map[string]bool{
+	// stdlib
+	"Background": true, "WithCancel": true, // context
+	"Errorf": true, "Printf": true, "Println": true, "Sprintf": true, // fmt / log
+	"HasPrefix": true, "ToLower": true, "ToUpper": true, // strings
+	"Now": true, "Since": true, "Format": true, // time
+	"Is":    true,              // errors
+	"Itoa":  true,              // strconv
+	"Clone": true, "Min": true, // maps / slices
+	"Load": true,                                    // sync/atomic
+	"Exit": true, "Getenv": true, "WriteFile": true, // os
+	"NewRequestWithContext": true, // net/http
+	// the DOT exporter (fmesh-graphviz) and the profiler (fmesh-profiler) live in
+	// their own modules; the wiki shows their entry points
+	"Export": true, "ExportWithCycles": true, "NewDotExporter": true,
+	"Report": true,
+	// placeholder interface in a teaching snippet (sink.Publish, 602)
+	"Publish": true,
+}
+
+// TestDocs_MethodCallsExistSomewhere is the positive complement of the denylist:
+// a `.SomeExported(` call in a fenced Go block whose name no file in this module
+// defines (and that is not on the external allowlist) cannot be a valid call on
+// any of this module's types. Unlike the denylist it also catches renames nobody
+// remembered to list.
+func TestDocs_MethodCallsExistSomewhere(t *testing.T) {
+	known := moduleDefinedNames(t)
+
+	files, err := filepath.Glob("docs/wiki/*.md")
+	require.NoError(t, err)
+	// CHANGELOG.md is deliberately absent: its fenced blocks show removed API as
+	// "before" migration examples.
+	files = append(files, "README.md", "CONTRIBUTING.md")
+
+	var unknown []string
+	seen := make(map[string]bool)
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		require.NoError(t, err)
+		for _, block := range goBlockRe.FindAllStringSubmatch(string(content), -1) {
+			code := lineComment.ReplaceAllString(block[1], "")
+			for _, call := range methodCallRe.FindAllStringSubmatch(code, -1) {
+				name := call[1]
+				if known[name] || docsExternalNames[name] {
+					continue
+				}
+				line := file + ": ." + name + "()"
+				if !seen[line] {
+					seen[line] = true
+					unknown = append(unknown, line)
+				}
+			}
+		}
+	}
+
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		t.Fatalf("documentation calls %d method(s) defined nowhere in this module:\n  %s",
+			len(unknown), strings.Join(unknown, "\n  "))
 	}
 }

@@ -5,14 +5,8 @@ import (
 	"fmt"
 )
 
-// Typed reads of a payload, which is an any because a mesh carries mixed types
-// down one pipe. Two shapes: one reports what went wrong, one carries on with a
-// default. Neither panics.
-//
-// Reach for As. AsOrDefault is the one that turns "upstream now sends int64" into
-// a silent zero — the mismatch and the genuinely-absent value are indistinguishable
-// in its result, and nothing anywhere else in the mesh will mention it. Use it only
-// where a fallback is the correct answer rather than the convenient one.
+// Typed payload accessors: As reports a wrong or missing type, AsOrDefault
+// substitutes a default. Neither panics. Prefer As — see AsOrDefault's footgun.
 
 // As returns the payload as T, failing rather than panicking when the payload is
 // another type — a component cannot know that something upstream changed its

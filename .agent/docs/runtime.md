@@ -33,9 +33,9 @@ policy (first N, every k-th, errors-only, head+tail) is user code via a mesh-lev
 ```go
 var startup []*cycle.Cycle
 fm.SetupHooks(func(h *fmesh.Hooks) {
-    h.AfterCycle(func(ctx *fmesh.CycleContext) error {
-        if ctx.Cycle.Number() <= N {
-            startup = append(startup, ctx.Cycle)
+    h.AfterCycle(func(ctx context.Context, cc *fmesh.CycleContext) error {
+        if cc.Cycle.Number() <= N {
+            startup = append(startup, cc.Cycle)
         }
         return nil
     })
@@ -58,7 +58,8 @@ external store).
   are always recorded. This keeps runtime info free of noise in sparse meshes (pipelines,
   rings) where most components sit idle most cycles.
 - The cycle is always appended to `RuntimeInfo.Cycles`, even when it errored.
-- An empty mesh (`Run` with zero components) is a cycle error (`errNoComponents`).
+- An empty mesh never reaches a cycle: the default beforeRun structure validation fails it with
+  the exported sentinel `fmesh.ErrNoComponents`, so user `BeforeRun` hooks do not fire either.
 
 ## Activation result codes
 
@@ -89,26 +90,29 @@ with no signals or no pipes is a no-op, not an error.
 
 ## Stop conditions (`mustStop`, checked in order)
 
-1. Cycle limit hit (`config.CyclesLimit`, default **1000**; 0 = unlimited) → `ErrReachedMaxAllowedCycles`
+1. Cycle limit hit (`config.CyclesLimit`, default **1000**; 0 = unlimited) → `ErrReachedMaxAllowedCycles`. The limit is **exact** — it is the number of cycles that execute, not limit+1 — and the check also requires `HasActivatedComponents()`, so a mesh whose last allowed cycle was already empty falls through to the natural stop instead of a false error.
 2. Time limit hit (`config.TimeLimit`, default **5s**; 0 = unlimited) → `ErrTimeLimitExceeded`. The limit is also a deadline on the run context, so an activation function that respects its context is interrupted by it; one that ignores its context still runs to completion, and the mesh stops after it returns.
-2b. Context canceled → `ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works. Checked **before** the error strategy: a canceled run makes activation functions return `ctx.Err()`, which would otherwise be reported as ordinary activation errors and hide why the mesh stopped. A caller-supplied deadline that fires before the mesh's own `TimeLimit` is reported as `ErrRunCanceled`, not `ErrTimeLimitExceeded` — the two are told apart by elapsed time.
-3. Error strategy (`config.ErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked **before** the natural stop so errors are never swallowed:
+3. Context canceled → `ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works. Checked **before** the error strategy: a canceled run makes activation functions return `ctx.Err()`, which would otherwise be reported as ordinary activation errors and hide why the mesh stopped. A caller-supplied deadline that fires before the mesh's own `TimeLimit` is reported as `ErrRunCanceled`, not `ErrTimeLimitExceeded` — the two are told apart by elapsed time.
+4. Error strategy (`config.ErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked **before** the natural stop so errors are never swallowed:
    - `StopOnFirstErrorOrPanic` → stop with `ErrHitAnErrorOrPanic` (includes hook failures)
    - `StopOnFirstPanic` → errors ignored, panics stop with `ErrHitAPanic`
    - `IgnoreAll` → run until natural stop or a limit
-4. **Livelock** (`config.LivelockThreshold`, default **2**; 0 = disabled) → `ErrLivelockDetected`.
-   A cycle is *stalled* when every component that activated returned a waiting result **and** the
-   mesh's pending signal count is unchanged. Both halves matter: the first alone would flag a
-   component legitimately accumulating input, the second alone would flag a busy-but-idempotent
-   mesh. `LivelockThreshold` consecutive stalled cycles end the run, and the error names each
-   waiting component with its empty and non-empty input ports, plus a count of components that
-   never activated at all.
+5. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
+6. **Livelock** (`config.LivelockThreshold`, default **2**; 0 = disabled) → `ErrLivelockDetected`.
+   Checked after the natural stop (a livelocked cycle by definition activated something) and last
+   overall, because a real error is always the better explanation. A cycle is *stalled* when every
+   component that activated returned a waiting result **and** the mesh's pending signal count is
+   unchanged. Both halves matter: the first alone would flag a component legitimately accumulating
+   input, the second alone would flag a busy-but-idempotent mesh. `LivelockThreshold` consecutive
+   stalled cycles end the run, and the error names each waiting component with its empty and
+   non-empty input ports, plus a count of components that never activated at all.
 
    Why this is decidable rather than a guess: waiting components are never drained, so a stalled
    cycle moves no signals, so the next cycle is bit-identical. Waiters that *drop* their inputs
    cannot trigger it — dropping changes the pending count, and next cycle they have no input and
    stop activating, which is a natural stop.
-5. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
+
+An empty mesh never reaches `mustStop` at all — it fails beforeRun validation with `fmesh.ErrNoComponents`.
 
 ### Cancellation is cooperative
 
@@ -153,7 +157,7 @@ absolute numbers are machine-specific; the complexity classes are the durable pa
 - **Fan-in is O(N²).** `ForwardSignals` appends one signal at a time, and each append
   copies the destination port's whole signal group (`port.putSignals` →
   `signal.Group.With`). N outputs converging on a single input port become impractical
-  around N ≈ 10⁵ (tens of seconds spent in one drain). Guarded by `BenchmarkMeshFanIn`.
+  around N ≈ 10⁵ (tens of seconds spent in one drain). Guarded by `BenchmarkMeshRun/fan-in`.
 - **Long-running meshes are memory-bound, not time-bound.** Per-cycle cost stays flat as
   cycle count grows (~10³–10⁴ cycles/s depending on width), but `RuntimeInfo.Cycles`
   retains an `ActivationResult` for every component that had input in every cycle (~100 B ×

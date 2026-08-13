@@ -203,13 +203,9 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 // forEachActivatedComponent applies action to every component that activated in
 // the last cycle, paired with its activation result, and stops at the first error.
-//
-// It walks the components rather than the cycle's activation results, which is
-// why it does not simply use ActivationResultCollection.ForEach: that collection
-// is map-backed, so its iteration order varies between runs, and the drain order
-// decides what a shared downstream port receives. Walking AllOrdered() keeps the
-// order component-name deterministic and joins the results by name. A component
-// with no result did not activate at all.
+// It walks the name-ordered components rather than the map-backed activation
+// results: drain order decides fan-in order and must be deterministic. A
+// component with no result did not activate at all.
 func (fm *FMesh) forEachActivatedComponent(
 	components []*component.Component,
 	action func(*component.Component, *component.ActivationResult) error,
@@ -302,17 +298,12 @@ func (fm *FMesh) countPendingSignals() int {
 }
 
 // detectLivelock reports whether the mesh has stopped making progress, and
-// updates the stall bookkeeping. Called once per cycle. This is the reference
-// description of a stall; other comments about it point here.
+// updates the stall bookkeeping. Called once per cycle.
 //
 // A cycle is stalled when every component that activated was waiting for inputs
-// *and* the pending signal count is unchanged. Both halves are needed: the first
-// alone flags a component legitimately accumulating input, the second alone flags
-// a mesh that is busy but idempotent.
-//
-// Only waiters that *keep* their inputs can deadlock this way. Dropping changes
-// the pending count, and next cycle they have no input and so do not activate,
-// which ends the run naturally.
+// *and* the pending signal count is unchanged — both halves are needed: the
+// first alone flags legitimate input accumulation, the second alone flags a
+// busy-but-idempotent mesh. Only waiters that keep their inputs can stall.
 func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	if fm.config.LivelockThreshold <= 0 {
 		return false
@@ -329,15 +320,9 @@ func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	return fm.stalledCycles >= fm.config.LivelockThreshold
 }
 
-// cycleFailures describes what went wrong in a cycle, including only the parts
-// that actually happened.
-//
-// Passing a nil error to %w prints "%!w(<nil>)", and a cycle that had errors but
-// no panics (much the commoner case) hit exactly that: the message users saw
-// ended in "activation panics: %!w(<nil>)". Labeling each part and joining only
-// the non-nil ones keeps the labels and drops the noise. The caller only reaches
-// here when at least one of the two is present, but the nil guard stays so a
-// future caller cannot resurrect the same bug.
+// cycleFailures describes what went wrong in a cycle, joining only the parts
+// that actually happened: a nil error passed to %w renders "%!w(<nil>)", so
+// each part is guarded even though callers only arrive with at least one.
 func cycleFailures(c *cycle.Cycle) error {
 	var parts []error
 	if activationErrors := c.AllErrorsCombined(); activationErrors != nil {
@@ -352,13 +337,11 @@ func cycleFailures(c *cycle.Cycle) error {
 	return errors.Join(parts...)
 }
 
-// livelockError explains the stall by naming who is stuck and on what. Naming the
-// empty input ports of each waiting component points at the pipe that was never
-// wired; without it this surfaced as "reached max allowed cycles" a thousand
-// cycles later, which named nothing.
+// livelockError explains the stall by naming who is stuck and on what: the
+// empty input ports of each waiting component point at the pipe that was never
+// wired.
 func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
-	// A wide mesh can have thousands of stuck components, and a thousand-line error
-	// is not a diagnosis. Name enough to see the pattern and count the rest.
+	// Name enough components to see the pattern; count the rest.
 	const maxNamed = 5
 
 	var detail strings.Builder

@@ -56,11 +56,14 @@ through a pipe during drain, and `context.Background()` when a caller puts them 
 - A **failing hook poisons the result**: the activation result is re-coded to
   `ActivationCodeHookFailed` with the hook error attached. `HookFailed` results count as
   activation errors (`IsError()`), so under `StopOnFirstErrorOrPanic` the mesh stops and the
-  hook error surfaces in `Run()`'s return. A failing `beforeCycle`/`afterCycle`
-  hook aborts the run (`errFailedToRunCycle`); a failing `onComponentAdded` hook fails
-  `AddComponents`.
-- The mesh's **default `BeforeRun` hook validates mesh structure** on every run (see
-  runtime.md). Don't clear the beforeRun group without re-adding equivalent validation.
+  hook error surfaces in `Run()`'s return. A failing `beforeCycle`/`afterCycle` hook aborts the
+  run (the error is wrapped inline: `failed to run cycle: beforeCycle hook failed: …`); a
+  failing `onComponentAdded` hook fails `AddComponents`.
+- The mesh registers **two default hooks**: a `BeforeRun` hook that validates mesh structure on
+  every run (empty mesh → `ErrNoComponents`; see runtime.md), and an `AfterCycle` hook
+  (`logActivationResultsInDebug`) that logs each cycle's activation results — including panic
+  stack traces — when debug mode is on. Debug logging lives there deliberately, so the scheduler
+  carries no logging code. Don't clear either group without re-adding the equivalent.
 - Port hooks fire on every `PutSignals`/`PutPayloads`/`Clear`, including the scheduler's own
   drain-phase forwarding and clearing — keep them cheap and side-effect-aware. They may fire
   from concurrent activation goroutines, so they must be concurrency-safe when touching shared
@@ -68,7 +71,7 @@ through a pipe during drain, and `context.Background()` when a caller puts them 
 
 ## Plugins
 
-Two levels, same shape: `GetName() string` + `Init(T) error`, registered via a `WithPlugins(...)`
+Two levels, same shape: `Name() string` + `Init(T) error`, registered via a `WithPlugins(...)`
 constructor option, duplicate names are a construction error, queried with `PluginRegistered(name)`.
 A plugin is just an initialization bundle — typically registers hooks.
 
@@ -108,9 +111,9 @@ Two consequences of the arrival-hook pattern, both learned the hard way in `plug
 
 The packages under `plugin/` ship mesh-level plugins built on exactly the pattern above. Each plugin
 is its own package (`plugin` itself holds only a doc comment); they import `fmesh`, so `fmesh` can
-never import them.
+never import them. The profiler is **not** here: like the DOT exporter (`fmesh-graphviz`), it
+consumes only the public API and lives in its own module, `github.com/hovsep/fmesh-profiler`.
 
 | Plugin | What it does |
 |---|---|
-| `plugin/profiler` — `profiler.New(modes...)` | Measures whichever `profiler.Mode`s are asked for, defaulting to `ModeTiming` — runs, cycles, activations (`Runs()`, `Cycles()`, `Components()`, `TopN(n)`). `ModeThroughput` adds per-pipe counts (`Pipes()`, `TopNPipes(n)`), `ModeTimeline` a record per cycle (`Timeline()`, `SetTimelineLimit(n)`), `ModeRuntime` Go runtime deltas (`Resources()`). `Report()`, `Reset()`. One instance belongs to one mesh. |
-| `plugin/autowire` — `autowire.Prefixed(prefix)` / `Broadcast(name)` / `BroadcastAs(out, in)` / `&autowire.Plugin{Name: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |
+| `plugin/autowire` — `autowire.Prefixed(prefix)` / `Broadcast(name)` / `BroadcastAs(out, in)` / `&autowire.Plugin{InputNameFor: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |

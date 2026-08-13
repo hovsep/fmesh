@@ -42,11 +42,13 @@ shared mutable state.
 
 **The signal payload stays `any`.** This is an FBP requirement, not a style preference: one group has to carry mixed-type signals, so `Signal.Payload()` cannot be parameterised and pipes cannot be typed. `signal.As[T]`/`AsOrDefault[T]` read a payload back out; they do not make the flow typed.
 
-**Generics are otherwise fine — use them where they remove real duplication.** The earlier blanket ban was lifted, and `meta.store[T, S]` is the result: it replaced nineteen method bodies that were identical between `Labels` and `Scalars`. Two things to weigh before reaching for one, both learned from that change:
-- **Measure the per-instance cost.** `meta.store` carries a pointer per store, and signals own two apiece. An earlier draft also stored a name for error messages and that alone cost ~100 bytes per signal.
-- **Watch the godoc.** Methods promoted from an unexported generic type render with unresolved type parameters (`Set(name string, value T) S`). Accepted for `meta`; see the note under Package notes before repeating it elsewhere.
+**Generics are otherwise fine — use them where they remove real duplication.** The earlier blanket ban was lifted, and `meta.store[T comparable]` is the worked example: it holds the read surface and the unexported mutators that were identical between `Labels` and `Scalars`. Two things to weigh before reaching for one, both learned from that change:
+- **Measure the per-instance cost.** A store is now exactly the map header it wraps. An earlier version carried a `self` pointer back to the embedding type so promoted mutators could return it — that doubled every store from 8 to 16 bytes, and signals own two apiece (~6% more bytes per mesh run). A still earlier draft stored a name for error messages, ~100 bytes per signal. Both were removed.
+- **Watch the godoc.** Read methods promoted from an unexported generic type render with unresolved type parameters (`All() map[string]T`). Accepted for `meta`; see the note under Package notes before repeating it elsewhere.
 
-A generic that ends up wrapped in one hand-written forwarding method per call site has not paid for itself — `internal/hook.Group[T]` is close to that line, with 17 wrappers over 3 methods.
+A generic that ends up wrapped in one hand-written forwarding method per call site has usually not paid for itself. `internal/hook.Group[T]` lives at exactly that line **on purpose**: 18 hand-written registration wrappers across the three hook levels sit over its 4 methods, and they are the accepted price of keeping every `Hooks` struct's fields unexported so closures stay the only registration path. Do not "fix" either side.
+
+The collection surfaces share `internal/collection` the same way: `Slice[T]` backs the groups and `Keyed[T]` the name-keyed collections, embedded (behind unexported type aliases) so the read surface promotes; slice plumbing goes through package functions (`collection.Items`/`SetItems`/`AppendItems`) rather than methods, so no mutator can promote onto `signal.Group`'s copy-on-write surface.
 
 **Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
 
@@ -54,17 +56,19 @@ A generic that ends up wrapped in one hand-written forwarding method per call si
 
 - **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach`/`ForEachIf` return `error` only (as on every collection type — see [naming.md](naming.md)). Typed payload accessors live in `typed.go`: `As[T]` (error on nil signal / missing payload / wrong type), `AsOrDefault[T]`, fallible per-type shorthands over `As`, and `AsNumber` (loose `(float64, bool)` widening — `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None of them panic; that is the point of having them. There are deliberately **no** `AsIntOrDefault`-style shorthands: `AsOrDefault` infers `T` from the default and is shorter. The sole exception is `AsFloat64OrDefault`, which exists because an untyped `0` infers `int`, so `AsOrDefault(s, 0)` silently returns the default for a float64 payload — do not "restore symmetry" by adding the others back.
 - **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
-  Both embed the generic `store[T comparable, S any]` in `store.go`, which holds the ~17 methods
-  that were identical between them. `S` is the embedding type, not a value type: it exists so
-  `Set`/`Clear`/`Remove` can return `*Labels` rather than `*store` and keep
-  `fm.Labels().Clear().SetMany(m)` compiling. It costs one pointer (`self`) per store, and that
-  pointer is deliberately the *only* per-instance state the sharing adds — `Value` stays on the
-  concrete types rather than have the store carry a name for its error message, which measured
-  ~100 extra bytes per signal because every signal owns two stores.
-  **Known and accepted:** `go doc` renders the promoted methods with unresolved type parameters
-  (`Set(name string, value T) S`). The methods are correct and callable; only the rendering is
+  Both embed the generic `store[T comparable]` in `store.go`, which holds the shared read surface
+  plus unexported mutators. A store is exactly the map header it wraps — no `self` pointer, no
+  name: an earlier version carried a pointer back to the embedding type so promoted mutators
+  could return it, which doubled every store from 8 to 16 bytes with signals owning two apiece;
+  a name for error messages measured ~100 extra bytes per signal. The price of dropping them is
+  that the four chainable mutators (`Set`, `SetMany`, `Remove`, `Clear`) are declared on `Labels`
+  and `Scalars`, wrapping the store's unexported ones — they need a concrete return type to keep
+  `fm.Labels().Clear().SetMany(m)` compiling — and `Value` stays concrete so its error can name
+  what was missing. Read methods are promoted; their return types never name the receiver.
+  **Known and accepted:** `go doc` renders the promoted read methods with an unresolved type
+  parameter (`All() map[string]T`). The methods are correct and callable; only the rendering is
   poor. Do **not** "fix" it by adding concrete forwarding methods on `Labels`/`Scalars` — that
-  reintroduces the ~38-method wrapper layer this consolidation removed. Decision taken 2026-07-31.
+  reintroduces the wrapper layer this consolidation removed. Decision taken 2026-07-31.
 - **`port`** — `Flush()` fans out then clears source, firing `OnSignalsDelivered` on the source once per pipe after each destination accepts. That hook is the only event naming both ends of a pipe: `OnSignalsAdded` fires on the destination and cannot identify the sender. Its context struct is guarded by `hook.Group.IsEmpty()` because a `Trigger` argument escapes to the heap even with no hooks registered — on this path that would be one wasted allocation per pipe, per flush, per cycle. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time. `wiring.go` holds the declarative multi-edge helpers: `Pipe`/`MultiPipe` (registers connections) and `Pair`/`MultiForward` (copies signals now); both name the failing edge and report nil ports instead of dereferencing them.
 - **Name lookups are silently forgiving — helpers taking port names must not be.** `Collection.ByName` returns `nil` for a name no port has, `Collection.ByNames` skips such names entirely, and `AllHaveSignals()`/`Every()` on the resulting empty collection is vacuously `true`. So `ByNames("typo").AllHaveSignals()` reports *ready*. Any helper that accepts port names as strings must resolve every name before asking anything about signals, and report the name it could not resolve.
 - **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitKeepingInputs` are scheduler control-flow sentinels, not failures. `compose.go` holds the `ActivationFunc` combinators — `Sequential`, `When`+`HasSignalsOn`, `RequireInputs`, `Pipeline`+`PipelineStage` — which compose a component's *own* activation (contrast `OnActivation` hooks, which are for behavior added from outside; see [hooks.md](hooks.md)). `When` skips, `RequireInputs` suspends and keeps: never substitute one for the other, as skipping where waiting was meant drops the partial inputs at drain time.
@@ -73,15 +77,16 @@ A generic that ends up wrapped in one hand-written forwarding method per call si
 
 ## Metadata tiers on groups/collections
 
-Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Scalars` (Tier 1), plus batch mutation of its **contents** (Tier 2a). `signal.Group` additionally exposes cross-entity scalar aggregation (Tier 2b).
+Every Group and Collection type carries its **own** `*meta.Labels` and `*meta.Scalars` (Tier 1). Batch mutation of a container's **contents** (Tier 2a) exists on `signal.Group` **only** — the mutating collections lost their `Set{Label,Scalar}OnEach`/`Remove*OnEach` batch methods (iterate with `ForEach` and use each element's own store), and the cross-entity scalar aggregation tier (`Min/Max/Avg/SumScalar`, once Tier 2b) was removed with the scalar-statistics API. Do not reintroduce either.
 
 | Tier | Methods | Where |
 |---|---|---|
-| 1 — entity's own | `Labels()`, `Scalars()`, `WithLabel(k,v)`, `WithScalar(k,v)` | all groups/collections |
-| 2a — batch on contents | `WithLabelOnEach(k,v)`, `WithScalarOnEach(k,v)`, `RemoveLabelOnEach(names...)`, `RemoveScalarOnEach(names...)` | all groups/collections |
-| 2b — cross-entity aggregation | `MinScalar(name)`, `MaxScalar(name)`, `AvgScalar(name)`, `SumScalar(name)` | `signal.Group` only |
+| 1 — entity's own | `Labels()`, `Scalars()`; mutate via `WithLabel`/`WithScalar` on `signal.Group` (CoW), `SetLabel`/`SetScalar` on `port.Group`, the live stores elsewhere | all groups/collections |
+| 2a — batch on contents | `WithLabelOnEach(k,v)`, `WithScalarOnEach(k,v)`, `RemoveLabelOnEach(names...)`, `RemoveScalarOnEach(names...)` | `signal.Group` only (CoW) |
 
-`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`. `MinScalar`/`MaxScalar`/`AvgScalar` return `(float64, error)` with the sentinel `signal.ErrScalarNotFoundInGroup` when no element has the named scalar; `SumScalar` always returns `float64` (0 when absent).
+`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`.
+
+**`signal.Group.Labels()`/`Scalars()` return clones.** The group is copy-on-write and the live stores were the one back door: mutating the returned store used to change the group in place. They now match `Signal.Labels()` — the only way to a modified group is `WithLabel`/`WithScalar`. Do not hand the live stores back out.
 
 ## Comment hygiene
 
