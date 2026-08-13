@@ -213,6 +213,20 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
   `WithTimeLimit(100ms)` mesh containing a 3s blocking call used to run for the full 3s.
 - A caller-supplied deadline shorter than the mesh's own `TimeLimit` is reported as
   `ErrRunCanceled`, not `ErrTimeLimitExceeded`.
+- **A port-name typo says so.** `InputByName`, `OutputByName` and `Collection.ByName` still return
+  `nil` for a name no port has — that is deliberate. What changed is what happens next: `Signals`,
+  `HasSignals`, `PutSignals`, `PutPayloads` and `PutSignalGroups` now panic with `port.ErrNilPort`
+  instead of dereferencing the nil several frames later.
+
+  ```
+  panicked: invalid memory address or nil pointer dereference          // before
+  panicked: port is nil: InputByName, OutputByName and Collection.ByName
+            return nil for a name no port has                          // after
+  ```
+
+  Inside an activation the panic is recovered as before, so the run error names the component too,
+  and `errors.Is(err, port.ErrNilPort)` reaches it. `PipeTo` is unchanged: `validatePipe` already
+  returned `ErrNilPort` for a nil source, and it still returns rather than panics.
 
 ### Fixed
 

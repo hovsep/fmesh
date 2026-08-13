@@ -15,6 +15,7 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
+	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -162,5 +163,25 @@ func TestRunError_ReportsBothErrorsAndPanics(t *testing.T) {
 	assert.Contains(t, err.Error(), "activation panics:")
 	assert.Contains(t, err.Error(), "ordinary failure")
 	assert.Contains(t, err.Error(), "kaboom")
+	t.Logf("reported as: %v", err)
+}
+
+func TestPortNameTypo_NamesTheCause(t *testing.T) {
+	// A typo in a port name is the most common way to break a mesh, and it used
+	// to be the most expensive to read: OutputByName returns nil, PutSignals
+	// dereferences it, and the run reported "invalid memory address or nil
+	// pointer dereference" with a stack pointing at the dereference rather than
+	// at the typo.
+	fm := meshWith(t, "concat", func(_ context.Context, this *component.Component) error {
+		return this.OutputByName("outt").PutSignals(signal.New(1)) // the port is "out"
+	})
+
+	_, err := fm.Run(context.Background())
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, port.ErrNilPort)
+	assert.Contains(t, err.Error(), "OutputByName", "the message points at the lookup that returned nil")
+	assert.Contains(t, err.Error(), "concat", "and the activation names the component")
+	assert.NotContains(t, err.Error(), "invalid memory address")
 	t.Logf("reported as: %v", err)
 }
