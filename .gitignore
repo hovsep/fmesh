@@ -1,2 +1,5 @@
 .idea
 .cursor
+
+# Written by `make cover` and by CI, which keeps it as a build artifact.
+coverage.out

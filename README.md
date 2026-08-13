@@ -3,11 +3,10 @@
   <h1>F-Mesh</h1>
   <p><em>Flow-Based Programming framework for Go</em></p>
 	
-[![Go Report Card](https://goreportcard.com/badge/github.com/hovsep/fmesh)](https://goreportcard.com/report/github.com/hovsep/fmesh)
+[![CI](https://img.shields.io/github/actions/workflow/status/hovsep/fmesh/ci.yml?branch=main&label=CI)](https://github.com/hovsep/fmesh/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hovsep/fmesh.svg)](https://pkg.go.dev/github.com/hovsep/fmesh)
 [![Latest Release](https://img.shields.io/github/v/release/hovsep/fmesh)](https://github.com/hovsep/fmesh/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![codecov](https://codecov.io/gh/hovsep/fmesh/branch/main/graph/badge.svg)](https://codecov.io/gh/hovsep/fmesh)
 </div>
 ---
 
