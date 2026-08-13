@@ -158,6 +158,19 @@ The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
   stuck components and their empty input ports, instead of burning the cycle budget and reporting
   `reached max allowed cycles`.
 - `port.Collection.AllOrdered()`, mirroring `component.Collection`.
+- `component.State.UpdateAndGet(key, fn)` — `Upsert` plus the value it stored, for when the new
+  value is needed in the same activation. Like `Upsert` and unlike `Update`, it creates the key
+  when absent, so the returned value is always the one now in the state.
+
+  ```go
+  n := this.State().UpdateAndGet("seen", func(old any) any {
+      if old == nil {
+          return 1
+      }
+      return old.(int) + 1
+  })
+  return this.OutputByName("count").PutPayloads(n)
+  ```
 - `cycle.Cycle.AllActivatedAreWaiting()`.
 - `component.PanicError` with `StackTrace()` and `Unwrap()`.
 - Wiki page [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats).
