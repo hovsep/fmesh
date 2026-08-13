@@ -173,20 +173,7 @@ func TestCollection_ByNames(t *testing.T) {
 	}
 }
 
-func TestCollection_ForEachClear(t *testing.T) {
-	t.Run("clear all ports signals using ForEach", func(t *testing.T) {
-		ports := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-		require.NoError(t, ports.PutSignalsOnEach(signal.New(1), signal.New(2), signal.New(3)))
-		assert.True(t, ports.AllHaveSignals())
-		err := ports.ForEach(func(p *Port) error {
-			return p.Clear(context.Background())
-		})
-		require.NoError(t, err)
-		assert.False(t, ports.AnyHasSignals())
-	})
-}
-
-func TestCollection_With(t *testing.T) {
+func TestCollection_Add(t *testing.T) {
 	type args struct {
 		ports []*Port
 	}
@@ -286,7 +273,7 @@ func TestCollection_Flush(t *testing.T) {
 	}
 }
 
-func TestCollection_PipeTo(t *testing.T) {
+func TestCollection_PipeEachTo(t *testing.T) {
 	type args struct {
 		destPorts []*Port
 	}
@@ -371,94 +358,6 @@ func TestCollection_Signals(t *testing.T) {
 	}
 }
 
-func TestCollection_Any(t *testing.T) {
-	t.Run("returns port from non-empty collection", func(t *testing.T) {
-		collection := mustNewCollection(mustOutput("p1"))
-		result := collection.Any()
-		require.NotNil(t, result)
-		assert.Equal(t, "p1", result.Name())
-	})
-
-	t.Run("returns nil from empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		result := collection.Any()
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_FindAny(t *testing.T) {
-	t.Run("finds matching port", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2", "target").All()...)
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "target"
-		})
-		require.NotNil(t, result)
-		assert.Equal(t, "target", result.Name())
-	})
-
-	t.Run("returns nil when no match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "p3"
-		})
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_CountMatch(t *testing.T) {
-	t.Run("counts matching ports", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("a1", "a2", "b1").All()...)
-		count := collection.Count(func(p *Port) bool {
-			return p.Name()[0] == 'a'
-		})
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("returns 0 for empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		count := collection.Count(func(p *Port) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-}
-
-func TestCollection_AllMatch(t *testing.T) {
-	t.Run("returns true when all match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-		result := collection.Every(func(p *Port) bool {
-			return p.Name() != ""
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("returns false when not all match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "").All()...)
-		result := collection.Every(func(p *Port) bool {
-			return p.Name() != ""
-		})
-		assert.False(t, result)
-	})
-}
-
-func TestCollection_AnyMatch(t *testing.T) {
-	t.Run("returns true when at least one matches", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "target").All()...)
-		result := collection.AnyMatch(func(p *Port) bool {
-			return p.Name() == "target"
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("returns false when none match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-		result := collection.AnyMatch(func(p *Port) bool {
-			return p.Name() == "nonexistent"
-		})
-		assert.False(t, result)
-	})
-}
-
 func TestCollection_Filter(t *testing.T) {
 	t.Run("filters matching ports", func(t *testing.T) {
 		collection := mustNewCollection(NewOutputGroup("a1", "a2", "b1").All()...)
@@ -490,18 +389,6 @@ func TestCollection_Map(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, 2, mapped.Len())
-	})
-}
-
-func TestCollection_Len(t *testing.T) {
-	t.Run("returns count of ports", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2", "p3").All()...)
-		assert.Equal(t, 3, collection.Len())
-	})
-
-	t.Run("returns 0 for empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		assert.Equal(t, 0, collection.Len())
 	})
 }
 
@@ -542,32 +429,16 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		require.NotNil(t, p1)
 		assert.Equal(t, "p1", p1.Name())
 	})
+}
 
-	t.Run("Any returns nil when empty", func(t *testing.T) {
-		collection := NewCollection()
-
-		result := collection.Any()
-		assert.Nil(t, result)
-
-		// Collection should still be usable for adding
-		require.NoError(t, collection.Add(mustOutput("p1")))
-		assert.Equal(t, 1, collection.Len())
-	})
-
-	t.Run("FindAny returns nil when no match", func(t *testing.T) {
-		collection := mustNewCollection(NewOutputGroup("p1", "p2").All()...)
-
-		result := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "nonexistent"
-		})
-		assert.Nil(t, result)
-
-		// Collection should still be usable
+// TestCollection_PromotedReadSurface smoke-checks the read methods promoted
+// from internal/collection.Keyed; that package's suite is their source of truth.
+func TestCollection_PromotedReadSurface(t *testing.T) {
+	t.Run("promoted methods work through the Collection facade", func(t *testing.T) {
+		collection := mustNewCollection(NewOutputGroup("p2", "p1").All()...)
 		assert.Equal(t, 2, collection.Len())
-		found := collection.FindAny(func(p *Port) bool {
-			return p.Name() == "p1"
-		})
-		require.NotNil(t, found)
-		assert.Equal(t, "p1", found.Name())
+		assert.False(t, collection.IsEmpty())
+		assert.Equal(t, "p1", collection.AllOrdered()[0].Name(), "traversal is name-ordered")
+		assert.True(t, collection.AnyMatch(func(p *Port) bool { return p.Name() == "p2" }))
 	})
 }

@@ -578,6 +578,12 @@ func TestPort_Metadata(t *testing.T) {
 		assert.True(t, p.Scalars().ValueIs("rate", 5))
 	})
 
+	t.Run("WithDescription replaces previous value", func(t *testing.T) {
+		p, err := NewOutput("p1", WithDescription("first"), WithDescription("second"))
+		require.NoError(t, err)
+		assert.Equal(t, "second", p.Description())
+	})
+
 	t.Run("stores are per port", func(t *testing.T) {
 		p1, p2 := mustInput("p1"), mustInput("p2")
 		p1.Labels().Set("only", "p1")
@@ -818,95 +824,6 @@ func TestPort_ForwardWithMap(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestPort_Chainability(t *testing.T) {
-	t.Run("SetLabels called twice replaces all labels", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Labels().Clear().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
-		p.Labels().Clear().SetMany(map[string]string{"k3": "v3"})
-
-		assert.Equal(t, 1, p.Labels().Len())
-		assert.False(t, p.Labels().Has("k1"), "k1 should be replaced")
-		assert.False(t, p.Labels().Has("k2"), "k2 should be replaced")
-		assert.True(t, p.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Labels().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
-		p.Labels().SetMany(map[string]string{"k3": "v3", "k2": "v2-updated"})
-
-		assert.Equal(t, 3, p.Labels().Len())
-		assert.True(t, p.Labels().ValueIs("k1", "v1"))
-		assert.True(t, p.Labels().ValueIs("k2", "v2-updated"), "should update existing key")
-		assert.True(t, p.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("mixed Set and Add operations", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Labels().
-			Set("k1", "v1").
-			SetMany(map[string]string{"k2": "v2", "k3": "v3"}).
-			Clear().SetMany(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
-			Set("k5", "v5")                                 // Merges with k4
-
-		assert.Equal(t, 2, p.Labels().Len())
-		assert.False(t, p.Labels().Has("k1"), "wiped by Clear")
-		assert.False(t, p.Labels().Has("k2"), "wiped by Clear")
-		assert.False(t, p.Labels().Has("k3"), "wiped by Clear")
-		assert.True(t, p.Labels().ValueIs("k4", "v4"))
-		assert.True(t, p.Labels().ValueIs("k5", "v5"))
-	})
-
-	t.Run("WithDescription replaces previous value", func(t *testing.T) {
-		p, err := NewOutput("p1", WithDescription("first"), WithDescription("second"))
-		require.NoError(t, err)
-		assert.Equal(t, "second", p.Description())
-	})
-
-	t.Run("PutSignals called twice adds signals", func(t *testing.T) {
-		p := mustOutput("p1")
-		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
-		require.NoError(t, p.PutSignals(signal.New(3)))
-		assert.Equal(t, 3, p.Signals().Len())
-	})
-
-	t.Run("Clear removes all signals", func(t *testing.T) {
-		p := mustOutput("p1")
-		require.NoError(t, p.PutSignals(signal.New(1), signal.New(2)))
-		require.NoError(t, p.PutSignals(signal.New(3)))
-		require.NoError(t, p.Clear(context.Background()))
-		assert.Equal(t, 0, p.Signals().Len())
-		assert.False(t, p.HasSignals())
-	})
-
-	t.Run("ClearLabels removes all labels", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Labels().
-			SetMany(map[string]string{"k1": "v1", "k2": "v2"}).
-			Clear().
-			Set("k3", "v3")
-
-		assert.Equal(t, 1, p.Labels().Len())
-		assert.False(t, p.Labels().Has("k1"))
-		assert.False(t, p.Labels().Has("k2"))
-		assert.True(t, p.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("RemoveLabels removes specific labels", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Labels().
-			SetMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
-			Remove("k1", "k2").
-			Set("k4", "v4")
-
-		assert.Equal(t, 2, p.Labels().Len())
-		assert.False(t, p.Labels().Has("k1"))
-		assert.False(t, p.Labels().Has("k2"))
-		assert.True(t, p.Labels().ValueIs("k3", "v3"))
-		assert.True(t, p.Labels().ValueIs("k4", "v4"))
-	})
 }
 
 func TestPort_NilReceiverNamesTheCause(t *testing.T) {

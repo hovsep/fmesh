@@ -1,0 +1,3 @@
+go test fuzz v1
+string("7A,B,7,00,8,0,\xe6,2\xe6\xe6,q,1,2,C),,\x00,\xd2!&\x86,98\xbe,0 Aa\xbez 1CcC.XC,98BBZ187C77XA1 y2,0288220022101Aa\"7X07',Y797A970B018210A01719A1,1122021917B109120cC+$C\xc6%Z)\x81c7b!7*xx")
+string("2")

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("\xff\x7f,\xff\x7f")
+string("0")

@@ -117,120 +117,6 @@ func TestCollection_Add(t *testing.T) {
 	}
 }
 
-func TestCollection_Len(t *testing.T) {
-	tests := []struct {
-		name       string
-		collection *Collection
-		want       int
-	}{
-		{
-			name:       "empty collection",
-			collection: NewCollection(),
-			want:       0,
-		},
-		{
-			name:       "non-empty collection",
-			collection: newCol("c1", "c2", "c3"),
-			want:       3,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.Len())
-		})
-	}
-}
-
-func TestCollection_IsEmpty(t *testing.T) {
-	tests := []struct {
-		name       string
-		collection *Collection
-		want       bool
-	}{
-		{
-			name:       "empty collection",
-			collection: NewCollection(),
-			want:       true,
-		},
-		{
-			name:       "non-empty collection",
-			collection: newCol("c1"),
-			want:       false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.IsEmpty())
-		})
-	}
-}
-
-func TestCollection_Every(t *testing.T) {
-	tests := []struct {
-		name       string
-		collection *Collection
-		predicate  Predicate
-		want       bool
-	}{
-		{
-			name:       "empty collection returns true",
-			collection: NewCollection(),
-			predicate:  func(c *Component) bool { return false },
-			want:       true,
-		},
-		{
-			name:       "all match",
-			collection: newCol("c1", "c2"),
-			predicate:  func(c *Component) bool { return c.Name() != "" },
-			want:       true,
-		},
-		{
-			name:       "not all match",
-			collection: newCol("c1", "c2_noname_placeholder"),
-			predicate:  func(c *Component) bool { return c.Name() == "c1" },
-			want:       false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.Every(tt.predicate))
-		})
-	}
-}
-
-func TestCollection_AnyMatch(t *testing.T) {
-	tests := []struct {
-		name       string
-		collection *Collection
-		predicate  Predicate
-		want       bool
-	}{
-		{
-			name:       "empty collection returns false",
-			collection: NewCollection(),
-			predicate:  func(c *Component) bool { return true },
-			want:       false,
-		},
-		{
-			name:       "at least one matches",
-			collection: newCol("c1", "c2"),
-			predicate:  func(c *Component) bool { return c.Name() == "c1" },
-			want:       true,
-		},
-		{
-			name:       "none match",
-			collection: newCol("b1", "b2"),
-			predicate:  func(c *Component) bool { return c.Name() == "" },
-			want:       false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.collection.AnyMatch(tt.predicate))
-		})
-	}
-}
-
 func TestCollection_Filter(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -265,58 +151,6 @@ func TestCollection_Filter(t *testing.T) {
 	}
 }
 
-func TestCollection_Any(t *testing.T) {
-	t.Run("returns component from non-empty collection", func(t *testing.T) {
-		collection := newCol("c1")
-		result := collection.Any()
-		require.NotNil(t, result)
-		assert.Equal(t, "c1", result.Name())
-	})
-
-	t.Run("returns nil from empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		result := collection.Any()
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_FindAny(t *testing.T) {
-	t.Run("finds matching component", func(t *testing.T) {
-		collection := newCol("c1", "c2", "target")
-		result := collection.FindAny(func(c *Component) bool {
-			return c.Name() == "target"
-		})
-		require.NotNil(t, result)
-		assert.Equal(t, "target", result.Name())
-	})
-
-	t.Run("returns nil when no match", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-		result := collection.FindAny(func(c *Component) bool {
-			return c.Name() == "nonexistent"
-		})
-		assert.Nil(t, result)
-	})
-}
-
-func TestCollection_Count(t *testing.T) {
-	t.Run("counts matching components", func(t *testing.T) {
-		collection := newCol("a1", "a2", "b1")
-		count := collection.Count(func(c *Component) bool {
-			return c.Name()[0] == 'a'
-		})
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("returns 0 for empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		count := collection.Count(func(c *Component) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-}
-
 func TestCollection_Map(t *testing.T) {
 	t.Run("transforms components", func(t *testing.T) {
 		collection := newCol("c1", "c2")
@@ -346,27 +180,6 @@ func TestCollection_Map(t *testing.T) {
 	})
 }
 
-func TestCollection_ForEach(t *testing.T) {
-	t.Run("applies action to each component", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-		visited := make([]string, 0)
-		err := collection.ForEach(func(c *Component) error {
-			visited = append(visited, c.Name())
-			return nil
-		})
-		require.NoError(t, err)
-		assert.Len(t, visited, 2)
-	})
-
-	t.Run("stops on error and returns error", func(t *testing.T) {
-		collection := newCol("c1", "c2", "c3")
-		err := collection.ForEach(func(c *Component) error {
-			return assert.AnError
-		})
-		assert.Error(t, err)
-	})
-}
-
 func TestCollection_Clear(t *testing.T) {
 	t.Run("removes all components", func(t *testing.T) {
 		collection := newCol("c1", "c2")
@@ -392,20 +205,6 @@ func TestCollection_Remove(t *testing.T) {
 	})
 }
 
-func TestCollection_All(t *testing.T) {
-	t.Run("returns all components", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-		all := collection.All()
-		assert.Len(t, all, 2)
-	})
-
-	t.Run("returns empty map for empty collection", func(t *testing.T) {
-		collection := NewCollection()
-		all := collection.All()
-		assert.Empty(t, all)
-	})
-}
-
 func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 	t.Run("ByName does not poison collection on not found", func(t *testing.T) {
 		collection := newCol("c1", "c2")
@@ -424,38 +223,16 @@ func TestCollection_LeafMethodsDoNotPoisonCollection(t *testing.T) {
 		require.NotNil(t, c1)
 		assert.Equal(t, "c1", c1.Name())
 	})
+}
 
-	t.Run("Any does not affect collection when empty", func(t *testing.T) {
-		collection := NewCollection()
-
-		// Query any on empty collection
-		result := collection.Any()
-		assert.Nil(t, result)
-
-		// Collection should still be usable for adding
-		c, err := New("c1")
-		require.NoError(t, err)
-		require.NoError(t, collection.Add(c))
-		assert.Equal(t, 1, collection.Len())
-	})
-
-	t.Run("FindAny does not affect collection when no match", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-
-		// Query with predicate that matches nothing
-		result := collection.FindAny(func(c *Component) bool {
-			return c.Name() == "nonexistent"
-		})
-		assert.Nil(t, result)
-
-		// Collection should have 2 components
+// TestCollection_PromotedReadSurface smoke-checks the read methods promoted
+// from internal/collection.Keyed; that package's suite is their source of truth.
+func TestCollection_PromotedReadSurface(t *testing.T) {
+	t.Run("promoted methods work through the Collection facade", func(t *testing.T) {
+		collection := newCol("c2", "c1")
 		assert.Equal(t, 2, collection.Len())
-
-		// Subsequent FindAny should work
-		found := collection.FindAny(func(c *Component) bool {
-			return c.Name() == "c1"
-		})
-		require.NotNil(t, found)
-		assert.Equal(t, "c1", found.Name())
+		assert.False(t, collection.IsEmpty())
+		assert.Equal(t, "c1", collection.AllOrdered()[0].Name(), "traversal is name-ordered")
+		assert.True(t, collection.AnyMatch(func(c *Component) bool { return c.Name() == "c2" }))
 	})
 }

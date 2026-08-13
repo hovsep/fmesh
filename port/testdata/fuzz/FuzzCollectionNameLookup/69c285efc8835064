@@ -1,0 +1,3 @@
+go test fuzz v1
+string("\a\x7f,\a\x7f,\a\x7f,\a\x7f,\a\x7f")
+string("0")

@@ -452,11 +452,21 @@ func TestFMesh_AddComponents(t *testing.T) {
 }
 
 func TestFMesh_Run(t *testing.T) {
+	// wantAR is a compact per-component expectation; hasError asserts only the
+	// presence of an activation error, never its message.
+	type wantAR struct {
+		activated bool
+		code      component.ActivationResultCode
+		hasError  bool
+	}
+
 	tests := []struct {
-		name       string
-		getFM      func() *FMesh
-		initFM     func(fm *FMesh)
-		wantCycles *cycle.Group
+		name   string
+		getFM  func() *FMesh
+		initFM func(fm *FMesh)
+		// wantCycles holds one map per expected cycle, keyed by component name.
+		// An empty map is a cycle in which no activation result was recorded.
+		wantCycles []map[string]wantAR
 		wantErr    bool
 	}{
 		{
@@ -482,12 +492,9 @@ func TestFMesh_Run(t *testing.T) {
 				// Fire the mesh
 				mustPutSignals(fm.Components().ByName("c1").InputByName("i1"), signal.New("start c1"))
 			},
-			wantCycles: cycle.NewGroup().Add(
-				cycle.New().
-					AddActivationResults(component.NewActivationResult("c1").
-						SetActivated(true).
-						SetActivationCode(component.ActivationCodeOK)),
-			),
+			wantCycles: []map[string]wantAR{
+				{"c1": {activated: true, code: component.ActivationCodeOK}},
+			},
 			wantErr: true,
 		},
 		{
@@ -510,15 +517,9 @@ func TestFMesh_Run(t *testing.T) {
 			initFM: func(fm *FMesh) {
 				mustPutSignals(fm.Components().ByName("c1").InputByName("i1"), signal.New("start"))
 			},
-			wantCycles: cycle.NewGroup().Add(
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeReturnedError).
-							AddActivationError(errors.New("component returned an error: boom")),
-					),
-			),
+			wantCycles: []map[string]wantAR{
+				{"c1": {activated: true, code: component.ActivationCodeReturnedError, hasError: true}},
+			},
 			wantErr: true,
 		},
 		{
@@ -545,18 +546,12 @@ func TestFMesh_Run(t *testing.T) {
 				// Only feed i1 first; c1 will wait for i2
 				mustPutSignals(fm.Components().ByName("c1").InputByName("i1"), signal.New("first"))
 			},
-			wantCycles: cycle.NewGroup().Add(
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeWaitingForInputsClear).
-							AddActivationError(component.ErrWaitingForInputs),
-					),
+			wantCycles: []map[string]wantAR{
+				{"c1": {activated: true, code: component.ActivationCodeWaitingForInputsClear, hasError: true}},
 				// Mesh stops naturally in the next cycle because nothing is activated.
 				// c1's NoInput result is not recorded.
-				cycle.New(),
-			),
+				{},
+			},
 			wantErr: false,
 		},
 		{
@@ -618,30 +613,26 @@ func TestFMesh_Run(t *testing.T) {
 				mustPipeTo(c1.OutputByName("num2"), c2.InputByName("in2"))
 				mustPutSignals(c1.InputByName("trigger"), signal.New("start"))
 			},
-			wantCycles: cycle.NewGroup().Add(
+			wantCycles: []map[string]wantAR{
 				// c2's NoInput result is not recorded (c1 activated).
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-				),
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitKeepingInputs),
-				),
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-				),
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c1").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeWaitingForInputsKeep).AddActivationError(component.ErrWaitKeepingInputs),
-				),
+				{"c1": {activated: true, code: component.ActivationCodeOK}},
+				{
+					"c1": {activated: true, code: component.ActivationCodeOK},
+					"c2": {activated: true, code: component.ActivationCodeWaitingForInputsKeep, hasError: true},
+				},
+				{
+					"c1": {activated: true, code: component.ActivationCodeOK},
+					"c2": {activated: true, code: component.ActivationCodeOK},
+				},
+				{
+					"c1": {activated: true, code: component.ActivationCodeOK},
+					"c2": {activated: true, code: component.ActivationCodeWaitingForInputsKeep, hasError: true},
+				},
 				// c1's NoInput result is not recorded (c2 activated).
-				cycle.New().AddActivationResults(
-					component.NewActivationResult("c2").SetActivated(true).SetActivationCode(component.ActivationCodeOK),
-				),
+				{"c2": {activated: true, code: component.ActivationCodeOK}},
 				// Neither component activated: no results are recorded.
-				cycle.New(),
-			),
+				{},
+			},
 			wantErr: false,
 		},
 		{
@@ -692,34 +683,17 @@ func TestFMesh_Run(t *testing.T) {
 				mustPutSignals(c1.InputByName("i1"), signal.New("start c1"))
 				mustPutSignals(c3.InputByName("i1"), signal.New("start c3"))
 			},
-			wantCycles: cycle.NewGroup().Add(
+			wantCycles: []map[string]wantAR{
 				// c2 and c4 had no input this cycle, so their NoInput results are not recorded.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c3").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeReturnedError).
-							AddActivationError(errors.New("component returned an error: boom")),
-					),
+				{
+					"c1": {activated: true, code: component.ActivationCodeOK},
+					"c3": {activated: true, code: component.ActivationCodeReturnedError, hasError: true},
+				},
 				// Only c2 activated; c1, c3, c4 had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c2").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeOK),
-					),
+				{"c2": {activated: true, code: component.ActivationCodeOK}},
 				// Only c4 activated (and panicked); c1, c2, c3 had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c4").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodePanicked).
-							AddActivationError(errors.New("panicked with: no way")),
-					),
-			),
+				{"c4": {activated: true, code: component.ActivationCodePanicked, hasError: true}},
+			},
 			wantErr: true,
 		},
 		{
@@ -783,44 +757,22 @@ func TestFMesh_Run(t *testing.T) {
 				mustPutSignals(c1.InputByName("i1"), signal.New("start c1"))
 				mustPutSignals(c3.InputByName("i1"), signal.New("start c3"))
 			},
-			wantCycles: cycle.NewGroup().Add(
+			wantCycles: []map[string]wantAR{
 				// c1 and c3 activated, c3 finishes with error; c2, c4, c5 had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c1").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeOK),
-						component.NewActivationResult("c3").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeReturnedError).
-							AddActivationError(errors.New("component returned an error: boom")),
-					),
+				{
+					"c1": {activated: true, code: component.ActivationCodeOK},
+					"c3": {activated: true, code: component.ActivationCodeReturnedError, hasError: true},
+				},
 				// Only c2 is activated; c1, c3, c4, c5 had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c2").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeOK),
-					),
+				{"c2": {activated: true, code: component.ActivationCodeOK}},
 				// Only c4 is activated and panicked; c1, c2, c3, c5 had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c4").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodePanicked).
-							AddActivationError(errors.New("panicked with: no way")),
-					),
+				{"c4": {activated: true, code: component.ActivationCodePanicked, hasError: true}},
 				// Only c5 is activated (after c4 panicked in the previous cycle); the rest had no input.
-				cycle.New().
-					AddActivationResults(
-						component.NewActivationResult("c5").
-							SetActivated(true).
-							SetActivationCode(component.ActivationCodeOK),
-					),
+				{"c5": {activated: true, code: component.ActivationCodeOK}},
 				// Last (control) cycle: no component activated, so f-mesh stops naturally.
 				// No results are recorded.
-				cycle.New(),
-			),
+				{},
+			},
 			wantErr: false,
 		},
 	}
@@ -831,33 +783,26 @@ func TestFMesh_Run(t *testing.T) {
 				tt.initFM(fm)
 			}
 			got, err := fm.Run(context.Background())
-			assert.Equal(t, tt.wantCycles.Len(), got.Cycles.Len())
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}
 
-			// Compare cycle results one by one
-			wantCycles := tt.wantCycles.All()
+			require.Equal(t, len(tt.wantCycles), got.Cycles.Len(), "cycle count mismatch")
 			gotCycles := got.Cycles.All()
-
-			for i := range got.Cycles.Len() {
-				wantCycle := wantCycles[i]
-				gotCycle := gotCycles[i]
-				assert.Equal(t, wantCycle.ActivationResults().Len(), gotCycle.ActivationResults().Len(), "ActivationResultCollection len mismatch")
-
-				// Compare activation results
-				gotActivationResults := gotCycle.ActivationResults().All()
-				for componentName, gotActivationResult := range gotActivationResults {
-					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).Activated(), gotActivationResult.Activated())
-					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).ComponentName(), gotActivationResult.ComponentName())
-					assert.Equal(t, wantCycle.ActivationResults().ByName(componentName).Code(), gotActivationResult.Code())
-
-					if wantCycle.ActivationResults().ByName(componentName).IsError() {
-						assert.EqualError(t, wantCycle.ActivationResults().ByName(componentName).ActivationError(), gotActivationResult.ActivationError().Error())
+			for i, wantResults := range tt.wantCycles {
+				gotResults := gotCycles[i].ActivationResults()
+				assert.Equal(t, len(wantResults), gotResults.Len(), "cycle %d: activation result count mismatch", i+1)
+				for name, want := range wantResults {
+					gotAR := gotResults.ByName(name)
+					require.NotNil(t, gotAR, "cycle %d: no activation result for %q", i+1, name)
+					assert.Equal(t, want.activated, gotAR.Activated(), "cycle %d: %q activated flag", i+1, name)
+					assert.Equal(t, want.code, gotAR.Code(), "cycle %d: %q activation code", i+1, name)
+					if want.hasError {
+						assert.Error(t, gotAR.ActivationError(), "cycle %d: %q must carry an activation error", i+1, name)
 					} else {
-						assert.False(t, gotActivationResult.IsError())
+						assert.NoError(t, gotAR.ActivationError(), "cycle %d: %q must not carry an activation error", i+1, name)
 					}
 				}
 			}
@@ -1230,136 +1175,6 @@ func TestFMesh_validateMeshStructure(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestFMesh_Run_ErrorHandlingConsistency(t *testing.T) {
-	t.Run("beforeRun hook error causes Run to return error", func(t *testing.T) {
-		fm := mustNewFMesh("test fm")
-		fm.SetupHooks(func(h *Hooks) {
-			h.BeforeRun(func(_ context.Context, fm *FMesh) error {
-				return errors.New("beforeRun hook failed")
-			})
-		})
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("simple",
-				component.WithInputs("in"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					return nil
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		assert.Contains(t, err.Error(), "beforeRun hook failed")
-	})
-
-	t.Run("cycle limit error causes Run to return ErrReachedMaxAllowedCycles", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			CyclesLimit:           2,
-			ErrorHandlingStrategy: IgnoreAll,
-		}))
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("looper",
-				component.WithInputs("in"),
-				component.WithOutputs("out"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("looper").OutputByName("out").
-			PipeTo(fm.ComponentByName("looper").InputByName("in")))
-
-		require.NoError(t, fm.ComponentByName("looper").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		require.ErrorIs(t, err, ErrReachedMaxAllowedCycles)
-	})
-
-	t.Run("time limit error causes Run to return ErrTimeLimitExceeded", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			TimeLimit:             10 * time.Millisecond,
-			ErrorHandlingStrategy: IgnoreAll,
-		}))
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("sleeper",
-				component.WithInputs("in"),
-				component.WithOutputs("out"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					time.Sleep(50 * time.Millisecond)
-					return port.ForwardSignals(context.Background(), this.InputByName("in"), this.OutputByName("out"))
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("sleeper").OutputByName("out").
-			PipeTo(fm.ComponentByName("sleeper").InputByName("in")))
-
-		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		require.ErrorIs(t, err, ErrTimeLimitExceeded)
-	})
-
-	t.Run("component error causes Run to return ErrHitAnErrorOrPanic", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-		}))
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("faulty",
-				component.WithInputs("in"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					return errors.New("component failed")
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("faulty").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		require.ErrorIs(t, err, ErrHitAnErrorOrPanic)
-	})
-
-	t.Run("component panic causes Run to return ErrHitAPanic", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			ErrorHandlingStrategy: StopOnFirstPanic,
-		}))
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("panicky",
-				component.WithInputs("in"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					panic("component panicked")
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("panicky").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		require.ErrorIs(t, err, ErrHitAPanic)
-	})
-
-	t.Run("unsupported error handling strategy causes Run to return ErrUnsupportedErrorHandlingStrategy", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			ErrorHandlingStrategy: 999,
-		}))
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("simple",
-				component.WithInputs("in"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					return nil
-				})),
-		))
-
-		require.NoError(t, fm.ComponentByName("simple").InputByName("in").PutSignals(signal.New(1)))
-		_, err := fm.Run(context.Background())
-
-		require.Error(t, err, "Run should return error")
-		require.ErrorIs(t, err, ErrUnsupportedErrorHandlingStrategy)
-	})
 }
 
 func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {

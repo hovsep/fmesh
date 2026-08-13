@@ -1,0 +1,3 @@
+go test fuzz v1
+string("x#(\xf0\x9c\xa0G0&,x#(\xf0\x9c\xa0G0&")
+string("0")

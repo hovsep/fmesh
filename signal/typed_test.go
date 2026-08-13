@@ -8,6 +8,7 @@ import (
 )
 
 func TestAs(t *testing.T) {
+	t.Parallel()
 	t.Run("returns the payload as the asked-for type", func(t *testing.T) {
 		got, err := As[float64](New(3.5))
 		require.NoError(t, err)
@@ -36,6 +37,7 @@ func TestAs(t *testing.T) {
 }
 
 func TestAsOrDefault(t *testing.T) {
+	t.Parallel()
 	assert.InDelta(t, 3.5, AsOrDefault(New(3.5), 0.0), 1e-9)
 	assert.InDelta(t, 7.0, AsOrDefault(New("wrong type"), 7.0), 1e-9,
 		"the wrong type degrades to the default rather than failing the run")
@@ -47,6 +49,7 @@ func TestAsOrDefault(t *testing.T) {
 }
 
 func TestAsOrDefaultInfersFromTheDefault(t *testing.T) {
+	t.Parallel()
 	// An untyped 0 makes T int, so a float64 payload silently yields the
 	// default. AsFloat64OrDefault exists for exactly this.
 	assert.Equal(t, 0, AsOrDefault(New(2.5), 0))
@@ -54,6 +57,7 @@ func TestAsOrDefaultInfersFromTheDefault(t *testing.T) {
 }
 
 func TestTypedShorthands(t *testing.T) {
+	t.Parallel()
 	f, err := AsFloat64(New(1.5))
 	require.NoError(t, err)
 	assert.InDelta(t, 1.5, f, 1e-9)
@@ -74,6 +78,7 @@ func TestTypedShorthands(t *testing.T) {
 }
 
 func TestAsGroup(t *testing.T) {
+	t.Parallel()
 	inner := NewGroup(1, 2)
 
 	got, err := AsGroup(New(inner))
@@ -85,6 +90,7 @@ func TestAsGroup(t *testing.T) {
 }
 
 func TestAsNumber(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		payload any

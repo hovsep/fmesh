@@ -9,6 +9,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		payload any
 	}
@@ -48,6 +49,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSignal_Payload(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		signal *Signal
@@ -80,6 +82,7 @@ func TestSignal_Payload(t *testing.T) {
 }
 
 func TestSignal_Map(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -107,6 +110,7 @@ func TestSignal_Map(t *testing.T) {
 }
 
 func TestSignal_MapPayload(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -143,6 +147,7 @@ func TestSignal_MapPayload(t *testing.T) {
 }
 
 func TestSignal_WithOnlyLabels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -186,6 +191,7 @@ func TestSignal_WithOnlyLabels(t *testing.T) {
 }
 
 func TestSignal_WithLabels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -239,6 +245,7 @@ func TestSignal_WithLabels(t *testing.T) {
 }
 
 func TestSignal_WithLabel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -299,6 +306,7 @@ func TestSignal_WithLabel(t *testing.T) {
 }
 
 func TestSignal_WithNoLabels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
@@ -342,6 +350,7 @@ func TestSignal_WithNoLabels(t *testing.T) {
 }
 
 func TestSignal_WithoutLabels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		signal         *Signal
@@ -404,6 +413,7 @@ func TestSignal_WithoutLabels(t *testing.T) {
 }
 
 func TestSignal_Chainability(t *testing.T) {
+	t.Parallel()
 	t.Run("WithOnlyLabels called twice replaces all labels", func(t *testing.T) {
 		s := New(123).
 			WithOnlyLabels(map[string]string{"k1": "v1", "k2": "v2"}).
@@ -470,6 +480,7 @@ func TestSignal_Chainability(t *testing.T) {
 // TestSignal_NilPayloadInvariant verifies that nil is a valid payload and survives
 // all mutation operations (copy-on-write label changes) unchanged.
 func TestSignal_NilPayloadInvariant(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		signal *Signal
@@ -516,6 +527,7 @@ func TestSignal_NilPayloadInvariant(t *testing.T) {
 }
 
 func TestSignal_ZeroValueReadsAsNil(t *testing.T) {
+	t.Parallel()
 	// A signal without a payload can only be built by skipping New. Payload does
 	// not report that as an error — it is a construction bug, not a runtime
 	// condition — so it reads as nil, and the typed accessors say what is wrong.

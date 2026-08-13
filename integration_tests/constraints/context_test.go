@@ -205,3 +205,75 @@ func TestRun_HooksReceiveTheRunContext(t *testing.T) {
 	assert.True(t, got.beforeActivation.Load(), "BeforeActivation")
 	assert.True(t, got.afterActivation.Load(), "AfterActivation")
 }
+
+func TestRun_HookCancellationMidRun(t *testing.T) {
+	// The afterCycle hook runs between activation and the drain, so a cancel
+	// there exercises the mid-run cancellation path at the cycle boundary.
+	t.Run("AfterCycle hook canceling the context stops the run with ErrRunCanceled", func(t *testing.T) {
+		var activations atomic.Int64
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		fm := counterMesh(t, &activations, nil, fmesh.WithUnlimitedCycles(), fmesh.WithUnlimitedTime())
+		fm.SetupHooks(func(h *fmesh.Hooks) {
+			h.AfterCycle(func(_ context.Context, cc *fmesh.CycleContext) error {
+				if cc.Cycle.Number() >= 3 {
+					cancel()
+				}
+				return nil
+			})
+		})
+
+		_, err := fm.Run(ctx)
+
+		require.ErrorIs(t, err, fmesh.ErrRunCanceled)
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, int64(3), activations.Load(),
+			"the run must stop at the boundary of the cycle whose hook canceled")
+	})
+}
+
+func TestRun_CancellationBetweenActivationAndDrainIsRestartable(t *testing.T) {
+	// Canceling in afterCycle interrupts the run at the activation/drain seam:
+	// outputs are loaded, nothing was flushed, inputs were not cleared. The mesh
+	// must be able to run again — the stranded input seeds the second run.
+	var delivered atomic.Int64
+
+	source := testutil.MustComponent("source",
+		component.WithInputs("in"),
+		component.WithOutputs("out"),
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+			return this.OutputByName("out").PutSignals(signal.New("cargo"))
+		}))
+	sink := testutil.MustComponent("sink",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+			delivered.Add(int64(this.InputByName("in").Signals().Len()))
+			return nil
+		}))
+
+	fm, err := fmesh.New("restart-after-cancel")
+	require.NoError(t, err)
+	require.NoError(t, fm.AddComponents(source, sink))
+	require.NoError(t, source.OutputByName("out").PipeTo(sink.InputByName("in")))
+	require.NoError(t, source.InputByName("in").PutSignals(signal.New(1)))
+
+	firstCtx, cancelFirst := context.WithCancel(context.Background())
+	defer cancelFirst()
+	// The hook stays registered for both runs, but it only ever cancels the
+	// first run's context; canceling it again during the second run is a no-op.
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.AfterCycle(func(context.Context, *fmesh.CycleContext) error {
+			cancelFirst()
+			return nil
+		})
+	})
+
+	_, err = fm.Run(firstCtx)
+	require.ErrorIs(t, err, fmesh.ErrRunCanceled)
+	require.Zero(t, delivered.Load(), "nothing may reach the sink before the drain")
+
+	_, err = fm.Run(context.Background())
+	require.NoError(t, err, "a canceled mesh must be restartable with a fresh context")
+	assert.Equal(t, int64(1), delivered.Load(), "the second run must deliver the stranded signal")
+}

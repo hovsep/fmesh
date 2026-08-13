@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"unsafe"
 
 	"github.com/hovsep/fmesh/internal/testutil"
 
@@ -38,7 +37,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				first := this.InputByName("i1").Signals().First()
 				if first != nil {
-					ptrs.Store(slot, uintptr(unsafe.Pointer(first)))
+					ptrs.Store(slot, first)
 				}
 				return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))
 			}))
@@ -66,8 +65,8 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 	p3, ok3 := ptrs.Load("3")
 	require.True(t, ok1 && ok2 && ok3, "each consumer should have recorded a non-nil *signal.Signal")
 
-	assert.Equal(t, p1, p2, "fan-out must deliver the same *Signal pointer to each consumer (#203)")
-	assert.Equal(t, p2, p3, "fan-out must deliver the same *Signal pointer to each consumer (#203)")
+	assert.Same(t, p1, p2, "fan-out must deliver the same *Signal pointer to each consumer (#203)")
+	assert.Same(t, p2, p3, "fan-out must deliver the same *Signal pointer to each consumer (#203)")
 }
 
 // TestFanOut_sharedSignal_parallelStress_completes exercises the same fan-out
@@ -94,7 +93,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 				if shared == nil {
 					return nil
 				}
-				ptrs.Store(name, uintptr(unsafe.Pointer(shared)))
+				ptrs.Store(name, shared)
 
 				switch mode {
 				case 0:
@@ -144,6 +143,6 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 	pC, okC := ptrs.Load("consumerC")
 	require.True(t, okA && okB && okC)
 
-	assert.Equal(t, pA, pB)
-	assert.Equal(t, pB, pC)
+	assert.Same(t, pA, pB)
+	assert.Same(t, pB, pC)
 }

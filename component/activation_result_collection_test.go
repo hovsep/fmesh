@@ -2,6 +2,8 @@ package component
 
 import (
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -426,6 +428,41 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 	t.Run("no errors returns nil", func(t *testing.T) {
 		r := NewActivationResult("c")
 		assert.Empty(t, r.ActivationErrors())
-		assert.NoError(t, r.ActivationError())
+		require.NoError(t, r.ActivationError())
 	})
+}
+
+// TestActivationResultCollection_ConcurrentAddAndRead pins the collection's
+// thread-safety contract: activation goroutines Add results while the run loop
+// reads. Run under -race (CI does); assertions are deterministic.
+func TestActivationResultCollection_ConcurrentAddAndRead(t *testing.T) {
+	const writers, perWriter, readers = 8, 25, 4
+
+	collection := NewActivationResultCollection()
+
+	var wg sync.WaitGroup
+	for w := range writers {
+		wg.Go(func() {
+			for i := range perWriter {
+				collection.Add(NewActivationResult(fmt.Sprintf("c%d_%d", w, i)).SetActivated(true))
+			}
+		})
+	}
+	for range readers {
+		wg.Go(func() {
+			for i := range writers * perWriter {
+				_ = collection.Len()
+				_ = collection.ByName(fmt.Sprintf("c0_%d", i%perWriter))
+			}
+		})
+	}
+	wg.Wait()
+
+	assert.Equal(t, writers*perWriter, collection.Len())
+	for w := range writers {
+		for i := range perWriter {
+			name := fmt.Sprintf("c%d_%d", w, i)
+			require.NotNil(t, collection.ByName(name), "result %q must survive the concurrent adds", name)
+		}
+	}
 }

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	t.Run("happy path", func(t *testing.T) {
 		cycle := New()
 		assert.NotNil(t, cycle)
@@ -17,6 +18,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestCycle_ActivationResults(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cycleResult *Cycle
@@ -41,6 +43,7 @@ func TestCycle_ActivationResults(t *testing.T) {
 }
 
 func TestCycle_HasActivatedComponents(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cycleResult *Cycle
@@ -77,6 +80,7 @@ func TestCycle_HasActivatedComponents(t *testing.T) {
 }
 
 func TestCycle_HasErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cycleResult *Cycle
@@ -113,6 +117,7 @@ func TestCycle_HasErrors(t *testing.T) {
 }
 
 func TestCycle_HasPanics(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cycleResult *Cycle
@@ -150,6 +155,7 @@ func TestCycle_HasPanics(t *testing.T) {
 }
 
 func TestCycle_AddActivationResults(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		activationResults []*component.ActivationResult
 	}
@@ -213,6 +219,7 @@ func TestCycle_AddActivationResults(t *testing.T) {
 }
 
 func TestCycle_Chainability(t *testing.T) {
+	t.Parallel()
 	t.Run("AddActivationResults called twice adds results", func(t *testing.T) {
 		r1 := component.NewActivationResult("c1")
 		r2 := component.NewActivationResult("c2")
@@ -262,6 +269,7 @@ func TestCycle_Chainability(t *testing.T) {
 }
 
 func TestCycle_AllErrorsCombined(t *testing.T) {
+	t.Parallel()
 	err1 := errors.New("error 1")
 	err2 := errors.New("error 2")
 
@@ -301,13 +309,14 @@ func TestCycle_AllErrorsCombined(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantMsg)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
 }
 
 func TestCycle_AllPanicsCombined(t *testing.T) {
+	t.Parallel()
 	panic1 := errors.New("panic 1")
 	panic2 := errors.New("panic 2")
 
@@ -347,7 +356,7 @@ func TestCycle_AllPanicsCombined(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantMsg)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

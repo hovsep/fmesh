@@ -1,0 +1,3 @@
+go test fuzz v1
+string("x#(\U0001c81d\x9d\x9d\x9d\x9d\x9dz7x0\x8eC,x#(\U0001c81d\x9d\x9d\x9d\x9d\x9dz7x0\x8eC")
+string("0")

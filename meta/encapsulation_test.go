@@ -11,6 +11,7 @@ import (
 // guards only against callers reaching inside and corrupting internal state.
 
 func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
+	t.Parallel()
 	c := NewLabels().Set("k", "v")
 	m := c.All()
 
@@ -21,6 +22,7 @@ func TestLabelsCollection_All_returnsDefensiveCopy(t *testing.T) {
 }
 
 func TestLabelsCollection_All_map_not_shared_with_AddMany(t *testing.T) {
+	t.Parallel()
 	c1 := NewLabels().SetMany(map[string]string{"a": "1", "b": "2"})
 	m := c1.All()
 

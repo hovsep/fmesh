@@ -9,13 +9,15 @@ import (
 )
 
 func TestNewGroup(t *testing.T) {
+	t.Parallel()
 	t.Run("happy path", func(t *testing.T) {
 		group := NewGroup()
 		assert.NotNil(t, group)
 	})
 }
 
-func TestGroup_With(t *testing.T) {
+func TestGroup_Add(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		cycles []*Cycle
 	}
@@ -77,6 +79,7 @@ func TestGroup_With(t *testing.T) {
 }
 
 func TestGroup_RemoveOldest(t *testing.T) {
+	t.Parallel()
 	newFourCycles := func() *Group {
 		return NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
 	}
@@ -152,6 +155,7 @@ func TestGroup_RemoveOldest(t *testing.T) {
 }
 
 func TestGroup_SetLenLimit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		group      *Group
@@ -215,6 +219,7 @@ func TestGroup_SetLenLimit(t *testing.T) {
 }
 
 func TestGroup_Without(t *testing.T) {
+	t.Parallel()
 	c1 := New().SetNumber(1)
 	c2 := New().SetNumber(2)
 	c3 := New().SetNumber(3)
@@ -264,248 +269,8 @@ func TestGroup_Without(t *testing.T) {
 	}
 }
 
-func TestGroup_ForEach(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-	c3 := New().SetNumber(3)
-
-	t.Run("applies action to all cycles", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		count := 0
-		require.NoError(t, group.ForEach(func(c *Cycle) error {
-			count++
-			return nil
-		}))
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("empty group", func(t *testing.T) {
-		group := NewGroup()
-		count := 0
-		require.NoError(t, group.ForEach(func(c *Cycle) error {
-			count++
-			return nil
-		}))
-		assert.Equal(t, 0, count)
-	})
-}
-
-func TestGroup_ForEachIf(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-	c3 := New().SetNumber(3)
-	c4 := New().SetNumber(4)
-
-	t.Run("applies action only to matching cycles", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3, c4)
-		count := 0
-		require.NoError(t, group.ForEachIf(
-			func(c *Cycle) bool { return c.Number()%2 == 0 },
-			func(c *Cycle) error { count++; return nil },
-		))
-		assert.Equal(t, 2, count) // c2 and c4
-	})
-
-	t.Run("applies action to all when predicate always true", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		count := 0
-		require.NoError(t, group.ForEachIf(
-			func(c *Cycle) bool { return true },
-			func(c *Cycle) error { count++; return nil },
-		))
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("applies action to none when predicate always false", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		count := 0
-		require.NoError(t, group.ForEachIf(
-			func(c *Cycle) bool { return false },
-			func(c *Cycle) error { count++; return nil },
-		))
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("stops on error and returns error", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		err := group.ForEachIf(
-			func(c *Cycle) bool { return true },
-			func(c *Cycle) error { return assert.AnError },
-		)
-		assert.Error(t, err)
-	})
-
-	t.Run("skips when predicate is always false", func(t *testing.T) {
-		group := NewGroup().Add(c1)
-		visited := false
-		require.NoError(t, group.ForEachIf(
-			func(c *Cycle) bool { return false },
-			func(c *Cycle) error { visited = true; return nil },
-		))
-		assert.False(t, visited)
-	})
-}
-
-func TestGroup_Last(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-	c3 := New().SetNumber(3)
-
-	t.Run("get last from group", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		last := group.Last()
-		assert.Equal(t, 3, last.Number())
-	})
-
-	t.Run("last from empty group returns nil", func(t *testing.T) {
-		group := NewGroup()
-		last := group.Last()
-		assert.Nil(t, last)
-	})
-}
-
-func TestGroup_First(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-
-	t.Run("get first from group", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2)
-		first := group.First()
-		assert.Equal(t, 1, first.Number())
-	})
-
-	t.Run("first from empty group returns nil", func(t *testing.T) {
-		group := NewGroup()
-		first := group.First()
-		assert.Nil(t, first)
-	})
-}
-
-func TestGroup_Find(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-	c3 := New().SetNumber(3)
-	c4 := New().SetNumber(4)
-
-	t.Run("returns first matching cycle", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3, c4)
-		got := group.Find(func(c *Cycle) bool { return c.Number()%2 == 0 })
-		require.NotNil(t, got)
-		assert.Equal(t, 2, got.Number()) // first even, not all evens
-	})
-
-	t.Run("returns nil when no cycle matches", func(t *testing.T) {
-		group := NewGroup().Add(c1, c3)
-		got := group.Find(func(c *Cycle) bool { return c.Number()%2 == 0 })
-		assert.Nil(t, got)
-	})
-
-	t.Run("returns nil for empty group", func(t *testing.T) {
-		group := NewGroup()
-		got := group.Find(func(c *Cycle) bool { return true })
-		assert.Nil(t, got)
-	})
-}
-
-func TestGroup_All(t *testing.T) {
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-
-	t.Run("returns all cycles", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2)
-		all := group.All()
-		assert.Len(t, all, 2)
-	})
-
-	t.Run("returns empty slice for empty group", func(t *testing.T) {
-		group := NewGroup()
-		all := group.All()
-		assert.Empty(t, all)
-	})
-}
-
-func TestGroup_AllMatch(t *testing.T) {
-	c1 := New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().AddActivationResults(component.NewActivationResult("c2").SetActivated(true))
-	c3 := New().AddActivationResults(component.NewActivationResult("c3").SetActivated(false))
-
-	t.Run("all match", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2)
-		result := group.Every(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("not all match", func(t *testing.T) {
-		group := NewGroup().Add(c1, c3)
-		result := group.Every(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("empty group returns true", func(t *testing.T) {
-		group := NewGroup()
-		result := group.Every(func(c *Cycle) bool {
-			return false
-		})
-		assert.True(t, result)
-	})
-}
-
-func TestGroup_AnyMatch(t *testing.T) {
-	c1 := New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
-
-	t.Run("at least one matches", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2)
-		result := group.Any(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("none match", func(t *testing.T) {
-		group := NewGroup().Add(c2)
-		result := group.Any(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("empty group returns false", func(t *testing.T) {
-		group := NewGroup()
-		result := group.Any(func(c *Cycle) bool {
-			return true
-		})
-		assert.False(t, result)
-	})
-}
-
-func TestGroup_CountMatch(t *testing.T) {
-	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
-
-	t.Run("counts matching cycles", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2, c3)
-		count := group.Count(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("no matches", func(t *testing.T) {
-		group := NewGroup().Add(c2)
-		count := group.Count(func(c *Cycle) bool {
-			return c.HasActivatedComponents()
-		})
-		assert.Equal(t, 0, count)
-	})
-}
-
 func TestGroup_Filter(t *testing.T) {
+	t.Parallel()
 	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
 	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
 	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
@@ -543,6 +308,7 @@ func TestGroup_Filter(t *testing.T) {
 }
 
 func TestGroup_MapIf(t *testing.T) {
+	t.Parallel()
 	t.Run("maps only matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
 		mapped := group.MapIf(
@@ -586,6 +352,7 @@ func TestGroup_MapIf(t *testing.T) {
 }
 
 func TestGroup_Map(t *testing.T) {
+	t.Parallel()
 	c1 := New().SetNumber(1)
 	c2 := New().SetNumber(2)
 
@@ -608,19 +375,8 @@ func TestGroup_Map(t *testing.T) {
 	})
 }
 
-func TestGroup_IsEmpty(t *testing.T) {
-	t.Run("empty group", func(t *testing.T) {
-		group := NewGroup()
-		assert.True(t, group.IsEmpty())
-	})
-
-	t.Run("non-empty group", func(t *testing.T) {
-		group := NewGroup().Add(New())
-		assert.False(t, group.IsEmpty())
-	})
-}
-
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
+	t.Parallel()
 	t.Run("First does not poison group when empty", func(t *testing.T) {
 		group := NewGroup()
 
@@ -634,5 +390,18 @@ func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 		first := group.First()
 		require.NotNil(t, first)
 		assert.Equal(t, 42, first.Number())
+	})
+}
+
+// TestGroup_PromotedReadSurface smoke-checks the read methods promoted from
+// internal/collection.Slice; that package's suite is their source of truth.
+func TestGroup_PromotedReadSurface(t *testing.T) {
+	t.Parallel()
+	t.Run("promoted methods work through the Group facade", func(t *testing.T) {
+		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2))
+		assert.Equal(t, 2, group.Len())
+		assert.Equal(t, 1, group.First().Number())
+		assert.Equal(t, 2, group.Last().Number())
+		assert.True(t, NewGroup().IsEmpty())
 	})
 }

@@ -12,16 +12,12 @@ import (
 // reassigned from outside; only the base's exported methods promote.
 type keyedPorts = collection.Keyed[*Port]
 
-// Collection is a port collection.
-// indexed by name; hence it cannot carry
-// 2 ports with the same name. Optimized for lookups.
+// Collection is a port collection indexed by name; it cannot carry two ports
+// with the same name. Optimized for lookups.
 //
-// Every traversal goes in port-name order. Map iteration order would otherwise
-// leak into results: the order in which a component's output ports are flushed
-// decides the order their signals arrive at a shared downstream port, and
-// Signals() decides what a component reading all its inputs at once sees. Both
-// were observably random before — the same mesh, run twice, produced different
-// answers. See .agent/docs/design.md for the ordering guarantees this upholds.
+// Every traversal goes in port-name order — map order would leak into flush and
+// Signals() results and break run determinism. See .agent/docs/design.md for
+// the ordering guarantees this upholds.
 type Collection struct {
 	*keyedPorts
 	labels  *meta.Labels
@@ -45,16 +41,23 @@ func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
 // Names that match no port are skipped, which makes the result vacuously ready —
-// see the note on forgiving name lookups in design.md.
+// see the note on forgiving name lookups in design.md. Duplicated names collapse
+// to one lookup; without the dedupe, the batched Add would stop at the repeat
+// and silently drop every name after it (found by FuzzCollectionNameLookup).
 func (c *Collection) ByNames(names ...string) *Collection {
 	matched := make([]*Port, 0, len(names))
+	seen := make(map[string]bool, len(names))
 	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
 		if p := c.ByName(name); p != nil {
 			matched = append(matched, p)
 		}
 	}
 	selected := NewCollection()
-	_ = selected.Add(matched...) // ports come from existing collection — names are unique by construction
+	_ = selected.Add(matched...) // deduped above, taken from one collection — no conflict possible
 	return selected
 }
 

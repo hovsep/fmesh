@@ -13,6 +13,7 @@ import (
 // the float64 instantiation itself: ValueIs compares with ==, and the aggregates
 // below are the only float-specific logic in the package.
 func TestScalars_SharedStoreWithFloat64Values(t *testing.T) {
+	t.Parallel()
 	s := NewScalars()
 	assert.True(t, s.IsEmpty())
 
@@ -56,6 +57,7 @@ func TestScalars_SharedStoreWithFloat64Values(t *testing.T) {
 }
 
 func TestScalars_Merge(t *testing.T) {
+	t.Parallel()
 	t.Run("merges two stores", func(t *testing.T) {
 		a := NewScalars().SetMany(map[string]float64{"x": 1, "y": 2})
 		b := NewScalars().SetMany(map[string]float64{"y": 99, "z": 3})
@@ -76,6 +78,7 @@ func TestScalars_Merge(t *testing.T) {
 }
 
 func TestScalars_Filter(t *testing.T) {
+	t.Parallel()
 	t.Run("returns matching entries", func(t *testing.T) {
 		s := NewScalars().SetMany(map[string]float64{"a": 5, "b": -1, "c": 3})
 		positive := s.Filter(func(_ string, v float64) bool { return v > 0 })
@@ -92,6 +95,7 @@ func TestScalars_Filter(t *testing.T) {
 }
 
 func TestScalars_Chainable(t *testing.T) {
+	t.Parallel()
 	s := NewScalars().
 		Set("a", 1.0).
 		Set("b", 2.0).

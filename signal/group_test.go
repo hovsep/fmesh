@@ -8,6 +8,7 @@ import (
 )
 
 func TestNewGroup(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		payloads []any
 	}
@@ -52,6 +53,7 @@ func TestNewGroup(t *testing.T) {
 }
 
 func TestGroup_FirstPayload(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		group           *Group
@@ -89,6 +91,7 @@ func TestGroup_FirstPayload(t *testing.T) {
 }
 
 func TestGroup_AllPayloads(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		group           *Group
@@ -114,6 +117,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 }
 
 func TestGroup_With(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		signals []*Signal
 	}
@@ -165,6 +169,7 @@ func TestGroup_With(t *testing.T) {
 }
 
 func TestGroup_WithPayloads(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		payloads []any
 	}
@@ -214,45 +219,8 @@ func TestGroup_WithPayloads(t *testing.T) {
 	}
 }
 
-func TestGroup_First(t *testing.T) {
-	t.Run("empty group returns nil", func(t *testing.T) {
-		group := NewGroup()
-		got := group.First()
-		assert.Nil(t, got)
-	})
-
-	t.Run("happy path", func(t *testing.T) {
-		group := NewGroup(3, 5, 7)
-		got := group.First()
-		require.NotNil(t, got)
-		payload := got.Payload()
-		assert.Equal(t, 3, payload)
-	})
-}
-
-func TestGroup_Last(t *testing.T) {
-	t.Run("empty group returns nil", func(t *testing.T) {
-		assert.Nil(t, NewGroup().Last())
-	})
-
-	t.Run("single element", func(t *testing.T) {
-		group := NewGroup(42)
-		got := group.Last()
-		require.NotNil(t, got)
-		payload := got.Payload()
-		assert.Equal(t, 42, payload)
-	})
-
-	t.Run("returns last element", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		got := group.Last()
-		require.NotNil(t, got)
-		payload := got.Payload()
-		assert.Equal(t, 3, payload)
-	})
-}
-
 func TestGroup_Join(t *testing.T) {
+	t.Parallel()
 	t.Run("join two non-empty groups", func(t *testing.T) {
 		a := NewGroup(1, 2)
 		b := NewGroup(3, 4)
@@ -286,6 +254,7 @@ func TestGroup_Join(t *testing.T) {
 }
 
 func TestGroup_Contains(t *testing.T) {
+	t.Parallel()
 	t.Run("found by pointer identity", func(t *testing.T) {
 		s := New(42)
 		g := NewGroup().With(s)
@@ -303,6 +272,7 @@ func TestGroup_Contains(t *testing.T) {
 }
 
 func TestGroup_ContainsPayload(t *testing.T) {
+	t.Parallel()
 	t.Run("found", func(t *testing.T) {
 		g := NewGroup(1, 2, 3)
 		found, err := g.ContainsPayload(2)
@@ -337,6 +307,7 @@ func TestGroup_ContainsPayload(t *testing.T) {
 }
 
 func TestGroup_ContainsPayloadFunc(t *testing.T) {
+	t.Parallel()
 	t.Run("found with custom comparator", func(t *testing.T) {
 		g := NewGroup([]int{1, 2}, []int{3, 4})
 		found := g.ContainsPayloadFunc(func(p any) bool {
@@ -359,71 +330,8 @@ func TestGroup_ContainsPayloadFunc(t *testing.T) {
 	})
 }
 
-func TestGroup_Find(t *testing.T) {
-	t.Run("returns first matching signal", func(t *testing.T) {
-		group := NewGroup(1, 2, 3, 4)
-		got := group.Find(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		require.NotNil(t, got)
-		payload := got.Payload()
-		assert.Equal(t, 2, payload)
-	})
-
-	t.Run("returns nil when no signal matches", func(t *testing.T) {
-		group := NewGroup(1, 3, 5)
-		got := group.Find(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		assert.Nil(t, got)
-	})
-
-	t.Run("returns nil for empty group", func(t *testing.T) {
-		group := NewGroup()
-		got := group.Find(func(s *Signal) bool { return true })
-		assert.Nil(t, got)
-	})
-}
-
-func TestGroup_All(t *testing.T) {
-	tests := []struct {
-		name  string
-		group *Group
-		want  []*Signal
-	}{
-		{
-			name:  "empty group",
-			group: NewGroup(),
-			want:  []*Signal{},
-		},
-		{
-			name:  "with signals",
-			group: NewGroup(1, nil, 3),
-			want:  []*Signal{New(1), New(nil), New(3)},
-		},
-		{
-			name: "with labeled signals",
-			group: NewGroup(1, nil, 3).Map(func(s *Signal) *Signal {
-				return s.WithOnlyLabels(map[string]string{"flavor": "banana"})
-			}),
-			want: []*Signal{
-				New(1).WithOnlyLabels(map[string]string{"flavor": "banana"}),
-				New(nil).WithOnlyLabels(map[string]string{"flavor": "banana"}),
-				New(3).WithOnlyLabels(map[string]string{"flavor": "banana"}),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.group.All()
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestGroup_Filter(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		predicate Predicate
 	}
@@ -482,6 +390,7 @@ func TestGroup_Filter(t *testing.T) {
 }
 
 func TestGroup_Map(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		mapperFunc Mapper
 	}
@@ -523,6 +432,7 @@ func TestGroup_Map(t *testing.T) {
 }
 
 func TestGroup_MapIf(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		predicate  Predicate
 		mapperFunc Mapper
@@ -588,6 +498,7 @@ func TestGroup_MapIf(t *testing.T) {
 }
 
 func TestGroup_MapPayloadsIf(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		predicate  Predicate
 		mapperFunc PayloadMapper
@@ -647,6 +558,7 @@ func TestGroup_MapPayloadsIf(t *testing.T) {
 }
 
 func TestGroup_MapPayloads(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		mapperFunc PayloadMapper
 	}
@@ -685,164 +597,8 @@ func TestGroup_MapPayloads(t *testing.T) {
 	}
 }
 
-func TestGroup_Every(t *testing.T) {
-	t.Run("returns true when all match", func(t *testing.T) {
-		group := NewGroup(2, 4, 6)
-		result := group.Every(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("returns false when not all match", func(t *testing.T) {
-		group := NewGroup(2, 3, 4)
-		result := group.Every(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("returns true for empty group (vacuous truth)", func(t *testing.T) {
-		group := NewGroup()
-		result := group.Every(func(s *Signal) bool {
-			return true
-		})
-		assert.True(t, result)
-	})
-}
-
-func TestGroup_Any(t *testing.T) {
-	t.Run("returns true when at least one matches", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		result := group.Any(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int) == 2
-		})
-		assert.True(t, result)
-	})
-
-	t.Run("returns false when none match", func(t *testing.T) {
-		group := NewGroup(1, 3, 5)
-		result := group.Any(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		assert.False(t, result)
-	})
-
-	t.Run("returns false for empty group", func(t *testing.T) {
-		group := NewGroup()
-		result := group.Any(func(s *Signal) bool {
-			return true
-		})
-		assert.False(t, result)
-	})
-}
-
-func TestGroup_Count(t *testing.T) {
-	t.Run("counts matching signals", func(t *testing.T) {
-		group := NewGroup(1, 2, 3, 4, 5)
-		count := group.Count(func(s *Signal) bool {
-			payload := s.Payload()
-			return payload.(int)%2 == 0
-		})
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("returns 0 for empty group", func(t *testing.T) {
-		group := NewGroup()
-		count := group.Count(func(s *Signal) bool {
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-}
-
-func TestGroup_ForEach(t *testing.T) {
-	t.Run("applies action to each signal", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		count := 0
-		err := group.ForEach(func(s *Signal) error {
-			count++
-			return nil
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("stops on error", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		err := group.ForEach(func(s *Signal) error {
-			return assert.AnError
-		})
-		assert.Error(t, err)
-	})
-}
-
-func TestGroup_ForEachIf(t *testing.T) {
-	t.Run("applies action only to matching signals", func(t *testing.T) {
-		group := NewGroup(1, 2, 3, 4)
-		count := 0
-		err := group.ForEachIf(
-			func(s *Signal) bool {
-				payload := s.Payload()
-				return payload.(int)%2 == 0
-			},
-			func(s *Signal) error {
-				count++
-				return nil
-			},
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("applies action to all when predicate always true", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		count := 0
-		err := group.ForEachIf(
-			func(s *Signal) bool { return true },
-			func(s *Signal) error { count++; return nil },
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("applies action to none when predicate always false", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		count := 0
-		err := group.ForEachIf(
-			func(s *Signal) bool { return false },
-			func(s *Signal) error { count++; return nil },
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("stops on error", func(t *testing.T) {
-		group := NewGroup(2, 4, 6)
-		err := group.ForEachIf(
-			func(s *Signal) bool { return true },
-			func(s *Signal) error { return assert.AnError },
-		)
-		assert.Error(t, err)
-	})
-}
-
-func TestGroup_Len(t *testing.T) {
-	t.Run("returns count of signals", func(t *testing.T) {
-		group := NewGroup(1, 2, 3)
-		assert.Equal(t, 3, group.Len())
-	})
-
-	t.Run("returns 0 for empty group", func(t *testing.T) {
-		assert.Equal(t, 0, NewGroup().Len())
-	})
-}
-
 func TestGroup_Reduce(t *testing.T) {
+	t.Parallel()
 	t.Run("accumulates signals", func(t *testing.T) {
 		g := NewGroup(1, 2, 3)
 		result := g.Reduce(New(0), func(acc, s *Signal) *Signal {
@@ -863,6 +619,7 @@ func TestGroup_Reduce(t *testing.T) {
 }
 
 func TestGroup_ReducePayloads(t *testing.T) {
+	t.Parallel()
 	t.Run("sums integers", func(t *testing.T) {
 		g := NewGroup(1, 2, 3, 4)
 		result := g.ReducePayloads(0, func(acc, payload any) any {
@@ -888,6 +645,7 @@ func TestGroup_ReducePayloads(t *testing.T) {
 // TestGroup_NilPayloadInvariant verifies that nil is a valid payload in a group
 // and survives group operations unchanged.
 func TestGroup_NilPayloadInvariant(t *testing.T) {
+	t.Parallel()
 	t.Run("First returns nil-payload signal", func(t *testing.T) {
 		got := NewGroup(nil, 1).First().Payload()
 		assert.Nil(t, got)
@@ -942,6 +700,7 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 }
 
 func TestGroup_MapDropsNilResults(t *testing.T) {
+	t.Parallel()
 	dropOdd := func(s *Signal) *Signal {
 		if s.Payload().(int)%2 != 0 {
 			return nil
@@ -969,5 +728,18 @@ func TestGroup_MapDropsNilResults(t *testing.T) {
 
 		payloads := g.AllPayloads()
 		assert.Equal(t, []any{2, 4}, payloads)
+	})
+}
+
+// TestGroup_PromotedReadSurface smoke-checks the read methods promoted from
+// internal/collection.Slice; that package's suite is their source of truth.
+func TestGroup_PromotedReadSurface(t *testing.T) {
+	t.Parallel()
+	t.Run("promoted methods work through the Group facade", func(t *testing.T) {
+		g := NewGroup(1, 2, 3)
+		assert.Equal(t, 3, g.Len())
+		assert.Equal(t, 1, g.First().Payload())
+		assert.Equal(t, 3, g.Last().Payload())
+		assert.Nil(t, NewGroup().First(), "empty group yields nil, not a zero Signal")
 	})
 }

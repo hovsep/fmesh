@@ -1,0 +1,3 @@
+go test fuzz v1
+string("2,,10,0\xba,,0,")
+string("0")

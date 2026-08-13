@@ -7,6 +7,7 @@ import (
 )
 
 func TestNot(t *testing.T) {
+	t.Parallel()
 	alwaysTrue := func(s *Signal) bool { return true }
 	alwaysFalse := func(s *Signal) bool { return false }
 
@@ -15,6 +16,7 @@ func TestNot(t *testing.T) {
 }
 
 func TestAnd(t *testing.T) {
+	t.Parallel()
 	isPositive := func(s *Signal) bool {
 		v := s.Payload()
 		return v.(int) > 0
@@ -30,6 +32,7 @@ func TestAnd(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
+	t.Parallel()
 	isZero := func(s *Signal) bool {
 		v := s.Payload()
 		return v.(int) == 0
@@ -45,6 +48,7 @@ func TestOr(t *testing.T) {
 }
 
 func TestHasLabel(t *testing.T) {
+	t.Parallel()
 	s := New(1).WithLabel("env", "prod")
 
 	assert.True(t, HasLabel("env")(s))
@@ -52,6 +56,7 @@ func TestHasLabel(t *testing.T) {
 }
 
 func TestLabelEquals(t *testing.T) {
+	t.Parallel()
 	s := New(1).WithLabel("env", "prod")
 
 	assert.True(t, LabelEquals("env", "prod")(s))
@@ -60,6 +65,7 @@ func TestLabelEquals(t *testing.T) {
 }
 
 func TestLabelContains(t *testing.T) {
+	t.Parallel()
 	s := New(1).WithLabel("tag", "urgent-request")
 
 	assert.True(t, LabelContains("tag", "urgent")(s))
@@ -69,6 +75,7 @@ func TestLabelContains(t *testing.T) {
 }
 
 func TestHasAllLabels(t *testing.T) {
+	t.Parallel()
 	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2", "c": "3"})
 
 	assert.True(t, HasAllLabels("a", "b")(s))
@@ -78,6 +85,7 @@ func TestHasAllLabels(t *testing.T) {
 }
 
 func TestHasAnyLabel(t *testing.T) {
+	t.Parallel()
 	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2"})
 
 	assert.True(t, HasAnyLabel("a", "z")(s))
@@ -86,6 +94,7 @@ func TestHasAnyLabel(t *testing.T) {
 }
 
 func TestPredicateCombinators_composition(t *testing.T) {
+	t.Parallel()
 	g := NewGroup(1, 2, 3, 4, 5, 6).Map(func(s *Signal) *Signal {
 		v := s.Payload()
 		if v.(int)%2 == 0 {

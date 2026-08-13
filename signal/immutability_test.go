@@ -4,7 +4,6 @@ import (
 	"errors"
 	"sync"
 	"testing"
-	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,7 +124,7 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 
 	outSigs := out.All()
 	require.Len(t, outSigs, 2)
-	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
+	assert.NotSame(t, g.First(), outSigs[0],
 		"MapIf pass-through must use cloned signals, not shared pointers (#203)")
 
 	_ = outSigs[0].WithLabel("x", "y")
@@ -155,7 +154,7 @@ func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
 
 	outSigs := out.All()
 	require.Len(t, outSigs, 2)
-	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])),
+	assert.NotSame(t, g.First(), outSigs[0],
 		"Map with identity mapper must clone signals, not share pointers")
 
 	_ = outSigs[0].WithLabel("x", "y")
@@ -175,7 +174,7 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 
 	outSigs := out.All()
 	require.Len(t, outSigs, 2)
-	require.NotEqual(t, uintptr(unsafe.Pointer(g.First())), uintptr(unsafe.Pointer(outSigs[0])))
+	assert.NotSame(t, g.First(), outSigs[0])
 
 	_ = outSigs[0].WithLabel("x", "y")
 
