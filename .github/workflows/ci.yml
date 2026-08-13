@@ -1,4 +1,4 @@
-name: Run tests and upload coverage
+name: CI
 
 # push on main only + pull_request: avoids double runs on PR branches while
 # still producing the required status check on fork PRs.
@@ -38,13 +38,16 @@ jobs:
       - name: Run tests
         run: go test -race -coverpkg=./... -coverprofile=coverage.out ./...
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+      # Coverage is measured but not published to a third party. The profile is
+      # kept as a build artifact so the number for any run stays retrievable:
+      # download it and run `go tool cover -func=coverage.out`, or `-html` for
+      # the annotated source. `make cover` does the same locally.
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
         with:
-          files: ./coverage.out
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-profile
+          path: coverage.out
+          retention-days: 14
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
