@@ -36,8 +36,6 @@ import (
 )
 
 // docPackages maps the import qualifier used in docs to its directory.
-// The profiler is deliberately absent: it lives in its own module
-// (fmesh-profiler), so its references are external, like fmesh-graphviz's.
 var docPackages = map[string]string{
 	"fmesh":     ".",
 	"component": "component",
@@ -45,12 +43,13 @@ var docPackages = map[string]string{
 	"signal":    "signal",
 	"meta":      "meta",
 	"cycle":     "cycle",
+	"profiler":  "plugin/profiler",
 	"autowire":  "plugin/autowire",
 }
 
 var (
 	goBlockRe   = regexp.MustCompile("(?s)```go\n(.*?)\n```")
-	qualifiedRe = regexp.MustCompile(`\b(fmesh|component|port|signal|meta|cycle|autowire)\.([A-Z]\w*)`)
+	qualifiedRe = regexp.MustCompile(`\b(fmesh|component|port|signal|meta|cycle|profiler|autowire)\.([A-Z]\w*)`)
 	lineComment = regexp.MustCompile(`//.*`)
 )
 

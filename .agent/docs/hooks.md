@@ -111,9 +111,9 @@ Two consequences of the arrival-hook pattern, both learned the hard way in `plug
 
 The packages under `plugin/` ship mesh-level plugins built on exactly the pattern above. Each plugin
 is its own package (`plugin` itself holds only a doc comment); they import `fmesh`, so `fmesh` can
-never import them. The profiler is **not** here: like the DOT exporter (`fmesh-graphviz`), it
-consumes only the public API and lives in its own module, `github.com/hovsep/fmesh-profiler`.
+never import them.
 
 | Plugin | What it does |
 |---|---|
 | `plugin/autowire` — `autowire.Prefixed(prefix)` / `Broadcast(name)` / `BroadcastAs(out, in)` / `&autowire.Plugin{InputNameFor: ...}` | Pipes ports by naming convention, in both directions on every arrival, so `AddComponents` order does not matter. Each convention is a separate plugin instance with its own `PluginName`. |
+| `plugin/profiler` — `profiler.New(modes...)` | Mesh-centric measurement: run/cycle/activation timing, per-pipe throughput, per-cycle timeline. Every number is mesh-attributable — it deliberately measures nothing process-wide. |

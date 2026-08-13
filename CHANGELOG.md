@@ -128,8 +128,9 @@ import "github.com/hovsep/fmesh/plugin/autowire"           // after
 | `plugin.NewProfiler()` | `profiler.New()` |
 | `plugin.Profiler` | `profiler.Plugin` |
 | `plugin.ProfileMode` | `profiler.Mode` |
-| `plugin.ProfileTiming` / `ProfileThroughput` / `ProfileTimeline` / `ProfileRuntime` / `ProfileAll` | `profiler.ModeTiming` / `ModeThroughput` / `ModeTimeline` / `ModeRuntime` / `ModeAll` |
-| `plugin.Stat`, `ComponentStat`, `Flow`, `PipeStat`, `CycleRecord`, `ResourceStat` | `profiler.Stat`, `ComponentStat`, … |
+| `plugin.ProfileTiming` / `ProfileThroughput` / `ProfileTimeline` / `ProfileAll` | `profiler.ModeTiming` / `ModeThroughput` / `ModeTimeline` / `ModeAll` |
+| `plugin.ProfileRuntime`, `plugin.ResourceStat` | removed — see the mesh-centric entry below |
+| `plugin.Stat`, `ComponentStat`, `Flow`, `PipeStat`, `CycleRecord` | `profiler.Stat`, `ComponentStat`, … |
 | `plugin.Autowire` | `autowire.Plugin` |
 | `plugin.AutowireBroadcast(name)` | `autowire.Broadcast(name)` |
 | `plugin.AutowireBroadcastAs(out, in)` | `autowire.BroadcastAs(out, in)` |
@@ -150,14 +151,12 @@ fm, err := fmesh.New("mesh", fmesh.WithPlugins(   // after
 The plugin *names* are unchanged, so `PluginRegistered("profiler")` and
 `PluginRegistered("autowire:broadcast:tick->time")` still answer the same.
 
-**The profiler moved to its own module.** Like the DOT exporter (`fmesh-graphviz`), it consumes
-only the public API and now lives at `github.com/hovsep/fmesh-profiler`. Its API is unchanged
-apart from the `Name()` rename below.
-
-```go
-import "github.com/hovsep/fmesh/plugin/profiler"   // before
-import profiler "github.com/hovsep/fmesh-profiler" // after
-```
+**The profiler is mesh-centric: the runtime-resources dimension is gone.** `ProfileRuntime`
+(latterly `profiler.ModeRuntime`), `ResourceStat`, `Resources()` and `CycleRecord.Resources` are
+removed. They sampled Go runtime counters — heap, GC, goroutines, CPU — which are process-wide by
+nature: every number included whatever else the process was doing, and the report had to carry a
+"not mesh-attributed" disclaimer. Everything the profiler now reports is attributable to the mesh.
+`profiler.ModeAll` is `ModeTiming | ModeThroughput | ModeTimeline`.
 
 **Plugins implement `Name()`, not `GetName()`.** Both plugin interfaces (`fmesh.Plugin`,
 `component.Plugin`) now follow Go's getter convention. `autowire.Plugin`'s convention field is
@@ -344,8 +343,9 @@ g = g.WithLabel("k", "v")  // after
 6. Replace `ErrWaitingForInputsKeep` with `ErrWaitKeepingInputs`; if you returned bare
    `ErrWaitingForInputs`, say `ErrWaitDroppingInputs` instead.
 7. Rename `GetName()` → `Name()` on your plugins; `autowire.Plugin{Name: ...}` → `InputNameFor`.
-8. Import the profiler from `github.com/hovsep/fmesh-profiler` instead of
-   `github.com/hovsep/fmesh/plugin/profiler`.
+8. Drop any use of the profiler's runtime-resources dimension (`ProfileRuntime`/`ModeRuntime`,
+   `ResourceStat`, `Resources()`); reach for `runtime/metrics` directly if you need process
+   numbers.
 9. If you mutated a `signal.Group`'s own metadata through `Labels()`/`Scalars()`, switch to
    `WithLabel`/`WithScalar` and assign the result.
 10. Run `go build ./...` — the compiler finds every remaining site.
