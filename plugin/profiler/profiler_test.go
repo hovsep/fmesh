@@ -253,3 +253,9 @@ func TestProfiler_ResetDuringARunDoesNotPoisonTheRunStat(t *testing.T) {
 	assert.Zero(t, p.Runs().Count, "the run that was reset mid-flight is not counted")
 	assert.Less(t, p.Runs().Total, time.Hour, "no garbage duration")
 }
+
+func TestMode_StringAndModes(t *testing.T) {
+	assert.Equal(t, "none", Mode(0).String())
+	assert.Equal(t, ModeTiming, New().Modes(), "no argument means timing")
+	assert.Equal(t, ModeTiming|ModeTimeline, New(ModeTiming, ModeTimeline).Modes())
+}

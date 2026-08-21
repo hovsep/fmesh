@@ -1,0 +1,146 @@
+package component
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/hovsep/fmesh/port"
+	"github.com/hovsep/fmesh/signal"
+)
+
+func TestNew_OnCreationHookFailureFailsConstruction(t *testing.T) {
+	_, err := New("c", WithHooks(func(h *Hooks) {
+		h.OnCreation(func(context.Context, *Component) error { return errors.New("not today") })
+	}))
+	require.ErrorContains(t, err, "on creation hook failed")
+	require.ErrorContains(t, err, "not today")
+}
+
+func TestComponent_SetLogger_RejectsNil(t *testing.T) {
+	require.ErrorContains(t, mustNew("c").SetLogger(nil), "logger cannot be nil")
+}
+
+func TestComponent_LoopbackPipe_NamesTheMissingPort(t *testing.T) {
+	c := mustNew("c", WithInputs("in"), WithOutputs("out"))
+
+	require.ErrorContains(t, c.LoopbackPipe("nope", "in"), `output port "nope" not found`)
+	require.ErrorContains(t, c.LoopbackPipe("out", "nope"), `input port "nope" not found`)
+}
+
+func TestWithIndexedPorts(t *testing.T) {
+	c := mustNew("c", WithIndexedInputs("i", 1, 3), WithIndexedOutputs("o", 1, 2))
+
+	assert.Equal(t, 3, c.Inputs().Len())
+	assert.NotNil(t, c.InputByName("i2"))
+	assert.Equal(t, 2, c.Outputs().Len())
+	assert.NotNil(t, c.OutputByName("o2"))
+
+	_, err := New("bad", WithIndexedInputs("i", 3, 1))
+	require.ErrorIs(t, err, port.ErrInvalidRangeForIndexedGroup)
+}
+
+func TestComponent_ValidateBeforeAddingToMesh_PortParents(t *testing.T) {
+	noop := WithActivationFunc(func(context.Context, *Component) error { return nil })
+	t.Run("a port attached to two components belongs to the last one", func(t *testing.T) {
+		shared, err := port.NewInput("in")
+		require.NoError(t, err)
+		first, second := mustNew("first", noop), mustNew("second", noop)
+		require.NoError(t, first.AttachInputPorts(shared))
+		require.NoError(t, second.AttachInputPorts(shared))
+
+		require.ErrorContains(t, first.ValidateBeforeAddingToMesh(), `input port "in" has wrong parent component`)
+		require.NoError(t, second.ValidateBeforeAddingToMesh())
+	})
+
+	t.Run("the same for an output port", func(t *testing.T) {
+		shared, err := port.NewOutput("out")
+		require.NoError(t, err)
+		first, second := mustNew("first", noop), mustNew("second", noop)
+		require.NoError(t, first.AttachOutputPorts(shared))
+		require.NoError(t, second.AttachOutputPorts(shared))
+
+		require.ErrorContains(t, first.ValidateBeforeAddingToMesh(), `output port "out" has wrong parent component`)
+	})
+
+	t.Run("a port added behind the component's back has no parent", func(t *testing.T) {
+		in, err := port.NewInput("in")
+		require.NoError(t, err)
+		out, err := port.NewOutput("out")
+		require.NoError(t, err)
+
+		c := mustNew("c", noop)
+		require.NoError(t, c.Inputs().Add(in))
+		require.ErrorContains(t, c.ValidateBeforeAddingToMesh(), `input port "in" has no parent component`)
+
+		d := mustNew("d", noop)
+		require.NoError(t, d.Outputs().Add(out))
+		require.ErrorContains(t, d.ValidateBeforeAddingToMesh(), `output port "out" has no parent component`)
+	})
+}
+
+func TestCollection_AnyAndMetadata(t *testing.T) {
+	col := NewCollection()
+	assert.Nil(t, col.Any(), "empty collection has nothing to return")
+
+	require.NoError(t, col.Add(mustNew("b"), mustNew("a")))
+	assert.Equal(t, "a", col.Any().Name(), "name order, so the answer is stable")
+
+	col.Labels().Set("k", "v")
+	col.Scalars().Set("s", 1)
+	assert.True(t, col.Labels().ValueIs("k", "v"))
+	assert.True(t, col.Scalars().ValueIs("s", 1))
+}
+
+func TestCollection_Map_RejectsCollidingNames(t *testing.T) {
+	col := NewCollection()
+	require.NoError(t, col.Add(mustNew("a"), mustNew("b")))
+
+	_, err := col.Map(func(*Component) *Component { return mustNew("same") })
+	require.Error(t, err, "two components mapped to one name cannot share a collection")
+}
+
+func TestActivationResultCode_String(t *testing.T) {
+	tests := map[ActivationResultCode]string{
+		ActivationCodeUndefined:             "Undefined",
+		ActivationCodeOK:                    "Success",
+		ActivationCodeNoInput:               "No input",
+		ActivationCodeReturnedError:         "Finished with error",
+		ActivationCodePanicked:              "Finished with panic",
+		ActivationCodeWaitingForInputsClear: "Waiting for input (clear)",
+		ActivationCodeWaitingForInputsKeep:  "Waiting for input (keep)",
+		ActivationCodeHookFailed:            "Hook failed",
+		ActivationResultCode(99):            "Unknown code",
+	}
+	for code, want := range tests {
+		assert.Equal(t, want, code.String())
+	}
+}
+
+func TestActivationResultCollection_ForEach_StopsOnError(t *testing.T) {
+	c := NewActivationResultCollection()
+	c.Add(NewActivationResult("a"), NewActivationResult("b"))
+
+	errStop := errors.New("stop")
+	calls := 0
+	err := c.ForEach(func(*ActivationResult) error { calls++; return errStop })
+	require.ErrorIs(t, err, errStop)
+	assert.Equal(t, 1, calls)
+}
+
+func TestComponent_FlushOutputs_ReportsARefusedDelivery(t *testing.T) {
+	src := mustNew("src", WithOutputs("out"))
+	dst := mustNew("dst", WithInputs("in"))
+	dst.InputByName("in").SetupHooks(func(h *port.Hooks) {
+		h.OnSignalsAdded(func(context.Context, *port.SignalsAddedContext) error { return errors.New("refused") })
+	})
+	require.NoError(t, src.OutputByName("out").PipeTo(dst.InputByName("in")))
+	require.NoError(t, src.OutputByName("out").PutSignals(signal.New(1)))
+
+	err := src.FlushOutputs(context.Background())
+	require.ErrorContains(t, err, `failed to flush output port "out"`)
+	require.ErrorContains(t, err, "refused")
+}

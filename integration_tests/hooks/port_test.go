@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/port"
@@ -232,4 +233,43 @@ func TestPortHooks_DeliveredFiresAfterTheDestinationAccepted(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"added", "delivered"}, log.events)
+}
+
+func TestPortHooks_FailuresDuringTheDrainFailTheRun(t *testing.T) {
+	t.Run("a refusing OnClear on an input", func(t *testing.T) {
+		fm := twoCycleMesh(t)
+		fm.ComponentByName("producer").InputByName("in").SetupHooks(func(h *port.Hooks) {
+			h.OnClear(func(context.Context, *port.ClearContext) error { return errors.New("sticky") })
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorIs(t, err, fmesh.ErrFailedToDrain)
+		require.ErrorContains(t, err, `failed to clear input ports: component "producer"`)
+	})
+
+	t.Run("a refusing OnSignalsAdded on the destination", func(t *testing.T) {
+		fm := twoCycleMesh(t)
+		fm.ComponentByName("consumer").InputByName("in").SetupHooks(func(h *port.Hooks) {
+			h.OnSignalsAdded(func(context.Context, *port.SignalsAddedContext) error { return errors.New("refused") })
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorIs(t, err, fmesh.ErrFailedToDrain)
+		require.ErrorContains(t, err, `failed to flush outputs of component "producer"`)
+	})
+
+	t.Run("a refusing OnClear on an output fails before the first cycle", func(t *testing.T) {
+		// Outputs are cleared when a run starts, so this one never gets going.
+		fm := twoCycleMesh(t)
+		fm.ComponentByName("producer").OutputByName("out").SetupHooks(func(h *port.Hooks) {
+			h.OnClear(func(context.Context, *port.ClearContext) error { return errors.New("sticky") })
+		})
+
+		ri, err := fm.Run(context.Background())
+
+		require.ErrorContains(t, err, "onClear hook failed")
+		assert.Nil(t, ri, "no run started, so no runtime info")
+	})
 }

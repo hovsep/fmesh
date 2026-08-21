@@ -235,3 +235,24 @@ func mustPipeKey(name string) pipeKey {
 	}
 	return pipeKey{source: out, destination: in}
 }
+
+func TestProfiler_PipesRankByTransfersWhenSignalsTie(t *testing.T) {
+	// Same signal count: the pipe that fired more often ranks first, then the
+	// labels break a full tie — a report must never reorder between runs.
+	p := New(ModeThroughput)
+	p.pipes[mustPipeKey("a")] = Flow{Transfers: 1, Signals: 4}
+	p.pipes[mustPipeKey("b")] = Flow{Transfers: 2, Signals: 4}
+	p.pipes[mustPipeKey("c")] = Flow{Transfers: 2, Signals: 4}
+
+	stats := p.Pipes()
+	require.Len(t, stats, 3)
+	assert.Equal(t, 2, stats[0].Transfers)
+	assert.Equal(t, "b_out", stats[0].Source)
+	assert.Equal(t, "c_out", stats[1].Source)
+	assert.Equal(t, 1, stats[2].Transfers)
+
+	a, b := stats[1], stats[1]
+	b.Destination = "zzz"
+	assert.Negative(t, comparePipeLabels(a, b))
+	assert.Zero(t, comparePipeLabels(a, a))
+}
