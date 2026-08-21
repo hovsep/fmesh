@@ -32,7 +32,7 @@ func Test_State(t *testing.T) {
 					component.WithOutputs("signal_out"),
 					component.WithDescription("produces some signals"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1).(int)
+						demandRate := this.InputByName("demand_rate").Signals().FirstPayloadOrDefault(1)
 						this.Logger().Println("demand rate= ", demandRate)
 
 						for range demandRate {

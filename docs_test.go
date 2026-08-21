@@ -173,12 +173,14 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 	removed := []string{
 		"AddLabel", "AddLabels", "SetLabels", "ClearLabels", "RemoveLabels",
 		"AddScalar", "AddScalars", "SetScalars", "ClearScalars", "RemoveScalars",
-		"PayloadOrNil", "PayloadOrDefault",
+		"PayloadOrNil",
 		"HasChainableErr", "ChainableErr",
 		"GetName",
 		"SetLabelOnEach", "SetScalarOnEach",
 		"SumScalar", "MinScalar", "MaxScalar", "AvgScalar",
 		"NewIndexedInputGroup", "NewIndexedOutputGroup",
+		"AsInt", "AsString", "AsBool", "AsFloat64", "MustGetTyped",
+		"AsOrDefault", "FirstAsOrDefault", "AsFloat64OrDefault",
 	}
 	banned := make(map[string]bool, len(removed))
 	for _, name := range removed {

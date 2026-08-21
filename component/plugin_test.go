@@ -43,8 +43,8 @@ func TestComponent_Plugin(t *testing.T) {
 		assert.InDelta(t, 77.5, c.State().Get("base_price"), 0.0001)
 		assert.InDelta(t, 122.333, c.State().Get("new_price"), 0.0001)
 		assert.False(t, c.OutputByName("price_out").Signals().IsEmpty())
-		assert.InDelta(t, 1000.1, c.OutputByName("price_out").Signals().ReducePayloads(0.0, func(acc any, payload any) any {
-			return acc.(float64) + payload.(float64)
+		assert.InDelta(t, 1000.1, c.OutputByName("price_out").Signals().ReducePayloads(0.0, func(acc float64, payload any) float64 {
+			return acc + payload.(float64)
 		}), 0.0001)
 		assert.True(t, c.Labels().ValueIs("plugin/price/version", "v1.2.4"))
 		assert.True(t, c.Scalars().ValueIs("plugin/price/threshold", 105.54))

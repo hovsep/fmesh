@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -274,35 +275,24 @@ func TestGroup_Contains(t *testing.T) {
 func TestGroup_ContainsPayload(t *testing.T) {
 	t.Parallel()
 	t.Run("found", func(t *testing.T) {
-		g := NewGroup(1, 2, 3)
-		found, err := g.ContainsPayload(2)
-		require.NoError(t, err)
-		assert.True(t, found)
+		assert.True(t, NewGroup(1, 2, 3).ContainsPayload(2))
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		g := NewGroup(1, 2, 3)
-		found, err := g.ContainsPayload(99)
-		require.NoError(t, err)
-		assert.False(t, found)
+		assert.False(t, NewGroup(1, 2, 3).ContainsPayload(99))
 	})
 
 	t.Run("nil payload found", func(t *testing.T) {
-		g := NewGroup(nil, 1)
-		found, err := g.ContainsPayload(nil)
-		require.NoError(t, err)
-		assert.True(t, found)
+		assert.True(t, NewGroup(nil, 1).ContainsPayload[any](nil))
 	})
 
 	t.Run("empty group", func(t *testing.T) {
-		found, err := NewGroup().ContainsPayload(1)
-		require.NoError(t, err)
-		assert.False(t, found)
+		assert.False(t, NewGroup().ContainsPayload(1))
 	})
 
-	t.Run("non-comparable payload returns error", func(t *testing.T) {
-		_, err := NewGroup(1).ContainsPayload([]int{1, 2})
-		assert.Error(t, err)
+	t.Run("a different numeric type is a different payload", func(t *testing.T) {
+		// Interface equality, not conversion: int64(2) is not the int 2.
+		assert.False(t, NewGroup(1, 2, 3).ContainsPayload(int64(2)))
 	})
 }
 
@@ -622,23 +612,33 @@ func TestGroup_ReducePayloads(t *testing.T) {
 	t.Parallel()
 	t.Run("sums integers", func(t *testing.T) {
 		g := NewGroup(1, 2, 3, 4)
-		result := g.ReducePayloads(0, func(acc, payload any) any {
-			return acc.(int) + payload.(int)
+		result := g.ReducePayloads(0, func(acc int, payload any) int {
+			return acc + payload.(int)
 		})
 		assert.Equal(t, 10, result)
 	})
 
 	t.Run("concatenates strings", func(t *testing.T) {
 		g := NewGroup("a", "b", "c")
-		result := g.ReducePayloads("", func(acc, payload any) any {
-			return acc.(string) + payload.(string)
+		result := g.ReducePayloads("", func(acc string, payload any) string {
+			return acc + payload.(string)
 		})
 		assert.Equal(t, "abc", result)
 	})
 
 	t.Run("returns initial for empty group", func(t *testing.T) {
-		result := NewGroup().ReducePayloads(42, func(acc, payload any) any { return payload })
+		result := NewGroup().ReducePayloads(42, func(_ int, payload any) int { return payload.(int) })
 		assert.Equal(t, 42, result)
+	})
+
+	t.Run("the accumulator type need not be a payload type", func(t *testing.T) {
+		// Typed accumulation is the point: no cast on acc, and A is whatever the
+		// caller wants to build.
+		g := NewGroup(1, "two", 3.0)
+		kinds := g.ReducePayloads([]string{}, func(acc []string, payload any) []string {
+			return append(acc, fmt.Sprintf("%T", payload))
+		})
+		assert.Equal(t, []string{"int", "string", "float64"}, kinds)
 	})
 }
 
@@ -689,13 +689,8 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 	})
 
 	t.Run("ContainsPayload finds nil", func(t *testing.T) {
-		found1, err1 := NewGroup(nil, 1).ContainsPayload(nil)
-		require.NoError(t, err1)
-		assert.True(t, found1)
-
-		found2, err2 := NewGroup(1, 2).ContainsPayload(nil)
-		require.NoError(t, err2)
-		assert.False(t, found2)
+		assert.True(t, NewGroup(nil, 1).ContainsPayload[any](nil))
+		assert.False(t, NewGroup(1, 2).ContainsPayload[any](nil))
 	})
 }
 
@@ -742,4 +737,36 @@ func TestGroup_PromotedReadSurface(t *testing.T) {
 		assert.Equal(t, 3, g.Last().Payload())
 		assert.Nil(t, NewGroup().First(), "empty group yields nil, not a zero Signal")
 	})
+}
+
+func TestGroup_FirstAs(t *testing.T) {
+	t.Parallel()
+	t.Run("returns the first payload as T", func(t *testing.T) {
+		got, err := NewGroup(7, "later").FirstAs[int]()
+		require.NoError(t, err)
+		assert.Equal(t, 7, got)
+	})
+
+	t.Run("an empty group is ErrNoSignalsInGroup", func(t *testing.T) {
+		_, err := NewGroup().FirstAs[int]()
+		require.ErrorIs(t, err, ErrNoSignalsInGroup)
+	})
+
+	t.Run("a wrong type is an error, not a panic", func(t *testing.T) {
+		_, err := NewGroup("seven").FirstAs[int]()
+		require.ErrorContains(t, err, "is string, not int")
+	})
+
+	t.Run("a nil payload is a wrong type", func(t *testing.T) {
+		_, err := NewGroup(nil).FirstAs[int]()
+		require.Error(t, err)
+	})
+}
+
+func TestGroup_FirstPayloadOrDefault(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, 7, NewGroup(7, 8).FirstPayloadOrDefault(0))
+	assert.Equal(t, 9, NewGroup().FirstPayloadOrDefault(9), "empty group yields the default")
+	assert.Equal(t, 9, NewGroup("seven").FirstPayloadOrDefault(9), "wrong type yields the default")
+	assert.Equal(t, 9, NewGroup(nil).FirstPayloadOrDefault(9), "nil payload yields the default")
 }

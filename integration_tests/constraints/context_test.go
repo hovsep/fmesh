@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -79,26 +80,28 @@ func TestRun_ContextCancellation(t *testing.T) {
 	})
 
 	t.Run("the caller's deadline is reported as cancellation, not as a time limit", func(t *testing.T) {
-		var activations atomic.Int64
-		// Caller's deadline is much shorter than the mesh time limit, so the mesh
-		// must not claim its own limit was hit.
-		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-		defer cancel()
+		synctest.Test(t, func(t *testing.T) {
+			var activations atomic.Int64
+			// Caller's deadline is much shorter than the mesh time limit, so the mesh
+			// must not claim its own limit was hit.
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
 
-		fm := counterMesh(t, &activations, func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(10 * time.Millisecond):
-				return nil
-			}
-		}, fmesh.WithTimeLimit(30*time.Second), fmesh.WithUnlimitedCycles())
+			fm := counterMesh(t, &activations, func(ctx context.Context) error {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(10 * time.Millisecond):
+					return nil
+				}
+			}, fmesh.WithTimeLimit(30*time.Second), fmesh.WithUnlimitedCycles())
 
-		_, err := fm.Run(ctx)
+			_, err := fm.Run(ctx)
 
-		require.ErrorIs(t, err, fmesh.ErrRunCanceled)
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-		assert.NotErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+			require.ErrorIs(t, err, fmesh.ErrRunCanceled)
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			assert.NotErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+		})
 	})
 }
 
@@ -108,28 +111,32 @@ func TestRun_TimeLimitReachesActivationFunctions(t *testing.T) {
 	// the limit only being noticed after the blocking call returns.
 	const timeLimit = 100 * time.Millisecond
 
-	var observedDeadline atomic.Bool
-	var activations atomic.Int64
+	synctest.Test(t, func(t *testing.T) {
+		var observedDeadline atomic.Bool
+		var activations atomic.Int64
 
-	fm := counterMesh(t, &activations, func(ctx context.Context) error {
-		select {
-		case <-ctx.Done():
-			observedDeadline.Store(true)
-			return ctx.Err()
-		case <-time.After(5 * time.Second):
-			return errors.New("activation was not interrupted by the mesh time limit")
-		}
-	}, fmesh.WithTimeLimit(timeLimit), fmesh.WithUnlimitedCycles())
+		fm := counterMesh(t, &activations, func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				observedDeadline.Store(true)
+				return ctx.Err()
+			case <-time.After(5 * time.Second):
+				return errors.New("activation was not interrupted by the mesh time limit")
+			}
+		}, fmesh.WithTimeLimit(timeLimit), fmesh.WithUnlimitedCycles())
 
-	start := time.Now()
-	_, err := fm.Run(context.Background())
-	elapsed := time.Since(start)
+		start := time.Now()
+		_, err := fm.Run(context.Background())
+		elapsed := time.Since(start)
 
-	require.Error(t, err)
-	assert.True(t, observedDeadline.Load(), "the activation function must see the deadline through its context")
-	assert.Less(t, elapsed, time.Second,
-		"the mesh must stop near its time limit, not wait for the blocking call")
-	assert.ErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+		require.Error(t, err)
+		assert.True(t, observedDeadline.Load(), "the activation function must see the deadline through its context")
+		// The bubble's clock only advances while everything is blocked, so the
+		// run ends at exactly the limit — not "near" it.
+		assert.Equal(t, timeLimit, elapsed,
+			"the mesh must stop at its time limit, not wait for the blocking call")
+		assert.ErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+	})
 }
 
 func TestRun_ContextIsIgnorable(t *testing.T) {

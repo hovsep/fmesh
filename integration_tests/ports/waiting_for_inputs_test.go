@@ -32,7 +32,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						component.WithDescription("This component just doubles the input"),
 						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 							inputNum := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
-							return this.OutputByName("o1").PutSignals(signal.New(inputNum.(int) * 2))
+							return this.OutputByName("o1").PutSignals(signal.New(inputNum * 2))
 						}),
 					)
 				}
@@ -55,7 +55,7 @@ func Test_WaitingForInputs(t *testing.T) {
 						inputNum1 := this.InputByName("i1").Signals().FirstPayloadOrDefault(0)
 						inputNum2 := this.InputByName("i2").Signals().FirstPayloadOrDefault(0)
 
-						return this.OutputByName("o1").PutSignals(signal.New(inputNum1.(int) + inputNum2.(int)))
+						return this.OutputByName("o1").PutSignals(signal.New(inputNum1 + inputNum2))
 					}),
 				)
 

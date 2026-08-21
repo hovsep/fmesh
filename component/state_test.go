@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestComponent_WithInitialState(t *testing.T) {
@@ -236,37 +237,32 @@ func TestState_GetTyped(t *testing.T) {
 		name      string
 		initState func(State)
 		key       string
-		want      any
-		typ       any // type parameter for GetTyped
-		wantPanic bool
+		want      int
+		wantErr   string
 	}{
 		{
-			name:      "existing int key",
+			name:      "existing key of the asked-for type",
 			initState: func(s State) { s.Set("num", 42) },
 			key:       "num",
 			want:      42,
-			typ:       int(0),
-		},
-		{
-			name:      "existing string key",
-			initState: func(s State) { s.Set("text", "hello") },
-			key:       "text",
-			want:      "hello",
-			typ:       "",
 		},
 		{
 			name:      "missing key",
-			initState: func(s State) {},
+			initState: func(State) {},
 			key:       "missing",
-			wantPanic: true,
-			typ:       int(0),
+			wantErr:   `state key "missing" not found`,
 		},
 		{
 			name:      "wrong type",
-			initState: func(s State) { s.Set("num", 42) },
+			initState: func(s State) { s.Set("num", "forty-two") },
 			key:       "num",
-			wantPanic: true,
-			typ:       "", // attempt to get string from int key
+			wantErr:   `state key "num" is string, not int`,
+		},
+		{
+			name:      "nil value is a wrong type, not a missing key",
+			initState: func(s State) { s.Set("num", nil) },
+			key:       "num",
+			wantErr:   `state key "num" is <nil>, not int`,
 		},
 	}
 
@@ -275,28 +271,14 @@ func TestState_GetTyped(t *testing.T) {
 			s := newState()
 			tt.initState(s)
 
-			fn := func() {
-				switch tt.typ.(type) {
-				case int:
-					_ = MustGetTyped[int](s, tt.key)
-				case string:
-					_ = MustGetTyped[string](s, tt.key)
-				default:
-					panic("unsupported type in test")
-				}
+			got, err := s.GetTyped[int](tt.key)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Zero(t, got)
+				return
 			}
-
-			if tt.wantPanic {
-				assert.Panics(t, fn)
-			} else {
-				fn() // no panic expected
-				switch tt.typ.(type) {
-				case int:
-					assert.Equal(t, tt.want, MustGetTyped[int](s, tt.key))
-				case string:
-					assert.Equal(t, tt.want, MustGetTyped[string](s, tt.key))
-				}
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

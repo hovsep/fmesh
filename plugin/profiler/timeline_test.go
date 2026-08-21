@@ -6,6 +6,7 @@ import (
 
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,7 @@ import (
 // countdown emits n-1 on its output until it reaches one, so a mesh runs for a
 // predictable number of cycles.
 func countdown(name string, from int) *component.Component {
-	c := mustComponent(name,
+	c := testutil.MustComponent(name,
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
@@ -70,13 +71,13 @@ func TestProfiler_TimelineAttributesDrainToItsOwnCycle(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("o1").PutPayloads(1, 2)
 		}))
-	consumer := mustComponent("consumer",
+	consumer := testutil.MustComponent("consumer",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 
@@ -105,11 +106,11 @@ func TestProfiler_TimelineIgnoresSignalsOutsideACycle(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
-	consumer := mustComponent("consumer",
+	consumer := testutil.MustComponent("consumer",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 
@@ -202,7 +203,7 @@ func TestProfiler_TimelineRecordsWaiting(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	c := mustComponent("patient",
+	c := testutil.MustComponent("patient",
 		component.WithInputs("i1", "i2"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			if !this.InputByName("i2").HasSignals() {

@@ -41,7 +41,7 @@ Before starting, run `make test` to confirm the baseline is green.
 Verify before finishing: **`make check`** (race + lint + fmt-check). It is the same gate CI
 applies, so a green `make check` should mean a green build. Key linters enforced:
 `errcheck`, `govet` (shadow), `prealloc`, `dupl`, `gocyclo` (min-complexity 15), `testifylint`,
-`gosec`. Config: `.golangci.yml`. Go 1.26.
+`gosec`. Config: `.golangci.yml`. Go 1.27.
 
 ## Hard rules
 
@@ -50,7 +50,7 @@ applies, so a green `make check` should mean a green build. Key linters enforced
 - **API compatibility is not a concern.** F-Mesh is not used in production; any public API may
   be freely changed or broken, until this doc says otherwise. (No deprecation shims or
   backward-compat layers needed.) **But breaking it is the user's call, not a side effect of a
-  cleanup:** `fmesh-examples` (five Go modules) and `fmesh-graphviz` consume the public API, and
+  cleanup:** `fmesh-examples` (one Go module) and `fmesh-graphviz` consume the public API, and
   nothing in this repo references most of it. Compile them before removing an exported symbol —
   see `.agent/docs/downstream.md`.
 - Ask before relaxing a constraint or introducing a new pattern/helper/abstraction.

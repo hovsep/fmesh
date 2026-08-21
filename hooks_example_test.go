@@ -7,7 +7,6 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/port"
-	"github.com/hovsep/fmesh/signal"
 )
 
 // ExampleFMesh_SetupHooks observes a run from outside: a mesh-level hook counts
@@ -17,7 +16,7 @@ func ExampleFMesh_SetupHooks() {
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			n, err := signal.AsInt(this.InputByName("in").Signals().First())
+			n, err := this.InputByName("in").Signals().FirstAs[int]()
 			if err != nil {
 				return err
 			}

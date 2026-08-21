@@ -27,7 +27,7 @@ func incrementer(b *testing.B, name string) *component.Component {
 		component.WithInputs("in"),
 		component.WithOutputs("out"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			num := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+			num := this.InputByName("in").Signals().FirstPayloadOrDefault(0)
 			return this.OutputByName("out").PutSignals(signal.New(num + 1))
 		}))
 	require.NoError(b, err)

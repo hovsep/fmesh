@@ -5,7 +5,7 @@ evidence that a public symbol is unused.** Two sibling repos depend on the publi
 
 | Repo | Contents |
 |---|---|
-| [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. **Five Go modules**, not one — the root plus `life/`, `ray_tracer/`, `simulation/` and `can_bus/advanced/`, each with its own `go.mod`. |
+| [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. One Go module (`basics/`, `patterns/`, `simulation/`, `graphics/`, `internal/`); it was five until commit `8778781` there collapsed them. Its `internal/` package imports `fmesh-graphviz/dot`. |
 | [`hovsep/fmesh-graphviz`](https://github.com/hovsep/fmesh-graphviz) | The DOT exporter documented in wiki `701.-Export`. |
 
 ## Before deleting any exported symbol
@@ -41,29 +41,37 @@ the time:
 
 Run this before proposing any public API removal, and again before finishing.
 
-```bash
-# 1. Fetch the consumer (no need to clone into the repo)
-mkdir -p /tmp/ex && curl -sL \
-  https://codeload.github.com/hovsep/fmesh-examples/tar.gz/refs/heads/main \
-  | tar -xz -C /tmp/ex --strip-components=1
+Both repos are usually checked out next to this one (`../fmesh-graphviz`, `../fmesh-examples`);
+clone them if not. Neither carries a `replace` — add one for the check and drop it after, it must
+not be committed.
 
-# 2. Point it at the working copy, per module
-cd /tmp/ex && go mod edit -replace github.com/hovsep/fmesh=/path/to/fmesh
-go build -gcflags=-e ./...
+```bash
+# 1. The exporter first: the examples' internal/ package imports it, so while it
+#    fails to build, every example calling internal.HandleGraphFlag is untypeable.
+cd ../fmesh-graphviz
+go mod edit -replace github.com/hovsep/fmesh=../fmesh
+go build -gcflags=-e ./... && go vet ./...
+
+# 2. Then the examples (one module), against both working copies
+cd ../fmesh-examples
+go mod edit -replace github.com/hovsep/fmesh=../fmesh -replace github.com/hovsep/fmesh-graphviz=../fmesh-graphviz
+go build -gcflags=-e ./... && go vet ./...
+
+# 3. Afterwards, in both
+go mod edit -dropreplace github.com/hovsep/fmesh -dropreplace github.com/hovsep/fmesh-graphviz
 ```
 
 Three things will mislead you if you skip them:
 
 1. **`-gcflags=-e`** — without it the compiler stops at "too many errors" per package and the error
    list is silently truncated.
-2. **Every module separately.** `./...` does not descend into nested modules, so a plain
-   `go build ./...` at the root **never compiles `life/`, `ray_tracer/`, `simulation/` or
-   `can_bus/advanced/`** — which is most of the interesting code.
-3. **Diff against `main`, don't read the raw output.** `fmesh-examples` pins an old version and is
-   already broken against `main` (it still calls `fm.Run()` with no context, and uses
-   `PayloadOrDefault`, `PayloadOrNil`, `Component.AddLabel`). Ten root-module packages fail before
-   you change anything. Build against a `main` worktree and against your branch, then compare, or
-   you will not be able to tell your breakage from the pre-existing kind:
+2. **`go vet`, not only `go build`.** `go build ./...` skips `_test.go`, and the heaviest use of the
+   typed accessors downstream is in `simulation/life/*_test.go`. `go vet` type-checks the tests
+   without running them (`make test` there takes ~15 minutes).
+3. **Diff against `main`, don't read the raw output.** `fmesh-examples` pins a released version,
+   so it can be broken against `main` before you change anything. Build against a `main` worktree
+   and against your branch, then compare, or you will not be able to tell your breakage from the
+   pre-existing kind:
 
 ```bash
 git worktree add -q --detach /tmp/base main
@@ -73,11 +81,6 @@ for r in /tmp/base /path/to/fmesh; do
     | grep -oE "has no field or method [A-Za-z]+|undefined: [a-z]+\.[A-Za-z]+" | sort -u > /tmp/e.$$
 done   # then: comm -13 <baseline> <branch>
 ```
-
-`fmesh-examples` also depends on `fmesh-graphviz`, and the root module's `internal/` package imports
-it — so 13 top-level examples cannot be type-checked at all while the exporter fails to build. To
-get past that, copy the module out of the module cache, patch it locally, and `replace` it. That
-copy is a test harness only; never commit it.
 
 ## When a removal is still the right call
 

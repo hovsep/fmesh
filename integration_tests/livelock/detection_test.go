@@ -147,7 +147,7 @@ func TestLivelock_ProgressingMeshIsUntouched(t *testing.T) {
 		component.WithInputs("in"),
 		component.WithOutputs("out", "done"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			n := signal.AsOrDefault(this.InputByName("in").Signals().First(), 0)
+			n := this.InputByName("in").Signals().FirstPayloadOrDefault(0)
 			if n >= 200 {
 				return this.OutputByName("done").PutSignals(signal.New(n))
 			}

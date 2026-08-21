@@ -5,13 +5,15 @@ import (
 	"fmt"
 )
 
-// Typed payload accessors: As reports a wrong or missing type, AsOrDefault
-// substitutes a default. Neither panics. Prefer As — see AsOrDefault's footgun.
+// Typed payload accessors: As reports a wrong or missing type, PayloadOrDefault
+// substitutes a default. Neither panics, and all are safe on a nil receiver,
+// which is what Group.First returns for an empty group. Prefer As — see
+// PayloadOrDefault's footgun.
 
 // As returns the payload as T, failing rather than panicking when the payload is
 // another type — a component cannot know that something upstream changed its
 // payload type, and taking down the mesh is not a useful way to be told.
-func As[T any](s *Signal) (T, error) {
+func (s *Signal) As[T any]() (T, error) {
 	var zero T
 	if s == nil {
 		return zero, errors.New("signal is nil")
@@ -25,16 +27,16 @@ func As[T any](s *Signal) (T, error) {
 	return typed, nil
 }
 
-// AsOrDefault returns the payload as T, or the default if it is missing or of
-// another type.
+// PayloadOrDefault returns the payload as T, or the default if it is missing or
+// of another type.
 //
 // It cannot tell those two cases apart, and says nothing when it substitutes: a
 // component whose upstream changed from int to int64 keeps computing, on zero.
 // Prefer As unless the default is genuinely the right answer for a wrong type.
 //
 // T is inferred from defaultValue, so an untyped 0 means int: pass 0.0, or use
-// AsFloat64OrDefault, when the payload is a float64.
-func AsOrDefault[T any](s *Signal, defaultValue T) T {
+// Float64OrDefault, when the payload is a float64.
+func (s *Signal) PayloadOrDefault[T any](defaultValue T) T {
 	if s == nil {
 		return defaultValue
 	}
@@ -46,27 +48,16 @@ func AsOrDefault[T any](s *Signal, defaultValue T) T {
 	return value
 }
 
-// AsFloat64 returns the payload as a float64.
-func AsFloat64(s *Signal) (float64, error) { return As[float64](s) }
-
-// AsFloat64OrDefault returns the payload as a float64, or the default. The other
-// types need no such shorthand: AsOrDefault(s, 0) already infers int, while
-// AsOrDefault(s, 0) for a float64 payload infers int and returns the default.
-func AsFloat64OrDefault(s *Signal, defaultValue float64) float64 {
-	return AsOrDefault(s, defaultValue)
+// Float64OrDefault returns the payload as a float64, or the default. It is the
+// one per-type shorthand kept: PayloadOrDefault infers T from the default, and
+// an untyped 0 makes that int, so s.PayloadOrDefault(0) on a float64 payload
+// silently returns the default. Every other type spells out as s.As[T]().
+func (s *Signal) Float64OrDefault(defaultValue float64) float64 {
+	return s.PayloadOrDefault(defaultValue)
 }
 
-// AsInt returns the payload as an int.
-func AsInt(s *Signal) (int, error) { return As[int](s) }
-
-// AsString returns the payload as a string.
-func AsString(s *Signal) (string, error) { return As[string](s) }
-
-// AsBool returns the payload as a bool.
-func AsBool(s *Signal) (bool, error) { return As[bool](s) }
-
 // AsGroup returns the payload as a group, for a signal carrying other signals.
-func AsGroup(s *Signal) (*Group, error) { return As[*Group](s) }
+func (s *Signal) AsGroup() (*Group, error) { return s.As[*Group]() }
 
 // AsNumber reports the payload as a float64 when it carries float64, float32,
 // int, int64 or uint64, or a bool as 1 and 0. Narrower integer types are not
@@ -74,7 +65,7 @@ func AsGroup(s *Signal) (*Group, error) { return As[*Group](s) }
 //
 // Loose on purpose: it answers "is this a measurement at all" for code that does
 // not know which components produce which payloads.
-func AsNumber(s *Signal) (float64, bool) {
+func (s *Signal) AsNumber() (float64, bool) {
 	if s == nil {
 		return 0, false
 	}
