@@ -55,11 +55,12 @@ func (c *Cycle) AllPanicsCombined() error {
 }
 
 // joinActivationErrors joins the errors of every activation result the predicate
-// matches, each tagged with the component that produced it. Returns nil when
-// nothing matches.
+// matches, each tagged with the component that produced it, in component-name
+// order so the message is the same on every run. Returns nil when nothing
+// matches.
 func (c *Cycle) joinActivationErrors(matching component.ResultPredicate) error {
 	var joined error
-	for _, activationResult := range c.ActivationResults().All() {
+	for _, activationResult := range c.ActivationResults().AllOrdered() {
 		if matching(activationResult) {
 			joined = errors.Join(joined, activationResult.ActivationErrorWithComponentName())
 		}

@@ -116,6 +116,19 @@ func TestActivationResultCollection_All(t *testing.T) {
 	})
 }
 
+func TestActivationResultCollection_AllOrdered(t *testing.T) {
+	c := NewActivationResultCollection()
+	c.Add(NewActivationResult("charlie"), NewActivationResult("alpha"), NewActivationResult("bravo"))
+
+	ordered := c.AllOrdered()
+	require.Len(t, ordered, 3)
+	assert.Equal(t, "alpha", ordered[0].ComponentName())
+	assert.Equal(t, "bravo", ordered[1].ComponentName())
+	assert.Equal(t, "charlie", ordered[2].ComponentName())
+
+	assert.Empty(t, NewActivationResultCollection().AllOrdered())
+}
+
 func TestActivationResultCollection_IsEmpty(t *testing.T) {
 	t.Run("empty collection", func(t *testing.T) {
 		collection := NewActivationResultCollection()

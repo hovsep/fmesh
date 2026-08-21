@@ -169,11 +169,16 @@ func (p *Plugin) start(at *time.Time) {
 	*at = time.Now()
 }
 
-// finish folds the elapsed time since started into stat.
+// finish folds the elapsed time since started into stat. A zero start means
+// the measurement was reset mid-flight; there is nothing to fold.
 func (p *Plugin) finish(stat *Stat, started *time.Time) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if started.IsZero() {
+		return
+	}
 	*stat = stat.with(time.Since(*started))
+	*started = time.Time{}
 }
 
 // Init implements fmesh.Plugin.
@@ -352,6 +357,7 @@ func (p *Plugin) Reset() {
 	defer p.mu.Unlock()
 
 	p.run, p.cycle = Stat{}, Stat{}
+	p.runStarted, p.cycleStarted, p.recordStarted = time.Time{}, time.Time{}, time.Time{}
 	p.components = make(map[string]Stat)
 	p.started = make(map[string]time.Time)
 
