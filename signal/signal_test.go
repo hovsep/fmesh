@@ -535,7 +535,7 @@ func TestSignal_ZeroValueReadsAsNil(t *testing.T) {
 
 	assert.Nil(t, s.Payload())
 
-	_, err := As[string](&s)
+	_, err := s.As[string]()
 	require.Error(t, err, "As must still report that the payload is not a string")
-	assert.Equal(t, "fallback", AsOrDefault(&s, "fallback"))
+	assert.Equal(t, "fallback", s.PayloadOrDefault("fallback"))
 }

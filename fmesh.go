@@ -175,10 +175,8 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 	// ForEach avoids cloning the component map on every cycle (hot path)
 	_ = fm.Components().ForEach(func(c *component.Component) error {
-		wg.Add(1)
-		go func(comp *component.Component, cyc *cycle.Cycle) {
-			defer wg.Done()
-			ar := comp.MaybeActivate(ctx)
+		wg.Go(func() {
+			ar := c.MaybeActivate(ctx)
 			// Components with no input produce pure noise in runtime info (in sparse
 			// meshes it's most of the history), so their result is never recorded. A
 			// missing result means "had no input"; the run loop treats absent results
@@ -187,8 +185,8 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 			if ar.Code() == component.ActivationCodeNoInput {
 				return
 			}
-			cyc.AddActivationResults(ar)
-		}(c, newCycle)
+			newCycle.AddActivationResults(ar)
+		})
 		return nil
 	})
 

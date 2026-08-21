@@ -59,8 +59,8 @@ func run(ctx context.Context) error {
 		component.WithInputs("i1", "i2"),
 		component.WithOutputs("res"),
 		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
-			word1 := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
-			word2 := signal.AsOrDefault(this.InputByName("i2").Signals().First(), "")
+			word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
+			word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 		}))
 	if err != nil {
@@ -71,7 +71,7 @@ func run(ctx context.Context) error {
 		component.WithInputs("i1"),
 		component.WithOutputs("res"),
 		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
-			str := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
+			str := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
 		}))
 	if err != nil {
@@ -154,8 +154,8 @@ Same input, same output, every time — given activation functions that are them
 Signals carry `any`. One pipe can hold a string, a struct and an error at once, which is the thing Go channels cannot do and the reason to use a mesh at all. The cost is honest: type mismatches surface when you read a payload, not when you compile.
 
 ```go
-n, err := signal.As[int](sig)          // reports a mismatch — prefer this
-n := signal.AsOrDefault(sig, 0)        // swallows it; use only when a fallback is genuinely right
+n, err := sig.As[int]()          // reports a mismatch — prefer this
+n := sig.PayloadOrDefault(0)          // swallows it; use only when a fallback is genuinely right
 ```
 
 ### **Concurrency Out of the Box**

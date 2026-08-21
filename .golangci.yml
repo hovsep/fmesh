@@ -50,6 +50,13 @@ linters:
     - intrange
     - modernize
   settings:
+    staticcheck:
+      checks:
+        - all
+        # SA4023 panics inside staticcheck (go/tools v0.8.0) on calls to Go 1.27
+        # generic methods — its nilness fact table has one entry for a two-result
+        # method. Re-enable once staticcheck handles generic methods.
+        - -SA4023
     dupl:
       threshold: 150
     exhaustive:

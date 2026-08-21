@@ -7,6 +7,6 @@
 // grouped signals should be done with [Group.Map] / [Group.MapPayloads] so
 // replaced signals are stored in the new group (github.com/hovsep/fmesh#203).
 //
-// A payload is an any. [As] and [AsOrDefault] read one back out as a concrete
-// type without the panic a bare assertion risks.
+// A payload is an any. [Signal.As] and [Signal.PayloadOrDefault] read one back out
+// as a concrete type without the panic a bare assertion risks.
 package signal

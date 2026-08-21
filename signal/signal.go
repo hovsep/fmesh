@@ -152,7 +152,7 @@ func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 // the single most-called accessor in the library. Such a signal reads as nil.
 //
 // For the payload as a concrete type, and an error when it is not that type,
-// use As. For "was there a signal at all", check the group: Group.First returns
+// use [Signal.As]. For "was there a signal at all", check the group: Group.First returns
 // nil for an empty one.
 func (s *Signal) Payload() any {
 	if len(s.payload) == 0 {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
@@ -19,16 +20,16 @@ func TestProfiler_Pipes(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, fm.AddComponents(
-		mustComponent("producer",
+		testutil.MustComponent("producer",
 			component.WithInputs("i1"),
 			component.WithOutputs("o1", "debug"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				return this.OutputByName("o1").PutPayloads(1, 2, 3)
 			})),
-		mustComponent("consumer",
+		testutil.MustComponent("consumer",
 			component.WithInputs("i1"),
 			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
-		mustComponent("logger",
+		testutil.MustComponent("logger",
 			component.WithInputs("i1"),
 			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 	))
@@ -84,7 +85,7 @@ func TestProfiler_PipesRankHotAndCold(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	looper := mustComponent("looper",
+	looper := testutil.MustComponent("looper",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
@@ -97,13 +98,13 @@ func TestProfiler_PipesRankHotAndCold(t *testing.T) {
 		}))
 	require.NoError(t, looper.LoopbackPipe("o1", "i1"))
 
-	bulk := mustComponent("bulk",
+	bulk := testutil.MustComponent("bulk",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("o1").PutPayloads(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 		}))
-	sink := mustComponent("sink",
+	sink := testutil.MustComponent("sink",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 
@@ -137,7 +138,7 @@ func TestProfiler_PipeBatchSizes(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
@@ -202,12 +203,12 @@ func TestProfiler_PortsAddedAfterArrivalAreInvisible(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	producer := mustComponent("producer",
+	producer := testutil.MustComponent("producer",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			return this.OutputByName("late").PutPayloads(1)
 		}))
-	consumer := mustComponent("consumer",
+	consumer := testutil.MustComponent("consumer",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 	require.NoError(t, fm.AddComponents(producer, consumer))

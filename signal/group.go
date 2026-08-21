@@ -1,7 +1,6 @@
 package signal
 
 import (
-	"reflect"
 	"slices"
 
 	"github.com/hovsep/fmesh/internal/collection"
@@ -116,15 +115,12 @@ func (g *Group) Contains(s *Signal) bool {
 	return slices.Contains(g.raw(), s)
 }
 
-// ContainsPayload returns true if any signal's payload equals the given value.
-// Returns an error if the payload type is not comparable; use ContainsPayloadFunc for non-comparable types.
-func (g *Group) ContainsPayload(payload any) (bool, error) {
-	if payload != nil && !reflect.TypeOf(payload).Comparable() {
-		return false, ErrPayloadNotComparable
-	}
-	return g.ContainsPayloadFunc(func(p any) bool {
-		return p == payload
-	}), nil
+// ContainsPayload reports whether any signal's payload equals the given value.
+// T must be comparable, so a slice or map argument does not compile — use
+// ContainsPayloadFunc for those. A nil payload is found with ContainsPayload[any](nil).
+func (g *Group) ContainsPayload[T comparable](payload T) bool {
+	target := any(payload)
+	return g.ContainsPayloadFunc(func(p any) bool { return p == target })
 }
 
 // ContainsPayloadFunc returns true if any signal's payload satisfies eq.
@@ -146,18 +142,27 @@ func (g *Group) FirstPayload() (any, error) {
 	return first.Payload(), nil
 }
 
-// FirstPayloadOrDefault returns the payload of the first signal or a default value.
-func (g *Group) FirstPayloadOrDefault(defaultPayload any) any {
-	payload, err := g.FirstPayload()
-	if err != nil {
-		return defaultPayload
-	}
-	return payload
+// FirstPayloadOrDefault returns the first signal's payload as T, or the default
+// when the group is empty or the payload is missing or of another type. T is
+// inferred from the default; FirstPayloadOrDefault[any](x) accepts any payload.
+func (g *Group) FirstPayloadOrDefault[T any](defaultValue T) T {
+	return g.First().PayloadOrDefault(defaultValue)
 }
 
 // FirstPayloadOrNil returns the payload of the first signal or nil.
 func (g *Group) FirstPayloadOrNil() any {
-	return g.FirstPayloadOrDefault(nil)
+	return g.FirstPayloadOrDefault[any](nil)
+}
+
+// FirstAs returns the first signal's payload as T. An empty group is
+// ErrNoSignalsInGroup; a payload of another type is the error As reports.
+func (g *Group) FirstAs[T any]() (T, error) {
+	first := g.First()
+	if first == nil {
+		var zero T
+		return zero, ErrNoSignalsInGroup
+	}
+	return first.As[T]()
 }
 
 // AllPayloads returns a slice with all payloads of all signals in the group.
@@ -275,8 +280,8 @@ func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
 	return acc
 }
 
-// ReducePayloads accumulates all signal payloads into a single value using the given function.
-func (g *Group) ReducePayloads(initial any, fn PayloadReducer) any {
+// ReducePayloads folds every payload into an accumulator of type A.
+func (g *Group) ReducePayloads[A any](initial A, fn func(acc A, payload any) A) A {
 	acc := initial
 	for _, s := range g.raw() {
 		acc = fn(acc, s.Payload())

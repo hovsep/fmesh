@@ -10,7 +10,7 @@ Thanks for your interest in improving F-Mesh! Contributions of all kinds are wel
 
 ## Development workflow
 
-F-Mesh requires Go 1.26+. Common tasks are wrapped in the Makefile:
+F-Mesh requires Go 1.27+. Common tasks are wrapped in the Makefile:
 
 ```bash
 make check   # race + lint + fmt-check — the same gate CI applies
@@ -28,7 +28,7 @@ A few project-wide rules to be aware of:
 
 - **Copy-on-write vs. mutating:** `signal.Signal` and `signal.Group` are copy-on-write — mutating methods return a new value and never touch the receiver. `meta.Labels`/`meta.Scalars` and the `port`/`component`/`cycle` types mutate in place. Naming follows suit, with no exceptions: `With*`/`Without*` return a new value (or are constructor options); `Set*`/`Add*`/`Remove*` mutate.
 - **Metadata on mutating types goes through the store:** `x.Labels().Set(k, v)`, not `x.AddLabel(k, v)`. Only the copy-on-write types (`signal.Signal`, `signal.Group`) carry `With*Label`/`With*Scalar` methods, because there they are the only way to produce a modified value.
-- **`Signal.Payload()` does not fail.** `nil` is a valid payload; a signal without one means someone skipped `New`. Use `signal.As[T]` when you need the type checked.
+- **`Signal.Payload()` does not fail.** `nil` is a valid payload; a signal without one means someone skipped `New`. Use `sig.As[T]()` (or `Group.FirstAs[T]()`) when you need the type checked.
 - Fallible methods return `error` last; infallible transforms (`Filter`, `Map`, `With*`) return their type directly.
 - The signal **payload** stays `any` — one pipe has to carry mixed types. Generics are fine elsewhere where they remove real duplication. Keep `reflect` usage to a minimum.
 - Priority is **simplicity and a clean API, not performance**.

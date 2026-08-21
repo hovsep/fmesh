@@ -174,6 +174,6 @@ absolute numbers are machine-specific; the complexity classes are the durable pa
 `component.State` (`map[string]any`) persists across cycles and across `Run`s; it is only reset
 via `ResetState()` or `WithInitialState`. Safe without locks because a component activates at
 most once per cycle in a single goroutine. Rich API: `Get`, `GetOrDefault`, `Set`, `SetIfAbsent`,
-`Upsert` (creates if missing), `Update` (only if present), `Delete`, and the generic
-`component.MustGetTyped[T](state, key)` (panics on missing key or wrong type — fine inside
-activation functions, panics become `Panicked` results).
+`Upsert` (creates if missing), `Update` (only if present), `Delete`, and the generic method
+`state.GetTyped[T](key)` (error on missing key or wrong type; there is deliberately no panicking
+`Must` twin — return the error from the activation function).

@@ -125,10 +125,8 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 
 // sumInts adds up the int payloads waiting on a port.
 func sumInts(c *component.Component, portName string) int {
-	sum, _ := c.InputByName(portName).Signals().ReducePayloads(0, func(acc, payload any) any {
-		a, _ := acc.(int)
+	return c.InputByName(portName).Signals().ReducePayloads(0, func(acc int, payload any) int {
 		v, _ := payload.(int)
-		return a + v
-	}).(int)
-	return sum
+		return acc + v
+	})
 }

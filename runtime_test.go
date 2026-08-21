@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hovsep/fmesh/component"
@@ -131,7 +132,7 @@ func Test_MultipleRun(t *testing.T) {
 		require.NotNil(t, runResult2)
 
 		// Check that final component received exactly 1 signal in Run 2 (not accumulated from Run 1)
-		count := fm.ComponentByName("final").OutputByName("result").Signals().FirstPayloadOrDefault(0).(int)
+		count := fm.ComponentByName("final").OutputByName("result").Signals().FirstPayloadOrDefault(0)
 		assert.Equal(t, 1, count, "Final component should receive 1 signal per run, not accumulated signals from previous runs")
 
 		producerOutputSignals2 := fm.ComponentByName("producer").OutputByName("out").Signals().Len()
@@ -152,7 +153,7 @@ func Test_MultipleRun(t *testing.T) {
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
 				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+					count := this.InputByName("in").Signals().FirstPayloadOrDefault(0)
 					if count > 0 {
 						return this.OutputByName("out").PutSignals(signal.New(count - 1))
 					}
@@ -251,47 +252,37 @@ func Test_MultipleRun(t *testing.T) {
 	})
 
 	t.Run("runtime info duration is per run", func(t *testing.T) {
-		fm := mustNewFMesh("test fm")
-		require.NoError(t, fm.AddComponents(
-			mustNewComponent("sleeper",
-				component.WithInputs("in"),
-				component.WithOutputs("out"),
-				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					sleepDuration := this.InputByName("in").Signals().FirstPayloadOrDefault(time.Duration(0)).(time.Duration)
-					time.Sleep(sleepDuration)
-					return nil
-				})),
-		))
+		// The bubble's fake clock makes the sleeps exact and instant: a run that
+		// sleeps 10ms lasts exactly 10ms, with no tolerance needed under -race.
+		synctest.Test(t, func(t *testing.T) {
+			fm := mustNewFMesh("test fm")
+			require.NoError(t, fm.AddComponents(
+				mustNewComponent("sleeper",
+					component.WithInputs("in"),
+					component.WithOutputs("out"),
+					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
+						time.Sleep(this.InputByName("in").Signals().FirstPayloadOrDefault(time.Duration(0)))
+						return nil
+					})),
+			))
 
-		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(10*time.Millisecond)))
-		runResult1, err := fm.Run(context.Background())
-		require.NoError(t, err)
-		duration1 := runResult1.Duration()
-		assert.Positive(t, duration1)
-		t.Logf("Run 1 duration (10ms sleep): %s", duration1)
+			require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(10*time.Millisecond)))
+			runResult1, err := fm.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, 10*time.Millisecond, runResult1.Duration())
 
-		require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(50*time.Millisecond)))
-		wallStart := time.Now()
-		runResult2, err := fm.Run(context.Background())
-		wall2 := time.Since(wallStart)
-		require.NoError(t, err)
-		duration2 := runResult2.Duration()
-		assert.Positive(t, duration2)
-		t.Logf("Run 2 duration (50ms sleep): %s, measured wall time: %s", duration2, wall2)
+			// Let the clock move between runs, so "started after" is decidable.
+			synctest.Sleep(time.Millisecond)
 
-		assert.Greater(t, duration2, duration1)
-		assert.GreaterOrEqual(t, duration1, 10*time.Millisecond)
-		assert.GreaterOrEqual(t, duration2, 50*time.Millisecond)
+			require.NoError(t, fm.ComponentByName("sleeper").InputByName("in").PutSignals(signal.New(50*time.Millisecond)))
+			runResult2, err := fm.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, 50*time.Millisecond, runResult2.Duration(),
+				"run 2 measures only itself, not the time since run 1 started")
 
-		// "Per run" means run 2's clock starts after run 1's stopped, and its
-		// duration measures only run 2. Comparing against run 2's own measured
-		// wall time rather than a fixed ceiling keeps this meaningful on a loaded
-		// machine — a fixed bound close to the sleep is a flake waiting to happen
-		// under -race.
-		assert.True(t, runResult2.StartedAt.After(runResult1.StoppedAt),
-			"run 2 must start its own clock, not continue run 1's")
-		assert.LessOrEqual(t, duration2, wall2,
-			"run 2 duration must not exceed the wall time of run 2 itself")
+			assert.True(t, runResult2.StartedAt.After(runResult1.StoppedAt),
+				"run 2 must start its own clock, not continue run 1's")
+		})
 	})
 
 	t.Run("cycles history limit trims retained cycles to a sliding window", func(t *testing.T) {
@@ -302,7 +293,7 @@ func Test_MultipleRun(t *testing.T) {
 					component.WithInputs("in"),
 					component.WithOutputs("out"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0)
 						if count > 0 {
 							return this.OutputByName("out").PutSignals(signal.New(count - 1))
 						}
@@ -366,7 +357,7 @@ func Test_MultipleRun(t *testing.T) {
 					component.WithInputs("in"),
 					component.WithOutputs("out"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)
+						count := this.InputByName("in").Signals().FirstPayloadOrDefault(0)
 						if count > 0 {
 							return this.OutputByName("out").PutSignals(signal.New(count - 1))
 						}

@@ -1,5 +1,7 @@
 package component
 
+import "fmt"
+
 // State is a key-value storage that persists between activation cycles of a component.
 // It allows storing and retrieving arbitrary data using string keys.
 //
@@ -65,18 +67,19 @@ func (s State) Delete(key string) {
 	delete(s, key)
 }
 
-// MustGetTyped retrieves the value associated with the given key from the state
-// and asserts it to type T. Panics if the key is missing or has the wrong type.
-func MustGetTyped[T any](s State, key string) T {
+// GetTyped returns the value under key as T, or an error when the key is
+// missing or holds another type.
+func (s State) GetTyped[T any](key string) (T, error) {
+	var zero T
 	val, exists := s[key]
 	if !exists {
-		panic("state key not found: " + key)
+		return zero, fmt.Errorf("state key %q not found", key)
 	}
 	typed, ok := val.(T)
 	if !ok {
-		panic("state key has wrong type: " + key)
+		return zero, fmt.Errorf("state key %q is %T, not %T", key, val, zero)
 	}
-	return typed
+	return typed, nil
 }
 
 // SetIfAbsent sets the value for the given key only if the key does not already exist.

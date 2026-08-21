@@ -9,7 +9,7 @@ Architecture overview (the concept → type → package table and the execution 
 
 **Payload is shallow-copied.** Mutable reference payloads (map, slice, pointer) must be treated as immutable by the caller. `nil` is a valid payload and must survive all CoW operations unchanged.
 
-**`Signal.Payload()` cannot fail.** It returns `any`. Since `nil` is a valid payload, the only way to hold a signal without one is to build the zero value instead of calling `New` — a construction bug, not a runtime condition, and not worth an error return on the most-called accessor in the library. Such a signal reads as `nil`. Type checking is `signal.As[T]`; "was there a signal at all" is `Group.First() == nil`. `Group.FirstPayload` **keeps** its error, because an empty group is a real runtime state rather than a construction bug — do not collapse it.
+**`Signal.Payload()` cannot fail.** It returns `any`. Since `nil` is a valid payload, the only way to hold a signal without one is to build the zero value instead of calling `New` — a construction bug, not a runtime condition, and not worth an error return on the most-called accessor in the library. Such a signal reads as `nil`. Type checking is `Signal.As[T]()` — or `Group.FirstAs[T]()` straight from a port; "was there a signal at all" is `Group.First() == nil`. `Group.FirstPayload` **keeps** its error, because an empty group is a real runtime state rather than a construction bug — do not collapse it.
 
 **`meta.Labels` and `meta.Scalars` are mutable.** They mutate in place. Do not make them CoW — `port`, `component`, `cycle`, and the Group/Collection types depend on mutation. The one exception is `Merge(other)` on both types, which returns a new value.
 
@@ -40,7 +40,7 @@ shared mutable state.
 
 **Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
 
-**The signal payload stays `any`.** This is an FBP requirement, not a style preference: one group has to carry mixed-type signals, so `Signal.Payload()` cannot be parameterised and pipes cannot be typed. `signal.As[T]`/`AsOrDefault[T]` read a payload back out; they do not make the flow typed.
+**The signal payload stays `any`.** This is an FBP requirement, not a style preference: one group has to carry mixed-type signals, so `Signal.Payload()` cannot be parameterised and pipes cannot be typed. `Signal.As[T]()`/`PayloadOrDefault[T]()` read a payload back out; they do not make the flow typed.
 
 **Generics are otherwise fine — use them where they remove real duplication.** The earlier blanket ban was lifted, and `meta.store[T comparable]` is the worked example: it holds the read surface and the unexported mutators that were identical between `Labels` and `Scalars`. Two things to weigh before reaching for one, both learned from that change:
 - **Measure the per-instance cost.** A store is now exactly the map header it wraps. An earlier version carried a `self` pointer back to the embedding type so promoted mutators could return it — that doubled every store from 8 to 16 bytes, and signals own two apiece (~6% more bytes per mesh run). A still earlier draft stored a name for error messages, ~100 bytes per signal. Both were removed.
@@ -50,11 +50,13 @@ A generic that ends up wrapped in one hand-written forwarding method per call si
 
 The collection surfaces share `internal/collection` the same way: `Slice[T]` backs the groups and `Keyed[T]` the name-keyed collections, embedded (behind unexported type aliases) so the read surface promotes; slice plumbing goes through package functions (`collection.Items`/`SetItems`/`AppendItems`) rather than methods, so no mutator can promote onto `signal.Group`'s copy-on-write surface.
 
-**Minimise `reflect`.** Only when no alternative exists. Current approved use: `reflect.TypeOf(payload).Comparable()` in `ContainsPayload` — always nil-guard before calling `.Comparable()`.
+**Generic methods (Go 1.27) are for accessors whose type parameter is the caller's choice.** `Signal.As[T]()`, `Group.FirstAs[T]()`, `Group.ReducePayloads[A]()`, `Group.ContainsPayload[T comparable]()` and `State.GetTyped[T]()` were package functions (or did not exist) only because a method could not declare its own type parameter; they carry no per-instance cost and render normally in godoc. Two limits to keep in mind: a generic method cannot implement an interface method, and it still cannot name its *receiver's* type as a result — so the `Filter`/`Map` duplication across the five collection types is not a generic-methods problem (it would need a self type parameter) and stays hand-written.
+
+**Minimise `reflect`.** Only when no alternative exists. There is currently no use at all: the last one, `reflect.TypeOf(payload).Comparable()` in `ContainsPayload`, went away when the method gained a `T comparable` type parameter and the compiler took over the check.
 
 ## Package notes
 
-- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach`/`ForEachIf` return `error` only (as on every collection type — see [naming.md](naming.md)). Typed payload accessors live in `typed.go`: `As[T]` (error on nil signal / missing payload / wrong type), `AsOrDefault[T]`, fallible per-type shorthands over `As`, and `AsNumber` (loose `(float64, bool)` widening — `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None of them panic; that is the point of having them. There are deliberately **no** `AsIntOrDefault`-style shorthands: `AsOrDefault` infers `T` from the default and is shorter. The sole exception is `AsFloat64OrDefault`, which exists because an untyped `0` infers `int`, so `AsOrDefault(s, 0)` silently returns the default for a float64 payload — do not "restore symmetry" by adding the others back.
+- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and label constructors live in `predicates.go`. `ForEach`/`ForEachIf` return `error` only (as on every collection type — see [naming.md](naming.md)). Typed payload accessors are generic methods in `typed.go`: `As[T]()` (error on nil signal / missing payload / wrong type), `PayloadOrDefault[T](d)`, `AsGroup()` (a signal carrying a group — named because `As[*Group]()` is noisy from outside the package) and `AsNumber()` (loose `(float64, bool)` widening — `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None of them panic, and all are nil-receiver safe; that is the point of having them. `Group.FirstAs[T]()`/`FirstPayloadOrDefault(d)` are the same two over the first signal. There are deliberately **no** per-type shorthands (`AsInt`, …): `s.As[int]()` is as short, and `PayloadOrDefault` infers `T` from the default. The sole exception is `Float64OrDefault`, which exists because an untyped `0` infers `int`, so `s.PayloadOrDefault(0)` silently returns the default for a float64 payload — do not "restore symmetry" by adding the others back.
 - **`meta`** — `Labels` (string k/v) and `Scalars` (string→float64). `Keys()`/`Values()` return sorted slices for determinism. `Merge(other)` is the one non-mutating method on both types. `Every(pred)` on empty = `true` (vacuous truth). `ForEach` returns `error`. Constructors: `NewLabels()`, `NewScalars()`.
   Both embed the generic `store[T comparable]` in `store.go`, which holds the shared read surface
   plus unexported mutators. A store is exactly the map header it wraps — no `self` pointer, no
@@ -134,7 +136,7 @@ Do not keep unused **unexported** symbols "for future use". Remove them immediat
 These create noise, mislead readers, and rot silently as the surrounding code evolves.
 
 **Exported symbols are different, and this policy does not cover them.** F-Mesh is a library: its
-callers live in `fmesh-examples` (five separate Go modules) and `fmesh-graphviz`, which no analysis
+callers live in `fmesh-examples` (one Go module) and `fmesh-graphviz`, which no analysis
 of this repo can see. "No in-repo caller" is not evidence a public symbol is dead — it is the normal
 state of a public API. Before removing anything exported, compile the downstream repos and get the
 user's decision; see [downstream.md](downstream.md), which records the six symbols a previous

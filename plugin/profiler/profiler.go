@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"runtime/pprof"
 	"slices"
 	"strings"
 	"sync"
@@ -181,6 +182,12 @@ func (p *Plugin) finish(stat *Stat, started *time.Time) {
 // rather than registering hooks that check whether they should do anything.
 func (p *Plugin) Init(fm *fmesh.FMesh) error {
 	fm.SetupHooks(func(hooks *fmesh.Hooks) {
+		// First, so the label hook precedes the timing hook on every component
+		// and stays outside the measured window.
+		hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {
+			labelGoroutines(added.FMesh.Name(), added.Component)
+			return nil
+		})
 		if p.modes&ModeTiming != 0 {
 			p.initTiming(hooks)
 		}
@@ -217,6 +224,25 @@ func (p *Plugin) initTiming(hooks *fmesh.Hooks) {
 	hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {
 		p.instrument(added.Component)
 		return nil
+	})
+}
+
+// labelGoroutines tags each activation goroutine with runtime/pprof labels
+// naming the mesh and the component. BeforeActivation runs on the goroutine the
+// scheduler spawned for this activation, and that goroutine ends with it, so
+// nothing needs resetting. CPU profiles can then be focused per component
+// (go tool pprof -tagfocus=fmesh.component=NAME), and since Go 1.27 tracebacks,
+// including a PanicError's stack, carry the labels in their header.
+//
+// WithLabels merges with whatever the run context already carries, so labels
+// the caller set with pprof.Do survive.
+func labelGoroutines(meshName string, c *component.Component) {
+	labels := pprof.Labels("fmesh.mesh", meshName, "fmesh.component", c.Name())
+	c.SetupHooks(func(hooks *component.Hooks) {
+		hooks.BeforeActivation(func(ctx context.Context, _ *component.Component) error {
+			pprof.SetGoroutineLabels(pprof.WithLabels(ctx, labels))
+			return nil
+		})
 	})
 }
 

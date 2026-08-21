@@ -94,11 +94,88 @@ payload := sig.Payload()          // after
 
 It could only fail for a zero-value `Signal{}` — a construction bug, not a runtime condition.
 `nil` is a valid payload and reads as `nil`. Removed with it: `Signal.PayloadOrNil`,
-`Signal.PayloadOrDefault`, `signal.ErrNoPayload`. `Group.AllPayloads()` likewise returns `[]any`
+`signal.ErrNoPayload`; `Signal.PayloadOrDefault` returns below as a typed generic method. `Group.AllPayloads()` likewise returns `[]any`
 with no error.
 
-`Group.FirstPayload()` **keeps** its error, along with `FirstPayloadOrDefault`/`FirstPayloadOrNil`:
-an empty group is an ordinary runtime state, not a construction bug.
+`Group.FirstPayload()` **keeps** its error, along with `FirstPayloadOrNil`: an empty group is an
+ordinary runtime state, not a construction bug. `FirstPayloadOrDefault` is now generic and
+`FirstAs[T]()` is its error-returning sibling — see the next entry.
+
+**Requires Go 1.27.** The typed accessors below are generic methods, a Go 1.27 language feature,
+so consumers build with Go 1.27 or later.
+
+**Typed payload accessors are methods on `*Signal`.** They were package functions because a
+method could not have its own type parameter; now it can.
+
+```go
+n, err := signal.As[int](sig)              // before
+n, err := sig.As[int]()                    // after
+
+g, err := signal.AsGroup(sig)              // before
+g, err := sig.AsGroup()                    // after
+
+v, ok := signal.AsNumber(sig)              // before
+v, ok := sig.AsNumber()                    // after
+```
+
+The defaulting form is renamed as well — `PayloadOrDefault` reads as a noun like the rest of the
+family (`GetOrDefault`, `ValueOrDefault`, `FirstPayloadOrDefault`), where `AsOrDefault` did not.
+All are safe on a nil `*Signal`, as before. The per-type shorthands are gone — a method with an
+explicit type argument is as short as they were:
+
+| Before | After |
+|---|---|
+| `signal.AsOrDefault(sig, d)` | `sig.PayloadOrDefault(d)` |
+| `signal.AsFloat64OrDefault(sig, d)` | `sig.Float64OrDefault(d)` |
+| `signal.AsInt(sig)` | `sig.As[int]()` |
+| `signal.AsString(sig)` | `sig.As[string]()` |
+| `signal.AsBool(sig)` | `sig.As[bool]()` |
+| `signal.AsFloat64(sig)` | `sig.As[float64]()` |
+
+The common read straight from a port has typed forms on the group, so `First()` need not be
+spelled out:
+
+```go
+n, err := signal.As[int](this.InputByName("in").Signals().First())   // before
+n, err := this.InputByName("in").Signals().FirstAs[int]()           // after; ErrNoSignalsInGroup when empty
+
+n := this.InputByName("in").Signals().FirstPayloadOrDefault(0)       // after, was signal.AsOrDefault(...First(), 0)
+```
+
+`Group.FirstPayloadOrDefault` itself is generic now — `T` is inferred from the default, so the
+assertion on its result goes away, and a nil or wrong-type payload yields the default. For the old
+any-in/any-out behaviour spell the type argument: `FirstPayloadOrDefault[any](x)`.
+
+```go
+n := this.InputByName("in").Signals().FirstPayloadOrDefault(0).(int)   // before
+n := this.InputByName("in").Signals().FirstPayloadOrDefault(0)         // after
+```
+
+**`Group.ReducePayloads` is generic in the accumulator.** No more casting `acc` on every step.
+
+```go
+s := g.ReducePayloads("", func(acc, payload any) any { return acc.(string) + payload.(string) }).(string) // before
+s := g.ReducePayloads("", func(acc string, payload any) string { return acc + payload.(string) })         // after
+```
+
+`signal.PayloadReducer` is removed with it; `Reducer` (over signals) is unchanged.
+
+**`Group.ContainsPayload` takes a comparable type parameter and returns only `bool`.** Passing a
+slice or map no longer compiles, which is what the runtime error used to tell you;
+`signal.ErrPayloadNotComparable` is removed. `ContainsPayloadFunc` remains for those types.
+
+```go
+found, err := g.ContainsPayload(v)    // before
+found := g.ContainsPayload(v)         // after
+found := g.ContainsPayload[any](nil)  // after: a nil payload needs the type argument spelled out
+```
+
+**`component.MustGetTyped` is replaced by the `State.GetTyped[T]` method**, which returns an error
+instead of panicking — the same shape as every other accessor.
+
+| Before | After |
+|---|---|
+| `cur := component.MustGetTyped[string](this.State(), "current")` | `cur, err := this.State().GetTyped[string]("current")` |
 
 **Panics are a typed error.** A recovered panic is now `*component.PanicError` whose `Error()` is
 one line. Code matching on the old `"panicked with: … stack: …"` message must change.
@@ -206,6 +283,12 @@ g = g.WithLabel("k", "v")  // after
 
 ### Added
 
+- `signal.Group.FirstAs[T]()` — the first payload as `T`, with an empty group and a wrong type
+  handled like `Signal.As`.
+- The profiler labels every activation goroutine with `fmesh.mesh` and `fmesh.component`
+  (`runtime/pprof` labels), so a CPU profile can be focused on one component
+  (`go tool pprof -tagfocus=fmesh.component=NAME`) and, on Go 1.27, the stack a
+  `component.PanicError` keeps names the component in its header.
 - `fmesh.ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works.
 - `fmesh.ErrLivelockDetected` plus `WithLivelockThreshold(n)` and `WithoutLivelockDetection()`.
   A mesh whose components all wait on each other now stops in 2 cycles with an error naming the
@@ -271,6 +354,8 @@ g = g.WithLabel("k", "v")  // after
 
 ### Changed
 
+- **Go 1.27 is the minimum.** Generic methods (the typed accessors above) need it. The scheduler
+  now spawns activation goroutines with `sync.WaitGroup.Go`.
 - **Runs are deterministic.** Every `port.Collection` traversal goes in port-name order, so a mesh
   with deterministic activation functions produces identical output for identical input. Previously
   a component reading `Inputs().Signals()` saw its ports in map order — 200 identical runs produced
@@ -348,8 +433,17 @@ g = g.WithLabel("k", "v")  // after
    numbers.
 9. If you mutated a `signal.Group`'s own metadata through `Labels()`/`Scalars()`, switch to
    `WithLabel`/`WithScalar` and assign the result.
-10. Run `go build ./...` — the compiler finds every remaining site.
-11. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
+10. Set `go 1.27` in your `go.mod`.
+11. Turn `signal.As[T](sig)` / `signal.AsOrDefault(sig, d)` / `AsFloat64OrDefault` / `AsGroup` /
+    `AsNumber` into method calls on the signal (`sig.As[T]()`, `sig.PayloadOrDefault(d)`,
+    `sig.Float64OrDefault(d)`, …); replace `AsInt`/`AsString`/`AsBool`/`AsFloat64` with
+    `sig.As[T]()`. Reads straight from a port can use `Signals().FirstAs[T]()` /
+    `FirstPayloadOrDefault(d)`; drop the `.(T)` after `FirstPayloadOrDefault`.
+12. Give `ReducePayloads` a typed accumulator and drop the `.(T)` on the result; drop the error
+    from `ContainsPayload` (and the type argument `[any]` if you pass `nil`).
+13. `component.MustGetTyped[T](state, k)` → `v, err := state.GetTyped[T](k)`.
+14. Run `go build ./...` — the compiler finds every remaining site.
+15. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
 
 ## Earlier releases
 

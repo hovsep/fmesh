@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hovsep/fmesh/component"
-	"github.com/hovsep/fmesh/signal"
 )
 
 // ExampleRequireInputs composes an activation function that waits (keeping
@@ -17,11 +16,11 @@ func ExampleRequireInputs() {
 		component.WithActivationFunc(component.Sequential(
 			component.RequireInputs("a", "b"),
 			func(_ context.Context, this *component.Component) error {
-				a, err := signal.AsInt(this.InputByName("a").Signals().First())
+				a, err := this.InputByName("a").Signals().FirstAs[int]()
 				if err != nil {
 					return err
 				}
-				b, err := signal.AsInt(this.InputByName("b").Signals().First())
+				b, err := this.InputByName("b").Signals().FirstAs[int]()
 				if err != nil {
 					return err
 				}

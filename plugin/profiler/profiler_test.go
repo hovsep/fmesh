@@ -1,13 +1,16 @@
 package profiler
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"runtime/pprof"
 	"testing"
 	"time"
 
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
+	"github.com/hovsep/fmesh/internal/testutil"
 	"github.com/hovsep/fmesh/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,13 +23,13 @@ func TestProfiler(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, fm.AddComponents(
-		mustComponent("producer",
+		testutil.MustComponent("producer",
 			component.WithInputs("i1"),
 			component.WithOutputs("o1"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				return this.OutputByName("o1").PutPayloads(1)
 			})),
-		mustComponent("consumer",
+		testutil.MustComponent("consumer",
 			component.WithInputs("i1"),
 			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })),
 	))
@@ -97,7 +100,7 @@ func TestProfiler_RanksByActivationCount(t *testing.T) {
 	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
 	require.NoError(t, err)
 
-	looper := mustComponent("looper",
+	looper := testutil.MustComponent("looper",
 		component.WithInputs("i1"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
@@ -110,7 +113,7 @@ func TestProfiler_RanksByActivationCount(t *testing.T) {
 		}))
 	require.NoError(t, looper.LoopbackPipe("o1", "i1"))
 
-	oneShot := mustComponent("one-shot",
+	oneShot := testutil.MustComponent("one-shot",
 		component.WithInputs("i1"),
 		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
 
@@ -165,7 +168,7 @@ func TestProfiler_ActivationThatNeverBegan(t *testing.T) {
 		fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll))
 	require.NoError(t, err)
 
-	c := mustComponent("doomed",
+	c := testutil.MustComponent("doomed",
 		component.WithInputs("i1"),
 		component.WithHooks(func(hooks *component.Hooks) {
 			hooks.BeforeActivation(func(context.Context, *component.Component) error {
@@ -180,4 +183,50 @@ func TestProfiler_ActivationThatNeverBegan(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, p.Components(), "an activation that never began is not timed")
+}
+
+func TestProfiler_LabelsActivationGoroutines(t *testing.T) {
+	// Whatever the mode, an activation goroutine is labeled with its mesh and
+	// component, so CPU profiles and tracebacks can be attributed.
+	fm, err := fmesh.New("labeled-mesh", fmesh.WithPlugins(New(ModeThroughput)))
+	require.NoError(t, err)
+
+	var dump bytes.Buffer
+	require.NoError(t, fm.AddComponents(
+		testutil.MustComponent("worker",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(_ context.Context, _ *component.Component) error {
+				// debug=1 prints every goroutine with its labels.
+				return pprof.Lookup("goroutine").WriteTo(&dump, 1)
+			})),
+	))
+	require.NoError(t, fm.Components().ByName("worker").InputByName("in").PutSignals(signal.New("go")))
+
+	_, err = fm.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.Contains(t, dump.String(), `"fmesh.component":"worker"`)
+	assert.Contains(t, dump.String(), `"fmesh.mesh":"labeled-mesh"`)
+}
+
+func TestProfiler_LabelsReachPanicStacks(t *testing.T) {
+	// The stack a PanicError captures is taken on the activation goroutine, so
+	// it names the component in its header — that is what labels buy in a
+	// traceback.
+	fm, err := fmesh.New("m", fmesh.WithPlugins(New()))
+	require.NoError(t, err)
+	require.NoError(t, fm.AddComponents(
+		testutil.MustComponent("boom",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(context.Context, *component.Component) error {
+				panic("kaboom")
+			})),
+	))
+	require.NoError(t, fm.Components().ByName("boom").InputByName("in").PutSignals(signal.New("go")))
+
+	_, err = fm.Run(context.Background())
+	var panicErr *component.PanicError
+	require.ErrorAs(t, err, &panicErr)
+	// Go 1.27 prints labels in the goroutine header: "goroutine N [running] {k: v, ...}:".
+	assert.Contains(t, string(panicErr.StackTrace()), `fmesh.component: boom`)
 }

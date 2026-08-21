@@ -129,7 +129,7 @@ func TestNestedMesh_RunsInsideAComponent(t *testing.T) {
 		upper := testutil.MustComponent("upper",
 			component.WithInputs("in"), component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				text, err := signal.As[string](this.InputByName("in").Signals().First())
+				text, err := this.InputByName("in").Signals().FirstAs[string]()
 				if err != nil {
 					return err
 				}
@@ -138,7 +138,7 @@ func TestNestedMesh_RunsInsideAComponent(t *testing.T) {
 		exclaim := testutil.MustComponent("exclaim",
 			component.WithInputs("in"), component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				text, err := signal.As[string](this.InputByName("in").Signals().First())
+				text, err := this.InputByName("in").Signals().FirstAs[string]()
 				if err != nil {
 					return err
 				}
@@ -157,7 +157,7 @@ func TestNestedMesh_RunsInsideAComponent(t *testing.T) {
 		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
 			inner, innerIn, innerOut := buildInner()
 
-			text, err := signal.As[string](this.InputByName("in").Signals().First())
+			text, err := this.InputByName("in").Signals().FirstAs[string]()
 			if err != nil {
 				return err
 			}

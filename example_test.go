@@ -23,8 +23,8 @@ func Example() {
 		component.WithInputs("i1", "i2"),
 		component.WithOutputs("res"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			word1 := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
-			word2 := signal.AsOrDefault(this.InputByName("i2").Signals().First(), "")
+			word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
+			word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 		}))
 	must(err)
@@ -33,7 +33,7 @@ func Example() {
 		component.WithInputs("i1"),
 		component.WithOutputs("res"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			str := signal.AsOrDefault(this.InputByName("i1").Signals().First(), "")
+			str := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
 		}))
 	must(err)

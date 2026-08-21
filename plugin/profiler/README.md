@@ -126,6 +126,26 @@ Two things about the shape of this data are worth knowing before reading a chart
 unlimited. It is a ceiling rather than an exact count, because eviction drops the oldest in
 chunks.
 
+## Goroutine labels — attributing what the profiler does not measure
+
+The profiler measures nothing process-wide, but it makes the process-wide tools attributable:
+every activation runs on a goroutine labeled with `fmesh.mesh` and `fmesh.component`
+(`runtime/pprof` labels), whatever modes are enabled. A CPU profile taken while the mesh runs can
+then be focused on one component —
+
+```
+go tool pprof -tagfocus=fmesh.component=tokenizer cpu.prof
+```
+
+— and since Go 1.27 goroutine tracebacks carry the labels in their header, so the stack a
+`component.PanicError` keeps names the component that panicked:
+
+```
+goroutine 12 [running] {fmesh.component: tokenizer, fmesh.mesh: mesh}:
+```
+
+Labels set on the run context by the caller (`pprof.Do`) are kept; the mesh's are added to them.
+
 ## More
 
 - [Plugins wiki page](https://github.com/hovsep/fmesh/wiki/502.-Plugins) — how mesh plugins work.

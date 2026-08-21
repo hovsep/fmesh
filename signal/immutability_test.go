@@ -201,15 +201,13 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 	results := make([]*Signal, goroutines)
 
 	for i := range goroutines {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
+		wg.Go(func() {
 			// Each goroutine acts like a component: reads the shared signal and
 			// produces its own annotated copy without touching the original.
-			results[idx] = shared.
+			results[i] = shared.
 				WithLabel("processed-by", "component").
-				WithScalar("adjusted", shared.Scalars().ValueOrDefault("temp", 0)+float64(idx))
-		}(i)
+				WithScalar("adjusted", shared.Scalars().ValueOrDefault("temp", 0)+float64(i))
+		})
 	}
 	wg.Wait()
 
@@ -246,11 +244,9 @@ func TestGroup_concurrent_WithLabel_is_race_free(t *testing.T) {
 	results := make([]*Group, goroutines)
 
 	for i := range goroutines {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			results[idx] = shared.WithLabel("worker", "x")
-		}(i)
+		wg.Go(func() {
+			results[i] = shared.WithLabel("worker", "x")
+		})
 	}
 	wg.Wait()
 
@@ -278,11 +274,9 @@ func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
 	results := make([]*Group, goroutines)
 
 	for i := range goroutines {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			results[idx] = shared.WithScalarOnEach("priority", float64(idx))
-		}(i)
+		wg.Go(func() {
+			results[i] = shared.WithScalarOnEach("priority", float64(i))
+		})
 	}
 	wg.Wait()
 

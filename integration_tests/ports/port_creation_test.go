@@ -30,10 +30,10 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				}
 
 				// Read inputs
-				data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("").(string)
-				config := this.InputByName("config").Signals().FirstPayloadOrDefault("").(string)
-				filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("").(string)
-				metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none").(string)
+				data := this.InputByName("raw_data").Signals().FirstPayloadOrDefault("")
+				config := this.InputByName("config").Signals().FirstPayloadOrDefault("")
+				filter := this.InputByName("filter").Signals().FirstPayloadOrDefault("")
+				metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("none")
 
 				// Process data
 				result := fmt.Sprintf("[%s:%s] %s (meta: %s)", config, filter, data, metadata)
@@ -186,9 +186,9 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 					return nil
 				}
 
-				a := this.InputByName("a").Signals().FirstPayloadOrDefault(0).(int)
-				b := this.InputByName("b").Signals().FirstPayloadOrDefault(0).(int)
-				cv := this.InputByName("c").Signals().FirstPayloadOrDefault(0).(int)
+				a := this.InputByName("a").Signals().FirstPayloadOrDefault(0)
+				b := this.InputByName("b").Signals().FirstPayloadOrDefault(0)
+				cv := this.InputByName("c").Signals().FirstPayloadOrDefault(0)
 
 				return this.OutputByName("result").PutSignals(signal.New(a + b + cv))
 			}),

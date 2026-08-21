@@ -42,7 +42,7 @@ func Test_Math(t *testing.T) {
 					component.WithDescription("multiplies by 3"),
 					component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 						num := this.InputByName("num").Signals().FirstPayloadOrDefault(0)
-						return this.OutputByName("res").PutSignals(signal.New(num.(int) * 3))
+						return this.OutputByName("res").PutSignals(signal.New(num * 3))
 					}),
 				)
 
@@ -88,9 +88,9 @@ func Test_Math(t *testing.T) {
 						}
 
 						// Verify all ports are functional regardless of the creation method
-						rawData := this.InputByName("raw_data").Signals().FirstPayloadOrDefault(0).(int)
-						metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("").(string)
-						config := this.InputByName("config").Signals().FirstPayloadOrDefault(1).(int)
+						rawData := this.InputByName("raw_data").Signals().FirstPayloadOrDefault(0)
+						metadata := this.InputByName("metadata").Signals().FirstPayloadOrDefault("")
+						config := this.InputByName("config").Signals().FirstPayloadOrDefault(1)
 
 						// Process: (rawData * config) + len(metadata)
 						result := (rawData * config) + len(metadata)
@@ -136,8 +136,8 @@ func Test_Math(t *testing.T) {
 							return nil
 						}
 
-						value := this.InputByName("value").Signals().FirstPayloadOrDefault(0).(int)
-						log := this.InputByName("log").Signals().FirstPayloadOrDefault("").(string)
+						value := this.InputByName("value").Signals().FirstPayloadOrDefault(0)
+						log := this.InputByName("log").Signals().FirstPayloadOrDefault("")
 
 						// Verify we received data from both simple and advanced ports
 						verified := value > 0 && log != ""

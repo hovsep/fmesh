@@ -570,7 +570,7 @@ func TestFMesh_Run(t *testing.T) {
 						component.WithOutputs("loop_out", "num1", "num2"),
 						component.WithDescription("Loops back into itself, routing odd counts to num1 and even counts to num2"),
 						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-							count := this.InputByName("loop_in").Signals().FirstPayloadOrDefault(0).(int)
+							count := this.InputByName("loop_in").Signals().FirstPayloadOrDefault(0)
 							count++
 
 							if count%2 != 0 {
@@ -598,8 +598,8 @@ func TestFMesh_Run(t *testing.T) {
 							if !this.Inputs().ByNames("in1", "in2").AllHaveSignals() {
 								return component.ErrWaitKeepingInputs
 							}
-							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0).(int)
-							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0).(int)
+							a := this.InputByName("in1").Signals().FirstPayloadOrDefault(0)
+							b := this.InputByName("in2").Signals().FirstPayloadOrDefault(0)
 							return this.OutputByName("result").PutPayloads(a * b)
 						})),
 				))
@@ -1255,8 +1255,8 @@ func TestFMesh_Run_FanInOrderIsDeterministic(t *testing.T) {
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-				joined := this.InputByName("in").Signals().ReducePayloads("", func(acc any, payload any) any {
-					return acc.(string) + payload.(string)
+				joined := this.InputByName("in").Signals().ReducePayloads("", func(acc string, payload any) string {
+					return acc + payload.(string)
 				})
 				return this.OutputByName("out").PutSignals(signal.New(joined))
 			}))
