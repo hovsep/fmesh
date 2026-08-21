@@ -2,6 +2,7 @@ package component
 
 import (
 	"maps"
+	"slices"
 	"sync"
 )
 
@@ -96,6 +97,18 @@ func (c *ActivationResultCollection) All() map[string]*ActivationResult {
 	result := make(map[string]*ActivationResult, len(c.activationResults))
 	maps.Copy(result, c.activationResults)
 	return result
+}
+
+// AllOrdered returns the results sorted by component name — the order to use
+// for anything rendered, so that output does not follow map order.
+func (c *ActivationResultCollection) AllOrdered() []*ActivationResult {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	ordered := make([]*ActivationResult, 0, len(c.activationResults))
+	for _, name := range slices.Sorted(maps.Keys(c.activationResults)) {
+		ordered = append(ordered, c.activationResults[name])
+	}
+	return ordered
 }
 
 // Len returns the number of activation results in the collection.

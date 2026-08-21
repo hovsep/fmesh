@@ -400,6 +400,12 @@ g = g.WithLabel("k", "v")  // after
 
 ### Fixed
 
+- A failed run's error lists the failing components in name order. `Cycle.AllErrorsCombined` /
+  `AllPanicsCombined` joined them in map order, so the same failure printed differently on
+  different runs. `ActivationResultCollection.AllOrdered()` is new and is what they iterate.
+- `profiler.Reset()` called during a run no longer folds a garbage duration into the run stat:
+  it clears the in-flight start times, and an end without a start is ignored.
+- `autowire` reports a missing `InputNameFor` by that name, not as "Name".
 - Run errors no longer contain `%!w(<nil>)`. A cycle with activation errors but no panics used to
   end its message with `activation panics: %!w(<nil>)` — a nil passed to `%w`.
 - Panic errors are no longer multi-kilobyte single-line strings with a stack trace formatted into

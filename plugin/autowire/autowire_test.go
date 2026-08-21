@@ -94,7 +94,7 @@ func TestAutowire(t *testing.T) {
 		fm, err := fmesh.New("m", fmesh.WithPlugins(&Plugin{}))
 
 		require.Error(t, err)
-		require.ErrorContains(t, err, "Name must be set")
+		require.ErrorContains(t, err, "InputNameFor must be set")
 		assert.Nil(t, fm)
 	})
 

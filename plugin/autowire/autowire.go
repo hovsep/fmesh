@@ -79,7 +79,7 @@ func (a *Plugin) Name() string {
 // Init implements fmesh.Plugin.
 func (a *Plugin) Init(fm *fmesh.FMesh) error {
 	if a.InputNameFor == nil {
-		return errors.New("autowire: Name must be set")
+		return errors.New("autowire: InputNameFor must be set")
 	}
 
 	fm.SetupHooks(func(hooks *fmesh.Hooks) {

@@ -2,6 +2,7 @@ package cycle
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/hovsep/fmesh/component"
@@ -360,4 +361,24 @@ func TestCycle_AllPanicsCombined(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCycle_AllErrorsCombined_IsInComponentNameOrder(t *testing.T) {
+	// The results live in a map; the joined error must not follow map order, or
+	// the same failure reads differently from one run to the next.
+	c := New()
+	for _, name := range []string{"charlie", "alpha", "bravo"} {
+		c.AddActivationResults(component.NewActivationResult(name).
+			SetActivated(true).
+			SetActivationCode(component.ActivationCodeReturnedError).
+			AddActivationError(errors.New("boom")))
+	}
+
+	want := c.AllErrorsCombined().Error()
+	for range 20 {
+		assert.Equal(t, want, c.AllErrorsCombined().Error())
+	}
+	alpha, bravo, charlie := strings.Index(want, "alpha"), strings.Index(want, "bravo"), strings.Index(want, "charlie")
+	assert.Less(t, alpha, bravo)
+	assert.Less(t, bravo, charlie)
 }

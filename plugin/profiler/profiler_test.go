@@ -230,3 +230,26 @@ func TestProfiler_LabelsReachPanicStacks(t *testing.T) {
 	// Go 1.27 prints labels in the goroutine header: "goroutine N [running] {k: v, ...}:".
 	assert.Contains(t, string(panicErr.StackTrace()), `fmesh.component: boom`)
 }
+
+func TestProfiler_ResetDuringARunDoesNotPoisonTheRunStat(t *testing.T) {
+	// Reset between BeforeRun and AfterRun used to leave the run's start time in
+	// place, and AfterRun then folded time.Since(zero) into the stat.
+	p := New(ModeAll)
+	fm, err := fmesh.New("m", fmesh.WithPlugins(p))
+	require.NoError(t, err)
+	require.NoError(t, fm.AddComponents(
+		testutil.MustComponent("c",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(context.Context, *component.Component) error {
+				p.Reset()
+				return nil
+			})),
+	))
+	testutil.MustPutSignals(fm.Components().ByName("c").InputByName("in"), signal.New(1))
+
+	_, err = fm.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.Zero(t, p.Runs().Count, "the run that was reset mid-flight is not counted")
+	assert.Less(t, p.Runs().Total, time.Hour, "no garbage duration")
+}
