@@ -1322,3 +1322,25 @@ func TestFMesh_AddComponents_LoggerInheritance(t *testing.T) {
 	assert.Same(t, meshLogger, defaultLoggerComponent.Logger(), "component without custom logger must inherit the mesh logger")
 	assert.Same(t, customLogger, customLoggerComponent.Logger(), "custom logger must not be overridden")
 }
+
+func TestFMesh_WithLabelAndWithScalar(t *testing.T) {
+	fm := mustNewFMesh("m", WithLabel("env", "test"), WithScalar("version", 2))
+	assert.True(t, fm.Labels().ValueIs("env", "test"))
+	assert.True(t, fm.Scalars().ValueIs("version", 2))
+}
+
+func TestFMesh_Run_RejectsAnOutputPortStolenByAnotherComponent(t *testing.T) {
+	// A port re-attached elsewhere after AddComponents is caught by the per-run
+	// structure check, which names both the port and the component.
+	c := mustNewComponent("c", component.WithInputs("in"), component.WithOutputs("out"),
+		component.WithActivationFunc(noOpActivationFunc))
+	fm := mustNewFMesh("m")
+	require.NoError(t, fm.AddComponents(c))
+	mustPutSignals(c.InputByName("in"), signal.New(1))
+
+	thief := mustNewComponent("thief", component.WithActivationFunc(noOpActivationFunc))
+	require.NoError(t, thief.AttachOutputPorts(c.OutputByName("out")))
+
+	_, err := fm.Run(context.Background())
+	require.ErrorContains(t, err, `output port "out" has wrong parent component in component "c"`)
+}

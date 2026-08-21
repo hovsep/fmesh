@@ -208,3 +208,44 @@ func TestMeshHooks_BeforeRunFailureAbortsTheRun(t *testing.T) {
 	assert.False(t, activated, "no component may activate when BeforeRun fails")
 	assert.Zero(t, ri.Cycles.Len())
 }
+
+func TestMeshHooks_CycleHookFailuresAbortTheRun(t *testing.T) {
+	t.Run("BeforeCycle", func(t *testing.T) {
+		fm := twoCycleMesh(t)
+		fm.SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeCycle(func(context.Context, *fmesh.CycleContext) error { return errors.New("no cycles today") })
+		})
+
+		ri, err := fm.Run(context.Background())
+
+		require.ErrorContains(t, err, "beforeCycle hook failed")
+		require.ErrorContains(t, err, "no cycles today")
+		assert.Equal(t, 1, ri.Cycles.Len(), "the cycle that failed to start is still recorded")
+	})
+
+	t.Run("AfterCycle", func(t *testing.T) {
+		fm := twoCycleMesh(t)
+		fm.SetupHooks(func(h *fmesh.Hooks) {
+			h.AfterCycle(func(context.Context, *fmesh.CycleContext) error { return errors.New("bookkeeping failed") })
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorContains(t, err, "afterCycle hook failed")
+		require.ErrorContains(t, err, "bookkeeping failed")
+	})
+}
+
+func TestMeshHooks_AfterRunFailureBecomesTheRunError(t *testing.T) {
+	// A run that would have succeeded reports the AfterRun failure; a run that
+	// already failed keeps its own error (covered by AfterRunFiresOnAFailedRun).
+	fm := twoCycleMesh(t)
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.AfterRun(func(context.Context, *fmesh.FMesh) error { return errors.New("cleanup failed") })
+	})
+
+	_, err := fm.Run(context.Background())
+
+	require.ErrorContains(t, err, "afterRun hook failed")
+	require.ErrorContains(t, err, "cleanup failed")
+}

@@ -205,3 +205,22 @@ func TestLivelock_ThresholdAndDisabling(t *testing.T) {
 		assert.Contains(t, err.Error(), "WithoutLivelockDetection")
 	})
 }
+
+func TestLivelock_NamesAFewWaitersAndCountsTheRest(t *testing.T) {
+	// With many stuck components the message names enough to see the pattern
+	// and counts the remainder, instead of listing every one.
+	fm, err := fmesh.New("crowd")
+	require.NoError(t, err)
+	for _, name := range []string{"w1", "w2", "w3", "w4", "w5", "w6", "w7"} {
+		w := waiter(name, component.ErrWaitKeepingInputs)
+		require.NoError(t, fm.AddComponents(w))
+		require.NoError(t, w.InputByName("in").PutSignals(signal.New(1)))
+	}
+
+	_, err = fm.Run(context.Background())
+
+	require.ErrorIs(t, err, fmesh.ErrLivelockDetected)
+	assert.Contains(t, err.Error(), `"w5" is waiting`)
+	assert.NotContains(t, err.Error(), `"w6" is waiting`)
+	assert.Contains(t, err.Error(), "...and 2 more waiting component(s)")
+}
