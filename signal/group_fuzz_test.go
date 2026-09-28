@@ -41,7 +41,7 @@ func FuzzGroupOps(f *testing.F) {
 		assert.LessOrEqual(t, filtered.Len(), lenBefore)
 
 		// Map preserves length and leaves the receiver untouched.
-		mapped := g.Map(func(s *Signal) *Signal { return s.WithLabel("m", "1") })
+		mapped := g.Map(func(s *Signal) *Signal { return s.WithMeta("m", "1") })
 		assert.Equal(t, lenBefore, g.Len(), "Map mutated receiver")
 		assert.Equal(t, lenBefore, mapped.Len())
 

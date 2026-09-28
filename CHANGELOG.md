@@ -16,6 +16,58 @@ Everything in this entry is one migration; do it in one pass.
 
 ### BREAKING
 
+**Labels and scalars are one metadata store.** `meta.Labels` and `meta.Scalars` are gone; every
+entity carries a single `*meta.Meta` whose values are `string` or `float64`, chosen per entry.
+Writes infer the type; reads name it (or infer it from a default). Go 1.27 generic methods make
+this possible.
+
+```go
+// before
+fm.Labels().Set("env", "prod")
+fm.Scalars().Set("version", 2)
+sig = sig.WithLabel("priority", "high").WithScalar("weight", 0.85)
+w := sig.Scalars().ValueOrDefault("weight", 0)
+v, err := c.Labels().Value("env")
+
+// after
+fm.Meta().Set("env", "prod").Set("version", 2.0)
+sig = sig.WithMeta("priority", "high").WithMeta("weight", 0.85)
+w := sig.Meta().ValueOrDefault("weight", 0.0)
+v, err := c.Meta().Value[string]("env")
+```
+
+The full rename, on every type that had the pair:
+
+| Before | After |
+|---|---|
+| `Labels()`, `Scalars()` | `Meta()` |
+| `meta.NewLabels()`, `meta.NewScalars()` | `meta.New()` |
+| `WithLabel`, `WithScalar` (signal, group, and the `fmesh`/`component`/`port` options) | `WithMeta` |
+| `Signal.WithLabels`, `Signal.WithScalars` | `Signal.WithMetaMany` |
+| `Signal.WithoutLabels`, `Signal.WithoutScalars` | `Signal.WithoutMeta` |
+| `Group.WithLabelOnEach`, `Group.WithScalarOnEach` | `Group.WithMetaOnEach` |
+| `Group.RemoveLabelOnEach`, `Group.RemoveScalarOnEach` | `Group.WithoutMetaOnEach` |
+| `signal.HasLabel`, `signal.HasAllLabels` | `signal.HasMeta(keys...)` |
+| `signal.HasAnyLabel`, `signal.LabelEquals`, `signal.LabelContains` | `signal.HasAnyMeta`, `signal.MetaEquals`, `signal.MetaContains` |
+| `Labels.HasAll` | `Meta.Has(keys...)` |
+| `Value(k)` | `Value[string](k)` / `Value[float64](k)` |
+
+Two things the compiler now enforces. An untyped integer literal does not satisfy `meta.Value`:
+`Set("n", 1)` and `ValueOrDefault("n", 0)` are compile errors — write `1.0` and `0.0`. And a key
+holds one type at a time: `Value[float64]` on a string entry is an error naming both types, while
+`ValueOrDefault`/`ValueIs` treat it as absent.
+
+One thing the compiler does not catch: labels and scalars had separate key spaces, so a label and
+a scalar could share a name. Now they are one key, and the later write wins —
+`WithLabel("x", "a").WithScalar("x", 1)` migrates to `WithMeta("x", "a").WithMeta("x", 1.0)`, which
+keeps only `1.0`. Rename one of them.
+
+Removed with no replacement, for simplicity: `Signal.WithOnlyLabels`/`WithNoLabels` and the scalar
+twins (`WithoutMeta(s.Meta().Keys()...)` is the rare case spelled out), `port.Group.SetLabel`/
+`SetScalar` (use `g.Meta().Set`), and on the store `Values`, `Map`, `Merge`, `Every`, `Any`,
+`Count`, `ForEach`, `HasAllFrom`, `HasAnyFrom` and the `Mapper`/`ScalarPredicate` types. `Filter`
+stays, with a `func(key string, value any) bool` predicate; `Clone` is new.
+
 **`Run` takes a context.**
 
 ```go

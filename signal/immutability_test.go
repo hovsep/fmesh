@@ -12,79 +12,58 @@ import (
 // Contract tests for github.com/hovsep/fmesh#203 (immutability / non-poisoning).
 
 func TestSignal_immutable_builder_operations(t *testing.T) {
-	t.Run("AddLabel_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(42).WithLabel("a", "1")
-		require.Equal(t, 1, orig.Labels().Len())
-		require.True(t, orig.Labels().ValueIs("a", "1"))
+	t.Run("WithMeta_leaves_receiver_unchanged", func(t *testing.T) {
+		orig := New(42).WithMeta("a", "1")
+		require.Equal(t, 1, orig.Meta().Len())
+		require.True(t, orig.Meta().ValueIs("a", "1"))
 
-		next := orig.WithLabel("b", "2")
+		next := orig.WithMeta("b", "2")
 		require.NotNil(t, next)
 
-		assert.Equal(t, 1, orig.Labels().Len(), "receiver must keep prior labels only")
-		assert.True(t, orig.Labels().ValueIs("a", "1"))
-		assert.False(t, orig.Labels().Has("b"))
+		assert.Equal(t, 1, orig.Meta().Len(), "receiver must keep prior entries only")
+		assert.True(t, orig.Meta().ValueIs("a", "1"))
+		assert.False(t, orig.Meta().Has("b"))
 
-		assert.Equal(t, 2, next.Labels().Len())
-		assert.True(t, next.Labels().Has("b"))
+		assert.Equal(t, 2, next.Meta().Len())
+		assert.True(t, next.Meta().Has("b"))
 	})
 
-	t.Run("AddLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).WithLabel("k", "v")
-		next := orig.WithLabels(map[string]string{"x": "y"})
+	t.Run("WithMetaMany_leaves_receiver_unchanged", func(t *testing.T) {
+		orig := New(1).WithMeta("k", "v")
+		next := orig.WithMetaMany(map[string]string{"x": "y"})
 
-		assert.Equal(t, 1, orig.Labels().Len())
-		assert.True(t, orig.Labels().ValueIs("k", "v"))
-		assert.False(t, orig.Labels().Has("x"))
+		assert.Equal(t, 1, orig.Meta().Len())
+		assert.True(t, orig.Meta().ValueIs("k", "v"))
+		assert.False(t, orig.Meta().Has("x"))
 
-		assert.Equal(t, 2, next.Labels().Len())
-		assert.True(t, next.Labels().Has("x"))
+		assert.Equal(t, 2, next.Meta().Len())
+		assert.True(t, next.Meta().Has("x"))
 	})
 
-	t.Run("SetLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).WithLabel("keep", "old")
-		next := orig.WithOnlyLabels(map[string]string{"new": "set"})
+	t.Run("WithoutMeta_leaves_receiver_unchanged", func(t *testing.T) {
+		orig := New(1).WithMetaMany(map[string]string{"a": "1", "b": "2"})
+		next := orig.WithoutMeta("b")
 
-		assert.True(t, orig.Labels().ValueIs("keep", "old"))
-		assert.False(t, orig.Labels().Has("new"))
+		assert.Equal(t, 2, orig.Meta().Len())
+		assert.True(t, orig.Meta().Has("b"))
 
-		assert.Equal(t, 1, next.Labels().Len())
-		assert.True(t, next.Labels().ValueIs("new", "set"))
-	})
-
-	t.Run("ClearLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).WithLabel("a", "1")
-		next := orig.WithNoLabels()
-
-		assert.Equal(t, 1, orig.Labels().Len())
-		assert.True(t, orig.Labels().Has("a"))
-
-		assert.Equal(t, 0, next.Labels().Len())
-	})
-
-	t.Run("WithoutLabels_leaves_receiver_unchanged", func(t *testing.T) {
-		orig := New(1).WithLabels(map[string]string{"a": "1", "b": "2"})
-		next := orig.WithoutLabels("b")
-
-		assert.Equal(t, 2, orig.Labels().Len())
-		assert.True(t, orig.Labels().Has("b"))
-
-		assert.Equal(t, 1, next.Labels().Len())
-		assert.False(t, next.Labels().Has("b"))
+		assert.Equal(t, 1, next.Meta().Len())
+		assert.False(t, next.Meta().Has("b"))
 	})
 }
 
 func TestSignal_MapPayload_leaves_receiver_unchanged(t *testing.T) {
-	orig := New(10).WithLabel("trace", "id")
+	orig := New(10).WithMeta("trace", "id")
 	next := orig.MapPayload(func(p any) any { return p.(int) * 2 })
 
 	p0 := orig.Payload()
 	assert.Equal(t, 10, p0)
-	assert.Equal(t, 1, orig.Labels().Len())
-	assert.True(t, orig.Labels().ValueIs("trace", "id"))
+	assert.Equal(t, 1, orig.Meta().Len())
+	assert.True(t, orig.Meta().ValueIs("trace", "id"))
 
 	p1 := next.Payload()
 	assert.Equal(t, 20, p1)
-	assert.True(t, next.Labels().ValueIs("trace", "id"))
+	assert.True(t, next.Meta().ValueIs("trace", "id"))
 }
 
 func TestGroup_Add_does_not_poison_receiver_on_nil_signal(t *testing.T) {
@@ -127,22 +106,22 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 	assert.NotSame(t, g.First(), outSigs[0],
 		"MapIf pass-through must use cloned signals, not shared pointers (#203)")
 
-	_ = outSigs[0].WithLabel("x", "y")
+	_ = outSigs[0].WithMeta("x", "y")
 
-	assert.False(t, g.First().Labels().Has("x"),
+	assert.False(t, g.First().Meta().Has("x"),
 		"mutating output group's signal must not change original group's signal (#203)")
 }
 
-func TestGroup_Labels_and_Scalars_return_copies(t *testing.T) {
-	// The one back door through CoW used to be Labels()/Scalars() handing out
-	// the live stores; mutating the returned store must not touch the group.
-	g := NewGroup(1).WithLabel("k", "v").WithScalar("s", 1)
+func TestGroup_Meta_returns_a_copy(t *testing.T) {
+	// The one back door through CoW used to be Meta() handing out
+	// the live store; mutating the returned store must not touch the group.
+	g := NewGroup(1).WithMeta("k", "v").WithMeta("s", 1.0)
 
-	g.Labels().Set("k", "changed")
-	g.Scalars().Set("s", 2)
+	g.Meta().Set("k", "changed")
+	g.Meta().Set("s", 2.0)
 
-	assert.True(t, g.Labels().ValueIs("k", "v"))
-	v, err := g.Scalars().Value("s")
+	assert.True(t, g.Meta().ValueIs("k", "v"))
+	v, err := g.Meta().Value[float64]("s")
 	require.NoError(t, err)
 	assert.InDelta(t, 1.0, v, 1e-9)
 }
@@ -157,8 +136,8 @@ func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
 	assert.NotSame(t, g.First(), outSigs[0],
 		"Map with identity mapper must clone signals, not share pointers")
 
-	_ = outSigs[0].WithLabel("x", "y")
-	assert.False(t, g.First().Labels().Has("x"),
+	_ = outSigs[0].WithMeta("x", "y")
+	assert.False(t, g.First().Meta().Has("x"),
 		"mutating output group's signal must not change original group's signal")
 }
 
@@ -176,9 +155,9 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 	require.Len(t, outSigs, 2)
 	assert.NotSame(t, g.First(), outSigs[0])
 
-	_ = outSigs[0].WithLabel("x", "y")
+	_ = outSigs[0].WithMeta("x", "y")
 
-	assert.False(t, g.First().Labels().Has("x"),
+	assert.False(t, g.First().Meta().Has("x"),
 		"mutating output group's signal must not change original group's signal (#203)")
 }
 
@@ -194,8 +173,8 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 
 	// Shared signal — simulates a fanned-out signal sitting in multiple ports.
 	shared := New("payload").
-		WithLabel("origin", "sensor-1").
-		WithScalar("temp", 36.6)
+		WithMeta("origin", "sensor-1").
+		WithMeta("temp", 36.6)
 
 	var wg sync.WaitGroup
 	results := make([]*Signal, goroutines)
@@ -205,67 +184,66 @@ func TestSignal_concurrent_CoW_is_race_free(t *testing.T) {
 			// Each goroutine acts like a component: reads the shared signal and
 			// produces its own annotated copy without touching the original.
 			results[i] = shared.
-				WithLabel("processed-by", "component").
-				WithScalar("adjusted", shared.Scalars().ValueOrDefault("temp", 0)+float64(i))
+				WithMeta("processed-by", "component").
+				WithMeta("adjusted", shared.Meta().ValueOrDefault("temp", 0.0)+float64(i))
 		})
 	}
 	wg.Wait()
 
 	// Original must be completely unchanged.
-	assert.Equal(t, 1, shared.Labels().Len(), "shared signal labels must not grow")
-	assert.True(t, shared.Labels().ValueIs("origin", "sensor-1"))
-	assert.False(t, shared.Labels().Has("processed-by"))
+	assert.Equal(t, 2, shared.Meta().Len(), "shared signal metadata must not grow")
+	assert.True(t, shared.Meta().ValueIs("origin", "sensor-1"))
+	assert.False(t, shared.Meta().Has("processed-by"))
 
-	assert.Equal(t, 1, shared.Scalars().Len(), "shared signal scalars must not grow")
-	v, err := shared.Scalars().Value("temp")
+	v, err := shared.Meta().Value[float64]("temp")
 	require.NoError(t, err)
 	assert.InDelta(t, 36.6, v, 1e-9)
-	assert.False(t, shared.Scalars().Has("adjusted"))
+	assert.False(t, shared.Meta().Has("adjusted"))
 
 	// Every derived signal must have both the inherited and the new metadata.
 	for i, s := range results {
-		assert.True(t, s.Labels().ValueIs("origin", "sensor-1"),
-			"goroutine %d: inherited label must be present", i)
-		assert.True(t, s.Labels().Has("processed-by"),
-			"goroutine %d: own label must be present", i)
-		assert.True(t, s.Scalars().Has("adjusted"), "goroutine %d: own scalar must be present", i)
+		assert.True(t, s.Meta().ValueIs("origin", "sensor-1"),
+			"goroutine %d: inherited entry must be present", i)
+		assert.True(t, s.Meta().Has("processed-by"),
+			"goroutine %d: own string entry must be present", i)
+		assert.True(t, s.Meta().Has("adjusted"), "goroutine %d: own float entry must be present", i)
 	}
 }
 
-// TestGroup_concurrent_WithLabel_is_race_free verifies that multiple goroutines
-// calling WithLabel on the same *Group concurrently do not race. Each call
+// TestGroup_concurrent_WithMeta_is_race_free verifies that multiple goroutines
+// calling WithMeta on the same *Group concurrently do not race. Each call
 // returns a new group; the original must be unmodified.
-func TestGroup_concurrent_WithLabel_is_race_free(t *testing.T) {
+func TestGroup_concurrent_WithMeta_is_race_free(t *testing.T) {
 	const goroutines = 50
 
-	shared := NewGroup(1, 2, 3).WithLabel("batch", "A")
+	shared := NewGroup(1, 2, 3).WithMeta("batch", "A")
 
 	var wg sync.WaitGroup
 	results := make([]*Group, goroutines)
 
 	for i := range goroutines {
 		wg.Go(func() {
-			results[i] = shared.WithLabel("worker", "x")
+			results[i] = shared.WithMeta("worker", "x")
 		})
 	}
 	wg.Wait()
 
-	// Original group must still have only its own label.
-	assert.Equal(t, 1, shared.Labels().Len())
-	assert.True(t, shared.Labels().ValueIs("batch", "A"))
-	assert.False(t, shared.Labels().Has("worker"))
+	// Original group must still have only its own entry.
+	assert.Equal(t, 1, shared.Meta().Len())
+	assert.True(t, shared.Meta().ValueIs("batch", "A"))
+	assert.False(t, shared.Meta().Has("worker"))
 
 	for i, g := range results {
-		assert.True(t, g.Labels().Has("worker"),
-			"goroutine %d: derived group must have added label", i)
-		assert.True(t, g.Labels().ValueIs("batch", "A"),
-			"goroutine %d: derived group must inherit original label", i)
+		assert.True(t, g.Meta().Has("worker"),
+			"goroutine %d: derived group must have added entry", i)
+		assert.True(t, g.Meta().ValueIs("batch", "A"),
+			"goroutine %d: derived group must inherit original entry", i)
 	}
 }
 
-// TestGroup_concurrent_WithScalarOnEach_is_race_free verifies that multiple
-// goroutines stamping scalars on copies of the same group do not race.
-func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
+// TestGroup_concurrent_WithMetaOnEach_is_race_free verifies that multiple
+// goroutines stamping entries on copies of the same group do not race.
+func TestGroup_concurrent_WithMetaOnEach_is_race_free(t *testing.T) {
 	const goroutines = 50
 
 	shared := NewGroup(1, 2, 3)
@@ -275,24 +253,24 @@ func TestGroup_concurrent_WithScalarOnEach_is_race_free(t *testing.T) {
 
 	for i := range goroutines {
 		wg.Go(func() {
-			results[i] = shared.WithScalarOnEach("priority", float64(i))
+			results[i] = shared.WithMetaOnEach("priority", float64(i))
 		})
 	}
 	wg.Wait()
 
-	// Signals inside the original group must have no scalars.
+	// Signals inside the original group must have no metadata.
 	sigs := shared.All()
 	for _, s := range sigs {
-		assert.False(t, s.Scalars().Has("priority"),
+		assert.False(t, s.Meta().Has("priority"),
 			"original group's signals must not be affected")
 	}
 
-	// Each result group's signals must have the scalar.
+	// Each result group's signals must have the entry.
 	for i, g := range results {
 		outSigs := g.All()
 		for _, s := range outSigs {
-			assert.True(t, s.Scalars().Has("priority"),
-				"goroutine %d: derived signal must have scalar", i)
+			assert.True(t, s.Meta().Has("priority"),
+				"goroutine %d: derived signal must have the entry", i)
 		}
 	}
 }

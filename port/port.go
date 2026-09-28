@@ -29,8 +29,7 @@ type Port struct {
 	name            string
 	direction       Direction
 	description     string
-	labels          *meta.Labels
-	scalars         *meta.Scalars
+	meta            *meta.Meta
 	signals         *signal.Group
 	pipes           *Group // Outbound pipes
 	parentComponent ParentComponent
@@ -51,8 +50,7 @@ func newPort(direction Direction, name string, opts ...Option) (*Port, error) {
 	p := &Port{
 		name:      name,
 		direction: direction,
-		labels:    meta.NewLabels(),
-		scalars:   meta.NewScalars(),
+		meta:      meta.New(),
 		pipes:     NewGroup(),
 		signals:   signal.NewGroup(),
 		hooks:     newHooks(),
@@ -73,10 +71,10 @@ func WithDescription(description string) Option {
 	}
 }
 
-// WithLabel is a port option that adds a label.
-func WithLabel(name, value string) Option {
+// WithMeta is a port constructor option that adds or updates one metadata entry.
+func WithMeta[T meta.Value](key string, value T) Option {
 	return func(p *Port) error {
-		p.labels.Set(name, value)
+		p.meta.Set(key, value)
 		return nil
 	}
 }
@@ -106,22 +104,9 @@ func (p *Port) IsOutput() bool {
 	return p.direction == DirectionOut
 }
 
-// Labels returns the port's labels collection.
-func (p *Port) Labels() *meta.Labels {
-	return p.labels
-}
-
-// Scalars returns the port's scalars store.
-func (p *Port) Scalars() *meta.Scalars {
-	return p.scalars
-}
-
-// WithScalar is a port constructor option that adds or updates a single scalar.
-func WithScalar(name string, value float64) Option {
-	return func(p *Port) error {
-		p.scalars.Set(name, value)
-		return nil
-	}
+// Meta returns the port's metadata store.
+func (p *Port) Meta() *meta.Meta {
+	return p.meta
 }
 
 // Pipes returns outbound pipes. Input ports always return an empty group.

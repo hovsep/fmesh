@@ -46,8 +46,8 @@ func TestComponent_Plugin(t *testing.T) {
 		assert.InDelta(t, 1000.1, c.OutputByName("price_out").Signals().ReducePayloads(0.0, func(acc float64, payload any) float64 {
 			return acc + payload.(float64)
 		}), 0.0001)
-		assert.True(t, c.Labels().ValueIs("plugin/price/version", "v1.2.4"))
-		assert.True(t, c.Scalars().ValueIs("plugin/price/threshold", 105.54))
+		assert.True(t, c.Meta().ValueIs("plugin/price/version", "v1.2.4"))
+		assert.True(t, c.Meta().ValueIs("plugin/price/threshold", 105.54))
 		assert.True(t, c.PluginRegistered("PricePlugin"))
 		assert.False(t, c.PluginRegistered("nope"))
 	})
@@ -144,7 +144,7 @@ func (pp PricePlugin) Init(c *Component) error {
 	})
 
 	// Modify metadata
-	c.Labels().Set("plugin/price/version", "v1.2.4")
-	c.Scalars().Set("plugin/price/threshold", 105.54)
+	c.Meta().Set("plugin/price/version", "v1.2.4")
+	c.Meta().Set("plugin/price/threshold", 105.54)
 	return nil
 }

@@ -17,15 +17,11 @@ type signalSlice = collection.Slice[*Signal]
 // Group represents an ordered list of signals.
 type Group struct {
 	signalSlice
-	labels  *meta.Labels
-	scalars *meta.Scalars
+	meta *meta.Meta
 }
 
 func newGroupFromSignals(signals []*Signal) *Group {
-	g := &Group{
-		labels:  meta.NewLabels(),
-		scalars: meta.NewScalars(),
-	}
+	g := &Group{meta: meta.New()}
 	g.replace(slices.Clone(signals))
 	return g
 }
@@ -45,68 +41,36 @@ func (g *Group) raw() []*Signal { return collection.Items(&g.signalSlice) }
 
 func (g *Group) replace(items []*Signal) { collection.SetItems(&g.signalSlice, items) }
 
-// Labels returns a copy of the group's own labels. Group is copy-on-write:
-// mutate via WithLabel, which returns a new group — matching Signal.Labels.
-func (g *Group) Labels() *meta.Labels { return cloneLabels(g.labels) }
+// Meta returns a copy of the group's own metadata. Group is copy-on-write:
+// mutate via WithMeta, which returns a new group — matching Signal.Meta.
+func (g *Group) Meta() *meta.Meta { return g.meta.Clone() }
 
-// WithLabel adds or updates a single label on the group and returns a new group.
-func (g *Group) WithLabel(name, value string) *Group {
+// WithMeta adds or updates one metadata entry on the group itself and returns a new group.
+func (g *Group) WithMeta[T meta.Value](key string, value T) *Group {
 	next := newGroupFromSignals(g.raw())
-	next.labels = cloneLabels(g.labels)
-	next.scalars = cloneScalars(g.scalars)
-	next.labels.Set(name, value)
+	next.meta = g.meta.Clone().Set(key, value)
 	return next
 }
 
-// Scalars returns a copy of the group's own scalars. Group is copy-on-write:
-// mutate via WithScalar, which returns a new group — matching Signal.Scalars.
-func (g *Group) Scalars() *meta.Scalars { return cloneScalars(g.scalars) }
-
-// WithScalar adds or updates a single scalar on the group and returns a new group.
-func (g *Group) WithScalar(name string, value float64) *Group {
-	next := newGroupFromSignals(g.raw())
-	next.labels = cloneLabels(g.labels)
-	next.scalars = cloneScalars(g.scalars)
-	next.scalars.Set(name, value)
-	return next
-}
-
-// copyGroupMeta copies the group's own labels and scalars into dst.
+// copyGroupMeta copies the group's own metadata into dst.
 func copyGroupMeta(src, dst *Group) *Group {
-	dst.labels = cloneLabels(src.labels)
-	dst.scalars = cloneScalars(src.scalars)
+	dst.meta = src.meta.Clone()
 	return dst
 }
 
-// WithLabelOnEach returns a new group with each signal having the label set.
-// The group's own labels and scalars are preserved on the returned group.
-func (g *Group) WithLabelOnEach(name, value string) *Group {
+// WithMetaOnEach returns a new group with the entry set on each signal.
+// The group's own metadata is preserved on the returned group.
+func (g *Group) WithMetaOnEach[T meta.Value](key string, value T) *Group {
 	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
-		return s.WithLabel(name, value)
+		return s.WithMeta(key, value)
 	}))
 }
 
-// WithScalarOnEach returns a new group with each signal having the scalar set.
-// The group's own labels and scalars are preserved on the returned group.
-func (g *Group) WithScalarOnEach(name string, value float64) *Group {
+// WithoutMetaOnEach returns a new group with the entries removed from each signal.
+// The group's own metadata is preserved on the returned group.
+func (g *Group) WithoutMetaOnEach(keys ...string) *Group {
 	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
-		return s.WithScalar(name, value)
-	}))
-}
-
-// RemoveLabelOnEach returns a new group with each signal having the label removed.
-// The group's own labels and scalars are preserved on the returned group.
-func (g *Group) RemoveLabelOnEach(names ...string) *Group {
-	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
-		return s.WithoutLabels(names...)
-	}))
-}
-
-// RemoveScalarOnEach returns a new group with each signal having the scalar removed.
-// The group's own labels and scalars are preserved on the returned group.
-func (g *Group) RemoveScalarOnEach(names ...string) *Group {
-	return copyGroupMeta(g, g.Map(func(s *Signal) *Signal {
-		return s.WithoutScalars(names...)
+		return s.WithoutMeta(keys...)
 	}))
 }
 

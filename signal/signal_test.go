@@ -25,8 +25,7 @@ func TestNew(t *testing.T) {
 			},
 			want: &Signal{
 				payload: []any{nil},
-				labels:  meta.NewLabels(),
-				scalars: meta.NewScalars(),
+				meta:    meta.New(),
 			},
 		},
 		{
@@ -36,8 +35,7 @@ func TestNew(t *testing.T) {
 			},
 			want: &Signal{
 				payload: []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				labels:  meta.NewLabels(),
-				scalars: meta.NewScalars(),
+				meta:    meta.New(),
 			},
 		},
 	}
@@ -93,13 +91,9 @@ func TestSignal_Map(t *testing.T) {
 			name:   "happy path",
 			signal: New(1),
 			mapperFunc: func(signal *Signal) *Signal {
-				return signal.WithOnlyLabels(map[string]string{
-					"l1": "v1",
-				})
+				return signal.WithMeta("l1", "v1")
 			},
-			want: New(1).WithOnlyLabels(map[string]string{
-				"l1": "v1",
-			}),
+			want: New(1).WithMeta("l1", "v1"),
 		},
 	}
 	for _, tt := range tests {
@@ -119,124 +113,89 @@ func TestSignal_MapPayload(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			signal: New(1).WithLabel("foo", "bar"),
+			signal: New(1).WithMeta("foo", "bar"),
 			mapperFunc: func(payload any) any {
 				return payload.(int) * 2
 			},
-			want: New(2).WithLabel("foo", "bar"),
+			want: New(2).WithMeta("foo", "bar"),
 		},
 		{
 			name:   "payload nil",
-			signal: New(nil).WithLabel("x", "y"),
+			signal: New(nil).WithMeta("x", "y"),
 			mapperFunc: func(payload any) any {
 				if payload == nil {
 					return "default"
 				}
 				return payload
 			},
-			want: New("default").WithLabel("x", "y"),
+			want: New("default").WithMeta("x", "y"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.signal.MapPayload(tt.mapperFunc)
 			assert.Equal(t, tt.want.Payload(), got.Payload())
-			assert.Equal(t, tt.want.Labels(), got.Labels())
+			assert.Equal(t, tt.want.Meta(), got.Meta())
 		})
 	}
 }
 
-func TestSignal_WithOnlyLabels(t *testing.T) {
+func TestSignal_WithMetaMany(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
-		labels     map[string]string
+		entries    map[string]string
 		assertions func(t *testing.T, signal *Signal)
 	}{
 		{
-			name:   "set labels on new signal",
+			name:   "add entries to new signal",
 			signal: New(123),
-			labels: map[string]string{
+			entries: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 2, signal.Labels().Len())
-				assert.True(t, signal.labels.HasAll("l1", "l2"))
+				assert.Equal(t, 2, signal.Meta().Len())
+				assert.True(t, signal.meta.Has("l1", "l2"))
 			},
 		},
 		{
-			name:   "set labels replaces existing labels",
-			signal: New(123).WithLabels(map[string]string{"old": "value"}),
-			labels: map[string]string{
+			name:   "add entries merges with existing",
+			signal: New(123).WithMetaMany(map[string]string{"existing": "entry"}),
+			entries: map[string]string{
 				"l1": "v1",
 				"l2": "v2",
 			},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 2, signal.Labels().Len())
-				assert.True(t, signal.labels.HasAll("l1", "l2"))
-				assert.False(t, signal.labels.Has("old"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.WithOnlyLabels(tt.labels)
-			if tt.assertions != nil {
-				tt.assertions(t, signalAfter)
-			}
-		})
-	}
-}
-
-func TestSignal_WithLabels(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		signal     *Signal
-		labels     map[string]string
-		assertions func(t *testing.T, signal *Signal)
-	}{
-		{
-			name:   "add labels to new signal",
-			signal: New(123),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 2, signal.Labels().Len())
-				assert.True(t, signal.labels.HasAll("l1", "l2"))
+				assert.Equal(t, 3, signal.Meta().Len())
+				assert.True(t, signal.meta.Has("existing", "l1", "l2"))
 			},
 		},
 		{
-			name:   "add labels merges with existing",
-			signal: New(123).WithLabels(map[string]string{"existing": "label"}),
-			labels: map[string]string{
-				"l1": "v1",
-				"l2": "v2",
-			},
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 3, signal.Labels().Len())
-				assert.True(t, signal.labels.HasAll("existing", "l1", "l2"))
-			},
-		},
-		{
-			name:   "add labels updates existing key",
-			signal: New(123).WithLabels(map[string]string{"l1": "old"}),
-			labels: map[string]string{
+			name:   "add entries updates existing key",
+			signal: New(123).WithMetaMany(map[string]string{"l1": "old"}),
+			entries: map[string]string{
 				"l1": "new",
 			},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 1, signal.Labels().Len())
-				assert.True(t, signal.labels.ValueIs("l1", "new"))
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.meta.ValueIs("l1", "new"))
+			},
+		},
+		{
+			name:    "nil map is a no-op",
+			signal:  New(123).WithMeta("l1", "v1"),
+			entries: nil,
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.meta.ValueIs("l1", "v1"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.WithLabels(tt.labels)
+			signalAfter := tt.signal.WithMetaMany(tt.entries)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -244,104 +203,60 @@ func TestSignal_WithLabels(t *testing.T) {
 	}
 }
 
-func TestSignal_WithLabel(t *testing.T) {
+func TestSignal_WithMeta(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
 		signal     *Signal
-		labelName  string
-		labelValue string
+		key        string
+		value      string
 		assertions func(t *testing.T, signal *Signal)
 	}{
 		{
-			name:       "add single label to new signal",
-			signal:     New(123),
-			labelName:  "priority",
-			labelValue: "high",
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 1, signal.Labels().Len())
-				assert.True(t, signal.labels.ValueIs("priority", "high"))
-			},
-		},
-		{
-			name:       "add label merges with existing",
-			signal:     New(123).WithLabel("existing", "label"),
-			labelName:  "priority",
-			labelValue: "high",
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 2, signal.Labels().Len())
-				assert.True(t, signal.labels.HasAll("existing", "priority"))
-			},
-		},
-		{
-			name:       "add label updates existing key",
-			signal:     New(123).WithLabel("priority", "low"),
-			labelName:  "priority",
-			labelValue: "high",
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 1, signal.Labels().Len())
-				assert.True(t, signal.labels.ValueIs("priority", "high"))
-			},
-		},
-		{
-			name:       "chainable",
-			signal:     New(123),
-			labelName:  "l1",
-			labelValue: "v1",
-			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.WithLabel("l2", "v2").WithLabel("l3", "v3")
-				assert.Equal(t, 3, result.Labels().Len())
-				assert.True(t, result.labels.HasAll("l1", "l2", "l3"))
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.WithLabel(tt.labelName, tt.labelValue)
-			if tt.assertions != nil {
-				tt.assertions(t, signalAfter)
-			}
-		})
-	}
-}
-
-func TestSignal_WithNoLabels(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		signal     *Signal
-		assertions func(t *testing.T, signal *Signal)
-	}{
-		{
-			name:   "clear labels from signal with labels",
-			signal: New(123).WithLabels(map[string]string{"k1": "v1", "k2": "v2"}),
-			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 0, signal.Labels().Len())
-				assert.False(t, signal.Labels().Has("k1"))
-				assert.False(t, signal.Labels().Has("k2"))
-			},
-		},
-		{
-			name:   "clear labels from signal without labels",
+			name:   "add single entry to new signal",
 			signal: New(123),
+			key:    "priority",
+			value:  "high",
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 0, signal.Labels().Len())
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.meta.ValueIs("priority", "high"))
+			},
+		},
+		{
+			name:   "add entry merges with existing",
+			signal: New(123).WithMeta("existing", "entry"),
+			key:    "priority",
+			value:  "high",
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 2, signal.Meta().Len())
+				assert.True(t, signal.meta.Has("existing", "priority"))
+			},
+		},
+		{
+			name:   "add entry updates existing key",
+			signal: New(123).WithMeta("priority", "low"),
+			key:    "priority",
+			value:  "high",
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.meta.ValueIs("priority", "high"))
 			},
 		},
 		{
 			name:   "chainable",
-			signal: New(123).WithLabels(map[string]string{"k1": "v1"}),
+			signal: New(123),
+			key:    "l1",
+			value:  "v1",
 			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.WithNoLabels().WithLabel("k2", "v2")
-				assert.Equal(t, 1, result.Labels().Len())
-				assert.False(t, result.Labels().Has("k1"))
-				assert.True(t, result.Labels().ValueIs("k2", "v2"))
+				result := signal.WithMeta("l2", "v2").WithMeta("l3", "v3")
+				assert.Equal(t, 3, result.Meta().Len())
+				assert.True(t, result.meta.Has("l1", "l2", "l3"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.WithNoLabels()
+			signalAfter := tt.signal.WithMeta(tt.key, tt.value)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -349,62 +264,71 @@ func TestSignal_WithNoLabels(t *testing.T) {
 	}
 }
 
-func TestSignal_WithoutLabels(t *testing.T) {
+func TestSignal_WithoutMeta(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		signal         *Signal
-		labelsToRemove []string
-		assertions     func(t *testing.T, signal *Signal)
+		name         string
+		signal       *Signal
+		keysToRemove []string
+		assertions   func(t *testing.T, signal *Signal)
 	}{
 		{
-			name:           "remove single label",
-			signal:         New(123).WithLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1"},
+			name:         "remove single entry",
+			signal:       New(123).WithMetaMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			keysToRemove: []string{"k1"},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 2, signal.Labels().Len())
-				assert.False(t, signal.Labels().Has("k1"))
-				assert.True(t, signal.Labels().Has("k2"))
-				assert.True(t, signal.Labels().Has("k3"))
+				assert.Equal(t, 2, signal.Meta().Len())
+				assert.False(t, signal.Meta().Has("k1"))
+				assert.True(t, signal.Meta().Has("k2"))
+				assert.True(t, signal.Meta().Has("k3"))
 			},
 		},
 		{
-			name:           "remove multiple labels",
-			signal:         New(123).WithLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1", "k2"},
+			name:         "remove multiple entries",
+			signal:       New(123).WithMetaMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			keysToRemove: []string{"k1", "k2"},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 1, signal.Labels().Len())
-				assert.False(t, signal.Labels().Has("k1"))
-				assert.False(t, signal.Labels().Has("k2"))
-				assert.True(t, signal.Labels().ValueIs("k3", "v3"))
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.False(t, signal.Meta().Has("k1"))
+				assert.False(t, signal.Meta().Has("k2"))
+				assert.True(t, signal.Meta().ValueIs("k3", "v3"))
 			},
 		},
 		{
-			name:           "remove non-existent label",
-			signal:         New(123).WithLabels(map[string]string{"k1": "v1"}),
-			labelsToRemove: []string{"k2"},
+			name:         "remove non-existent entry",
+			signal:       New(123).WithMetaMany(map[string]string{"k1": "v1"}),
+			keysToRemove: []string{"k2"},
 			assertions: func(t *testing.T, signal *Signal) {
-				assert.Equal(t, 1, signal.Labels().Len())
-				assert.True(t, signal.Labels().ValueIs("k1", "v1"))
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.Meta().ValueIs("k1", "v1"))
 			},
 		},
 		{
-			name:           "chainable",
-			signal:         New(123).WithLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
-			labelsToRemove: []string{"k1"},
+			name:         "chainable",
+			signal:       New(123).WithMetaMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}),
+			keysToRemove: []string{"k1"},
 			assertions: func(t *testing.T, signal *Signal) {
-				result := signal.WithoutLabels("k2").WithLabel("k4", "v4")
-				assert.Equal(t, 2, result.Labels().Len())
-				assert.False(t, result.Labels().Has("k1"))
-				assert.False(t, result.Labels().Has("k2"))
-				assert.True(t, result.Labels().ValueIs("k3", "v3"))
-				assert.True(t, result.Labels().ValueIs("k4", "v4"))
+				result := signal.WithoutMeta("k2").WithMeta("k4", "v4")
+				assert.Equal(t, 2, result.Meta().Len())
+				assert.False(t, result.Meta().Has("k1"))
+				assert.False(t, result.Meta().Has("k2"))
+				assert.True(t, result.Meta().ValueIs("k3", "v3"))
+				assert.True(t, result.Meta().ValueIs("k4", "v4"))
+			},
+		},
+		{
+			name:         "no keys is a no-op",
+			signal:       New(123).WithMetaMany(map[string]string{"k1": "v1"}),
+			keysToRemove: nil,
+			assertions: func(t *testing.T, signal *Signal) {
+				assert.Equal(t, 1, signal.Meta().Len())
+				assert.True(t, signal.Meta().ValueIs("k1", "v1"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signalAfter := tt.signal.WithoutLabels(tt.labelsToRemove...)
+			signalAfter := tt.signal.WithoutMeta(tt.keysToRemove...)
 			if tt.assertions != nil {
 				tt.assertions(t, signalAfter)
 			}
@@ -414,71 +338,33 @@ func TestSignal_WithoutLabels(t *testing.T) {
 
 func TestSignal_Chainability(t *testing.T) {
 	t.Parallel()
-	t.Run("WithOnlyLabels called twice replaces all labels", func(t *testing.T) {
+	t.Run("WithMetaMany called twice merges entries", func(t *testing.T) {
 		s := New(123).
-			WithOnlyLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			WithOnlyLabels(map[string]string{"k3": "v3"})
+			WithMetaMany(map[string]string{"k1": "v1", "k2": "v2"}).
+			WithMetaMany(map[string]string{"k3": "v3", "k2": "v2-updated"})
 
-		assert.Equal(t, 1, s.Labels().Len())
-		assert.False(t, s.Labels().Has("k1"), "k1 should be replaced")
-		assert.False(t, s.Labels().Has("k2"), "k2 should be replaced")
-		assert.True(t, s.Labels().ValueIs("k3", "v3"))
+		assert.Equal(t, 3, s.Meta().Len())
+		assert.True(t, s.Meta().ValueIs("k1", "v1"))
+		assert.True(t, s.Meta().ValueIs("k2", "v2-updated"), "should update existing key")
+		assert.True(t, s.Meta().ValueIs("k3", "v3"))
 	})
 
-	t.Run("WithLabels called twice merges labels", func(t *testing.T) {
+	t.Run("WithoutMeta removes specific entries", func(t *testing.T) {
 		s := New(123).
-			WithLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			WithLabels(map[string]string{"k3": "v3", "k2": "v2-updated"})
+			WithMetaMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
+			WithoutMeta("k1", "k2").
+			WithMeta("k4", "v4")
 
-		assert.Equal(t, 3, s.Labels().Len())
-		assert.True(t, s.Labels().ValueIs("k1", "v1"))
-		assert.True(t, s.Labels().ValueIs("k2", "v2-updated"), "should update existing key")
-		assert.True(t, s.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("mixed Set and Add operations", func(t *testing.T) {
-		s := New(123).
-			WithLabel("k1", "v1").
-			WithLabels(map[string]string{"k2": "v2", "k3": "v3"}).
-			WithOnlyLabels(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
-			WithLabel("k5", "v5")                          // Merges with k4
-
-		assert.Equal(t, 2, s.Labels().Len())
-		assert.False(t, s.Labels().Has("k1"), "wiped by WithOnlyLabels")
-		assert.False(t, s.Labels().Has("k2"), "wiped by WithOnlyLabels")
-		assert.False(t, s.Labels().Has("k3"), "wiped by WithOnlyLabels")
-		assert.True(t, s.Labels().ValueIs("k4", "v4"))
-		assert.True(t, s.Labels().ValueIs("k5", "v5"))
-	})
-
-	t.Run("WithNoLabels removes all labels", func(t *testing.T) {
-		s := New(123).
-			WithLabels(map[string]string{"k1": "v1", "k2": "v2"}).
-			WithNoLabels().
-			WithLabel("k3", "v3")
-
-		assert.Equal(t, 1, s.Labels().Len())
-		assert.False(t, s.Labels().Has("k1"))
-		assert.False(t, s.Labels().Has("k2"))
-		assert.True(t, s.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("WithoutLabels removes specific labels", func(t *testing.T) {
-		s := New(123).
-			WithLabels(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
-			WithoutLabels("k1", "k2").
-			WithLabel("k4", "v4")
-
-		assert.Equal(t, 2, s.Labels().Len())
-		assert.False(t, s.Labels().Has("k1"))
-		assert.False(t, s.Labels().Has("k2"))
-		assert.True(t, s.Labels().ValueIs("k3", "v3"))
-		assert.True(t, s.Labels().ValueIs("k4", "v4"))
+		assert.Equal(t, 2, s.Meta().Len())
+		assert.False(t, s.Meta().Has("k1"))
+		assert.False(t, s.Meta().Has("k2"))
+		assert.True(t, s.Meta().ValueIs("k3", "v3"))
+		assert.True(t, s.Meta().ValueIs("k4", "v4"))
 	})
 }
 
 // TestSignal_NilPayloadInvariant verifies that nil is a valid payload and survives
-// all mutation operations (copy-on-write label changes) unchanged.
+// all mutation operations (copy-on-write metadata changes) unchanged.
 func TestSignal_NilPayloadInvariant(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -490,24 +376,16 @@ func TestSignal_NilPayloadInvariant(t *testing.T) {
 			signal: New(nil),
 		},
 		{
-			name:   "after WithLabel",
-			signal: New(nil).WithLabel("k", "v"),
+			name:   "after WithMeta",
+			signal: New(nil).WithMeta("k", "v"),
 		},
 		{
-			name:   "after WithLabels",
-			signal: New(nil).WithLabels(map[string]string{"k": "v"}),
+			name:   "after WithMetaMany",
+			signal: New(nil).WithMetaMany(map[string]string{"k": "v"}),
 		},
 		{
-			name:   "after WithOnlyLabels",
-			signal: New(nil).WithOnlyLabels(map[string]string{"k": "v"}),
-		},
-		{
-			name:   "after WithNoLabels",
-			signal: New(nil).WithLabel("k", "v").WithNoLabels(),
-		},
-		{
-			name:   "after WithoutLabels",
-			signal: New(nil).WithLabel("k", "v").WithoutLabels("k"),
+			name:   "after WithoutMeta",
+			signal: New(nil).WithMeta("k", "v").WithoutMeta("k"),
 		},
 		{
 			name:   "after MapPayload identity",
@@ -515,7 +393,7 @@ func TestSignal_NilPayloadInvariant(t *testing.T) {
 		},
 		{
 			name:   "after Map",
-			signal: New(nil).Map(func(s *Signal) *Signal { return s.WithLabel("x", "y") }),
+			signal: New(nil).Map(func(s *Signal) *Signal { return s.WithMeta("x", "y") }),
 		},
 	}
 	for _, tt := range tests {

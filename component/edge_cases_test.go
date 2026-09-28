@@ -89,10 +89,10 @@ func TestCollection_AnyAndMetadata(t *testing.T) {
 	require.NoError(t, col.Add(mustNew("b"), mustNew("a")))
 	assert.Equal(t, "a", col.Any().Name(), "name order, so the answer is stable")
 
-	col.Labels().Set("k", "v")
-	col.Scalars().Set("s", 1)
-	assert.True(t, col.Labels().ValueIs("k", "v"))
-	assert.True(t, col.Scalars().ValueIs("s", 1))
+	col.Meta().Set("k", "v")
+	col.Meta().Set("s", 1.0)
+	assert.True(t, col.Meta().ValueIs("k", "v"))
+	assert.True(t, col.Meta().ValueIs("s", 1.0))
 }
 
 func TestCollection_Map_RejectsCollidingNames(t *testing.T) {

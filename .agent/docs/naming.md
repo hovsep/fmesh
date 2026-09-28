@@ -19,10 +19,10 @@ Use `With` **only** when the method is one of:
 - **Builder that does real work beyond field assignment**: e.g. nil guard + prefix logic, iteration over child objects, appending to a slice
 
 **There is no exception to this.** Mutating types (`FMesh`, `Component`, `Port`, the collections,
-`cycle.Cycle`) carry **no** metadata methods at all — `Labels()` and `Scalars()` return the live
-store, and you mutate that: `fm.Labels().Set(k, v)`, not `fm.AddLabel(k, v)`. Roughly 40 delegating
-methods were deleted to make the rule absolute, and chaining did not disappear with them — it moved
-to `*meta.Labels`, which is where it belongs.
+`cycle.Cycle`) carry **no** metadata methods at all — `Meta()` returns the live store, and you
+mutate that: `fm.Meta().Set(k, v)`, not `fm.AddLabel(k, v)`. Roughly 40 delegating methods were
+deleted to make the rule absolute, and chaining did not disappear with them — it moved to
+`*meta.Meta`, which is where it belongs.
 
 Use `Set` for **everything else** that is a plain `field = value; return receiver` mutating method, whether exported or unexported:
 - Exported example: `cycle.SetNumber`, `component.SetLogger` (marks the logger as custom so the mesh never overrides it)
@@ -34,13 +34,13 @@ Use `Set` for **everything else** that is a plain `field = value; return receive
 
 | Type kind | How metadata is changed |
 |---|---|
-| CoW (`signal.Signal`, `signal.Group`) | `WithLabel`/`WithLabels`/`WithOnlyLabels`/`WithoutLabels`/`WithNoLabels`, and the `*Scalar*` equivalents. These return a **new value** — they are the only way to get a modified signal, so they are load-bearing. |
-| Mutating (`fmesh.FMesh`, `component.Component`, `port.Port`, the collections, `cycle.Cycle`) | No methods. Go through the store: `x.Labels().Set(k, v)`, `.SetMany(m)`, `.Remove(names...)`, `.Clear()`, and the same on `x.Scalars()`. |
+| CoW (`signal.Signal`) | `WithMeta(k, v)`, `WithMetaMany(m)`, `WithoutMeta(keys...)`. These return a **new value** — they are the only way to get a modified signal, so they are load-bearing. `signal.Group` has `WithMeta` for its own store. |
+| Mutating (`fmesh.FMesh`, `component.Component`, `port.Port`, the collections, `cycle.Cycle`) | No methods. Go through the store: `x.Meta().Set(k, v)`, `.SetMany(m)`, `.Remove(keys...)`, `.Clear()`. |
 
-Replacing all labels is `x.Labels().Clear().SetMany(m)` — two calls, and it reads as what it does.
+Replacing all metadata is `x.Meta().Clear().SetMany(m)` — two calls, and it reads as what it does.
+There is no `WithOnlyMeta`/`WithNoMeta` on signals for the same reason: `WithoutMeta(s.Meta().Keys()...)` is the rare case spelled out.
 
-`meta.Labels` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Merge(other)` returns a new collection.
-`meta.Scalars` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Merge(other)` returns a new collection.
+`meta.Meta` (mutating): `Set`, `SetMany`, `Remove`, `Clear`. `Clone()` and `Filter(pred)` return a new store.
 
 ## Group/Collection metadata batch methods
 
@@ -48,16 +48,16 @@ Batch metadata on contents exists on `signal.Group` **only** (the mutating colle
 
 | Method | Effect |
 |---|---|
-| `WithLabelOnEach(k, v)` / `WithScalarOnEach(k, v)` | Returns a new group with the metadata set on each contained signal |
-| `RemoveLabelOnEach(names...)` / `RemoveScalarOnEach(names...)` | Returns a new group with the metadata removed from each contained signal |
+| `WithMetaOnEach(k, v)` | Returns a new group with the entry set on each contained signal |
+| `WithoutMetaOnEach(keys...)` | Returns a new group with the entries removed from each contained signal |
 
 The batch methods preserve the group's own metadata on the returned group via `copyGroupMeta`.
 
-A collection's own metadata is reached the same way as any other mutating type: `c.Labels().Set(k, v)`.
+A collection's own metadata is reached the same way as any other mutating type: `c.Meta().Set(k, v)`.
 
 ## Constructor options
 
-`WithLabel(k, v)` and `WithScalar(k, v)` are `Option` functions available for all
+`WithMeta(k, v)` is an `Option` function available for all
 constructors that accept options (`fmesh.New`, `component.New`, `port.NewInput`, `port.NewOutput`).
 
 Constructor options use the `With` prefix and are passed to `New(...)`:
@@ -88,8 +88,8 @@ need to wrap `error` where nothing can go wrong.
 
 ## Predicates
 
-Prefer combinators over inline closures: `Not`, `And`, `Or`, `HasLabel`, `LabelEquals`,
-`LabelContains`, `HasAllLabels`, `HasAnyLabel`.
+Prefer combinators over inline closures: `Not`, `And`, `Or`, `HasMeta`, `HasAnyMeta`,
+`MetaEquals`, `MetaContains`.
 
 Component-level: `component.HasSignalsOn(names...)` returns `func(*Component) bool`, the predicate
 `component.When` takes.
@@ -104,6 +104,7 @@ than two options.
 ## Stuttering
 
 Do not repeat the package name in a type or function name. Within the `meta` package, use
-`Predicate`, `Mapper`, `ScalarPredicate` (not `LabelPredicate` / `MetaPredicate`). Within the
+`Predicate` and `Value` (not `MetaPredicate` / `MetaValue`); `meta.Meta` itself stutters the way
+`context.Context` does and is the accepted exception. Within the
 `component` package, use `ResultPredicate` and `ResultMapper` for activation-result types (not
 `ActivationResultPredicate` / `ActivationResultMapper`).

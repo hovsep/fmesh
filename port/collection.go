@@ -20,24 +20,19 @@ type keyedPorts = collection.Keyed[*Port]
 // the ordering guarantees this upholds.
 type Collection struct {
 	*keyedPorts
-	labels  *meta.Labels
-	scalars *meta.Scalars
+	meta *meta.Meta
 }
 
 // NewCollection creates an empty collection.
 func NewCollection() *Collection {
 	return &Collection{
 		keyedPorts: collection.NewKeyed[*Port]("port"),
-		labels:     meta.NewLabels(),
-		scalars:    meta.NewScalars(),
+		meta:       meta.New(),
 	}
 }
 
-// Labels returns the collection's own labels store.
-func (c *Collection) Labels() *meta.Labels { return c.labels }
-
-// Scalars returns the collection's own scalars store.
-func (c *Collection) Scalars() *meta.Scalars { return c.scalars }
+// Meta returns the collection's own metadata store.
+func (c *Collection) Meta() *meta.Meta { return c.meta }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
 // Names that match no port are skipped, which makes the result vacuously ready —

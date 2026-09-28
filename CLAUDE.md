@@ -33,7 +33,7 @@ make bench     # go test -bench with -benchmem (no unit tests)
 make deps      # go mod tidy
 ```
 
-Single test: `go test ./signal/ -run TestSignal_WithLabel -v`
+Single test: `go test ./signal/ -run TestSignal_WithMeta -v`
 Single package: `go test ./component/...`
 Integration suites live in `integration_tests/<topic>/` and run as normal `go test`.
 
@@ -78,7 +78,7 @@ Root package `fmesh` orchestrates; the graph primitives live in subpackages:
 | Connection (output→input) | `PipeTo` | `port` |
 | Building block | `*component.Component` | `component` |
 | Execution tick | `*cycle.Cycle` | `cycle` |
-| String / numeric metadata | `*meta.Labels` / `*meta.Scalars` | `meta` |
+| String / numeric metadata | `*meta.Meta` | `meta` |
 
 **Execution loop** (`fmesh.go` `Run(ctx)` → `runCycle` → `drainComponents`): each cycle activates all
 ready components concurrently (one goroutine each, `sync.WaitGroup`), collects `ActivationResult`s,
@@ -95,14 +95,14 @@ receive `context.Background()`. Cancellation is cooperative and checked between 
 
 **The central invariant (`.agent/docs/design.md`):** `signal.Signal` and `signal.Group` are
 **copy-on-write** — mutating methods return a new value, never touch the receiver; payload is
-shallow-copied and `nil` is a valid payload. In contrast `meta.Labels`/`meta.Scalars` and the
+shallow-copied and `nil` is a valid payload. In contrast `meta.Meta` and the
 `port`/`component`/`cycle` types **mutate in place**. This split drives the naming convention:
 `With*`/`Without*` = CoW returning new (or a constructor option); `Set*`/`Add*`/`Remove*` = mutating.
 Never mix them, and there is no exception: mutating types carry no metadata methods at all —
-`x.Labels().Set(k, v)` reaches the live store. `Signal.Payload()` returns `any` and cannot fail.
+`x.Meta().Set(k, v)` reaches the live store. `Signal.Payload()` returns `any` and cannot fail.
 
 The signal **payload** stays `any` — FBP needs mixed-type signals in one group, so pipes cannot be
-typed. Generics are otherwise fine where they remove real duplication (`meta.store[T]` is the
-worked example); weigh per-instance cost and godoc rendering first — see `design.md`. Minimise
+typed. Generics are otherwise fine where they remove real duplication (the generic
+`meta.Meta` methods are the worked example); weigh per-instance cost and godoc rendering first — see `design.md`. Minimise
 `reflect`; no chainable error/"poison object" pattern — fallible methods return `error` last,
 infallible transforms (`Filter`, `Map`, `With*`) return their type directly for fluency.

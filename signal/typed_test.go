@@ -100,7 +100,7 @@ func TestSignal_AsNumber(t *testing.T) {
 		{name: "true is one", payload: true, want: 1, ok: true},
 		{name: "false is zero", payload: false, want: 0, ok: true},
 		// A structured signal uses its payload as a type tag and keeps the real
-		// values in scalars. Telling the two apart is what this is for.
+		// values in numeric metadata. Telling the two apart is what this is for.
 		{name: "a type tag is not a measurement", payload: "venous_blood", ok: false},
 		{name: "nil payload", payload: nil, ok: false},
 	}

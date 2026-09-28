@@ -13,15 +13,13 @@ type portSlice = collection.Slice[*Port]
 // It can carry multiple ports with the same name and has no lookup methods.
 type Group struct {
 	portSlice
-	labels  *meta.Labels
-	scalars *meta.Scalars
+	meta *meta.Meta
 }
 
 // NewGroup creates an empty group.
 func NewGroup() *Group {
 	return &Group{
-		labels:  meta.NewLabels(),
-		scalars: meta.NewScalars(),
+		meta: meta.New(),
 	}
 }
 
@@ -50,20 +48,8 @@ func newPortOfDirection(direction Direction, name string) *Port {
 
 func (g *Group) raw() []*Port { return collection.Items(&g.portSlice) }
 
-// Labels returns the group's own labels store.
-func (g *Group) Labels() *meta.Labels { return g.labels }
-
-// SetLabel adds or updates a single label on the group itself.
-func (g *Group) SetLabel(name, value string) *Group { g.labels.Set(name, value); return g }
-
-// Scalars returns the group's own scalars store.
-func (g *Group) Scalars() *meta.Scalars { return g.scalars }
-
-// SetScalar adds or updates a single scalar on the group itself.
-func (g *Group) SetScalar(name string, value float64) *Group {
-	g.scalars.Set(name, value)
-	return g
-}
+// Meta returns the group's own metadata store.
+func (g *Group) Meta() *meta.Meta { return g.meta }
 
 // add appends ports to the group in place. Internal use only; always succeeds.
 func (g *Group) add(ports ...*Port) {

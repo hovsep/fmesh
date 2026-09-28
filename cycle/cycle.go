@@ -10,16 +10,14 @@ import (
 // Cycle contains the info about one activation cycle.
 type Cycle struct {
 	number            int
-	labels            *meta.Labels
-	scalars           *meta.Scalars
+	meta              *meta.Meta
 	activationResults *component.ActivationResultCollection
 }
 
 // New creates a new cycle.
 func New() *Cycle {
 	return &Cycle{
-		labels:            meta.NewLabels(),
-		scalars:           meta.NewScalars(),
+		meta:              meta.New(),
 		activationResults: component.NewActivationResultCollection(),
 	}
 }
@@ -29,14 +27,9 @@ func (c *Cycle) ActivationResults() *component.ActivationResultCollection {
 	return c.activationResults
 }
 
-// Labels returns the cycle's labels store.
-func (c *Cycle) Labels() *meta.Labels {
-	return c.labels
-}
-
-// Scalars returns the cycle's scalars store.
-func (c *Cycle) Scalars() *meta.Scalars {
-	return c.scalars
+// Meta returns the cycle's metadata store.
+func (c *Cycle) Meta() *meta.Meta {
+	return c.meta
 }
 
 // HasActivationErrors tells whether the cycle is ended with activation errors (at least one component returned an error).

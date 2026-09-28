@@ -15,8 +15,7 @@ import (
 type Component struct {
 	name         string
 	description  string
-	labels       *meta.Labels
-	scalars      *meta.Scalars
+	meta         *meta.Meta
 	inputPorts   *port.Collection
 	outputPorts  *port.Collection
 	f            ActivationFunc
@@ -33,8 +32,7 @@ func New(name string, opts ...Option) (*Component, error) {
 	c := &Component{
 		name:        name,
 		description: "",
-		labels:      meta.NewLabels(),
-		scalars:     meta.NewScalars(),
+		meta:        meta.New(),
 		inputPorts:  port.NewCollection(),
 		outputPorts: port.NewCollection(),
 		logger:      newDefaultLogger(name),
@@ -71,14 +69,9 @@ func (c *Component) Description() string {
 	return c.description
 }
 
-// Labels returns the component's labels collection.
-func (c *Component) Labels() *meta.Labels {
-	return c.labels
-}
-
-// Scalars returns the component's scalars store.
-func (c *Component) Scalars() *meta.Scalars {
-	return c.scalars
+// Meta returns the component's metadata store.
+func (c *Component) Meta() *meta.Meta {
+	return c.meta
 }
 
 // WithDescription is a component constructor option that sets the description.
@@ -89,18 +82,10 @@ func WithDescription(description string) Option {
 	}
 }
 
-// WithLabel is a component constructor option that adds or updates a single label.
-func WithLabel(name, value string) Option {
+// WithMeta is a component constructor option that adds or updates one metadata entry.
+func WithMeta[T meta.Value](key string, value T) Option {
 	return func(c *Component) error {
-		c.labels.Set(name, value)
-		return nil
-	}
-}
-
-// WithScalar is a component constructor option that adds or updates a single scalar.
-func WithScalar(name string, value float64) Option {
-	return func(c *Component) error {
-		c.scalars.Set(name, value)
+		c.meta.Set(key, value)
 		return nil
 	}
 }

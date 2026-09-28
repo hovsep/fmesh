@@ -60,7 +60,7 @@ func TestNewComponent(t *testing.T) {
 				opts: []Option{
 					WithHooks(func(hooks *Hooks) {
 						hooks.OnCreation(func(_ context.Context, component *Component) error {
-							component.Labels().Set("tagging-source", "hook")
+							component.Meta().Set("tagging-source", "hook")
 							return nil
 						})
 					}),
@@ -69,7 +69,7 @@ func TestNewComponent(t *testing.T) {
 			assertions: func(t *testing.T, c *Component, err error) {
 				require.NoError(t, err)
 				assert.NotNil(t, c)
-				assert.Equal(t, "hook", c.Labels().ValueOrDefault("tagging-source", "default"))
+				assert.Equal(t, "hook", c.Meta().ValueOrDefault("tagging-source", "default"))
 			},
 		},
 	}
@@ -103,84 +103,34 @@ func TestComponent_WithDescription(t *testing.T) {
 // Components hold metadata in a live store; the store's own behavior is covered
 // in the meta package, so this only checks the wiring.
 func TestComponent_Metadata(t *testing.T) {
-	t.Run("Labels returns the live store", func(t *testing.T) {
+	t.Run("Meta returns the live store", func(t *testing.T) {
 		c := mustNew("c1")
-		c.Labels().Set("env", "prod").SetMany(map[string]string{"tier": "api"})
+		c.Meta().Set("env", "prod").Set("weight", 1.5)
 
-		assert.Equal(t, 2, c.Labels().Len())
-		assert.True(t, c.Labels().ValueIs("env", "prod"))
+		assert.Equal(t, 2, c.Meta().Len())
+		assert.True(t, c.Meta().ValueIs("env", "prod"))
+		assert.True(t, c.Meta().ValueIs("weight", 1.5))
 
-		c.Labels().Remove("env")
-		assert.False(t, c.Labels().Has("env"))
-
-		c.Labels().Clear()
-		assert.Zero(t, c.Labels().Len())
+		c.Meta().Clear()
+		assert.Zero(t, c.Meta().Len())
 	})
 
-	t.Run("Scalars returns the live store", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Scalars().Set("weight", 1.5)
+	t.Run("constructor options seed both value types", func(t *testing.T) {
+		c := mustNew("c1", WithMeta("env", "prod"), WithMeta("weight", 2.0))
 
-		assert.True(t, c.Scalars().ValueIs("weight", 1.5))
-
-		c.Scalars().Clear()
-		assert.Zero(t, c.Scalars().Len())
-	})
-
-	t.Run("constructor options seed both stores", func(t *testing.T) {
-		c := mustNew("c1", WithLabel("env", "prod"), WithScalar("weight", 2))
-
-		assert.True(t, c.Labels().ValueIs("env", "prod"))
-		assert.True(t, c.Scalars().ValueIs("weight", 2))
+		assert.True(t, c.Meta().ValueIs("env", "prod"))
+		assert.True(t, c.Meta().ValueIs("weight", 2.0))
 	})
 
 	t.Run("stores are per component", func(t *testing.T) {
 		c1, c2 := mustNew("c1"), mustNew("c2")
-		c1.Labels().Set("only", "c1")
+		c1.Meta().Set("only", "c1")
 
-		assert.False(t, c2.Labels().Has("only"))
+		assert.False(t, c2.Meta().Has("only"))
 	})
 }
 
 func TestComponent_Chainability(t *testing.T) {
-	t.Run("Clear+SetMany called twice replaces all labels", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Labels().Clear().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
-		c.Labels().Clear().SetMany(map[string]string{"k3": "v3"})
-
-		assert.Equal(t, 1, c.Labels().Len())
-		assert.False(t, c.Labels().Has("k1"), "k1 should be replaced")
-		assert.False(t, c.Labels().Has("k2"), "k2 should be replaced")
-		assert.True(t, c.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("AddLabels called twice merges labels", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Labels().SetMany(map[string]string{"k1": "v1", "k2": "v2"})
-		c.Labels().SetMany(map[string]string{"k3": "v3", "k2": "v2-updated"})
-
-		assert.Equal(t, 3, c.Labels().Len())
-		assert.True(t, c.Labels().ValueIs("k1", "v1"))
-		assert.True(t, c.Labels().ValueIs("k2", "v2-updated"), "should update existing key")
-		assert.True(t, c.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("mixed Set and Add operations", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Labels().
-			Set("k1", "v1").
-			SetMany(map[string]string{"k2": "v2", "k3": "v3"}).
-			Clear().SetMany(map[string]string{"k4": "v4"}). // Wipes k1, k2, k3
-			Set("k5", "v5")                                 // Merges with k4
-
-		assert.Equal(t, 2, c.Labels().Len())
-		assert.False(t, c.Labels().Has("k1"), "wiped by Clear")
-		assert.False(t, c.Labels().Has("k2"), "wiped by Clear")
-		assert.False(t, c.Labels().Has("k3"), "wiped by Clear")
-		assert.True(t, c.Labels().ValueIs("k4", "v4"))
-		assert.True(t, c.Labels().ValueIs("k5", "v5"))
-	})
-
 	t.Run("AddInputs called twice adds ports without duplicates", func(t *testing.T) {
 		c := mustNew("c1")
 		require.NoError(t, c.AddInputs("in1", "in2"))
@@ -203,32 +153,5 @@ func TestComponent_Chainability(t *testing.T) {
 		assert.NotNil(t, c.Outputs().ByName("out1"))
 		assert.NotNil(t, c.Outputs().ByName("out2"))
 		assert.NotNil(t, c.Outputs().ByName("out3"))
-	})
-
-	t.Run("ClearLabels removes all labels", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Labels().
-			SetMany(map[string]string{"k1": "v1", "k2": "v2"}).
-			Clear().
-			Set("k3", "v3")
-
-		assert.Equal(t, 1, c.Labels().Len())
-		assert.False(t, c.Labels().Has("k1"))
-		assert.False(t, c.Labels().Has("k2"))
-		assert.True(t, c.Labels().ValueIs("k3", "v3"))
-	})
-
-	t.Run("RemoveLabels removes specific labels", func(t *testing.T) {
-		c := mustNew("c1")
-		c.Labels().
-			SetMany(map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}).
-			Remove("k1", "k2").
-			Set("k4", "v4")
-
-		assert.Equal(t, 2, c.Labels().Len())
-		assert.False(t, c.Labels().Has("k1"))
-		assert.False(t, c.Labels().Has("k2"))
-		assert.True(t, c.Labels().ValueIs("k3", "v3"))
-		assert.True(t, c.Labels().ValueIs("k4", "v4"))
 	})
 }

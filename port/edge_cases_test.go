@@ -64,10 +64,10 @@ func TestCollection_AnyRemoveAndMetadata(t *testing.T) {
 	assert.Nil(t, col.ByName("a"))
 	assert.Equal(t, 1, col.Len())
 
-	col.Labels().Set("k", "v")
-	col.Scalars().Set("s", 1)
-	assert.True(t, col.Labels().ValueIs("k", "v"))
-	assert.True(t, col.Scalars().ValueIs("s", 1))
+	col.Meta().Set("k", "v")
+	col.Meta().Set("s", 1.0)
+	assert.True(t, col.Meta().ValueIs("k", "v"))
+	assert.True(t, col.Meta().ValueIs("s", 1.0))
 }
 
 func TestCollection_Map_RejectsCollidingNames(t *testing.T) {
@@ -96,7 +96,8 @@ func TestCollection_ErrorsSurfaceFromEachPort(t *testing.T) {
 }
 
 func TestGroup_OwnMetadata(t *testing.T) {
-	g := NewGroup().SetLabel("k", "v").SetScalar("s", 2)
-	assert.True(t, g.Labels().ValueIs("k", "v"))
-	assert.True(t, g.Scalars().ValueIs("s", 2))
+	g := NewGroup()
+	g.Meta().Set("k", "v").Set("s", 2.0)
+	assert.True(t, g.Meta().ValueIs("k", "v"))
+	assert.True(t, g.Meta().ValueIs("s", 2.0))
 }

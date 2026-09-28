@@ -9,7 +9,7 @@
 //   - TestDocs_ReferenceOnlyExistingAPI — every qualified reference in a Go block
 //     (component.X, signal.X, …) must name a real exported symbol.
 //   - TestDocs_NoRemovedMethodNames — catches what the first one cannot: calls on
-//     a variable, like c.Labels().AddLabel(...), whose receiver type a fragment
+//     a variable, like c.Meta().AddLabel(...), whose receiver type a fragment
 //     does not reveal. It works by refusing a list of names that were removed.
 //   - TestDocs_MethodCallsExistSomewhere — the positive version of the same idea:
 //     every `.SomeExported(` call in a fenced Go block must name a method or
@@ -161,7 +161,7 @@ var methodCallRe = regexp.MustCompile(`\.([A-Z]\w*)\(`)
 
 // TestDocs_NoRemovedMethodNames catches the case
 // TestDocs_ReferenceOnlyExistingAPI is documented as unable to see: a call on a
-// variable rather than a package, like `c.Labels().AddLabel("k", "v")`. The
+// variable rather than a package, like `c.Meta().AddLabel("k", "v")`. The
 // receiver's type is unknowable in a fragment, so the general check skips these
 // — which is how three snippets went on calling AddLabel and SetLabels for a
 // release after both were deleted.
@@ -178,6 +178,12 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		"GetName",
 		"SetLabelOnEach", "SetScalarOnEach",
 		"SumScalar", "MinScalar", "MaxScalar", "AvgScalar",
+		"Labels", "Scalars", "NewLabels", "NewScalars", "WithLabel", "WithScalar",
+		"WithLabels", "WithScalars", "WithOnlyLabels", "WithOnlyScalars", "WithNoLabels",
+		"WithNoScalars", "WithoutLabels", "WithoutScalars", "WithLabelOnEach", "WithScalarOnEach",
+		"RemoveLabelOnEach", "RemoveScalarOnEach", "SetLabel", "SetScalar",
+		"HasLabel", "HasAllLabels", "HasAnyLabel", "LabelEquals", "LabelContains",
+		"HasAll", "HasAllFrom", "HasAnyFrom",
 		"NewIndexedInputGroup", "NewIndexedOutputGroup",
 		"AsInt", "AsString", "AsBool", "AsFloat64", "MustGetTyped",
 		"AsOrDefault", "FirstAsOrDefault", "AsFloat64OrDefault",

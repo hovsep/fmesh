@@ -112,7 +112,7 @@ func (s *Slice[T]) ForEachIf(pred func(T) bool, action func(T) error) error {
 
 // The backing-slice accessors are package functions, not methods: a method
 // would be promoted onto the embedding types' public method sets, and on the
-// copy-on-write types a public mutator reopens the hole Group.Labels() once
+// copy-on-write types a public mutator reopens the hole Group.Meta() once
 // was. A function in an internal package is unreachable from outside the
 // module.
 

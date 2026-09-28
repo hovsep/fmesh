@@ -19,7 +19,7 @@ func TestFMesh_Plugin(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, fm)
 		assert.True(t, fm.PluginRegistered("activationCounter"))
-		assert.True(t, fm.Labels().ValueIs("plugin/counter/version", "v1"))
+		assert.True(t, fm.Meta().ValueIs("plugin/counter/version", "v1"))
 
 		// The plugin instruments whatever arrives, not what was there when it was
 		// initialized -- a mesh is empty at construction time.
@@ -88,7 +88,7 @@ type activationCounter struct {
 func (p *activationCounter) Name() string { return "activationCounter" }
 
 func (p *activationCounter) Init(fm *FMesh) error {
-	fm.Labels().Set("plugin/counter/version", "v1")
+	fm.Meta().Set("plugin/counter/version", "v1")
 
 	fm.SetupHooks(func(hooks *Hooks) {
 		hooks.OnComponentAdded(func(_ context.Context, ctx *ComponentAddedContext) error {

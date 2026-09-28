@@ -142,7 +142,7 @@ fm.SetupHooks(func(h *fmesh.Hooks) {
 `Run(ctx)` returns a `RuntimeInfo` report with per-cycle activation results and timing — history retention is configurable for long runs.
 
 ### **Metadata & Filtering**
-Tag signals, components, and ports with labels (string) and scalars (numeric), then filter, route, and aggregate them with consistent collection APIs.
+Tag signals, components, and ports with metadata (string or numeric values in one store), then filter, route, and aggregate them with consistent collection APIs.
 
 ### **Discrete Time Model**
 Components activate in cycles (artificial "time"), allowing multiple components to process simultaneously - like lighting multiple lamps at once.
@@ -187,7 +187,7 @@ Cancellation is cooperative: Go cannot preempt a goroutine, so an activation fun
 | **[Component](https://github.com/hovsep/fmesh/wiki/301.-Component)** | The main building block - has inputs, outputs, and an activation function |
 | **[Port](https://github.com/hovsep/fmesh/wiki/302.-Ports)** | Entry/exit points on components. Unlimited inputs and outputs per component |
 | **[Pipe](https://github.com/hovsep/fmesh/wiki/303.-Pipes)** | Connects an output port to an input port to transfer data |
-| **[Signal](https://github.com/hovsep/fmesh/wiki/201.-Signals)** | Data packets flowing through pipes. Type-agnostic with optional labels |
+| **[Signal](https://github.com/hovsep/fmesh/wiki/201.-Signals)** | Data packets flowing through pipes. Type-agnostic with optional metadata |
 | **[Cycle](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules)** | One "tick" of execution where all ready components activate |
 
 ---

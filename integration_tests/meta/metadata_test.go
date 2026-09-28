@@ -15,105 +15,104 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-// Test_ScalarsOnSignals verifies that scalars can be attached to signals and
+// Test_MetaOnSignals verifies that metadata can be attached to signals and
 // batch-stamped across a group.
-func Test_ScalarsOnSignals(t *testing.T) {
-	t.Run("WithScalarOnEach stamps every signal in a group", func(t *testing.T) {
-		grp := signal.NewGroup(1, 2, 3).WithScalarOnEach("priority", 5.0)
+func Test_MetaOnSignals(t *testing.T) {
+	t.Run("WithMetaOnEach stamps every signal in a group", func(t *testing.T) {
+		grp := signal.NewGroup(1, 2, 3).WithMetaOnEach("priority", 5.0)
 		assert.Equal(t, 3, grp.Len())
 
 		signals := grp.All()
 		for _, s := range signals {
-			v, err := s.Scalars().Value("priority")
+			v, err := s.Meta().Value[float64]("priority")
 			require.NoError(t, err)
 			assert.InDelta(t, 5.0, v, 1e-9)
 		}
 	})
 
-	t.Run("RemoveScalarOnEach removes the scalar from every signal", func(t *testing.T) {
+	t.Run("WithoutMetaOnEach removes the entry from every signal", func(t *testing.T) {
 		grp := signal.NewGroup(1, 2).
-			WithScalarOnEach("temp", 36.6).
-			WithScalarOnEach("humidity", 0.55).
-			RemoveScalarOnEach("humidity")
+			WithMetaOnEach("temp", 36.6).
+			WithMetaOnEach("humidity", 0.55).
+			WithoutMetaOnEach("humidity")
 
 		signals := grp.All()
 		for _, s := range signals {
-			assert.True(t, s.Scalars().Has("temp"))
-			assert.False(t, s.Scalars().Has("humidity"))
+			assert.True(t, s.Meta().Has("temp"))
+			assert.False(t, s.Meta().Has("humidity"))
 		}
 	})
 }
 
-// Test_ScalarsOnComponents verifies scalar metadata on components.
-func Test_ScalarsOnComponents(t *testing.T) {
-	t.Run("component scalars are independent of signal scalars", func(t *testing.T) {
+// Test_MetaOnComponents verifies metadata on components.
+func Test_MetaOnComponents(t *testing.T) {
+	t.Run("component metadata is independent of signal metadata", func(t *testing.T) {
 		c := testutil.MustComponent("proc",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
-			component.WithLabel("tier", "premium"),
-			component.WithScalar("version", 2.0),
+			component.WithMeta("tier", "premium"),
+			component.WithMeta("version", 2.0),
 		)
 
-		v, err := c.Scalars().Value("version")
+		v, err := c.Meta().Value[float64]("version")
 		require.NoError(t, err)
 		assert.InDelta(t, 2.0, v, 1e-9)
 
-		// Signal scalars are separate
-		sig := signal.New("data").WithScalar("weight", 1.5)
-		sv, err := sig.Scalars().Value("weight")
+		// Signal metadata is separate
+		sig := signal.New("data").WithMeta("weight", 1.5)
+		sv, err := sig.Meta().Value[float64]("weight")
 		require.NoError(t, err)
 		assert.InDelta(t, 1.5, sv, 1e-9)
 
-		_, err = c.Scalars().Value("weight")
-		require.Error(t, err, "component must not have signal's scalar")
+		_, err = c.Meta().Value[float64]("weight")
+		require.Error(t, err, "component must not have signal's entry")
 	})
 }
 
-// Test_ScalarGroupMetadata verifies that a Group's OWN scalars are independent of its contents.
-func Test_ScalarGroupMetadata(t *testing.T) {
-	t.Run("group own scalar is separate from element scalars", func(t *testing.T) {
+// Test_GroupOwnMeta verifies that a Group's OWN metadata is independent of its contents.
+func Test_GroupOwnMeta(t *testing.T) {
+	t.Run("group own entry is separate from element entries", func(t *testing.T) {
 		grp := signal.NewGroup(1, 2, 3).
-			WithScalar("batch_id", 42.0).
-			WithScalarOnEach("temp", 37.0)
+			WithMeta("batch_id", 42.0).
+			WithMetaOnEach("temp", 37.0)
 
-		// Group's own scalar
-		v, err := grp.Scalars().Value("batch_id")
+		// Group's own entry
+		v, err := grp.Meta().Value[float64]("batch_id")
 		require.NoError(t, err)
 		assert.InDelta(t, 42.0, v, 1e-9)
 
 		// Elements have "temp" but not "batch_id"
 		signals := grp.All()
 		for _, s := range signals {
-			assert.True(t, s.Scalars().Has("temp"))
-			assert.False(t, s.Scalars().Has("batch_id"))
+			assert.True(t, s.Meta().Has("temp"))
+			assert.False(t, s.Meta().Has("batch_id"))
 		}
 	})
 }
 
-// Test_PortScalarsWithOptions verifies the WithScalar port constructor option.
-func Test_PortScalarsWithOptions(t *testing.T) {
-	t.Run("port scalars set via constructor option", func(t *testing.T) {
-		p := testutil.MustInputPort("sensor-in", port.WithScalar("sample_rate", 100.0))
-		v, err := p.Scalars().Value("sample_rate")
+// Test_PortMetaWithOptions verifies the WithMeta port constructor option.
+func Test_PortMetaWithOptions(t *testing.T) {
+	t.Run("port metadata set via constructor option", func(t *testing.T) {
+		p := testutil.MustInputPort("sensor-in", port.WithMeta("sample_rate", 100.0))
+		v, err := p.Meta().Value[float64]("sample_rate")
 		require.NoError(t, err)
 		assert.InDelta(t, 100.0, v, 1e-9)
 	})
 
-	t.Run("port scalars set through the store", func(t *testing.T) {
+	t.Run("port metadata set through the store", func(t *testing.T) {
 		p := testutil.MustOutputPort("data-out")
-		p.Scalars().Set("bandwidth", 1e6)
-		v, err := p.Scalars().Value("bandwidth")
+		p.Meta().Set("bandwidth", 1e6)
+		v, err := p.Meta().Value[float64]("bandwidth")
 		require.NoError(t, err)
 		assert.InDelta(t, 1e6, v, 1e-9)
 	})
 }
 
-// Test_LabelsFlowThroughAMesh shows labels surviving a mesh run and being
-// rewritten en route. Label algebra itself (Map, Filter, ...) is unit-tested in
-// the meta package.
-func Test_LabelsFlowThroughAMesh(t *testing.T) {
-	t.Run("transform labels in mesh processing", func(t *testing.T) {
-		// Scenario: Process signals and normalize their labels during mesh execution
+// Test_MetaFlowsThroughAMesh shows metadata surviving a mesh run and being
+// rewritten en route. The store itself is unit-tested in the meta package.
+func Test_MetaFlowsThroughAMesh(t *testing.T) {
+	t.Run("transform metadata in mesh processing", func(t *testing.T) {
+		// Scenario: Process signals and normalize their metadata keys during mesh execution
 		normalizer := testutil.MustComponent("normalizer",
 			component.WithInputs("in"),
 			component.WithOutputs("out"),
@@ -121,16 +120,13 @@ func Test_LabelsFlowThroughAMesh(t *testing.T) {
 				inPort := this.InputByName("in")
 				outPort := this.OutputByName("out")
 
-				// Process each signal and normalize its labels
+				// Process each signal and normalize its keys
 				err := inPort.Signals().ForEach(func(sig *signal.Signal) error {
-					// Normalize label keys to the lowercase
-					normalizedLabels := sig.Labels().Map(func(k, v string) (string, string) {
-						return strings.ToLower(k), v
-					})
-
-					labelsMap := normalizedLabels.All()
-
-					newSignal := signal.New(sig.Payload()).WithOnlyLabels(labelsMap)
+					// Normalize keys to lowercase
+					newSignal := signal.New(sig.Payload())
+					for _, k := range sig.Meta().Keys() {
+						newSignal = newSignal.WithMeta(strings.ToLower(k), sig.Meta().ValueOrDefault(k, ""))
+					}
 					return outPort.PutSignals(newSignal)
 				})
 
@@ -138,12 +134,12 @@ func Test_LabelsFlowThroughAMesh(t *testing.T) {
 			}),
 		)
 
-		fm := testutil.MustFMesh("label-transform-mesh")
+		fm := testutil.MustFMesh("meta-transform-mesh")
 		require.NoError(t, fm.AddComponents(normalizer))
 
-		// Input signal with mixed-case labels
+		// Input signal with mixed-case keys
 		require.NoError(t, fm.ComponentByName("normalizer").InputByName("in").PutSignals(
-			signal.New(100).WithOnlyLabels(map[string]string{
+			signal.New(100).WithMetaMany(map[string]string{
 				"ENV":    "prod",
 				"Region": "us-west",
 				"TIER":   "frontend",
@@ -159,10 +155,10 @@ func Test_LabelsFlowThroughAMesh(t *testing.T) {
 		firstSignal := outSignals.First()
 		require.NotNil(t, firstSignal)
 
-		assert.True(t, firstSignal.Labels().Has("env"))
-		assert.True(t, firstSignal.Labels().Has("region"))
-		assert.True(t, firstSignal.Labels().Has("tier"))
-		assert.True(t, firstSignal.Labels().ValueIs("env", "prod"))
-		assert.True(t, firstSignal.Labels().ValueIs("region", "us-west"))
+		assert.True(t, firstSignal.Meta().Has("env"))
+		assert.True(t, firstSignal.Meta().Has("region"))
+		assert.True(t, firstSignal.Meta().Has("tier"))
+		assert.True(t, firstSignal.Meta().ValueIs("env", "prod"))
+		assert.True(t, firstSignal.Meta().ValueIs("region", "us-west"))
 	})
 }
