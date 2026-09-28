@@ -31,7 +31,7 @@ func TestComponent_AddInputs(t *testing.T) {
 				assert.Equal(t, 2, component.Inputs().Len())
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
-				assert.Zero(t, component.labels.Len())
+				assert.Zero(t, component.meta.Len())
 			},
 		},
 		{
@@ -45,7 +45,7 @@ func TestComponent_AddInputs(t *testing.T) {
 				assert.Zero(t, component.Inputs().Len())
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
-				assert.Zero(t, component.labels.Len())
+				assert.Zero(t, component.meta.Len())
 			},
 		},
 	}
@@ -81,7 +81,7 @@ func TestComponent_AddOutputs(t *testing.T) {
 				assert.Equal(t, 2, component.Outputs().Len())
 				assert.Zero(t, component.Inputs().Len())
 				assert.Empty(t, component.Description())
-				assert.Zero(t, component.labels.Len())
+				assert.Zero(t, component.meta.Len())
 			},
 		},
 		{
@@ -95,7 +95,7 @@ func TestComponent_AddOutputs(t *testing.T) {
 				assert.Zero(t, component.Inputs().Len())
 				assert.Zero(t, component.Outputs().Len())
 				assert.Empty(t, component.Description())
-				assert.Zero(t, component.labels.Len())
+				assert.Zero(t, component.meta.Len())
 			},
 		},
 	}
@@ -437,20 +437,20 @@ func TestComponent_AttachInputPorts(t *testing.T) {
 		assert.Equal(t, "input port 1", c.InputByName("in1").Description())
 	})
 
-	t.Run("add multiple input ports with descriptions and labels", func(t *testing.T) {
+	t.Run("add multiple input ports with descriptions and metadata", func(t *testing.T) {
 		c := mustNew("c1")
 		p1, err := port.NewInput("in1", port.WithDescription("first input"))
 		require.NoError(t, err)
-		p1.Labels().Set("priority", "high")
+		p1.Meta().Set("priority", "high")
 		p2, err := port.NewInput("in2", port.WithDescription("second input"))
 		require.NoError(t, err)
-		p2.Labels().Set("priority", "low")
+		p2.Meta().Set("priority", "low")
 		require.NoError(t, c.AttachInputPorts(p1, p2))
 		assert.Equal(t, 2, c.Inputs().Len())
 		assert.Equal(t, "first input", c.InputByName("in1").Description())
 		assert.Equal(t, "second input", c.InputByName("in2").Description())
-		assert.True(t, c.InputByName("in1").Labels().ValueIs("priority", "high"))
-		assert.True(t, c.InputByName("in2").Labels().ValueIs("priority", "low"))
+		assert.True(t, c.InputByName("in1").Meta().ValueIs("priority", "high"))
+		assert.True(t, c.InputByName("in2").Meta().ValueIs("priority", "low"))
 	})
 
 	t.Run("add ports to existing inputs", func(t *testing.T) {
@@ -508,20 +508,20 @@ func TestComponent_AttachOutputPorts(t *testing.T) {
 		assert.Equal(t, "output port 1", c.OutputByName("out1").Description())
 	})
 
-	t.Run("add multiple output ports with descriptions and labels", func(t *testing.T) {
+	t.Run("add multiple output ports with descriptions and metadata", func(t *testing.T) {
 		c := mustNew("c1")
 		p1, err := port.NewOutput("out1", port.WithDescription("first output"))
 		require.NoError(t, err)
-		p1.Labels().Set("type", "result")
+		p1.Meta().Set("type", "result")
 		p2, err := port.NewOutput("out2", port.WithDescription("second output"))
 		require.NoError(t, err)
-		p2.Labels().Set("type", "error")
+		p2.Meta().Set("type", "error")
 		require.NoError(t, c.AttachOutputPorts(p1, p2))
 		assert.Equal(t, 2, c.Outputs().Len())
 		assert.Equal(t, "first output", c.OutputByName("out1").Description())
 		assert.Equal(t, "second output", c.OutputByName("out2").Description())
-		assert.True(t, c.OutputByName("out1").Labels().ValueIs("type", "result"))
-		assert.True(t, c.OutputByName("out2").Labels().ValueIs("type", "error"))
+		assert.True(t, c.OutputByName("out1").Meta().ValueIs("type", "result"))
+		assert.True(t, c.OutputByName("out2").Meta().ValueIs("type", "error"))
 	})
 
 	t.Run("add ports to existing outputs", func(t *testing.T) {
@@ -603,7 +603,7 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		require.NoError(t, err)
 		p4, err := port.NewInput("in4", port.WithDescription("fourth input"))
 		require.NoError(t, err)
-		p4.Labels().Set("important", "true")
+		p4.Meta().Set("important", "true")
 		require.NoError(t, c.AttachInputPorts(p3, p4))
 		require.NoError(t, c.AddInputs("in5"))
 
@@ -612,7 +612,7 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		assert.Empty(t, c.InputByName("in2").Description())
 		assert.Equal(t, "third input", c.InputByName("in3").Description())
 		assert.Equal(t, "fourth input", c.InputByName("in4").Description())
-		assert.True(t, c.InputByName("in4").Labels().ValueIs("important", "true"))
+		assert.True(t, c.InputByName("in4").Meta().ValueIs("important", "true"))
 		assert.Empty(t, c.InputByName("in5").Description())
 	})
 
@@ -623,7 +623,7 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		require.NoError(t, err)
 		p4, err := port.NewOutput("out4", port.WithDescription("fourth output"))
 		require.NoError(t, err)
-		p4.Labels().Set("type", "error")
+		p4.Meta().Set("type", "error")
 		require.NoError(t, c.AttachOutputPorts(p3, p4))
 		require.NoError(t, c.AddOutputs("out5"))
 
@@ -632,7 +632,7 @@ func TestComponent_MultipleInputOutputCalls(t *testing.T) {
 		assert.Empty(t, c.OutputByName("out2").Description())
 		assert.Equal(t, "third output", c.OutputByName("out3").Description())
 		assert.Equal(t, "fourth output", c.OutputByName("out4").Description())
-		assert.True(t, c.OutputByName("out4").Labels().ValueIs("type", "error"))
+		assert.True(t, c.OutputByName("out4").Meta().ValueIs("type", "error"))
 		assert.Empty(t, c.OutputByName("out5").Description())
 	})
 }

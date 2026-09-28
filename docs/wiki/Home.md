@@ -2,7 +2,7 @@
 
 F-Mesh (aka FMesh or fmesh) is a Golang framework inspired by FBP (Flow-Based Programming) that enables the creation of data flow networks using interconnected components, each processing signals. Components may have multiple inputs and outputs called "ports" linked via type-agnostic pipes.
 
-F-Mesh provides extension mechanisms including hooks (observability), labels and scalars (metadata), and collections/groups (working with multiple entities).
+F-Mesh provides extension mechanisms including hooks (observability), metadata (string and numeric tags on every entity), and collections/groups (working with multiple entities).
 
 # Installation
 
@@ -29,7 +29,7 @@ title, because a tag suffix would make Go treat the release as a pre-release and
 |-------|------|
 | Quick start | [101. Quick start](https://github.com/hovsep/fmesh/wiki/101.-Quick-start) |
 | Signals | [201. Signals](https://github.com/hovsep/fmesh/wiki/201.-Signals) |
-| Labels & scalars | [202. Metadata](https://github.com/hovsep/fmesh/wiki/202.-Metadata) |
+| Metadata | [202. Metadata](https://github.com/hovsep/fmesh/wiki/202.-Metadata) |
 | Collections & groups | [203. Collections and Groups](https://github.com/hovsep/fmesh/wiki/203.-Collections-and-Groups) |
 | Components | [301. Component](https://github.com/hovsep/fmesh/wiki/301.-Component) |
 | Ports | [302. Ports](https://github.com/hovsep/fmesh/wiki/302.-Ports) |
@@ -49,7 +49,7 @@ title, because a tag suffix would make Go treat the release as a pre-release and
 * [Component](https://pkg.go.dev/github.com/hovsep/fmesh/component)
 * [Port](https://pkg.go.dev/github.com/hovsep/fmesh/port)
 * [Signal](https://pkg.go.dev/github.com/hovsep/fmesh/signal)
-* [Meta (labels & scalars)](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
+* [Meta (metadata store)](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
 * [profiler (separate module)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler)
 * [autowire (bundled mesh plugin)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire)
 
@@ -60,7 +60,7 @@ The `cycle` package surfaces in the run-time report — see [402. Inspecting a r
 [fmesh-examples](https://github.com/hovsep/fmesh-examples) — runnable programs, from single-file demos to full applications. Highlights:
 
 - [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/pipeline) — text-processing pipeline with a generic stage-chaining builder
-- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter) — label-based content routing
+- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter) — metadata-based content routing
 - [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/fibonacci) — feedback-loop generator via loopback pipes
 - [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/electric_circuit) — stateful two-component feedback loop with natural termination
 - [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/load_balancer) — round-robin dispatch/collect with indexed ports

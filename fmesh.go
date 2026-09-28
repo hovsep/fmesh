@@ -22,8 +22,7 @@ type Option func(*FMesh) error
 type FMesh struct {
 	name        string
 	description string
-	labels      *meta.Labels
-	scalars     *meta.Scalars
+	meta        *meta.Meta
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
 	logger      *log.Logger
@@ -41,8 +40,7 @@ func New(name string, opts ...Option) (*FMesh, error) {
 	fm := &FMesh{
 		name:        name,
 		description: "",
-		labels:      meta.NewLabels(),
-		scalars:     meta.NewScalars(),
+		meta:        meta.New(),
 		components:  component.NewCollection(),
 		logger:      newDefaultLogger(name),
 		config:      newDefaultConfig(),
@@ -94,28 +92,15 @@ func WithDescription(description string) Option {
 	}
 }
 
-// Labels returns the mesh's labels store.
-func (fm *FMesh) Labels() *meta.Labels {
-	return fm.labels
+// Meta returns the mesh's metadata store.
+func (fm *FMesh) Meta() *meta.Meta {
+	return fm.meta
 }
 
-// Scalars returns the mesh's scalars store.
-func (fm *FMesh) Scalars() *meta.Scalars {
-	return fm.scalars
-}
-
-// WithLabel is a constructor option that adds or updates a single label on the mesh.
-func WithLabel(name, value string) Option {
+// WithMeta is a constructor option that adds or updates one metadata entry on the mesh.
+func WithMeta[T meta.Value](key string, value T) Option {
 	return func(fm *FMesh) error {
-		fm.labels.Set(name, value)
-		return nil
-	}
-}
-
-// WithScalar is a constructor option that adds or updates a single scalar on the mesh.
-func WithScalar(name string, value float64) Option {
-	return func(fm *FMesh) error {
-		fm.scalars.Set(name, value)
+		fm.meta.Set(key, value)
 		return nil
 	}
 }

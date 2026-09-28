@@ -1,6 +1,10 @@
 package signal
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/hovsep/fmesh/meta"
+)
 
 // Not returns a predicate that is the logical negation of p.
 func Not(p Predicate) Predicate {
@@ -23,42 +27,31 @@ func Or(p1, p2 Predicate) Predicate {
 	}
 }
 
-// HasLabel returns a predicate that is true when the signal has a label with the given name.
-func HasLabel(name string) Predicate {
+// HasMeta returns a predicate that is true when the signal carries every named metadata key.
+func HasMeta(keys ...string) Predicate {
 	return func(s *Signal) bool {
-		return s.Labels().Has(name)
+		return s.Meta().Has(keys...)
 	}
 }
 
-// LabelEquals returns a predicate that is true when the signal has a label with the given name and exact value.
-func LabelEquals(name, value string) Predicate {
+// HasAnyMeta returns a predicate that is true when the signal carries at least one of the keys.
+func HasAnyMeta(keys ...string) Predicate {
 	return func(s *Signal) bool {
-		return s.Labels().ValueIs(name, value)
+		return s.Meta().HasAny(keys...)
 	}
 }
 
-// LabelContains returns a predicate that is true when the signal has a label with the given name
-// and the label's value contains the given substring.
-func LabelContains(name, substr string) Predicate {
+// MetaEquals returns a predicate that is true when the signal's metadata holds exactly value under key.
+func MetaEquals[T meta.Value](key string, value T) Predicate {
 	return func(s *Signal) bool {
-		v, err := s.Labels().Value(name)
-		if err != nil {
-			return false
-		}
-		return strings.Contains(v, substr)
+		return s.Meta().ValueIs(key, value)
 	}
 }
 
-// HasAllLabels returns a predicate that is true when the signal has all of the given label names.
-func HasAllLabels(names ...string) Predicate {
+// MetaContains returns a predicate that is true when key holds a string containing substr.
+func MetaContains(key, substr string) Predicate {
 	return func(s *Signal) bool {
-		return s.Labels().HasAll(names...)
-	}
-}
-
-// HasAnyLabel returns a predicate that is true when the signal has at least one of the given label names.
-func HasAnyLabel(names ...string) Predicate {
-	return func(s *Signal) bool {
-		return s.Labels().HasAny(names...)
+		v, err := s.Meta().Value[string](key)
+		return err == nil && strings.Contains(v, substr)
 	}
 }

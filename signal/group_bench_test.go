@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-// benchGroup returns a group of n signals with int payloads and a "v" scalar.
+// benchGroup returns a group of n signals with int payloads and a "v" float metadata entry.
 func benchGroup(n int) *Group {
 	g := NewGroup()
 	for i := range n {
-		g = g.With(New(i).WithScalar("v", float64(i)).WithLabel("idx", strconv.Itoa(i)))
+		g = g.With(New(i).WithMeta("v", float64(i)).WithMeta("idx", strconv.Itoa(i)))
 	}
 	return g
 }
@@ -23,7 +23,7 @@ func BenchmarkGroupCoWOps(b *testing.B) {
 	for b.Loop() {
 		_ = g.With(New(-1)).
 			Map(func(s *Signal) *Signal {
-				return s.WithLabel("mapped", "true")
+				return s.WithMeta("mapped", "true")
 			}).
 			Filter(func(s *Signal) bool {
 				return s.Payload().(int)%2 == 0
@@ -68,9 +68,9 @@ func BenchmarkGroupPayloadSize(b *testing.B) {
 			s := New(payloadOfSize(size))
 			b.ReportAllocs()
 			for b.Loop() {
-				_ = s.WithLabel("k", "v").
-					WithScalar("n", 1).
-					Map(func(sig *Signal) *Signal { return sig.WithLabel("m", "x") })
+				_ = s.WithMeta("k", "v").
+					WithMeta("n", 1.0).
+					Map(func(sig *Signal) *Signal { return sig.WithMeta("m", "x") })
 			}
 		})
 	}

@@ -47,50 +47,67 @@ func TestOr(t *testing.T) {
 	assert.False(t, Or(isZero, isNeg)(New(1)))
 }
 
-func TestHasLabel(t *testing.T) {
+func TestMetaEquals(t *testing.T) {
 	t.Parallel()
-	s := New(1).WithLabel("env", "prod")
+	s := New(1).WithMeta("env", "prod")
 
-	assert.True(t, HasLabel("env")(s))
-	assert.False(t, HasLabel("region")(s))
+	assert.True(t, MetaEquals("env", "prod")(s))
+	assert.False(t, MetaEquals("env", "staging")(s))
+	assert.False(t, MetaEquals("region", "us")(s))
 }
 
-func TestLabelEquals(t *testing.T) {
+func TestMetaContains(t *testing.T) {
 	t.Parallel()
-	s := New(1).WithLabel("env", "prod")
+	s := New(1).WithMeta("tag", "urgent-request")
 
-	assert.True(t, LabelEquals("env", "prod")(s))
-	assert.False(t, LabelEquals("env", "staging")(s))
-	assert.False(t, LabelEquals("region", "us")(s))
+	assert.True(t, MetaContains("tag", "urgent")(s))
+	assert.True(t, MetaContains("tag", "request")(s))
+	assert.False(t, MetaContains("tag", "critical")(s))
+	assert.False(t, MetaContains("missing", "x")(s))
 }
 
-func TestLabelContains(t *testing.T) {
+func TestHasMeta(t *testing.T) {
 	t.Parallel()
-	s := New(1).WithLabel("tag", "urgent-request")
+	s := New(1).WithMetaMany(map[string]string{"a": "1", "b": "2", "c": "3"})
 
-	assert.True(t, LabelContains("tag", "urgent")(s))
-	assert.True(t, LabelContains("tag", "request")(s))
-	assert.False(t, LabelContains("tag", "critical")(s))
-	assert.False(t, LabelContains("missing", "x")(s))
+	assert.True(t, HasMeta("a")(s))
+	assert.False(t, HasMeta("z")(s))
+	assert.True(t, HasMeta("a", "b")(s))
+	assert.True(t, HasMeta("a", "b", "c")(s))
+	assert.False(t, HasMeta("a", "d")(s))
+	assert.True(t, HasMeta()(s)) // vacuous
 }
 
-func TestHasAllLabels(t *testing.T) {
+func TestHasAnyMeta(t *testing.T) {
 	t.Parallel()
-	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2", "c": "3"})
+	s := New(1).WithMetaMany(map[string]string{"a": "1", "b": "2"})
 
-	assert.True(t, HasAllLabels("a", "b")(s))
-	assert.True(t, HasAllLabels("a", "b", "c")(s))
-	assert.False(t, HasAllLabels("a", "d")(s))
-	assert.True(t, HasAllLabels()(s)) // vacuous
+	assert.True(t, HasAnyMeta("a", "z")(s))
+	assert.True(t, HasAnyMeta("b")(s))
+	assert.False(t, HasAnyMeta("x", "y")(s))
 }
 
-func TestHasAnyLabel(t *testing.T) {
+// One key space holds both types, so a predicate typed for one must not match
+// an entry of the other: "1" is not 1.0, and a float never "contains" a digit.
+func TestMetaPredicates_typeMismatch(t *testing.T) {
 	t.Parallel()
-	s := New(1).WithLabels(map[string]string{"a": "1", "b": "2"})
+	s := New(1).WithMeta("n", 1.0).WithMeta("tag", "1")
 
-	assert.True(t, HasAnyLabel("a", "z")(s))
-	assert.True(t, HasAnyLabel("b")(s))
-	assert.False(t, HasAnyLabel("x", "y")(s))
+	assert.True(t, MetaEquals("n", 1.0)(s))
+	assert.False(t, MetaEquals("n", "1")(s))
+	assert.False(t, MetaEquals("tag", 1.0)(s))
+	assert.False(t, MetaContains("n", "1")(s))
+}
+
+// A zero-value signal has a nil store; predicates must read it as empty, not panic.
+func TestMetaPredicates_zeroValueSignal(t *testing.T) {
+	t.Parallel()
+	s := &Signal{}
+
+	assert.False(t, HasMeta("a")(s))
+	assert.False(t, HasAnyMeta("a")(s))
+	assert.False(t, MetaEquals("a", "b")(s))
+	assert.False(t, MetaContains("a", "b")(s))
 }
 
 func TestPredicateCombinators_composition(t *testing.T) {
@@ -98,28 +115,28 @@ func TestPredicateCombinators_composition(t *testing.T) {
 	g := NewGroup(1, 2, 3, 4, 5, 6).Map(func(s *Signal) *Signal {
 		v := s.Payload()
 		if v.(int)%2 == 0 {
-			return s.WithLabel("even", "true")
+			return s.WithMeta("even", "true")
 		}
-		return s.WithLabel("odd", "true")
+		return s.WithMeta("odd", "true")
 	})
 
 	// Keep only even signals using combinator
-	evens := g.Filter(HasLabel("even"))
+	evens := g.Filter(HasMeta("even"))
 	assert.Equal(t, 3, evens.Len())
 
 	// Keep odd signals via Not
-	odds := g.Filter(Not(HasLabel("even")))
+	odds := g.Filter(Not(HasMeta("even")))
 	assert.Equal(t, 3, odds.Len())
 
 	// And: even AND payload > 3  → 4, 6
-	bigEvens := g.Filter(And(HasLabel("even"), func(s *Signal) bool {
+	bigEvens := g.Filter(And(HasMeta("even"), func(s *Signal) bool {
 		v := s.Payload()
 		return v.(int) > 3
 	}))
 	assert.Equal(t, 2, bigEvens.Len())
 
-	// Or: has "odd" label OR payload == 6  → 1,3,5,6
-	oddOrSix := g.Filter(Or(HasLabel("odd"), func(s *Signal) bool {
+	// Or: has "odd" entry OR payload == 6  → 1,3,5,6
+	oddOrSix := g.Filter(Or(HasMeta("odd"), func(s *Signal) bool {
 		v := s.Payload()
 		return v.(int) == 6
 	}))

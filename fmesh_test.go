@@ -1323,10 +1323,10 @@ func TestFMesh_AddComponents_LoggerInheritance(t *testing.T) {
 	assert.Same(t, customLogger, customLoggerComponent.Logger(), "custom logger must not be overridden")
 }
 
-func TestFMesh_WithLabelAndWithScalar(t *testing.T) {
-	fm := mustNewFMesh("m", WithLabel("env", "test"), WithScalar("version", 2))
-	assert.True(t, fm.Labels().ValueIs("env", "test"))
-	assert.True(t, fm.Scalars().ValueIs("version", 2))
+func TestFMesh_WithMetaOption(t *testing.T) {
+	fm := mustNewFMesh("m", WithMeta("env", "test"), WithMeta("version", 2.0))
+	assert.True(t, fm.Meta().ValueIs("env", "test"))
+	assert.True(t, fm.Meta().ValueIs("version", 2.0))
 }
 
 func TestFMesh_Run_RejectsAnOutputPortStolenByAnotherComponent(t *testing.T) {

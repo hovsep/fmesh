@@ -8,10 +8,10 @@ import (
 
 func TestCycle_OwnMetadata(t *testing.T) {
 	c := New()
-	c.Labels().Set("k", "v")
-	c.Scalars().Set("s", 1)
-	assert.True(t, c.Labels().ValueIs("k", "v"))
-	assert.True(t, c.Scalars().ValueIs("s", 1))
+	c.Meta().Set("k", "v")
+	c.Meta().Set("s", 1.0)
+	assert.True(t, c.Meta().ValueIs("k", "v"))
+	assert.True(t, c.Meta().ValueIs("s", 1.0))
 }
 
 func TestCycle_AllActivatedAreWaiting_NothingActivated(t *testing.T) {
@@ -19,8 +19,8 @@ func TestCycle_AllActivatedAreWaiting_NothingActivated(t *testing.T) {
 	assert.False(t, New().AllActivatedAreWaiting())
 }
 
-func TestGroup_OwnScalars(t *testing.T) {
+func TestGroup_OwnMeta(t *testing.T) {
 	g := NewGroup()
-	g.Scalars().Set("s", 2)
-	assert.True(t, g.Scalars().ValueIs("s", 2))
+	g.Meta().Set("s", 2.0)
+	assert.True(t, g.Meta().ValueIs("s", 2.0))
 }

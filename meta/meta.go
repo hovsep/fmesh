@@ -1,0 +1,148 @@
+package meta
+
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
+
+// Value is the set of types a Meta entry can hold. It is exact on purpose: a
+// named type such as `type Celsius float64` is rejected at compile time, so
+// every entry reads back with the type it was written with. An untyped
+// integer literal does not compile either — write 1.0, not 1.
+type Value interface {
+	string | float64
+}
+
+// Predicate tests one entry. value is a string or a float64.
+type Predicate func(key string, value any) bool
+
+// Meta is a mutable key→value store for string and numeric metadata.
+// Write methods modify the receiver in place and return it for chaining.
+// Clone and Filter are the non-mutating methods; each returns a new Meta.
+type Meta struct {
+	entries map[string]any
+}
+
+// New creates an empty Meta.
+func New() *Meta {
+	return &Meta{entries: make(map[string]any)}
+}
+
+// Set adds or updates one entry (upsert semantics).
+func (m *Meta) Set[T Value](key string, value T) *Meta {
+	m.entries[key] = value
+	return m
+}
+
+// SetMany adds or updates every entry of values (upsert semantics).
+func (m *Meta) SetMany[T Value](values map[string]T) *Meta {
+	for k, v := range values {
+		m.entries[k] = v
+	}
+	return m
+}
+
+// Remove deletes the named entries. Missing keys are silently ignored.
+func (m *Meta) Remove(keys ...string) *Meta {
+	for _, k := range keys {
+		delete(m.entries, k)
+	}
+	return m
+}
+
+// Clear removes every entry.
+func (m *Meta) Clear() *Meta {
+	clear(m.entries)
+	return m
+}
+
+// Value returns the entry for key as T. It fails when the key is absent or
+// holds the other type; the error names the key either way.
+func (m *Meta) Value[T Value](key string) (T, error) {
+	var zero T
+	raw, ok := m.entries[key]
+	if !ok {
+		return zero, fmt.Errorf("meta %q not found", key)
+	}
+	v, ok := raw.(T)
+	if !ok {
+		return zero, fmt.Errorf("meta %q holds %T, not %T", key, raw, zero)
+	}
+	return v, nil
+}
+
+// ValueOrDefault returns the entry for key as T, or def when the key is absent
+// or holds the other type. T is inferred from def: pass 0.0, not 0.
+func (m *Meta) ValueOrDefault[T Value](key string, def T) T {
+	if v, ok := m.entries[key].(T); ok {
+		return v
+	}
+	return def
+}
+
+// ValueIs reports whether key is present and holds exactly value.
+func (m *Meta) ValueIs[T Value](key string, value T) bool {
+	v, ok := m.entries[key].(T)
+	return ok && v == value
+}
+
+// Has reports whether every key is present. No keys is vacuously true.
+func (m *Meta) Has(keys ...string) bool {
+	for _, k := range keys {
+		if _, ok := m.entries[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// HasAny reports whether at least one key is present.
+func (m *Meta) HasAny(keys ...string) bool {
+	for _, k := range keys {
+		if _, ok := m.entries[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// Keys returns every key, sorted. The caller owns the slice.
+func (m *Meta) Keys() []string {
+	return slices.Sorted(maps.Keys(m.entries))
+}
+
+// Len returns the number of entries.
+func (m *Meta) Len() int {
+	return len(m.entries)
+}
+
+// IsEmpty reports whether the store holds nothing.
+func (m *Meta) IsEmpty() bool {
+	return len(m.entries) == 0
+}
+
+// All returns a copy of every entry. Mutating it does not affect the store.
+func (m *Meta) All() map[string]any {
+	return maps.Clone(m.entries)
+}
+
+// Clone returns an independent copy. A nil receiver clones to an empty Meta.
+func (m *Meta) Clone() *Meta {
+	c := New()
+	if m != nil {
+		maps.Copy(c.entries, m.entries)
+	}
+	return c
+}
+
+// Filter returns a new Meta holding the entries that pass pred.
+func (m *Meta) Filter(pred Predicate) *Meta {
+	filtered := New()
+	for k, v := range m.entries {
+		if pred(k, v) {
+			filtered.entries[k] = v
+		}
+	}
+	return filtered
+}

@@ -48,21 +48,21 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 
-		// Advanced API: attach ports with descriptions and labels
+		// Advanced API: attach ports with descriptions and metadata
 		require.NoError(t, processor.AttachInputPorts(
 			testutil.MustInputPort("config",
 				port.WithDescription("Configuration parameters"),
-				port.WithLabel("required", "true"),
-				port.WithLabel("type", "json")),
+				port.WithMeta("required", "true"),
+				port.WithMeta("type", "json")),
 			testutil.MustInputPort("metadata",
 				port.WithDescription("Request metadata"),
-				port.WithLabel("required", "false")),
+				port.WithMeta("required", "false")),
 		))
 		require.NoError(t, processor.AttachOutputPorts(
 			testutil.MustOutputPort("errors",
 				port.WithDescription("Error details if processing fails"),
-				port.WithLabel("severity", "high"),
-				port.WithLabel("format", "structured")),
+				port.WithMeta("severity", "high"),
+				port.WithMeta("format", "structured")),
 		))
 
 		// Put signals on all inputs
@@ -86,12 +86,12 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.NotNil(t, rawData)
 		assert.Empty(t, rawData.Description())
 
-		// Advanced port (created with AttachInputPorts) has description and labels
+		// Advanced port (created with AttachInputPorts) has description and metadata
 		config := inputs["config"]
 		assert.NotNil(t, config)
 		assert.Equal(t, "Configuration parameters", config.Description())
-		assert.True(t, config.Labels().Has("required"))
-		assert.True(t, config.Labels().Has("type"))
+		assert.True(t, config.Meta().Has("required"))
+		assert.True(t, config.Meta().Has("type"))
 
 		// Verify output ports (both simple and advanced)
 		outputs := processor.Outputs().All()
@@ -103,16 +103,16 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.NotNil(t, processed)
 		assert.Empty(t, processed.Description())
 
-		// Advanced port has description and labels
+		// Advanced port has description and metadata
 		errors := outputs["errors"]
 		assert.NotNil(t, errors)
 		assert.Equal(t, "Error details if processing fails", errors.Description())
-		assert.True(t, errors.Labels().Has("severity"))
-		assert.True(t, errors.Labels().Has("format"))
-		labelMap := errors.Labels().All()
+		assert.True(t, errors.Meta().Has("severity"))
+		assert.True(t, errors.Meta().Has("format"))
+		entries := errors.Meta().All()
 		require.NoError(t, err)
-		assert.Equal(t, "high", labelMap["severity"])
-		assert.Equal(t, "structured", labelMap["format"])
+		assert.Equal(t, "high", entries["severity"])
+		assert.Equal(t, "structured", entries["format"])
 
 		processedData, err := processor.OutputByName("processed").Signals().FirstPayload()
 		require.NoError(t, err)
@@ -126,24 +126,24 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.False(t, processor.OutputByName("errors").HasSignals())
 	})
 
-	t.Run("port label manipulation", func(t *testing.T) {
-		c := testutil.MustComponent("label-demo",
+	t.Run("port metadata manipulation", func(t *testing.T) {
+		c := testutil.MustComponent("meta-demo",
 			component.WithOutputs("output"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				if !this.InputByName("input").HasSignals() {
 					return nil
 				}
 
-				// Manipulate port labels during processing
+				// Manipulate port metadata during processing
 				inputPort := this.InputByName("input")
 
-				inputPort.Labels().Set("processed", "true")
+				inputPort.Meta().Set("processed", "true")
 
-				// Remove specific labels
-				inputPort.Labels().Remove("version")
+				// Remove specific entries
+				inputPort.Meta().Remove("version")
 
-				// Update labels
-				inputPort.Labels().SetMany(map[string]string{
+				// Update entries
+				inputPort.Meta().SetMany(map[string]string{
 					"env":   "prod", // update
 					"build": "123",  // add new
 				})
@@ -155,19 +155,19 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		)
 		require.NoError(t, c.AttachInputPorts(
 			testutil.MustInputPort("input",
-				port.WithLabel("env", "dev"),
-				port.WithLabel("version", "1.0"),
-				port.WithLabel("owner", "team-a")),
+				port.WithMeta("env", "dev"),
+				port.WithMeta("version", "1.0"),
+				port.WithMeta("owner", "team-a")),
 		))
 
 		require.NoError(t, c.InputByName("input").PutSignals(signal.New("data")))
-		fm := testutil.MustFMesh("label-mesh")
+		fm := testutil.MustFMesh("meta-mesh")
 		require.NoError(t, fm.AddComponents(c))
 		_, err := fm.Run(context.Background())
 		require.NoError(t, err)
 
 		inputPort := c.InputByName("input")
-		lbls := inputPort.Labels().All()
+		lbls := inputPort.Meta().All()
 		require.NoError(t, err)
 
 		assert.Equal(t, "prod", lbls["env"], "env should be updated")
@@ -230,13 +230,13 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 
 				// Find high priority ports
 				highPriorityPorts := inputs.Filter(func(p *port.Port) bool {
-					lbls := p.Labels().All()
+					lbls := p.Meta().All()
 					return lbls["priority"] == "high"
 				})
 
-				// Apply operation to all ports (add processing label)
+				// Apply operation to all ports (add processing entry)
 				if err := inputs.ForEach(func(p *port.Port) error {
-					p.Labels().Set("checked", "true")
+					p.Meta().Set("checked", "true")
 					return nil
 				}); err != nil {
 					return err
@@ -250,8 +250,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 			}),
 		)
 		require.NoError(t, c.AttachInputPorts(
-			testutil.MustInputPort("i4", port.WithLabel("priority", "high")),
-			testutil.MustInputPort("i5", port.WithLabel("priority", "low")),
+			testutil.MustInputPort("i4", port.WithMeta("priority", "high")),
+			testutil.MustInputPort("i5", port.WithMeta("priority", "low")),
 		))
 
 		// Put signals on some ports
@@ -269,7 +269,7 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
 		require.NoError(t, c.Inputs().ForEach(func(p *port.Port) error {
-			assert.True(t, p.Labels().Has("checked"))
+			assert.True(t, p.Meta().Has("checked"))
 			return nil
 		}))
 	})

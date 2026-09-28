@@ -667,7 +667,7 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 
 	t.Run("Map preserves nil-payload signals", func(t *testing.T) {
 		got := NewGroup(nil).Map(func(s *Signal) *Signal {
-			return s.WithLabel("touched", "yes")
+			return s.WithMeta("touched", "yes")
 		}).First().Payload()
 		assert.Nil(t, got)
 	})

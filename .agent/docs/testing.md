@@ -15,9 +15,9 @@
 ## What to cover
 
 - CoW invariant: verify receiver is unchanged after every mutating method on `signal.Signal` and `signal.Group`
-- Edge cases: nil payload, empty group/collection, missing scalar name
-- Group metadata separation: group's own Labels/Scalars must not bleed into element Labels/Scalars and vice versa. On `signal.Group`, `Labels()`/`Scalars()` return clones — mutating the returned store must not change the group
-- `signal.Group` batch methods (`WithLabelOnEach`, `WithScalarOnEach`, etc.) must preserve the group's own metadata on the returned group
+- Edge cases: nil payload, empty group/collection, missing metadata key, a key that holds the other type
+- Group metadata separation: group's own `Meta()` must not bleed into element `Meta()` and vice versa. On `signal.Group`, `Meta()` returns a clone — mutating the returned store must not change the group
+- `signal.Group` batch methods (`WithMetaOnEach`, `WithoutMetaOnEach`) must preserve the group's own metadata on the returned group
 - Anything taking a port name as a string: cover the name that resolves to no port. An unresolved name reaches the assertion as an empty collection (vacuously ready) or a nil port (a panic at the first dereference), so the passing test proves nothing unless it names a port that does not exist
 - Typed payload accessors: a wrong payload type, a nil payload, and a nil signal must all return an error or the default — never panic
 

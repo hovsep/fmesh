@@ -546,36 +546,24 @@ func TestPort_Flush(t *testing.T) {
 // Ports hold metadata in a live store; the store's own behavior is covered in the
 // meta package, so this only checks the wiring.
 func TestPort_Metadata(t *testing.T) {
-	t.Run("Labels returns the live store", func(t *testing.T) {
+	t.Run("Meta returns the live store", func(t *testing.T) {
 		p := mustInput("p1")
-		p.Labels().Set("role", "primary").SetMany(map[string]string{"tier": "edge"})
+		p.Meta().Set("role", "primary").Set("rate", 100.0)
 
-		assert.Equal(t, 2, p.Labels().Len())
-		assert.True(t, p.Labels().ValueIs("role", "primary"))
+		assert.Equal(t, 2, p.Meta().Len())
+		assert.True(t, p.Meta().ValueIs("role", "primary"))
+		assert.True(t, p.Meta().ValueIs("rate", 100.0))
 
-		p.Labels().Remove("role")
-		assert.False(t, p.Labels().Has("role"))
-
-		p.Labels().Clear()
-		assert.Zero(t, p.Labels().Len())
+		p.Meta().Clear()
+		assert.Zero(t, p.Meta().Len())
 	})
 
-	t.Run("Scalars returns the live store", func(t *testing.T) {
-		p := mustOutput("p1")
-		p.Scalars().Set("rate", 100)
-
-		assert.True(t, p.Scalars().ValueIs("rate", 100))
-
-		p.Scalars().Clear()
-		assert.Zero(t, p.Scalars().Len())
-	})
-
-	t.Run("constructor options seed both stores", func(t *testing.T) {
-		p, err := NewInput("p1", WithLabel("role", "primary"), WithScalar("rate", 5))
+	t.Run("constructor options seed both value types", func(t *testing.T) {
+		p, err := NewInput("p1", WithMeta("role", "primary"), WithMeta("rate", 5.0))
 		require.NoError(t, err)
 
-		assert.True(t, p.Labels().ValueIs("role", "primary"))
-		assert.True(t, p.Scalars().ValueIs("rate", 5))
+		assert.True(t, p.Meta().ValueIs("role", "primary"))
+		assert.True(t, p.Meta().ValueIs("rate", 5.0))
 	})
 
 	t.Run("WithDescription replaces previous value", func(t *testing.T) {
@@ -586,9 +574,9 @@ func TestPort_Metadata(t *testing.T) {
 
 	t.Run("stores are per port", func(t *testing.T) {
 		p1, p2 := mustInput("p1"), mustInput("p2")
-		p1.Labels().Set("only", "p1")
+		p1.Meta().Set("only", "p1")
 
-		assert.False(t, p2.Labels().Has("only"))
+		assert.False(t, p2.Meta().Has("only"))
 	})
 }
 
@@ -803,16 +791,14 @@ func TestPort_ForwardWithMap(t *testing.T) {
 				}(),
 				destPort: mustOutput("p2"),
 				mapperFunc: func(sig *signal.Signal) *signal.Signal {
-					return sig.WithOnlyLabels(map[string]string{
-						"l1": "v1",
-					})
+					return sig.WithMeta("l1", "v1")
 				},
 			},
 			assertions: func(t *testing.T, srcPortAfter, destPortAfter *Port, err error) {
 				require.NoError(t, err)
 				assert.Equal(t, 3, destPortAfter.Signals().Len())
 				assert.Equal(t, 3, srcPortAfter.Signals().Len())
-				assert.True(t, destPortAfter.Signals().Every(signal.LabelEquals("l1", "v1")))
+				assert.True(t, destPortAfter.Signals().Every(signal.MetaEquals("l1", "v1")))
 			},
 		},
 	}

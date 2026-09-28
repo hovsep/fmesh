@@ -107,8 +107,8 @@ func Test_Math(t *testing.T) {
 				if err := processor.AttachInputPorts(
 					testutil.MustInputPort("config",
 						port.WithDescription("Configuration parameters"),
-						port.WithLabel("required", "true"),
-						port.WithLabel("type", "config"),
+						port.WithMeta("required", "true"),
+						port.WithMeta("type", "config"),
 					),
 				); err != nil {
 					panic(err)
@@ -116,11 +116,11 @@ func Test_Math(t *testing.T) {
 				if err := processor.AttachOutputPorts(
 					testutil.MustOutputPort("result",
 						port.WithDescription("Processed result"),
-						port.WithLabel("format", "json"),
+						port.WithMeta("format", "json"),
 					),
 					testutil.MustOutputPort("error",
 						port.WithDescription("Error details if any"),
-						port.WithLabel("status", "error"),
+						port.WithMeta("status", "error"),
 					),
 				); err != nil {
 					panic(err)
@@ -179,15 +179,15 @@ func Test_Math(t *testing.T) {
 
 				assert.Len(t, cycles, 3, "should take 3 cycles: processor -> verifier -> done")
 
-				// Verify port metadata (only advanced ports have descriptions/labels)
+				// Verify port metadata (only advanced ports have descriptions/metadata)
 				assert.Empty(t, proc.InputByName("raw_data").Description(), "simple port should have no description")
 				assert.Empty(t, proc.InputByName("metadata").Description(), "simple port should have no description")
 				assert.Equal(t, "Configuration parameters", proc.InputByName("config").Description(), "advanced port should have description")
-				assert.True(t, proc.InputByName("config").Labels().ValueIs("required", "true"), "advanced port should have labels")
+				assert.True(t, proc.InputByName("config").Meta().ValueIs("required", "true"), "advanced port should have metadata")
 
 				assert.Empty(t, proc.OutputByName("logs").Description(), "simple port should have no description")
 				assert.Equal(t, "Processed result", proc.OutputByName("result").Description(), "advanced port should have description")
-				assert.True(t, proc.OutputByName("result").Labels().ValueIs("format", "json"), "advanced port should have labels")
+				assert.True(t, proc.OutputByName("result").Meta().ValueIs("format", "json"), "advanced port should have metadata")
 
 				// Verify data flowed correctly through the entire chain (processor -> verifier)
 				// The verifier's output confirms that both simple and advanced ports worked

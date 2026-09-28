@@ -1,7 +1,8 @@
-// Package meta provides [Labels] (string key/value) and [Scalars]
-// (string→float64) metadata carried by signals, ports, components, cycles
-// and the mesh itself.
+// Package meta provides [Meta], the key→value metadata store carried by
+// signals, ports, components, cycles, groups, collections and the mesh.
 //
-// Both types mutate in place; Keys and Values return sorted slices for
-// determinism, and Merge is the one non-mutating method on each type.
+// A value is a string or a float64 — see [Value]. Reads are typed at the call
+// site: m.Value[float64]("temp"); ValueOrDefault and ValueIs infer the type
+// from their argument. Meta mutates in place; Keys returns a sorted slice for
+// determinism, and Clone and Filter are the non-mutating methods.
 package meta

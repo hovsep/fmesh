@@ -27,7 +27,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			return this.OutputByName("o1").PutSignals(signal.New(42).WithLabel("route", "fan"))
+			return this.OutputByName("o1").PutSignals(signal.New(42).WithMeta("route", "fan"))
 		}))
 
 	makeConsumer := func(name, slot string) *component.Component {
@@ -70,7 +70,7 @@ func TestFanOut_threeConsumers_seeSameSignalPointer(t *testing.T) {
 }
 
 // TestFanOut_sharedSignal_parallelStress_completes exercises the same fan-out
-// plus concurrent label work on the shared *signal.Signal. With copy-on-write
+// plus concurrent metadata work on the shared *signal.Signal. With copy-on-write
 // signals this completes cleanly; run with -race to confirm no data races.
 func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 	const stressIters = 400
@@ -81,7 +81,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 		component.WithInputs("start"),
 		component.WithOutputs("o1"),
 		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-			return this.OutputByName("o1").PutSignals(signal.New(1).WithLabel("seed", "x"))
+			return this.OutputByName("o1").PutSignals(signal.New(1).WithMeta("seed", "x"))
 		}))
 
 	makeConsumer := func(name string, mode int) *component.Component {
@@ -105,11 +105,11 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 					}
 				case 1:
 					for i := range stressIters {
-						shared.WithLabel(fmt.Sprintf("w1_%d", i), "v")
+						shared.WithMeta(fmt.Sprintf("w1_%d", i), "v")
 					}
 				default:
 					for i := range stressIters {
-						shared.WithLabel(fmt.Sprintf("w2_%d", i), "v")
+						shared.WithMeta(fmt.Sprintf("w2_%d", i), "v")
 					}
 				}
 				return port.ForwardSignals(context.Background(), this.InputByName("i1"), this.OutputByName("o1"))

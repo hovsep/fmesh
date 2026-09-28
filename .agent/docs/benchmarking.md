@@ -124,7 +124,7 @@ on `signal.Signal`/`signal.Group` — especially if it could add an allocation o
 
 Native Go fuzzing (`func FuzzXxx(f *testing.F)`) guards **properties**, not just crashes.
 The high-value property here is the CoW invariant: a mutating-style method must return a
-new value and leave its receiver untouched (payload, labels, scalars). Targets live
+new value and leave its receiver untouched (payload, metadata). Targets live
 beside the code they guard (`signal/signal_fuzz_test.go`, `signal/group_fuzz_test.go`).
 
 - Seed corpus runs under normal `go test ./...` (fast, deterministic) — treat it like any
