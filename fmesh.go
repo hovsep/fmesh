@@ -394,14 +394,17 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 // cleared but input ports are not — signals a failed or interrupted run left
 // on inputs become part of the next run's seed.
 func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
+	if err := fm.cleanUpPreviousRun(ctx); err != nil {
+		return nil, err
+	}
+
+	// After cleanUpPreviousRun starts the run clock, never before: contextError
+	// tells the time limit from a caller's cancellation by the run's duration,
+	// so the deadline must not fire before that duration reaches the limit.
 	if fm.config.TimeLimit > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, fm.config.TimeLimit)
 		defer cancel()
-	}
-
-	if err := fm.cleanUpPreviousRun(ctx); err != nil {
-		return nil, err
 	}
 
 	ri = fm.runtimeInfo

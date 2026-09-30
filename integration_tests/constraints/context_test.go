@@ -14,6 +14,7 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
+	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -136,6 +137,33 @@ func TestRun_TimeLimitReachesActivationFunctions(t *testing.T) {
 		assert.Equal(t, timeLimit, elapsed,
 			"the mesh must stop at its time limit, not wait for the blocking call")
 		assert.ErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+	})
+}
+
+func TestRun_TimeLimitCountsFromTheDeadline(t *testing.T) {
+	// The deadline is set before the previous run is cleaned up, but the run's
+	// duration is counted from after it. A slow OnClear hook on an output port
+	// widens that gap, and the time limit was then reported as a cancellation.
+	const timeLimit = 100 * time.Millisecond
+
+	synctest.Test(t, func(t *testing.T) {
+		var activations atomic.Int64
+		fm := counterMesh(t, &activations, func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		}, fmesh.WithTimeLimit(timeLimit), fmesh.WithUnlimitedCycles())
+
+		fm.ComponentByName("counter").OutputByName("out").SetupHooks(func(h *port.Hooks) {
+			h.OnClear(func(context.Context, *port.ClearContext) error {
+				time.Sleep(timeLimit / 2)
+				return nil
+			})
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+		assert.NotErrorIs(t, err, fmesh.ErrRunCanceled)
 	})
 }
 
