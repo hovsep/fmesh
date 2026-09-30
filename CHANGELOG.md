@@ -320,6 +320,30 @@ g.Labels().Set("k", "v")   // before: mutated g. Now: mutates a copy, g unchange
 g = g.WithLabel("k", "v")  // after
 ```
 
+**Component activation hooks are `BeforeActivation` and `AfterActivation` only.** `OnActivation`,
+`OnSuccess`, `OnError`, `OnPanic` and `OnWaitingForInputs` are gone. A panicking outcome hook
+fired a second outcome hook (`OnPanic`) and re-ran `AfterActivation`; `AfterActivation` already
+sees every outcome, so the rest was a second, buggy path to the same place. Branch on the result
+instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation` (it now runs
+before the component's own function, not after it).
+
+```go
+// before
+h.OnError(func(ctx context.Context, ac *component.ActivationContext) error {
+    return ac.Component.ClearInputs(ctx)
+})
+h.OnActivation(latch)
+
+// after
+h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
+    if !ac.Result.IsError() {
+        return nil
+    }
+    return ac.Component.ClearInputs(ctx)
+})
+h.BeforeActivation(latch)
+```
+
 **Removed API.** Each of these had no callers in the repo, the examples, or the exporter:
 
 - Batch metadata on the mutating collections — `SetLabelOnEach`, `SetScalarOnEach`,
@@ -474,6 +498,11 @@ g = g.WithLabel("k", "v")  // after
   `OnClear` and the component activation hooks are only built when a hook is registered, saving
   four heap allocations per component per cycle.
 
+- A panic in a component activation hook no longer crashes the process. Hooks run on the
+  activation goroutine, so an escaped panic was fatal: a panicking `BeforeActivation` was never
+  recovered, and a panicking `AfterActivation` was recovered, re-run by the recover block, and
+  panicked again. Hook panics now become `Panicked` results, and each hook runs exactly once.
+
 - Hitting the time limit is reported as `ErrTimeLimitExceeded`, not `ErrRunCanceled`. The
   deadline was set before the run clock started, so it could fire while the run's measured
   duration was still under the limit — by as long as the previous run's cleanup took, including
@@ -505,8 +534,11 @@ g = g.WithLabel("k", "v")  // after
 12. Give `ReducePayloads` a typed accumulator and drop the `.(T)` on the result; drop the error
     from `ContainsPayload` (and the type argument `[any]` if you pass `nil`).
 13. `component.MustGetTyped[T](state, k)` → `v, err := state.GetTyped[T](k)`.
-14. Run `go build ./...` — the compiler finds every remaining site.
-15. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
+14. Fold `OnSuccess` / `OnError` / `OnPanic` / `OnWaitingForInputs` hooks into one
+    `AfterActivation` that checks `Result.Code()` (or `IsError()` / `IsPanic()`); move
+    `OnActivation` hooks to `BeforeActivation`.
+15. Run `go build ./...` — the compiler finds every remaining site.
+16. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
 
 ## Earlier releases
 

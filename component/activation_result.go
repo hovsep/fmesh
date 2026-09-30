@@ -157,14 +157,6 @@ func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
 		AddActivationError(err)
 }
 
-// newActivationResultHookFailed builds a specific activation result for when a hook fails.
-func (c *Component) newActivationResultHookFailed(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(false).
-		SetActivationCode(ActivationCodeHookFailed).
-		AddActivationError(err)
-}
-
 func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
 	activationCode := ActivationCodeWaitingForInputsClear
 	if errors.Is(err, ErrWaitKeepingInputs) {

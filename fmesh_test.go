@@ -1208,9 +1208,9 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 		require.ErrorIs(t, err, errHookFailed)
 	})
 
-	t.Run("failing OnSuccess hook surfaces in Run error", func(t *testing.T) {
+	t.Run("failing AfterActivation hook surfaces in Run error", func(t *testing.T) {
 		fm := newMeshWithFailingHook(StopOnFirstErrorOrPanic, func(h *component.Hooks) {
-			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
 				return errHookFailed
 			})
 		})
@@ -1223,7 +1223,7 @@ func TestFMesh_Run_ComponentHookFailuresSurface(t *testing.T) {
 
 	t.Run("IgnoreAll strategy still ignores hook failures", func(t *testing.T) {
 		fm := newMeshWithFailingHook(IgnoreAll, func(h *component.Hooks) {
-			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
 				return errHookFailed
 			})
 		})
