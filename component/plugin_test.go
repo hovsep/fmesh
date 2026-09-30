@@ -132,8 +132,8 @@ func (pp PricePlugin) Init(c *Component) error {
 			return nil
 		})
 
-		// Modify behavior (activation function)
-		hooks.OnActivation(func(_ context.Context, this *Component) error {
+		// Modify behavior around the activation function
+		hooks.BeforeActivation(func(_ context.Context, this *Component) error {
 			if this.InputByName("price_in").HasSignals() {
 				this.State().Upsert("new_price", func(old any) any {
 					return this.InputByName("price_in").Signals().FirstPayloadOrDefault(0.0)

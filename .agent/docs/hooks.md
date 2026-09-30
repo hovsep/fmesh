@@ -37,22 +37,24 @@ through a pipe during drain, and `context.Background()` when a caller puts them 
 | Level | Registration | Hooks | Context type |
 |---|---|---|---|
 | Mesh | `fm.SetupHooks(...)` | `OnComponentAdded`, `BeforeRun`, `AfterRun`, `BeforeCycle`, `AfterCycle` | `*FMesh` / `*CycleContext` / `*ComponentAddedContext` |
-| Component | `component.WithHooks(...)` option or `c.SetupHooks(...)` | `OnCreation`, `BeforeActivation`, `OnActivation`, `OnSuccess`, `OnError`, `OnPanic`, `OnWaitingForInputs`, `AfterActivation` | `*Component` / `*ActivationContext` |
+| Component | `component.WithHooks(...)` option or `c.SetupHooks(...)` | `OnCreation`, `BeforeActivation`, `AfterActivation` | `*Component` / `*ActivationContext` |
 | Port | `p.SetupHooks(...)` | `OnSignalsAdded`, `OnSignalsDelivered`, `OnClear`, `OnInboundPipe`, `OnOutboundPipe` | per-event context structs |
 
 ## Semantics worth knowing
 
-- **`OnActivation` is special**: its hooks are `ActivationFunc`s appended after the main
-  activation function and run **sequentially in the same activation** — they share the error
-  path (first error aborts the chain and becomes the activation error).
-- **`OnActivation` hooks vs activation combinators**: `component/compose.go` also chains
-  `ActivationFunc`s, but those are combinators — plain values passed to `WithActivationFunc`,
-  with no registry, no name, and no initialization step. Use a hook when something *outside*
-  the component adds behavior to it; use a combinator when the component composes its own.
-- **`AfterActivation` always runs** — success, error, panic, or waiting; a `finally` block.
-- Outcome hooks (`OnSuccess`/`OnError`/`OnPanic`/`OnWaitingForInputs`) fire before
-  `AfterActivation`. Distinguish waiting modes via `ctx.Result.Code()`
-  (`WaitingForInputsClear` vs `WaitingForInputsKeep`).
+- **Only two activation hooks, each fired exactly once**: `BeforeActivation`, then the
+  activation function, then `AfterActivation`. There are no per-outcome hooks — they were
+  removed because a panicking outcome hook fired a second outcome hook (`OnPanic`) and re-ran
+  `AfterActivation`. `AfterActivation` sees every outcome and tells them apart by
+  `ctx.Result.Code()`.
+- **`AfterActivation` always runs** — success, error, panic, waiting, or a failed
+  `BeforeActivation`; a `finally` block.
+- **Hook panics are recovered.** Hooks run on the activation goroutine, where an escaped panic
+  would kill the process. Each stage (`BeforeActivation`, the function, `AfterActivation`)
+  recovers its own panic, so no stage re-runs; a panicking hook re-codes the result to
+  `ActivationCodePanicked` (so `StopOnFirstPanic` stops on it) with a `*component.PanicError`.
+- Behavior added to a component from **outside** (a plugin) goes through these two hooks;
+  `component/compose.go` combinators are for a component composing its own activation function.
 - A **failing hook poisons the result**: the activation result is re-coded to
   `ActivationCodeHookFailed` with the hook error attached. `HookFailed` results count as
   activation errors (`IsError()`), so under `StopOnFirstErrorOrPanic` the mesh stops and the

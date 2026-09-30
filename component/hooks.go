@@ -14,27 +14,17 @@ type ActivationContext struct {
 
 // Hooks is a registry of all hook types for Component.
 type Hooks struct {
-	onCreation         *hook.Group[*Component]
-	beforeActivation   *hook.Group[*Component]
-	onActivation       *hook.Group[*Component]
-	onSuccess          *hook.Group[*ActivationContext]
-	onError            *hook.Group[*ActivationContext]
-	onPanic            *hook.Group[*ActivationContext]
-	onWaitingForInputs *hook.Group[*ActivationContext]
-	afterActivation    *hook.Group[*ActivationContext]
+	onCreation       *hook.Group[*Component]
+	beforeActivation *hook.Group[*Component]
+	afterActivation  *hook.Group[*ActivationContext]
 }
 
 // newHooks creates a new hook registry.
 func newHooks() *Hooks {
 	return &Hooks{
-		onCreation:         hook.NewGroup[*Component](),
-		beforeActivation:   hook.NewGroup[*Component](),
-		onActivation:       hook.NewGroup[*Component](),
-		onSuccess:          hook.NewGroup[*ActivationContext](),
-		onError:            hook.NewGroup[*ActivationContext](),
-		onPanic:            hook.NewGroup[*ActivationContext](),
-		onWaitingForInputs: hook.NewGroup[*ActivationContext](),
-		afterActivation:    hook.NewGroup[*ActivationContext](),
+		onCreation:       hook.NewGroup[*Component](),
+		beforeActivation: hook.NewGroup[*Component](),
+		afterActivation:  hook.NewGroup[*ActivationContext](),
 	}
 }
 
@@ -50,39 +40,9 @@ func (h *Hooks) BeforeActivation(fn func(context.Context, *Component) error) *Ho
 	return h
 }
 
-// OnActivation allows injecting activation functions in a component.
-func (h *Hooks) OnActivation(fn ActivationFunc) *Hooks {
-	h.onActivation.Add(fn)
-	return h
-}
-
-// OnSuccess registers a hook called when activation succeeds.
-func (h *Hooks) OnSuccess(fn func(context.Context, *ActivationContext) error) *Hooks {
-	h.onSuccess.Add(fn)
-	return h
-}
-
-// OnError registers a hook called when activation returns an error.
-func (h *Hooks) OnError(fn func(context.Context, *ActivationContext) error) *Hooks {
-	h.onError.Add(fn)
-	return h
-}
-
-// OnPanic registers a hook called when activation panics.
-func (h *Hooks) OnPanic(fn func(context.Context, *ActivationContext) error) *Hooks {
-	h.onPanic.Add(fn)
-	return h
-}
-
-// OnWaitingForInputs registers a hook to be called when component is waiting for inputs.
-// Check ctx.Result.Code() to distinguish between Clear and Keep modes.
-func (h *Hooks) OnWaitingForInputs(fn func(context.Context, *ActivationContext) error) *Hooks {
-	h.onWaitingForInputs.Add(fn)
-	return h
-}
-
 // AfterActivation registers a hook to be called after activation completes (always).
 // This runs regardless of success/error/panic/waiting - like a finally block.
+// Check Result.Code() on the context to react to one outcome only.
 func (h *Hooks) AfterActivation(fn func(context.Context, *ActivationContext) error) *Hooks {
 	h.afterActivation.Add(fn)
 	return h

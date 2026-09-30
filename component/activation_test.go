@@ -286,28 +286,7 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		assert.Len(t, result.ActivationErrors(), 1)
 	})
 
-	t.Run("onSuccess hook fails: ActivationCodeHookFailed, error accumulated", func(t *testing.T) {
-		c, err := New("c1",
-			WithInputs("i1"),
-			WithActivationFunc(func(_ context.Context, this *Component) error { return nil }),
-		)
-		require.NoError(t, err)
-		c.SetupHooks(func(h *Hooks) {
-			h.OnSuccess(func(_ context.Context, _ *ActivationContext) error {
-				return errors.New("onSuccess hook error")
-			})
-		})
-		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
-
-		result := c.MaybeActivate(context.Background())
-
-		assert.Equal(t, ActivationCodeHookFailed, result.Code())
-		require.Error(t, result.ActivationError())
-		require.ErrorContains(t, result.ActivationError(), "onSuccess hook error")
-		assert.Len(t, result.ActivationErrors(), 1)
-	})
-
-	t.Run("onError hook fails: ActivationCodeHookFailed, both errors accumulated", func(t *testing.T) {
+	t.Run("afterActivation hook fails after an error: both errors accumulated", func(t *testing.T) {
 		c, err := New("c1",
 			WithInputs("i1"),
 			WithActivationFunc(func(_ context.Context, this *Component) error {
@@ -316,8 +295,8 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		)
 		require.NoError(t, err)
 		c.SetupHooks(func(h *Hooks) {
-			h.OnError(func(_ context.Context, _ *ActivationContext) error {
-				return errors.New("onError hook error")
+			h.AfterActivation(func(_ context.Context, _ *ActivationContext) error {
+				return errors.New("afterActivation hook error")
 			})
 		})
 		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
@@ -327,7 +306,7 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		assert.Equal(t, ActivationCodeHookFailed, result.Code())
 		assert.Len(t, result.ActivationErrors(), 2)
 		require.ErrorContains(t, result.ActivationError(), "component error")
-		assert.ErrorContains(t, result.ActivationError(), "onError hook error")
+		assert.ErrorContains(t, result.ActivationError(), "afterActivation hook error")
 	})
 
 	t.Run("afterActivation hook fails: ActivationCodeHookFailed, error accumulated", func(t *testing.T) {
@@ -350,4 +329,74 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		require.ErrorContains(t, result.ActivationError(), "afterActivation hook error")
 		assert.Len(t, result.ActivationErrors(), 1)
 	})
+}
+
+func TestComponent_MaybeActivate_HookPanics(t *testing.T) {
+	// A hook runs on the activation goroutine, so a panic that escaped it killed
+	// the process. A panicking AfterActivation was also re-run by the recover
+	// block, panicked again inside the deferred call, and crashed anyway.
+	ok := func(context.Context, *Component) error { return nil }
+
+	tests := []struct {
+		name       string
+		activation ActivationFunc
+		before     func(context.Context, *Component) error
+		after      func(context.Context, *ActivationContext) error
+		wantStage  string
+		wantErrs   int
+	}{
+		{
+			name:       "beforeActivation panics",
+			activation: ok,
+			before:     func(context.Context, *Component) error { panic("before boom") },
+			wantStage:  "beforeActivation hook failed: panicked: before boom",
+			wantErrs:   1,
+		},
+		{
+			name:       "afterActivation panics after success",
+			activation: ok,
+			after:      func(context.Context, *ActivationContext) error { panic("after boom") },
+			wantStage:  "afterActivation hook failed: panicked: after boom",
+			wantErrs:   1,
+		},
+		{
+			name:       "afterActivation panics after the function panicked",
+			activation: func(context.Context, *Component) error { panic("function boom") },
+			after:      func(context.Context, *ActivationContext) error { panic("after boom") },
+			wantStage:  "afterActivation hook failed: panicked: after boom",
+			wantErrs:   2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := New("c1", WithInputs("i1"), WithActivationFunc(tt.activation))
+			require.NoError(t, err)
+
+			afterCalls := 0
+			c.SetupHooks(func(h *Hooks) {
+				if tt.before != nil {
+					h.BeforeActivation(tt.before)
+				}
+				h.AfterActivation(func(ctx context.Context, ac *ActivationContext) error {
+					afterCalls++
+					if tt.after != nil {
+						return tt.after(ctx, ac)
+					}
+					return nil
+				})
+			})
+			require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+			result := c.MaybeActivate(context.Background())
+
+			assert.Equal(t, 1, afterCalls, "AfterActivation must run exactly once")
+			assert.Equal(t, ActivationCodePanicked, result.Code())
+			assert.True(t, result.IsPanic())
+			assert.Len(t, result.ActivationErrors(), tt.wantErrs)
+			require.ErrorContains(t, result.ActivationError(), tt.wantStage)
+			var panicErr *PanicError
+			require.ErrorAs(t, result.ActivationError(), &panicErr)
+			assert.NotEmpty(t, panicErr.Stack)
+		})
+	}
 }
