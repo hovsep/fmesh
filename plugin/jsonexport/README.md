@@ -13,6 +13,9 @@ fm, err := fmesh.New("pricing", fmesh.WithPlugins(exporter))
 data, err := exporter.Export() // indented JSON
 ```
 
+For a mesh that is already built without the plugin, call the package function:
+`data, err := jsonexport.Export(fm)`.
+
 Output:
 
 ```json
@@ -35,5 +38,5 @@ Output:
   are always present.
 - The types `Mesh`, `Component`, `Port`, `Pipe` and `Endpoint` describe the shape; unmarshal into
   `jsonexport.Mesh` to read an export back.
-- One plugin instance serves one mesh. `Export` before the plugin is attached returns
+- One plugin instance serves one mesh. The `Export` method before the plugin is attached returns
   `ErrNotAttached`.
