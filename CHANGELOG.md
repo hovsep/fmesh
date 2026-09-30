@@ -19,7 +19,8 @@ A mesh walker, and a JSON exporter built on it.
 
 - `FMesh.Walk(Visitor)` visits the mesh structure in a fixed order: the mesh, each component with
   its ports (by name), then every pipe. It only reads the mesh. Exporters build on it.
-- `plugin/jsonexport`: a bundled plugin that exports the mesh structure as JSON.
+- `plugin/jsonexport`: a bundled plugin that exports the mesh structure as JSON. `jsonexport.Export(fm)`
+  does a one-off export of a mesh built without the plugin.
 
 ## [v1.14.0] — Ararat — 2026-09-30
 

@@ -73,13 +73,20 @@ type Endpoint struct {
 	Port      string `json:"port"`
 }
 
-// Export returns the mesh structure as indented JSON. Its shape is [Mesh].
+// Export returns the structure of the mesh the plugin is attached to as
+// indented JSON. Its shape is [Mesh].
 func (p *Plugin) Export() ([]byte, error) {
 	if p.fm == nil {
 		return nil, ErrNotAttached
 	}
+	return Export(p.fm)
+}
+
+// Export returns the structure of fm as indented JSON, for a mesh built without
+// the plugin. Its shape is [Mesh].
+func Export(fm *fmesh.FMesh) ([]byte, error) {
 	b := &builder{}
-	if err := p.fm.Walk(b); err != nil {
+	if err := fm.Walk(b); err != nil {
 		return nil, err
 	}
 	return json.MarshalIndent(b.mesh, "", "  ")

@@ -67,6 +67,30 @@ func TestPlugin_Export(t *testing.T) {
 	})
 }
 
+func TestExport(t *testing.T) {
+	// The package function exports a mesh built without the plugin, and matches
+	// what the plugin exports for the same mesh.
+	build := func(opts ...fmesh.Option) *fmesh.FMesh {
+		fm := testutil.MustFMesh("m", opts...)
+		require.NoError(t, fm.AddComponents(testutil.MustComponent("c",
+			component.WithInputs("in"), component.WithActivationFunc(noop))))
+		return fm
+	}
+
+	plugin := New()
+	viaPlugin, err := plugin.Export()
+	require.ErrorIs(t, err, ErrNotAttached)
+	require.Nil(t, viaPlugin)
+
+	build(fmesh.WithPlugins(plugin))
+	viaPlugin, err = plugin.Export()
+	require.NoError(t, err)
+
+	viaFunc, err := Export(build())
+	require.NoError(t, err)
+	assert.JSONEq(t, string(viaPlugin), string(viaFunc))
+}
+
 func TestPlugin_Init(t *testing.T) {
 	// One instance keeps one mesh; a second mesh would silently steal it.
 	exporter := New()
