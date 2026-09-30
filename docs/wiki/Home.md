@@ -54,6 +54,7 @@ capitals of Armenia; the name is in the release title, not the tag. See the
 * [meta](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
 * [profiler](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler): bundled mesh plugin
 * [autowire](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire): bundled mesh plugin
+* [jsonexport](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/jsonexport): bundled mesh plugin
 
 The `cycle` package appears in the run report: see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run).
 

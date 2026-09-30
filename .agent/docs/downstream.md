@@ -7,6 +7,7 @@ evidence that a public symbol is unused.** Two sibling repos use the public API:
 |---|---|
 | [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. One Go module (`basics/`, `patterns/`, `simulation/`, `graphics/`, `internal/`). Its `internal/` package imports `fmesh-graphviz/dot`. |
 | [`hovsep/fmesh-graphviz`](https://github.com/hovsep/fmesh-graphviz) | The DOT exporter documented in wiki `701.-Export`. |
+| `fmesh-mermaid` (local only, `../fmesh-mermaid`) | The Mermaid exporter plugin. Not on GitHub yet. |
 
 ## Before deleting any exported symbol
 

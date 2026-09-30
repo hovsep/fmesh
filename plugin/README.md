@@ -6,8 +6,9 @@
 |--------|--------------|
 | [`autowire`](autowire/README.md) | Connects components by port-name convention instead of `PipeTo` calls. Wiring works in both directions, so `AddComponents` order does not matter. |
 | [`profiler`](profiler/README.md) | Measures the mesh: run, cycle and activation timing, per-pipe throughput (unused pipes included) and a per-cycle timeline. |
+| [`jsonexport`](jsonexport/README.md) | Exports the mesh structure (components, ports, pipes, descriptions, metadata) as JSON. |
 
-Both attach the same way:
+All attach the same way:
 
 ```go
 fm, err := fmesh.New("mesh", fmesh.WithPlugins(

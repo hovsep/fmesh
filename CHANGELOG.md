@@ -11,6 +11,16 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+## [v1.15.0] — Gegharkunik — 2026-09-30
+
+A mesh walker, and a JSON exporter built on it.
+
+### Added
+
+- `FMesh.Walk(Visitor)` visits the mesh structure in a fixed order: the mesh, each component with
+  its ports (by name), then every pipe. It only reads the mesh. Exporters build on it.
+- `plugin/jsonexport`: a bundled plugin that exports the mesh structure as JSON.
+
 ## [v1.14.0] — Ararat — 2026-09-30
 
 One metadata store, two activation hooks, and configuration through options only.
