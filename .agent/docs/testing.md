@@ -2,41 +2,53 @@
 
 ## Style
 
-- Tests live alongside source, same package (`package signal` not `package signal_test`)
-- Table-driven by default; `t.Run` subtests for grouped inline assertions
-- `require` for preconditions and error checks (stops on failure); `assert` for value checks (continues)
-- No assertion helpers — use plain `assert`/`require` directly
-- Only allowed helper: `mustXxx()` panic-on-error for fixture setup, never for assertions.
-  Shared implementations live in `internal/testutil` (usable from `integration_tests/` and other
-  external test packages); in-package tests of `fmesh` and `port` keep local copies (import cycle)
-- Use `assert.InDelta` for float64 comparisons (tolerance `1e-9` for exact values, larger for computed averages)
-- Comments explain why a case exists (the bug it pins down), never what the assertion does — one or two lines, same brevity rule as source (see [design.md](design.md))
+- Tests live beside the source, in the same package (`package signal`, not `package signal_test`).
+  Godoc examples (`example_test.go`) and `docs_test.go` are the exception.
+- Table-driven by default; `t.Run` subtests for grouped inline assertions.
+- `require` for preconditions and error checks (stops); `assert` for value checks (continues).
+- No assertion helpers — use `assert`/`require` directly.
+- The only allowed helper is `mustXxx()`, panic-on-error, for fixture setup — never for assertions.
+  Shared ones live in `internal/testutil` (usable from `integration_tests/` and other external
+  test packages). In-package tests of `fmesh` and `port` keep local copies (import cycle).
+- `assert.InDelta` for float64 (tolerance `1e-9` for exact values, larger for computed averages).
+- Comments say why a case exists (the bug it pins), never what the assertion does. One or two
+  lines — the same brevity rule as source ([design.md](design.md)).
 
 ## What to cover
 
-- CoW invariant: verify receiver is unchanged after every mutating method on `signal.Signal` and `signal.Group`
-- Edge cases: nil payload, empty group/collection, missing metadata key, a key that holds the other type
-- Group metadata separation: group's own `Meta()` must not bleed into element `Meta()` and vice versa. On `signal.Group`, `Meta()` returns a clone — mutating the returned store must not change the group
-- `signal.Group` batch methods (`WithMetaOnEach`, `WithoutMetaOnEach`) must preserve the group's own metadata on the returned group
-- Anything taking a port name as a string: cover the name that resolves to no port. An unresolved name reaches the assertion as an empty collection (vacuously ready) or a nil port (a panic at the first dereference), so the passing test proves nothing unless it names a port that does not exist
-- Typed payload accessors: a wrong payload type, a nil payload, and a nil signal must all return an error or the default — never panic
+- **CoW**: the receiver is unchanged after every mutating method on `signal.Signal` and
+  `signal.Group`.
+- **Edge cases**: nil payload, empty group/collection, missing metadata key, a key holding the
+  other type.
+- **Group metadata separation**: a group's own `Meta()` must not bleed into its elements' and vice
+  versa. `signal.Group.Meta()` returns a clone — mutating it must not change the group.
+- **`signal.Group` batch methods** (`WithMetaOnEach`, `WithoutMetaOnEach`) keep the group's own
+  metadata on the result.
+- **Anything taking a port name as a string**: cover a name that matches no port. An unknown name
+  turns into an empty collection (vacuously ready) or a nil port (a panic on first use), so a
+  passing test proves nothing unless it uses a missing port.
+- **Typed payload accessors**: a wrong payload type, a nil payload and a nil signal all return an
+  error or the default — never panic.
 
 ## Coverage is not a usage signal
 
-A method exercised only by its own unit test is not thereby dead — the library's callers are in
-`fmesh-examples` and `fmesh-graphviz`, and no test in this repo will ever mention them. Do not use
-"own-package test only" as grounds for deleting exported API; see [downstream.md](downstream.md).
+A method used only by its own unit test is not dead. The library's callers are in
+`fmesh-examples` and `fmesh-graphviz`, which no test here mentions. Never delete exported API on
+"own-package test only" grounds; see [downstream.md](downstream.md).
 
 ## Documentation is tested too
 
-- `Example` in `example_test.go` is the README quick start. It runs in CI, so the README's headline
-  snippet cannot rot. Keep the two in sync — if you change one, change the other.
-- `TestDocs_ReferenceOnlyExistingAPI` (`docs_test.go`) parses every ```go block in `README.md`,
-  `CHANGELOG.md`, `CONTRIBUTING.md` and `docs/wiki/*.md` and asserts that every qualified reference
-  to this project's API (`component.X`, `signal.X`, …) is a symbol that actually exists. It is how
-  a rename gets caught in the docs rather than by a user copying a dead snippet.
-
-  It deliberately does not compile the wiki snippets: they are fragments with elisions, so wrapping
-  them into buildable files is guesswork. It also accepts method names as valid for a package
-  qualifier, because docs shadow package names with variables (`port.Signals()` is a `*Port` called
-  `port`). Argument counts are not checked.
+- `Example` in `example_test.go` is the README quick start and runs in CI. Keep the two in sync —
+  change one, change the other.
+- `docs_test.go` scans the ```go blocks in `README.md`, `CONTRIBUTING.md`, `docs/wiki/*.md` and the
+  plugin READMEs (`plugin/README.md`, `plugin/*/README.md`):
+  - `TestDocs_ReferenceOnlyExistingAPI` — every qualified reference (`component.X`, `signal.X`, …)
+    names a real exported symbol or method. Also scans `CHANGELOG.md`.
+  - `TestDocs_NoRemovedMethodNames` — rejects a denylist of removed method names, which catches
+    calls on a variable (`c.Meta().AddLabel(...)`). Also scans Go source comments.
+  - `TestDocs_MethodCallsExistSomewhere` — every `.SomeExported(` call names a method or function
+    defined in this module, or is on a small allowlist of external names (stdlib, profiler).
+- Not checked: compilation (snippets are fragments with elisions), argument counts, and prose
+  outside Go blocks. Method names count as valid for a package qualifier, because docs shadow
+  package names with variables (`port.Signals()` on a `*Port` named `port`).
+- `.agent/docs/` is not scanned. Check its snippets against the code by hand.

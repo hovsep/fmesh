@@ -12,9 +12,11 @@
 
 ## What is F-Mesh?
 
-F-Mesh is a **Flow-Based Programming (FBP)** framework that lets you build applications as a graph of independent, reusable components. Think of it as connecting building blocks with pipes - data flows through your program like water through a network of connected components.
+F-Mesh is a **Flow-Based Programming (FBP)** framework for Go. You build an app as a graph of
+small, reusable components. Pipes connect them, and data flows through the graph as signals.
 
-Inspired by [J. Paul Morrison's FBP](https://jpaulm.github.io/fbp/), F-Mesh brings dataflow programming to Go with a small, deliberately untyped API — one pipe can carry anything, so you model the flow instead of the type graph.
+It is inspired by [J. Paul Morrison's FBP](https://jpaulm.github.io/fbp/). The API is small and
+untyped on purpose: one pipe can carry anything, so you model the flow, not the type graph.
 
 <img src="https://github.com/user-attachments/assets/045bb7ac-0852-4a0d-9158-6af2d6e66dbb" width="500px">
 
@@ -26,11 +28,13 @@ Inspired by [J. Paul Morrison's FBP](https://jpaulm.github.io/fbp/), F-Mesh brin
 go get github.com/hovsep/fmesh
 ```
 
+Requires Go 1.27 or later.
+
 ---
 
 ## Quick Start
 
-Here's a simple mesh that concatenates two strings and converts them to uppercase:
+A mesh that joins two strings and converts the result to uppercase:
 
 ```go
 package main
@@ -38,7 +42,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/hovsep/fmesh"
@@ -46,84 +49,72 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
-func main() {
-	if err := run(context.Background()); err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
+func must(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
 
-func run(ctx context.Context) error {
-	// Create the components
+func main() {
+	// Components: named ports plus an activation function
 	concat, err := component.New("concat",
 		component.WithInputs("i1", "i2"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			word1 := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
 			word2 := this.InputByName("i2").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(word1 + word2))
 		}))
-	if err != nil {
-		return err
-	}
+	must(err)
 
 	uppercase, err := component.New("uppercase",
 		component.WithInputs("i1"),
 		component.WithOutputs("res"),
-		component.WithActivationFunc(func(ctx context.Context, this *component.Component) error {
+		component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 			str := this.InputByName("i1").Signals().FirstPayloadOrDefault("")
 			return this.OutputByName("res").PutSignals(signal.New(strings.ToUpper(str)))
 		}))
-	if err != nil {
-		return err
-	}
+	must(err)
 
-	// Create the mesh
+	// The mesh holds the components
 	fm, err := fmesh.New("hello world")
-	if err != nil {
-		return err
-	}
-	if err = fm.AddComponents(concat, uppercase); err != nil {
-		return err
-	}
+	must(err)
+	must(fm.AddComponents(concat, uppercase))
 
-	// Connect components via a pipe
-	if err = concat.OutputByName("res").PipeTo(uppercase.InputByName("i1")); err != nil {
-		return err
-	}
+	// A pipe connects an output to an input
+	must(concat.OutputByName("res").PipeTo(uppercase.InputByName("i1")))
 
-	// Set initial inputs
-	if err = concat.InputByName("i1").PutSignals(signal.New("hello ")); err != nil {
-		return err
-	}
-	if err = concat.InputByName("i2").PutSignals(signal.New("world!")); err != nil {
-		return err
-	}
+	// Seed the inputs, then run until no component has work left
+	must(concat.InputByName("i1").PutSignals(signal.New("hello ")))
+	must(concat.InputByName("i2").PutSignals(signal.New("world!")))
 
-	// Run the mesh. Cancelling ctx stops it at the next cycle boundary.
-	if _, err = fm.Run(ctx); err != nil {
-		return err
-	}
+	_, err = fm.Run(context.Background())
+	must(err)
 
-	// Get the result
 	result, err := uppercase.OutputByName("res").Signals().FirstPayload()
-	if err != nil {
-		return err
-	}
+	must(err)
 	fmt.Printf("Result: %v\n", result) // Result: HELLO WORLD!
-	return nil
 }
 ```
 
 ---
 
+---
+
 ## Key Features
 
-### **Component-Based Architecture**
-Build complex workflows from simple, reusable components. Each component is independent and testable.
+- **Components.** Build workflows from small, independent, testable blocks.
+- **Concurrency for free.** All components ready in a cycle run at the same time. You write no
+  goroutines, channels or locks.
+- **Discrete time.** Execution runs in cycles, like ticks of a clock. This makes runs easy to reason about.
+- **Deterministic runs.** Same input gives the same output, as long as your activation functions
+  are deterministic.
+- **Cancellation and deadlines.** `Run(ctx)` passes the context to every activation function and hook.
+- **Hooks and plugins.** Add behavior at mesh, cycle, component and port level.
+- **Metadata.** Tag signals, components and ports with string or number values, then filter and route by them.
+- **Run report.** `Run(ctx)` returns a `RuntimeInfo` with the result of every cycle.
 
-### **Hooks System**
-Extend behavior at any execution point - mesh lifecycle, cycles, component activations, and port operations:
+### Hooks
 
 ```go
 fm.SetupHooks(func(h *fmesh.Hooks) {
@@ -138,31 +129,20 @@ fm.SetupHooks(func(h *fmesh.Hooks) {
 })
 ```
 
-### **Runtime Observability**
-`Run(ctx)` returns a `RuntimeInfo` report with per-cycle activation results and timing — history retention is configurable for long runs.
+### Untyped by design
 
-### **Metadata & Filtering**
-Tag signals, components, and ports with metadata (string or numeric values in one store), then filter, route, and aggregate them with consistent collection APIs.
-
-### **Discrete Time Model**
-Components activate in cycles (artificial "time"), allowing multiple components to process simultaneously - like lighting multiple lamps at once.
-
-### **Deterministic Runs**
-Same input, same output, every time — given activation functions that are themselves deterministic. Signals keep their arrival order within a port, upstream components are drained in name order, and a component's ports are traversed in name order. Reproducible runs make meshes testable, which dataflow systems usually are not.
-
-### **Untyped by Design**
-Signals carry `any`. One pipe can hold a string, a struct and an error at once, which is the thing Go channels cannot do and the reason to use a mesh at all. The cost is honest: type mismatches surface when you read a payload, not when you compile.
+Signals carry `any`. One pipe can hold a string, a struct and an error at once. Go channels cannot
+do that. The cost: a type mismatch shows up when you read a payload, not at compile time.
 
 ```go
-n, err := sig.As[int]()          // reports a mismatch — prefer this
-n := sig.PayloadOrDefault(0)          // swallows it; use only when a fallback is genuinely right
+n, err := sig.As[int]()      // reports a mismatch; prefer this
+n := sig.PayloadOrDefault(0) // hides a mismatch; use only when a fallback is right
 ```
 
-### **Concurrency Out of the Box**
-All components in a single activation cycle run concurrently - no need to manage goroutines or other concurrency primitives yourself.
+### Cancellation and deadlines
 
-### **Cancellation & Deadlines**
-`Run(ctx)` takes a context and passes it to every activation function and hook. Cancel it to stop the mesh at the next cycle boundary; a configured `TimeLimit` becomes a deadline on that context, so it reaches the HTTP calls and queries inside your components instead of only being checked between cycles.
+A `TimeLimit` becomes a deadline on the run context. So it reaches the HTTP calls and queries
+inside your components.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
@@ -173,10 +153,8 @@ component.WithActivationFunc(func(ctx context.Context, this *component.Component
     ...
 })
 
-_, err := fm.Run(ctx) // errors.Is(err, fmesh.ErrRunCanceled) once cancel() lands
+_, err := fm.Run(ctx) // errors.Is(err, fmesh.ErrRunCanceled) after cancel()
 ```
-
-Cancellation is cooperative: Go cannot preempt a goroutine, so an activation function that ignores its context still runs to completion.
 
 ---
 
@@ -184,110 +162,97 @@ Cancellation is cooperative: Go cannot preempt a goroutine, so an activation fun
 
 | Concept | Description |
 |---------|-------------|
-| **[Component](https://github.com/hovsep/fmesh/wiki/301.-Component)** | The main building block - has inputs, outputs, and an activation function |
-| **[Port](https://github.com/hovsep/fmesh/wiki/302.-Ports)** | Entry/exit points on components. Unlimited inputs and outputs per component |
-| **[Pipe](https://github.com/hovsep/fmesh/wiki/303.-Pipes)** | Connects an output port to an input port to transfer data |
-| **[Signal](https://github.com/hovsep/fmesh/wiki/201.-Signals)** | Data packets flowing through pipes. Type-agnostic with optional metadata |
-| **[Cycle](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules)** | One "tick" of execution where all ready components activate |
+| **[Component](https://github.com/hovsep/fmesh/wiki/301.-Component)** | The main building block. Has inputs, outputs and an activation function. |
+| **[Port](https://github.com/hovsep/fmesh/wiki/302.-Ports)** | An input or output of a component. A component can have any number of them. |
+| **[Pipe](https://github.com/hovsep/fmesh/wiki/303.-Pipes)** | Connects an output port to an input port. |
+| **[Signal](https://github.com/hovsep/fmesh/wiki/201.-Signals)** | A data packet. Carries any payload plus optional metadata. |
+| **[Cycle](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules)** | One tick of execution. Every ready component activates. |
 
 ---
 
 ## Four rules worth knowing up front
 
-These are not footnotes. Each one will surprise you exactly once, and the wiki covers them in full.
+Each one surprises people once. The wiki covers them in full.
 
-**1. A component activates only when an input port has signals.** There are no source components; a
-mesh is started by seeding inputs. Forgetting to seed produces a run that does nothing and returns
-`nil` — that is the rule working, not a failure.
+**1. A component activates only when an input port has signals.** There are no source components.
+You start a mesh by putting signals on inputs. If you forget, the run does nothing and returns `nil`.
 
 ```go
 _ = producer.InputByName("start").PutSignals(signal.New("go")) // without this, nothing happens
 ```
 
-**2. Order is by name.** Signals keep arrival order within a port; upstream components drain in
-component-name order; a component's own ports are traversed in port-name order. If a component
-reads all its inputs at once, **the port names decide the order** — so name them for the order you
-want.
+**2. Order is by name.** Signals keep arrival order within a port. Upstream components drain in
+component-name order. A component's ports are traversed in port-name order. So if a component reads
+all inputs at once, **port names decide the order**.
 
-**3. Payloads are shared, so treat them as read-only.** Fan-out hands the same `*Signal` to every
-destination, and those destinations activate concurrently. Read what arrives and produce new
-signals; never mutate a received map, slice or pointer. Run your mesh tests with `-race`.
+**3. Payloads are shared, so treat them as read-only.** Fan-out sends the same `*Signal` to every
+destination, and those destinations run concurrently. Never mutate a received map, slice or
+pointer; build new signals instead. Run your mesh tests with `-race`.
 
-**4. Cancellation is cooperative.** `Run(ctx)` stops the mesh at the next cycle boundary, and
-`TimeLimit` becomes a deadline on that context. Go cannot preempt a goroutine, so an activation
-function that ignores its context still blocks the mesh until it returns.
+**4. Cancellation is cooperative.** `Run(ctx)` stops at the next cycle boundary. Go cannot stop a
+running goroutine, so an activation function that ignores its context blocks the mesh until it returns.
 
-Full detail: [401. Scheduling rules](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules)
-and [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats).
+More: [401. Scheduling rules](https://github.com/hovsep/fmesh/wiki/401.-Scheduling-rules) and
+[603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats).
 
 ---
 
 ## Use Cases
 
-F-Mesh excels at:
+- **Data pipelines**: ETL, data processing, format conversion
+- **Workflow automation**: multi-step business processes
+- **Computational graphs**: scientific computing, simulations
+- **Game logic**: entity systems, behavior trees
+- **Batch event processing**: a bounded set of events, processed to the end
+- **Prototyping** dataflow designs
 
-- **Data transformation pipelines** - ETL, data processing, format conversion
-- **Workflow automation** - Multi-step business processes
-- **Computational graphs** - Scientific computing, simulations
-- **Game logic** - Entity systems, behavior trees
-- **Batch event processing** - Bounded sets of events, processed to completion
-- **Experimental architectures** - Prototyping dataflow designs
+---
 
-It is **not** a streaming engine: a mesh runs to completion over the data it was given, rather than staying up and consuming an endless stream. See [Limitations](#limitations).
+## Limitations
+
+F-Mesh is **not** a classical FBP system and **not** a streaming engine. A mesh runs to completion
+over the data it was given.
+
+- Not suited to long-running components
+- No wall-clock events (timers, tickers)
+- Components run in discrete cycles, not in real time
+- No backpressure: a mesh holds its signals in memory for the whole run
+
+For real-time streaming, use a classical FBP system or a message queue. Known trade-offs (partial
+output before a wait, shared payloads, lost work when one component fails) are listed in
+[603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats).
 
 ---
 
 ## Documentation
 
-- **[Wiki](https://github.com/hovsep/fmesh/wiki)** - Full documentation (source lives in [`docs/wiki`](docs/wiki) — edit via PR, it is auto-synced to the wiki)
-- **[Examples Repository](https://github.com/hovsep/fmesh-examples)** - Working examples and patterns
-- **[API Reference](https://pkg.go.dev/github.com/hovsep/fmesh)** - Complete API docs
-- **[Flow-Based Programming](https://jpaulm.github.io/fbp/)** - Learn about FBP (by J. Paul Morrison)
----
-
-## Limitations
-
-F-Mesh is **not** a classical FBP implementation:
-
-- Not suitable for long-running components
-- No wall-clock time events (timers, tickers)
-- Components execute in discrete cycles, not real-time
-- No backpressure: a mesh holds its signals in memory for the whole run
-
-For real-time streaming or long-running processes, consider alternatives like traditional FBP systems or message queues.
-
-Known trade-offs that can bite — partial output before a wait, shared payloads, work lost when one
-component errors — are written down in [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)
-rather than left for you to find.
+- **[Wiki](https://github.com/hovsep/fmesh/wiki)**: full guide. Source is in [`docs/wiki`](docs/wiki); edit it by PR.
+- **[Examples](https://github.com/hovsep/fmesh-examples)**: working programs.
+- **[API reference](https://pkg.go.dev/github.com/hovsep/fmesh)**
+- **[Flow-Based Programming](https://jpaulm.github.io/fbp/)** by J. Paul Morrison
 
 ---
 
 ## Versioning
 
-F-Mesh is pre-production and the API is still moving. **Minor versions may contain breaking
-changes** until this notice is removed — pin an exact version if that matters to you, and read
-[CHANGELOG.md](CHANGELOG.md), where breaking changes are listed explicitly per release.
+F-Mesh is pre-production. **Minor versions may contain breaking changes** until this notice is
+removed. Pin an exact version if that matters to you. [CHANGELOG.md](CHANGELOG.md) lists every
+breaking change.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md), then:
-
-1. Check existing [issues](https://github.com/hovsep/fmesh/issues) or create a new one
-2. Fork the repository
-3. Create a feature branch
-4. Submit a pull request
+Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) first.
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT. See [LICENSE](LICENSE).
 
 ---
 
 <div align="center">
   <p>Made by <a href="https://github.com/hovsep">@hovsep</a></p>
-  <p>Star us on GitHub if you find F-Mesh useful!</p>
 </div>

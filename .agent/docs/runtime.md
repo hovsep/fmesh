@@ -1,34 +1,44 @@
 # Runtime — execution model
 
-How a mesh actually runs. Source: `fmesh.go` (`Run`, `runCycle`, `drainComponents`, `mustStop`),
+How a mesh runs. Source: `fmesh.go` (`Run`, `runCycle`, `mustStop`, `drainComponents`),
 `component/activation.go`, `component/activation_result.go`.
 
 ## Run loop
 
-`FMesh.Run(ctx)`:
+`FMesh.Run(ctx)` returns `(*RuntimeInfo, error)`. Steps:
 
-0. **Context setup** — when `config.TimeLimit > 0`, `Run` derives `context.WithTimeout(ctx, TimeLimit)`, so the limit is a real deadline that reaches activation functions rather than only being checked between cycles. The derived context is passed to every activation function, every hook, and the drain.
-1. `cleanUpPreviousRun` — clears all output ports (prevents signal accumulation between runs), resets `RuntimeInfo`. A mesh is re-runnable.
-2. `beforeRun` hooks — includes a **default hook that validates mesh structure** (parent-mesh/parent-component wiring, pipe destinations belong to the same mesh). Validation runs on **every** `Run`, in component-name order (deterministic errors).
-3. Loop: `runCycle` → `mustStop` → `drainComponents`. Note the order — stop conditions are checked **before** draining, so the final cycle's outputs are not flushed.
-4. `afterRun` hooks fire in a defer; an afterRun hook error is only surfaced when the run itself did not already fail.
+0. **`cleanUpPreviousRun`** — clears all output ports (no signal build-up between runs), resets
+   `RuntimeInfo` and starts the run clock. A mesh is re-runnable. It gets the caller's context,
+   without the time-limit deadline.
+1. **Time-limit deadline** — when `TimeLimit > 0`, `Run` wraps the context with
+   `context.WithTimeout(ctx, TimeLimit)`. The limit is a real deadline that reaches activation
+   functions, not only a check between cycles. It must come **after** the clock starts:
+   `contextError` tells the time limit from a caller's cancellation by run duration, so the
+   deadline must not fire before that duration reaches the limit. This context goes to every
+   activation function, hook and the drain.
+2. **`beforeRun` hooks** — include a **default hook that validates mesh structure** (parent mesh /
+   parent component wiring; pipe destinations belong to the same mesh). It runs on **every** `Run`,
+   in component-name order (deterministic errors). An empty mesh fails here with
+   `fmesh.ErrNoComponents`, so it never runs a cycle and user `BeforeRun` hooks do not fire.
+3. An already-canceled context stops here: **zero** cycles run.
+4. **Loop**: `runCycle` → `mustStop` → `drainComponents`. Stop conditions are checked **before**
+   the drain, so the final cycle's outputs are not flushed.
+5. **`afterRun` hooks** fire in a defer. Their error is returned only when the run itself did not
+   fail.
 
-`Run` returns `(*RuntimeInfo, error)`. `RuntimeInfo.Cycles` holds every executed cycle — the
-primary observability surface. Note this history is retained for the whole run and grows
-without bound by default — see "Scaling characteristics" below. Retention is configurable:
-`config.CyclesHistoryLimit` (0 = unlimited, the default) keeps only a sliding window of the
-most recent cycles; this is opt-in and backward-compatible with the default. The cap is
-enforced by the container itself (`cycle.Group.SetLenLimit`, applied in `newRuntimeInfo`):
-`Add` evicts the oldest cycles beyond the limit, so the run loop just adds cycles and cannot
-bypass retention. Cycle *numbers* keep counting regardless of eviction (numbering derives
-from the last cycle, not the group length).
+### Cycle history
 
-### Retention policies other than "last N" — use hooks
+`RuntimeInfo.Cycles` holds executed cycles — the main observability surface.
+- By default it keeps every cycle for the whole run and grows without bound (see "Scaling").
+- `fmesh.WithCyclesHistoryLimit(n)` keeps only the last `n` cycles. The container enforces it
+  (`cycle.Group.SetLenLimit`, set in `newRuntimeInfo`): `Add` evicts the oldest, so the run loop
+  cannot bypass it.
+- Cycle *numbers* keep counting after eviction (the next number comes from the last cycle, not the
+  group length).
 
-The built-in limit is a flight recorder: it always keeps the *most recent* cycles. Any other
-policy (first N, every k-th, errors-only, head+tail) is user code via a mesh-level
-`AfterCycle` hook, which receives every cycle as it completes — combine it with
-`CyclesHistoryLimit(1)` to keep the engine's own memory minimal. Keeping the first N cycles:
+For any other retention policy (first N, every k-th, errors only), use a mesh-level `AfterCycle`
+hook, which gets each cycle as it completes. Pair it with `WithCyclesHistoryLimit(1)` to keep the
+engine's own memory minimal. Keeping the first N cycles:
 
 ```go
 var startup []*cycle.Cycle
@@ -42,138 +52,153 @@ fm.SetupHooks(func(h *fmesh.Hooks) {
 })
 ```
 
-The hook runs synchronously in the run loop — keep it cheap, or hand the cycle to a buffered
-channel drained by your own goroutine (same pattern for streaming history to disk or an
-external store).
+The hook runs synchronously in the run loop. Keep it cheap, or hand the cycle to a buffered channel
+read by your own goroutine (the same pattern streams history to disk or a store).
 
 ## One cycle (`runCycle`)
 
-- Every component gets `MaybeActivate()` called in **its own goroutine**; the cycle waits on a `WaitGroup`. There is no per-cycle ordering between components.
-- `MaybeActivate` returns `ActivationCodeNoInput` without running `f` when **no input port has signals**. A single signal on any one input makes the component "ready" — the activation function must handle partial inputs itself (or return `ErrWaitingForInputs*`).
-- A cycle's activation results are recorded only for components that were ready (had at
-  least one input signal that cycle) — `ActivationCodeNoInput` results are never added to
-  `Cycle.ActivationResults()`. A missing `ByName(name)` entry means "component had no input
-  that cycle"; consumers of `RuntimeInfo` (including custom hooks) must treat a nil result
-  the same as not-activated. `WaitingForInputs*`, errors, panics, and `HookFailed` results
-  are always recorded. This keeps runtime info free of noise in sparse meshes (pipelines,
-  rings) where most components sit idle most cycles.
-- The cycle is always appended to `RuntimeInfo.Cycles`, even when it errored.
-- An empty mesh never reaches a cycle: the default beforeRun structure validation fails it with
-  the exported sentinel `fmesh.ErrNoComponents`, so user `BeforeRun` hooks do not fire either.
+- `beforeCycle` hooks, then every component's `MaybeActivate(ctx)` in **its own goroutine**, then
+  `wg.Wait()`, then `afterCycle` hooks. There is no ordering between components within a cycle.
+- `MaybeActivate` returns `ActivationCodeNoInput` without running the function when **no input port
+  has signals**. One signal on any input makes a component ready — the activation function must
+  handle partial inputs itself (or return a waiting sentinel).
+- Only results of ready components are recorded. `NoInput` results are never added to
+  `Cycle.ActivationResults()`, so a missing `ByName(name)` entry means "no input that cycle".
+  Consumers of `RuntimeInfo` (including hooks) must treat a nil result as not activated. Waiting,
+  error, panic and `HookFailed` results are always recorded. This keeps sparse meshes (pipelines,
+  rings) free of noise.
+- The cycle is always added to `RuntimeInfo.Cycles`, even when it failed. It is added after
+  `afterCycle` runs, so that hook sees it only as `cc.Cycle`, not as `Cycles.Last()`.
 
-## Activation result codes
+## Activation
 
-`ActivationResultCode` (in `component/activation_result.go`): `OK`, `NoInput`,
-`ReturnedError`, `Panicked`, `WaitingForInputsClear`, `WaitingForInputsKeep`, `HookFailed`.
-Panics inside activation functions and activation hooks are recovered (with stack trace) and become `Panicked`
-results as a `*component.PanicError` — a component panic never crashes the mesh; the error strategy decides whether the run
-stops. `IsError()` is true for both `ReturnedError` and `HookFailed` results, so component-level
-hook failures stop the mesh under `StopOnFirstErrorOrPanic` and surface in `Run()`'s error.
+`activate` runs three stages. Each recovers its own panic, so no stage re-runs:
+
+1. `BeforeActivation` hooks. If one fails, the activation function is skipped and the result is
+   `HookFailed`.
+2. The activation function.
+3. `AfterActivation` hooks — run exactly once, whatever happened before.
+
+Result codes (`component/activation_result.go`): `OK`, `NoInput`, `ReturnedError`, `Panicked`,
+`WaitingForInputsClear`, `WaitingForInputsKeep`, `HookFailed`.
+
+- A panic in the function or a hook is recovered with its stack and becomes a `Panicked` result
+  carrying a `*component.PanicError`. A component panic never crashes the mesh; the error strategy
+  decides whether the run stops.
+- How hook failures and hook panics re-code the result: [hooks.md](hooks.md).
+- `IsError()` is true for `ReturnedError` and `HookFailed`, so hook failures stop the mesh under
+  `StopOnFirstErrorOrPanic` and surface in `Run`'s error.
 
 ## Waiting-for-inputs protocol
 
-Control-flow sentinels in `component/errors.go` — returned **by activation functions**, not real failures:
+Sentinels in `component/errors.go`, returned **by activation functions**. They are control flow,
+not failures:
 
-- `ErrWaitingForInputs` — skip this cycle; the scheduler **clears** the component's inputs.
-- `ErrWaitKeepingInputs` — skip this cycle; inputs are **kept** for the next cycle (use when accumulating partial inputs, e.g. waiting for both operands).
+| Sentinel | Code | Inputs |
+|---|---|---|
+| `ErrWaitDroppingInputs` (or bare `ErrWaitingForInputs`) | `WaitingForInputsClear` | **cleared** at drain |
+| `ErrWaitKeepingInputs` | `WaitingForInputsKeep` | **kept** for the next cycle (accumulating, e.g. a join waiting for its second operand) |
 
-A component that reported waiting is not drained (its outputs are not flushed) and does not count as an "error" under any strategy.
+Both wrap `ErrWaitingForInputs`, so `errors.Is(err, component.ErrWaitingForInputs)` means "waiting,
+either mode". A waiting component's outputs are not flushed, and waiting is not an error under any
+strategy.
 
-## Drain phase (`drainComponents`)
+## Drain (`drainComponents`)
 
-After each non-final cycle: clear inputs of activated components (except `WaitingForInputsKeep`),
-then `FlushOutputs` on every component that activated (except those waiting for input).
-Components are drained in **name order** (`Collection.AllOrdered`), so fan-in signal order is
-deterministic. `Flush` fans out **the same `*Signal` pointers** to all connected inputs, then
-clears the source port (only when all deliveries succeeded — errors are joined). Flushing a port
-with no signals or no pipes is a no-op, not an error.
+Runs after every non-final cycle, over activated components in **name order**
+(`Collection.AllOrdered`), so fan-in order is deterministic. Two passes, which cannot be merged
+(flushing delivers into downstream inputs, and a single pass would clear them):
 
-## Stop conditions (`mustStop`, checked in order)
+1. Clear the inputs of every activated component, except `WaitingForInputsKeep`.
+2. `FlushOutputs` on every activated component, except waiting ones.
 
-1. Cycle limit hit (`config.CyclesLimit`, default **1000**; 0 = unlimited) → `ErrReachedMaxAllowedCycles`. The limit is **exact** — it is the number of cycles that execute, not limit+1 — and the check also requires `HasActivatedComponents()`, so a mesh whose last allowed cycle was already empty falls through to the natural stop instead of a false error.
-2. Time limit hit (`config.TimeLimit`, default **5s**; 0 = unlimited) → `ErrTimeLimitExceeded`. The limit is also a deadline on the run context, so an activation function that respects its context is interrupted by it; one that ignores its context still runs to completion, and the mesh stops after it returns.
-3. Context canceled → `ErrRunCanceled`, wrapping `ctx.Err()` so `errors.Is(err, context.Canceled)` works. Checked **before** the error strategy: a canceled run makes activation functions return `ctx.Err()`, which would otherwise be reported as ordinary activation errors and hide why the mesh stopped. A caller-supplied deadline that fires before the mesh's own `TimeLimit` is reported as `ErrRunCanceled`, not `ErrTimeLimitExceeded` — the two are told apart by elapsed time.
-4. Error strategy (`config.ErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked **before** the natural stop so errors are never swallowed:
-   - `StopOnFirstErrorOrPanic` → stop with `ErrHitAnErrorOrPanic` (includes hook failures)
-   - `StopOnFirstPanic` → errors ignored, panics stop with `ErrHitAPanic`
-   - `IgnoreAll` → run until natural stop or a limit
-5. **Natural stop**: no component activated in the last cycle → `nil` error. This is the normal termination path — a mesh with a loopback pipe or a self-feeding component never stops naturally.
-6. **Livelock** (`config.LivelockThreshold`, default **2**; 0 = disabled) → `ErrLivelockDetected`.
-   Checked after the natural stop (a livelocked cycle by definition activated something) and last
-   overall, because a real error is always the better explanation. A cycle is *stalled* when every
-   component that activated returned a waiting result **and** the mesh's pending signal count is
-   unchanged. Both halves matter: the first alone would flag a component legitimately accumulating
-   input, the second alone would flag a busy-but-idempotent mesh. `LivelockThreshold` consecutive
-   stalled cycles end the run, and the error names each waiting component with its empty and
-   non-empty input ports, plus a count of components that never activated at all.
+`Flush` sends **the same `*Signal` pointers** to every connected input, then clears the source —
+only if every delivery succeeded (errors are joined). Flushing a port with no signals or no pipes is
+a no-op.
 
-   Why this is decidable rather than a guess: waiting components are never drained, so a stalled
-   cycle moves no signals, so the next cycle is bit-identical. Waiters that *drop* their inputs
-   cannot trigger it — dropping changes the pending count, and next cycle they have no input and
-   stop activating, which is a natural stop.
+## Stop conditions (`mustStop`, in order)
 
-An empty mesh never reaches `mustStop` at all — it fails beforeRun validation with `fmesh.ErrNoComponents`.
+1. **Cycle limit** (default **1000**; `WithUnlimitedCycles` removes it) →
+   `ErrReachedMaxAllowedCycles`. The limit is **exact**: the number of cycles that execute, not
+   limit+1. It also requires `HasActivatedComponents()`, so a last allowed cycle that was already
+   empty falls through to the natural stop instead of a false error.
+2. **Time limit** (default **5s**; `WithUnlimitedTime` removes it) → `ErrTimeLimitExceeded`. It is
+   also the run-context deadline, so an activation function that respects its context is
+   interrupted. One that ignores it runs to completion, and the mesh stops after it returns.
+3. **Context canceled** → `ErrRunCanceled`, wrapping `ctx.Err()` (`errors.Is(err,
+   context.Canceled)` works). Checked **before** the error strategy: a canceled run makes activation
+   functions return `ctx.Err()`, which would otherwise look like ordinary errors and hide why the
+   mesh stopped. A caller deadline shorter than `TimeLimit` is reported as `ErrRunCanceled`, not
+   `ErrTimeLimitExceeded` — `contextError` tells them apart by elapsed time.
+4. **Error strategy** (`WithErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked
+   **before** the natural stop, so errors are never swallowed:
+   - `StopOnFirstErrorOrPanic` → `ErrHitAnErrorOrPanic` (includes hook failures)
+   - `StopOnFirstPanic` → errors ignored; panics stop with `ErrHitAPanic`
+   - `IgnoreAll` → run until a natural stop or a limit
+5. **Natural stop** — no component activated in the last cycle → `nil`. The normal end. A mesh
+   with a loopback pipe or a self-feeding component never stops naturally.
+6. **Livelock** (`WithLivelockThreshold(n)`, default **2**; `WithoutLivelockDetection` disables) →
+   `ErrLivelockDetected`. After the natural stop (a livelocked cycle activated something) and last
+   (a real error is always the better explanation).
+   - A cycle is *stalled* when every activated component returned a waiting result **and** the
+     mesh's pending signal count did not change. Both halves are needed: the first alone flags a
+     component legitimately accumulating; the second alone flags a busy but idempotent mesh.
+   - `n` stalled cycles in a row end the run. The error names each waiting component with its empty
+     and non-empty input ports, plus a count of components that never activated.
+   - This is exact, not a guess: waiting components are not drained, so a stalled cycle moves no
+     signals and the next cycle is identical. Waiters that *drop* inputs cannot trigger it —
+     dropping changes the pending count, and next cycle they have no input (a natural stop).
+
+In tests that expect a limit: with defaults, an infinite busy mesh stops after 1000 cycles or 5s,
+whichever comes first; a stalled mesh stops after 2 cycles via livelock detection.
 
 ### Cancellation is cooperative
 
-Go cannot preempt a goroutine, so cancellation has hard limits that must be stated rather than
-papered over:
-
-- The context is checked **between cycles**. A cycle that has started always runs to completion.
-- An activation function that ignores its context blocks the mesh for as long as it runs. `Run`
-  cannot return before `wg.Wait()`.
-- Therefore a mesh is only as interruptible as its slowest activation function. Pass the context
-  to anything that blocks; poll `ctx.Err()` inside long loops.
+Go cannot preempt a goroutine, so:
+- The context is checked **between cycles**. A started cycle always runs to completion.
+- An activation function that ignores its context blocks the mesh while it runs; `Run` cannot
+  return before `wg.Wait()`.
+- So a mesh is only as interruptible as its slowest activation function. Pass the context to
+  anything that blocks; check `ctx.Err()` in long loops.
 - An already-canceled context runs **zero** cycles.
 
 ### Panic reporting
 
-A recovered panic becomes a `*component.PanicError` carrying the component name, the panic value
-and the stack. `Error()` is **one line** (`panicked: <value>`); the stack is reached with
-`errors.As` and `StackTrace()`, and is printed by the run loop when `WithDebug` is on.
-
-That split exists because the stack used to be formatted into the message, which produced
-multi-kilobyte single-line errors: unreadable in a log, useless in an assertion, impossible to
-grep. `Unwrap` returns the panic value when something threw an `error`, so `errors.Is` reaches
-through the panic to what was actually thrown.
-
-When building a run error from a cycle, use `cycleFailures` rather than passing
-`AllErrorsCombined`/`AllPanicsCombined` to `%w` directly. A nil error handed to `%w` renders
-`%!w(<nil>)`, and a cycle with errors but no panics — the commoner case — used to print exactly
-that to users.
-
-When writing tests that expect limits to trigger, remember the defaults: an infinite mesh stops at cycle 1001 or 5s, whichever comes first — unless it is stalled rather than busy, in which case livelock detection ends it after 2 cycles.
+- A recovered panic is a `*component.PanicError` with the component name, the panic value and the
+  stack.
+- `Error()` is **one line** (`panicked: <value>`), so logs and assertions stay readable. Get the
+  stack with `errors.As` and `StackTrace()`; the run loop's debug hook prints it when `WithDebug` is
+  on.
+- `Unwrap` returns the panic value when it is an `error`, so `errors.Is` reaches what was thrown.
+- To build a run error from a cycle, use `cycleFailures`, not `AllErrorsCombined`/
+  `AllPanicsCombined` passed to `%w` directly: a nil error in `%w` renders `%!w(<nil>)`.
 
 ## Scaling characteristics (measured)
 
-Empirical envelope from stress experiments (July 2026, 8-core/16 GiB arm64 laptop). The
-absolute numbers are machine-specific; the complexity classes are the durable part.
+Measured July 2026 on an 8-core / 16 GiB arm64 laptop. The numbers are machine-specific; the
+complexity classes are what lasts.
 
-- **Width scales near-linearly.** ~1.5–4 µs of scheduler overhead per component per cycle
-  and ~300 B of heap per component: a 10⁶-component mesh builds in ~2 s and runs a
-  one-wave computation in ~10 s. But `runCycle` spawns one goroutine per component per
-  cycle — ready or not — so at 10⁷ components the goroutine stacks alone (tens of GiB)
-  are an OOM risk before speed becomes the problem.
-- **Fan-in is O(N²).** `ForwardSignals` appends one signal at a time, and each append
-  copies the destination port's whole signal group (`port.putSignals` →
-  `signal.Group.With`). N outputs converging on a single input port become impractical
-  around N ≈ 10⁵ (tens of seconds spent in one drain). Guarded by `BenchmarkMeshRun/fan-in`.
-- **Long-running meshes are memory-bound, not time-bound.** Per-cycle cost stays flat as
-  cycle count grows (~10³–10⁴ cycles/s depending on width), but `RuntimeInfo.Cycles`
-  retains an `ActivationResult` for every component that had input in every cycle (~100 B ×
-  components × cycles — `NoInput` results are never recorded, see "One cycle" above, which
-  already trims sparse meshes) and, by default, nothing is freed during `Run` — even though
-  the run loop itself only reads `Cycles.Last()`. 100 components × 10⁵ cycles already holds
-  ~1 GiB in a dense mesh. Rule of thumb: keep components × cycles per `Run` under ~10⁸ on a
-  16 GiB machine, or bound memory explicitly with `config.CyclesHistoryLimit`, which caps
-  `RuntimeInfo.Cycles` to a sliding window of the most recent cycles (older cycles are
-  evicted, GC-eligible), fixing the long-run memory bound.
+- **Width scales near-linearly.** ~1.5–4 µs of scheduler overhead per component per cycle, and
+  ~300 B of heap per component. A 10⁶-component mesh builds in ~2 s and runs one wave in ~10 s. But
+  `runCycle` starts one goroutine per component per cycle, ready or not, so at 10⁷ components the
+  goroutine stacks alone (tens of GiB) risk OOM before speed is the problem.
+- **Fan-in is O(N²).** Each delivery copies the destination port's whole signal group
+  (`port.putSignals` → `signal.Group.With`). N outputs into one input port become impractical near
+  N ≈ 10⁵ (tens of seconds in one drain). Guarded by `BenchmarkMeshRun/fan-in`.
+- **Long runs are memory-bound, not time-bound.** Per-cycle cost stays flat (~10³–10⁴ cycles/s
+  depending on width). But by default `RuntimeInfo.Cycles` keeps an `ActivationResult` for every
+  component with input in every cycle (~100 B × components × cycles) and frees nothing during
+  `Run`, although the loop only reads `Cycles.Last()`. 100 components × 10⁵ cycles already holds
+  ~1 GiB in a dense mesh. Rule of thumb: keep components × cycles per `Run` under ~10⁸ on 16 GiB, or
+  bound memory with `WithCyclesHistoryLimit`.
 
 ## Component state
 
-`component.State` (`map[string]any`) persists across cycles and across `Run`s; it is only reset
-via `ResetState()` or `WithInitialState`. Safe without locks because a component activates at
-most once per cycle in a single goroutine. Rich API: `Get`, `GetOrDefault`, `Set`, `SetIfAbsent`,
-`Upsert` (creates if missing), `Update` (only if present), `Delete`, and the generic method
-`state.GetTyped[T](key)` (error on missing key or wrong type; there is deliberately no panicking
-`Must` twin — return the error from the activation function).
+`component.State` (`map[string]any`) persists across cycles and `Run`s. Only `ResetState()` or
+`WithInitialState` resets it. It needs no locks: a component activates at most once per cycle, in
+one goroutine.
+
+API: `Has`, `Get`, `GetOrDefault`, `Set`, `SetIfAbsent`, `Upsert` (creates if missing), `Update`
+(only if present), `UpdateAndGet`, `Delete`, and the generic `GetTyped[T](key)` (error on a missing
+key or wrong type). There is deliberately no panicking `Must` twin — return the error from the
+activation function.

@@ -1,8 +1,11 @@
-> 📝 This wiki is auto-synced from [`docs/wiki`](https://github.com/hovsep/fmesh/tree/main/docs/wiki) in the main repository. Do not edit pages here — changes will be overwritten on the next sync. Edit via PR instead.
+> This wiki is synced from [`docs/wiki`](https://github.com/hovsep/fmesh/tree/main/docs/wiki) in the main repository. Edits made here are overwritten on the next sync. Edit by PR instead.
 
-F-Mesh (aka FMesh or fmesh) is a Golang framework inspired by FBP (Flow-Based Programming) that enables the creation of data flow networks using interconnected components, each processing signals. Components may have multiple inputs and outputs called "ports" linked via type-agnostic pipes.
+F-Mesh (also FMesh or fmesh) is a Go framework for Flow-Based Programming (FBP). You build a
+data-flow network from components. Each component has input and output **ports**. Type-agnostic
+**pipes** connect the ports, and **signals** flow through them.
 
-F-Mesh provides extension mechanisms including hooks (observability), metadata (string and numeric tags on every entity), and collections/groups (working with multiple entities).
+Extension points: hooks (run your code at key moments), plugins, metadata (string and number tags
+on every entity) and collections/groups (work with many entities at once).
 
 # Installation
 
@@ -10,18 +13,17 @@ F-Mesh provides extension mechanisms including hooks (observability), metadata (
 go get github.com/hovsep/fmesh
 ```
 
-# Release naming and versioning conventions
+Requires Go 1.27 or later.
 
-F-Mesh releases are named after 17 historical capitals of Armenia, honouring the ancient cities that played foundational roles in Armenian history. This tradition highlights the project's growth with each version, paralleling Armenia's own historical progression.
+# Versioning
 
-F-Mesh follows semantic versioning, with one caveat while the project is pre-production: **minor
-versions may contain breaking changes**. Breaking changes are listed explicitly per release in
-[CHANGELOG.md](https://github.com/hovsep/fmesh/blob/main/CHANGELOG.md). Pin an exact version if
-that matters to you.
+F-Mesh uses semantic versioning. While it is pre-production, **minor versions may contain breaking
+changes**. [CHANGELOG.md](https://github.com/hovsep/fmesh/blob/main/CHANGELOG.md) lists each one.
+Pin an exact version if that matters to you.
 
-Release **tags** are plain semver (`v1.12.0`); the Armenian capital naming lives in the release
-title, because a tag suffix would make Go treat the release as a pre-release and hide it from
-`go get`. See [releases page](https://github.com/hovsep/fmesh/releases).
+Release tags are plain semver (`v1.12.0`). Each release is named after one of the 17 historical
+capitals of Armenia; the name is in the release title, not the tag. See the
+[releases page](https://github.com/hovsep/fmesh/releases).
 
 # User guide
 
@@ -45,30 +47,30 @@ title, because a tag suffix would make Go treat the release as a pre-release and
 
 # API reference (user-facing packages)
 
-* [FMesh](https://pkg.go.dev/github.com/hovsep/fmesh) — mesh, config, hooks
-* [Component](https://pkg.go.dev/github.com/hovsep/fmesh/component)
-* [Port](https://pkg.go.dev/github.com/hovsep/fmesh/port)
-* [Signal](https://pkg.go.dev/github.com/hovsep/fmesh/signal)
-* [Meta (metadata store)](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
-* [profiler (separate module)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler)
-* [autowire (bundled mesh plugin)](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire)
+* [fmesh](https://pkg.go.dev/github.com/hovsep/fmesh): mesh, options, hooks
+* [component](https://pkg.go.dev/github.com/hovsep/fmesh/component)
+* [port](https://pkg.go.dev/github.com/hovsep/fmesh/port)
+* [signal](https://pkg.go.dev/github.com/hovsep/fmesh/signal)
+* [meta](https://pkg.go.dev/github.com/hovsep/fmesh/meta)
+* [profiler](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler): bundled mesh plugin
+* [autowire](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire): bundled mesh plugin
 
-The `cycle` package surfaces in the run-time report — see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run); hooks are covered in [501. Hooks](https://github.com/hovsep/fmesh/wiki/501.-Hooks).
+The `cycle` package appears in the run report: see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run).
 
 # Examples
 
-[fmesh-examples](https://github.com/hovsep/fmesh-examples) — runnable programs, from single-file demos to full applications. Highlights:
+[fmesh-examples](https://github.com/hovsep/fmesh-examples) has runnable programs, from small demos to full apps:
 
-- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/pipeline) — text-processing pipeline with a generic stage-chaining builder
-- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter) — metadata-based content routing
-- [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/fibonacci) — feedback-loop generator via loopback pipes
-- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/electric_circuit) — stateful two-component feedback loop with natural termination
-- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/load_balancer) — round-robin dispatch/collect with indexed ports
-- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/async_input) — driving a mesh from live external input (HTTP crawler)
-- [nesting](https://github.com/hovsep/fmesh-examples/tree/main/nesting) — a mesh running inside a component
-- [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/can_bus) — broadcast bus topology; the advanced variant models a full CAN protocol stack
-- [simulation](https://github.com/hovsep/fmesh-examples/tree/main/simulation) — interactive REPL-driven step simulation harness
-- [life](https://github.com/hovsep/fmesh-examples/tree/main/life) — large tick-driven physiological simulation with nested meshes and a live TUI
-- [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphviz) — static and per-cycle graph export
+- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/pipeline): a text pipeline built from chained stages
+- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter): metadata-based content routing
+- [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/fibonacci): a generator built on a loopback pipe
+- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/electric_circuit): a stateful feedback loop that stops on its own
+- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/load_balancer): round-robin dispatch/collect with indexed ports
+- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/async_input): a mesh driven by live external input (HTTP crawler)
+- [nesting](https://github.com/hovsep/fmesh-examples/tree/main/nesting): a mesh running inside a component
+- [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/can_bus): a broadcast bus; the advanced variant models the full CAN stack
+- [simulation](https://github.com/hovsep/fmesh-examples/tree/main/simulation): a step-by-step simulation driven from a REPL
+- [life](https://github.com/hovsep/fmesh-examples/tree/main/life): a large body simulation with nested meshes and a live TUI
+- [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphviz): static and per-cycle graph export
 
-The techniques these examples demonstrate are cataloged in [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes).
+The techniques they use are listed in [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes).

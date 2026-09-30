@@ -1,13 +1,12 @@
-# profiler — where the mesh spends its time
+# profiler: where the mesh spends its time
 
-A mesh plugin that measures the mesh, and only the mesh: whole runs, single cycles, every
-component's activations, and the traffic on every pipe. There is deliberately no process-wide
-measurement — no CPU, heap or goroutine sampling — because those numbers cannot be attributed to
-the mesh, and a profiler that mixes attributable numbers with ambient ones invites misreading.
+A mesh plugin that measures the mesh and only the mesh: whole runs, single cycles, each
+component's activations and the traffic on each pipe. It does no process-wide sampling (CPU, heap,
+goroutines), because those numbers cannot be attributed to the mesh.
 
-The per-component numbers are the reason it exists: a Go CPU profile of a mesh is dominated by
-the scheduler and barely distinguishes one component from another, because every component's work
-is the same handful of runtime calls. Timing activations directly names the slow one.
+Why per-component numbers: a Go CPU profile of a mesh is mostly scheduler work. Every component
+calls the same few runtime functions, so the profile barely tells them apart. Timing each
+activation names the slow component directly.
 
 ```go
 import "github.com/hovsep/fmesh/plugin/profiler"
@@ -32,25 +31,21 @@ counter                                 7        612µs         87µs         71
 | Method | Returns |
 |--------|---------|
 | `Runs()` | `Stat` for whole runs |
-| `Cycles()` | `Stat` for individual cycles |
-| `Components()` | `[]ComponentStat`, slowest total first |
-| `TopN(n)` | the `n` busiest components, by activation count |
-| `Report()` | the table above, as a string |
-| `Reset()` | discards everything measured so far |
+| `Cycles()` | `Stat` for single cycles |
+| `Components()` | `[]ComponentStat`, highest total time first: *what is slow* |
+| `TopN(n)` | the `n` components with the most activations: *what is hot* |
+| `Report()` | the tables above, as a string |
+| `Reset()` | drops everything measured so far |
 
-`Stat` carries `Count`, `Total`, `Min`, `Max` and an `Avg()` method. Stats accumulate across
-runs, which is what you want when comparing a mesh against itself; call `Reset()` between runs
-that should not be pooled. One profiler belongs to one mesh.
-
-`TopN` and `Components()` answer different questions. `Components()` sorts by total time — *what
-is slow*. `TopN` sorts by activation count — *what is hot*. A component that activates every cycle
-and does almost nothing can matter more than one that is individually slow but rarely runs.
+- `Stat` has `Count`, `Total`, `Min`, `Max` and an `Avg()` method.
+- Stats add up across runs. Call `Reset()` between runs you do not want to pool.
+- One profiler belongs to one mesh.
+- Hot can matter more than slow: a component that runs every cycle and does little can cost more
+  than a slow one that rarely runs.
 
 ## Choosing what to measure
 
-Time is one dimension of three. The others are off by default, because their costs differ and an
-always-on measurement distorts what it measures — the same reason Go's own block and mutex
-profiles have to be switched on deliberately while CPU and heap do not.
+Timing is on by default. The other two modes are opt-in, because each has a cost.
 
 ```go
 prof := profiler.New(profiler.ModeTiming | profiler.ModeThroughput)
@@ -61,14 +56,13 @@ everything := profiler.New(profiler.ModeAll)
 |------|----------|------|
 | `profiler.ModeTiming` | runs, cycles, component activations | the default |
 | `profiler.ModeThroughput` | signals through each pipe | a hook on every output port, fired once per pipe per flush |
-| `profiler.ModeTimeline` | one record per cycle | retains a record per cycle, bounded by `SetTimelineLimit` |
+| `profiler.ModeTimeline` | one record per cycle | keeps a record per cycle, capped by `SetTimelineLimit` |
 
-`profiler.New()` with no arguments measures `ModeTiming`. `Modes()` reports what a profiler is
-measuring.
+`profiler.New()` with no arguments means `ModeTiming`. `Modes()` reports what a profiler measures.
 
-## Pipe throughput — which connections carry the traffic
+## Pipe throughput
 
-With `ModeThroughput`, the report grows a second table:
+With `ModeThroughput`, the report adds a pipe table:
 
 ```
 pipe                                                  transfers    signals      avg    min    max
@@ -82,27 +76,18 @@ tokenizer.debug -> logger.in                                  0          0     0
 | `Pipes()` | `[]PipeStat`, most signals first |
 | `TopNPipes(n)` | the `n` pipes that carried a batch most often |
 
-`Flow` carries `Transfers`, `Signals`, `Min`, `Max` and an `Avg()` batch size. `PipeStat` adds
-the `Source` and `Destination` labels — `component.port` — and a `Pipe()` method rendering the
-edge as one string.
+- `Flow` has `Transfers`, `Signals`, `Min`, `Max` and an `Avg()` batch size.
+- `PipeStat` adds `Source` and `Destination` (as `component.port`) and a `Pipe()` method that
+  renders the edge as one string.
+- Every wired pipe is listed, even one that never carried a signal (the last row above). Unused
+  pipes sort last in `Pipes()`, so the coldest pipes are at its tail.
+- `TopNPipes` counts how often, not how much, like `TopN`.
+- Pipes created after `AddComponents` are measured: the hook lives on the output port. Output
+  ports added later with `AddOutputs` are not, because a plugin sees a component only when it is added.
 
-There is no accessor for the coldest pipes because `Pipes()` is volume-sorted: they are its tail.
-That last row above is the point — a pipe that was wired and never carried anything. Pipes are
-*registered* as well as counted, so one that never fired still appears, which no hook firing only
-on traffic could report.
+## Timeline
 
-`TopNPipes` is to `Pipes()` what `TopN` is to `Components()`: how often, not how much. A pipe
-firing every cycle with a single signal shapes a mesh more than one that moved a thousand signals
-once.
-
-Pipes wired *after* `AddComponents` are measured — the hook lives on the port, not the pipe.
-Output ports added later with `AddOutputs` are not, which is the limitation every mesh plugin
-shares: a plugin only ever sees a component as it arrives.
-
-## Timeline — any cycle-level stat, against the cycle number
-
-With `ModeTimeline`, `Timeline()` returns one `CycleRecord` per cycle — the raw rows for a chart,
-with no formatting imposed:
+With `ModeTimeline`, `Timeline()` returns one `CycleRecord` per cycle, ready to plot:
 
 ```go
 for _, r := range prof.Timeline() {
@@ -110,43 +95,34 @@ for _, r := range prof.Timeline() {
 }
 ```
 
-`Run` and `Number` are the x-axis; `Duration`, `Activations`, `Errors`, `Panics`, `Waiting` and
-`SignalsMoved` are y-axes. `Run` matters because cycle numbers restart at 1 on every run while
-the timeline accumulates — `Number` alone is not unique.
+- X-axis: `Run` and `Number`. Cycle numbers restart at 1 on each run, so use both.
+- Y-axis: `Duration`, `Activations`, `Errors`, `Panics`, `Waiting`, `SignalsMoved`.
+- `SignalsMoved` counts what the drain *after* that cycle delivered, and needs `ModeThroughput`.
+  The **last cycle of a run always shows zero**: the mesh stops before draining it.
+- A `Duration` of zero means the cycle never finished (a hook failed), not that it was instant.
+- `SetTimelineLimit(n)` caps how many records are kept. The default is 10,000 (about 1 MB); zero
+  means no limit. Old records are dropped in chunks, so the cap is a ceiling, not an exact count.
 
-Two things about the shape of this data are worth knowing before reading a chart of it:
+## Goroutine labels
 
-- A cycle's drain runs *after* the cycle, so `SignalsMoved` counts what the drain following that
-  cycle delivered. The **last cycle of a run always reports zero**: the mesh stops before
-  draining it.
-- A `Duration` of zero on a record means the cycle never finished — a failing `BeforeCycle` hook
-  — rather than an instant cycle.
-
-`SetTimelineLimit(n)` caps retention, defaulting to 10,000 records (about 1 MB); zero means
-unlimited. It is a ceiling rather than an exact count, because eviction drops the oldest in
-chunks.
-
-## Goroutine labels — attributing what the profiler does not measure
-
-The profiler measures nothing process-wide, but it makes the process-wide tools attributable:
-every activation runs on a goroutine labeled with `fmesh.mesh` and `fmesh.component`
-(`runtime/pprof` labels), whatever modes are enabled. A CPU profile taken while the mesh runs can
-then be focused on one component —
+The profiler does not measure the process, but it helps process-wide tools. Every activation runs
+on a goroutine with the `runtime/pprof` labels `fmesh.mesh` and `fmesh.component`, in every mode.
+So you can focus a CPU profile on one component:
 
 ```
 go tool pprof -tagfocus=fmesh.component=tokenizer cpu.prof
 ```
 
-— and since Go 1.27 goroutine tracebacks carry the labels in their header, so the stack a
-`component.PanicError` keeps names the component that panicked:
+Since Go 1.27, goroutine tracebacks show labels in the header. So the stack kept by a
+`component.PanicError` names the component that panicked:
 
 ```
 goroutine 12 [running] {fmesh.component: tokenizer, fmesh.mesh: mesh}:
 ```
 
-Labels set on the run context by the caller (`pprof.Do`) are kept; the mesh's are added to them.
+Labels the caller set on the run context (with `pprof.Do`) are kept; the mesh adds its own.
 
 ## More
 
-- [Plugins wiki page](https://github.com/hovsep/fmesh/wiki/502.-Plugins) — how mesh plugins work.
+- [Plugins wiki page](https://github.com/hovsep/fmesh/wiki/502.-Plugins): how mesh plugins work.
 - [API reference](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler).
