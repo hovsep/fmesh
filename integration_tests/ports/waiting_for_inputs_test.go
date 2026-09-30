@@ -80,10 +80,7 @@ func Test_WaitingForInputs(t *testing.T) {
 					panic(err)
 				}
 
-				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
-					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-					CyclesLimit:           5,
-				}))
+				fm := testutil.MustFMesh("fm", fmesh.WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic), fmesh.WithCyclesLimit(5))
 				if err := fm.AddComponents(d1, d2, d3, d4, d5, s); err != nil {
 					panic(err)
 				}

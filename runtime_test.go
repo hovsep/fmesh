@@ -233,10 +233,7 @@ func Test_MultipleRun(t *testing.T) {
 	})
 
 	t.Run("mesh with error handling strategy stops on error", func(t *testing.T) {
-		fm := mustNewFMesh("test fm", WithConfig(Config{
-			ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-			CyclesLimit:           0,
-		}))
+		fm := mustNewFMesh("test fm", WithErrorHandlingStrategy(StopOnFirstErrorOrPanic), WithUnlimitedCycles())
 		require.NoError(t, fm.AddComponents(
 			mustNewComponent("faulty",
 				component.WithInputs("trigger"),

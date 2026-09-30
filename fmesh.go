@@ -26,7 +26,7 @@ type FMesh struct {
 	components  *component.Collection
 	runtimeInfo *RuntimeInfo
 	logger      *log.Logger
-	config      Config
+	config      config
 	hooks       *Hooks
 	plugins     *plugin.Registry[*FMesh]
 

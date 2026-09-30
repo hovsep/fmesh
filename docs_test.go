@@ -188,6 +188,7 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		"AsInt", "AsString", "AsBool", "AsFloat64", "MustGetTyped",
 		"AsOrDefault", "FirstAsOrDefault", "AsFloat64OrDefault",
 		"OnActivation", "OnSuccess", "OnError", "OnPanic", "OnWaitingForInputs",
+		"WithConfig",
 	}
 	banned := make(map[string]bool, len(removed))
 	for _, name := range removed {
