@@ -474,6 +474,11 @@ g = g.WithLabel("k", "v")  // after
   `OnClear` and the component activation hooks are only built when a hook is registered, saving
   four heap allocations per component per cycle.
 
+- Hitting the time limit is reported as `ErrTimeLimitExceeded`, not `ErrRunCanceled`. The
+  deadline was set before the run clock started, so it could fire while the run's measured
+  duration was still under the limit — by as long as the previous run's cleanup took, including
+  any `OnClear` hooks on output ports.
+
 ### Migration checklist
 
 1. `fm.Run()` → `fm.Run(ctx)`.
