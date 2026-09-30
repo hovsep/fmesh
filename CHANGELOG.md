@@ -327,15 +327,19 @@ sees every outcome, so the rest was a second, buggy path to the same place. Bran
 instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation`, which is not
 the same: it runs before the component's own function, and its error is a hook failure — the
 function is skipped, the component does not count as activated, its inputs are not cleared, and
-`ErrWaitKeepingInputs` from it does not suspend the component. Behavior that must share the
-component's error path belongs in its activation function, composed with `component.Sequential`.
+`ErrWaitKeepingInputs` from it does not suspend the component. A hook that writes outputs goes to
+`AfterActivation` instead, guarded by `Result.Code() == ActivationCodeOK` — written before the
+function, they would be sent even when it fails and pile up while it waits. Behavior that must
+share the component's error path belongs in its activation function, composed with
+`component.Sequential`.
 
 ```go
 // before
 h.OnError(func(ctx context.Context, ac *component.ActivationContext) error {
     return ac.Component.ClearInputs(ctx)
 })
-h.OnActivation(latch)
+h.OnActivation(latch) // reads inputs, writes state
+h.OnActivation(emit)  // writes outputs
 
 // after
 h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
@@ -345,6 +349,12 @@ h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) err
     return ac.Component.ClearInputs(ctx)
 })
 h.BeforeActivation(latch)
+h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
+    if ac.Result.Code() != component.ActivationCodeOK {
+        return nil
+    }
+    return emit(ctx, ac.Component)
+})
 ```
 
 **`WithConfig` and `fmesh.Config` are gone.** `WithConfig` replaced the whole configuration, so
