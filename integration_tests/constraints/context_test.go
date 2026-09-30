@@ -141,9 +141,8 @@ func TestRun_TimeLimitReachesActivationFunctions(t *testing.T) {
 }
 
 func TestRun_TimeLimitCountsFromTheDeadline(t *testing.T) {
-	// The deadline is set before the previous run is cleaned up, but the run's
-	// duration is counted from after it. A slow OnClear hook on an output port
-	// widens that gap, and the time limit was then reported as a cancellation.
+	// The time limit counts from the run clock, so time spent clearing outputs
+	// before the run (here a slow OnClear hook) must not turn it into a cancel.
 	const timeLimit = 100 * time.Millisecond
 
 	synctest.Test(t, func(t *testing.T) {
