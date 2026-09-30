@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// config defines the configuration for the f-mesh. It is set only through the
-// With* options, which start from the defaults, so a caller can never leave a
-// field at a zero that means something else (0 is "no limit" on every limit).
+// config is the mesh configuration. It is set only through the With* options,
+// which start from the defaults: 0 means "no limit" on every limit, so a zero
+// must never stand for "not set".
 type config struct {
 	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics.
 	ErrorHandlingStrategy ErrorHandlingStrategy
