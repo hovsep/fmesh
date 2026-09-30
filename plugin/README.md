@@ -1,12 +1,11 @@
 # Bundled plugins
 
-`plugin` holds no code of its own — each bundled mesh plugin is its own package, with its own
-README:
+`plugin` has no code of its own. Each bundled mesh plugin is its own package with its own README:
 
 | Plugin | What it does |
 |--------|--------------|
-| [`autowire`](autowire/README.md) | Pipes components together by naming convention instead of by hand — wiring derived on arrival, in both directions, so `AddComponents` order does not matter. |
-| [`profiler`](profiler/README.md) | Mesh-centric measurement: run/cycle/activation timing, per-pipe throughput (never-fired pipes included), and a per-cycle timeline. Every number is attributable to the mesh. |
+| [`autowire`](autowire/README.md) | Connects components by port-name convention instead of `PipeTo` calls. Wiring works in both directions, so `AddComponents` order does not matter. |
+| [`profiler`](profiler/README.md) | Measures the mesh: run, cycle and activation timing, per-pipe throughput (unused pipes included) and a per-cycle timeline. |
 
 Both attach the same way:
 
@@ -17,6 +16,6 @@ fm, err := fmesh.New("mesh", fmesh.WithPlugins(
 ))
 ```
 
-To write your own — the interface is two methods, `Name()` and `Init(*fmesh.FMesh) error` — see
-the [Plugins wiki page](https://github.com/hovsep/fmesh/wiki/502.-Plugins), which covers the
-`OnComponentAdded` pattern every mesh plugin builds on.
+To write your own, implement two methods: `Name() string` and `Init(*fmesh.FMesh) error`. The
+[Plugins wiki page](https://github.com/hovsep/fmesh/wiki/502.-Plugins) shows how, including the
+`OnComponentAdded` hook that every mesh plugin builds on.

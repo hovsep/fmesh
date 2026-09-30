@@ -1,134 +1,212 @@
 # Design
 
-Architecture overview (the concept → type → package table and the execution loop) lives in
-`CLAUDE.md`; this doc covers the invariants and per-package rules behind it.
+The concept → type → package table and the execution loop are in `CLAUDE.md`. This doc holds the
+invariants and per-package rules behind them.
 
 ## Invariants
 
-**`*Signal` and `*signal.Group` are copy-on-write.** Mutating methods return a new value; receiver is never modified. `cloneSignal(s)` is the single clone primitive — nil-safe, use it in all CoW methods. `meta.Meta.Clone()` (nil-receiver safe) is the analogous primitive for metadata.
+**`*signal.Signal` and `*signal.Group` are copy-on-write.** Mutating methods return a new value and
+never modify the receiver. `cloneSignal(s)` is the one clone primitive (nil-safe) — use it in every
+CoW method. `meta.Meta.Clone()` (nil-receiver safe) is the same for metadata.
 
-**Payload is shallow-copied.** Mutable reference payloads (map, slice, pointer) must be treated as immutable by the caller. `nil` is a valid payload and must survive all CoW operations unchanged.
+**Payload is shallow-copied.** Callers must treat reference payloads (map, slice, pointer) as
+immutable. `nil` is a valid payload and must survive every CoW operation unchanged.
 
-**`Signal.Payload()` cannot fail.** It returns `any`. Since `nil` is a valid payload, the only way to hold a signal without one is to build the zero value instead of calling `New` — a construction bug, not a runtime condition, and not worth an error return on the most-called accessor in the library. Such a signal reads as `nil`. Type checking is `Signal.As[T]()` — or `Group.FirstAs[T]()` straight from a port; "was there a signal at all" is `Group.First() == nil`. `Group.FirstPayload` **keeps** its error, because an empty group is a real runtime state rather than a construction bug — do not collapse it.
+**`Signal.Payload()` cannot fail.** It returns `any`. A signal without a payload can only come from
+building the zero value instead of calling `New` — a construction bug, not worth an error on the
+most-called accessor. It reads as `nil`.
+- Type checks: `Signal.As[T]()`, or `Group.FirstAs[T]()` straight from a port.
+- "Was there a signal at all": `Group.First() == nil`.
+- `Group.FirstPayload` **keeps** its error: an empty group is a real runtime state. Do not collapse it.
 
-**`meta.Meta` is mutable.** It mutates in place. Do not make it CoW — `port`, `component`, `cycle`, and the Group/Collection types depend on mutation. The exceptions are `Clone()` and `Filter(pred)`, which return a new value.
+**`meta.Meta` mutates in place.** Do not make it CoW — `port`, `component`, `cycle` and the
+group/collection types depend on mutation. Only `Clone()` and `Filter(pred)` return a new value.
 
-**Errors are returned directly.** Methods that can fail return `error` as the last return value. Infallible methods (transformations like `Filter`, `Map`, `With*` on `signal.Signal`) return their type directly for fluency. There is no "poison object" or chainable error field on any type.
+**Errors are returned directly.** Fallible methods return `error` last. Infallible transforms
+(`Filter`, `Map`, `With*` on `signal.Signal`) return their type directly. No type has a "poison
+object" or chainable error field.
 
-**Runs are deterministic.** Given deterministic activation functions, a mesh produces identical
-output for identical input, every time. Three orderings uphold this, and nothing may introduce a
-fourth source of order:
+**Runs are deterministic.** With deterministic activation functions, the same input always gives
+the same output. Three orderings ensure this. Do not add a fourth source of order.
 
-1. **Within one port** — signals keep insertion order (FIFO). `signal.Group` is an ordered slice.
-2. **Multiple upstreams into one port** — arrival follows upstream **component-name** order, because
-   `drainComponents` iterates `component.Collection.AllOrdered()`.
-3. **Across the ports of one component** — traversal follows **port-name** order, because every
-   `port.Collection` traversal goes through `AllOrdered()`.
+1. **Within one port** — signals keep insertion order (FIFO); `signal.Group` is an ordered slice.
+2. **Many upstreams into one port** — arrival follows upstream **component-name** order, because
+   `drainComponents` walks `component.Collection.AllOrdered()`.
+3. **Across the ports of one component** — traversal follows **port-name** order.
 
-The third one was map iteration order until it was fixed: `Inputs().Signals()` returned four
-different orders across 200 identical runs, and the order output ports flush in decides what a
-shared downstream port receives. **Never range over `c.ports` directly** — inside the package range over `c.each` (allocation-free,
-no per-port map lookup), outside it use `AllOrdered()`. The collection keeps the sorted `[]*Port`
-alongside the name map and rebuilds it on membership change, not lazily on read: ports are read from
-activation goroutines, and a lazily filled cache would turn a read into a write. Traversal must stay
-allocation-free — `port/collection_bench_test.go` guards that.
+Keyed collections (`port.Collection`, `component.Collection`) embed `internal/collection.Keyed[T]`,
+which keeps a name-sorted slice beside the name map. Rules:
+- **Never range over the name map.** Map order leaks into flush order and `Signals()` results.
+  Inside the packages range over `c.Each` (no allocation, no per-item lookup); outside use
+  `AllOrdered()`.
+- The sorted slice is rebuilt on membership change, never lazily on read. Ports are read from
+  activation goroutines, and a lazy cache would turn a read into a write.
+- Traversal must stay allocation-free; `port/collection_bench_test.go` guards it.
 
-Note what this does *not* promise: components within a cycle activate concurrently, so the order
-their activation functions *run* in is unspecified and always will be. Determinism comes from the
-order signals are *collected and delivered*, which is why activation functions must not depend on
-shared mutable state.
+Not promised: the order activation functions *run* in. Components in a cycle activate concurrently.
+Determinism comes from the order signals are *collected and delivered*, so activation functions
+must not depend on shared mutable state.
 
-**Fan-out shares pointers.** Output→input fan-out forwards the same `*Signal` pointers to all destinations. Do not add deep-copy to `ForwardSignals` or `Flush`.
+**Fan-out shares pointers.** An output fans out the same `*Signal` pointers to every destination.
+Do not add a deep copy to `ForwardSignals` or `Flush`.
 
-**The signal payload stays `any`.** This is an FBP requirement, not a style preference: one group has to carry mixed-type signals, so `Signal.Payload()` cannot be parameterised and pipes cannot be typed. `Signal.As[T]()`/`PayloadOrDefault[T]()` read a payload back out; they do not make the flow typed.
+**The signal payload stays `any`.** One group must carry mixed-type signals (an FBP requirement),
+so `Signal.Payload()` cannot be generic and pipes cannot be typed. `Signal.As[T]()` and
+`PayloadOrDefault[T]()` read a payload out; they do not make the flow typed.
 
-**Generics are otherwise fine — use them where they remove real duplication.** The earlier blanket ban was lifted. Two things to weigh before reaching for one, both learned in `meta`:
-- **Measure the per-instance cost.** `meta.Meta` is exactly the map header it wraps. Before the two stores were unified, a draft carried a `self` pointer so promoted mutators could return the embedding type — that doubled every store from 8 to 16 bytes, and signals owned two apiece (~6% more bytes per mesh run). A still earlier draft stored a name for error messages, ~100 bytes per signal. Both were removed.
-- **Watch the godoc.** Read methods promoted from an unexported generic type render with unresolved type parameters (`All() map[string]T`). That was the cost of the old `store[T]` embedded in `Labels`/`Scalars`; a generic *method* on a concrete type renders normally, which is one reason `Meta` is not generic over its value type.
+**Generics are fine where they remove real duplication.** Weigh two things first:
+- **Per-instance cost.** `meta.Meta` is exactly the map header it wraps. Do not add fields to it
+  (a `self` pointer doubled every store to 16 bytes; a name for errors cost ~100 bytes per signal).
+- **Godoc.** Methods promoted from an unexported generic type render with unresolved type
+  parameters (`All() map[string]T`). A generic *method* on a concrete type renders normally — one
+  reason `Meta` is not generic over its value type.
 
-A generic that ends up wrapped in one hand-written forwarding method per call site has usually not paid for itself. `internal/hook.Group[T]` lives at exactly that line **on purpose**: 18 hand-written registration wrappers across the three hook levels sit over its 4 methods, and they are the accepted price of keeping every `Hooks` struct's fields unexported so closures stay the only registration path. Do not "fix" either side.
+A generic that needs one hand-written forwarding method per call site has usually not paid off.
+`internal/hook.Group[T]` sits exactly on that line **on purpose**: 13 hand-written registration
+methods across the three hook levels wrap its 4 methods. That is the price of unexported `Hooks`
+fields, which keep closures the only registration path. Do not "fix" either side.
 
-The collection surfaces share `internal/collection` the same way: `Slice[T]` backs the groups and `Keyed[T]` the name-keyed collections, embedded (behind unexported type aliases) so the read surface promotes; slice plumbing goes through package functions (`collection.Items`/`SetItems`/`AppendItems`) rather than methods, so no mutator can promote onto `signal.Group`'s copy-on-write surface.
+`internal/collection` is shared the same way. `Slice[T]` backs the groups and `Keyed[T]` the
+name-keyed collections, embedded behind unexported type aliases so the read surface promotes.
+Slice plumbing uses package functions (`collection.Items`/`SetItems`/`AppendItems`,
+`collection.Reset`), not methods, so no mutator promotes onto `signal.Group`'s CoW surface.
 
-**Generic methods (Go 1.27) are for accessors whose type parameter is the caller's choice.** `Signal.As[T]()`, `Group.FirstAs[T]()`, `Group.ReducePayloads[A]()`, `Group.ContainsPayload[T comparable]()`, `State.GetTyped[T]()` and the whole typed surface of `meta.Meta` (`Set[T]`, `Value[T]`, `ValueOrDefault[T]`, `ValueIs[T]`, and `Signal.WithMeta[T]`) were package functions (or did not exist) only because a method could not declare its own type parameter; they carry no per-instance cost and render normally in godoc. Two limits to keep in mind: a generic method cannot implement an interface method, and it still cannot name its *receiver's* type as a result — so the `Filter`/`Map` duplication across the five collection types is not a generic-methods problem (it would need a self type parameter) and stays hand-written.
+**Generic methods (Go 1.27) are for accessors where the caller picks the type.** Examples:
+`Signal.As[T]()`, `Group.FirstAs[T]()`, `Group.ReducePayloads[A]()`,
+`Group.ContainsPayload[T comparable]()`, `State.GetTyped[T]()`, `Signal.WithMeta[T]()` and the
+typed `meta.Meta` surface (`Set[T]`, `Value[T]`, `ValueOrDefault[T]`, `ValueIs[T]`). They cost
+nothing per instance and render normally in godoc. Two limits:
+- A generic method cannot implement an interface method.
+- It cannot name its receiver's type as a result. So the `Filter`/`Map` duplication across the
+  collection types needs a self type parameter, not generic methods — it stays hand-written.
 
-**Minimise `reflect`.** Only when no alternative exists. There is currently no use at all: the last one, `reflect.TypeOf(payload).Comparable()` in `ContainsPayload`, went away when the method gained a `T comparable` type parameter and the compiler took over the check.
+**Minimise `reflect`.** Use it only when no alternative exists. There is currently no use at all.
 
 ## Package notes
 
-- **`signal`** — `payload` is `[]any{value}` (single-element slice so `nil` is valid). Predicate combinators and metadata predicates (`HasMeta`, `HasAnyMeta`, `MetaEquals[T]`, `MetaContains`) live in `predicates.go`. `ForEach`/`ForEachIf` return `error` only (as on every collection type — see [naming.md](naming.md)). Typed payload accessors are generic methods in `typed.go`: `As[T]()` (error on nil signal / missing payload / wrong type), `PayloadOrDefault[T](d)`, `AsGroup()` (a signal carrying a group — named because `As[*Group]()` is noisy from outside the package) and `AsNumber()` (loose `(float64, bool)` widening — `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None of them panic, and all are nil-receiver safe; that is the point of having them. `Group.FirstAs[T]()`/`FirstPayloadOrDefault(d)` are the same two over the first signal. There are deliberately **no** per-type shorthands (`AsInt`, …): `s.As[int]()` is as short, and `PayloadOrDefault` infers `T` from the default. The sole exception is `Float64OrDefault`, which exists because an untyped `0` infers `int`, so `s.PayloadOrDefault(0)` silently returns the default for a float64 payload — do not "restore symmetry" by adding the others back.
-- **`meta`** — one type, `Meta`, a `map[string]any` whose values are constrained to `string | float64` by the `Value` interface on every typed method. It replaced the `Labels`/`Scalars` pair (decision taken 2026-09-24): one key space, one vocabulary, half the accessors. Writes are `Set[T](k, v)`/`SetMany[T](m)` — `T` is inferred, and an untyped integer literal is a compile error (`int does not satisfy meta.Value`), which is the intended guard rather than a nuisance: write `1.0`. Reads are `Value[T](k)` (error names the key, and on a type mismatch both types), `ValueOrDefault(k, def)` and `ValueIs(k, v)` (both infer `T`; a wrong-type entry reads as absent), `Has(keys...)` (all present; vacuous on none) and `HasAny(keys...)`. `Keys()` is sorted for determinism. `Clone()` is nil-receiver safe and is what the CoW types use; `Filter(pred)` is the other non-mutating method and its predicate sees the value as `any`. Constructor: `New()`.
-  The constraint is exact on purpose — no `~`, no ints. A named `type Celsius float64` stored through `~float64` would fail every `Value[float64]` read, and normalising ints on write would re-open the `PayloadOrDefault(0)` trap (an untyped `0` infers `int` and silently returns the default). Do not widen it. There is deliberately no `Values()`, `Map`, `Every`/`Any`/`Count`/`ForEach`, `Merge` or `Has*From`: a mixed-type store makes each either untyped or half-typed, and none had a caller.
-- **`port`** — `Flush()` fans out then clears source, firing `OnSignalsDelivered` on the source once per pipe after each destination accepts. That hook is the only event naming both ends of a pipe: `OnSignalsAdded` fires on the destination and cannot identify the sender. Its context struct is guarded by `hook.Group.IsEmpty()` because a `Trigger` argument escapes to the heap even with no hooks registered — on this path that would be one wasted allocation per pipe, per flush, per cycle. `PipeTo` is output→input only. Both return `error`. `PipeTo` validates direction at call time. `wiring.go` holds the declarative multi-edge helpers: `Pipe`/`MultiPipe` (registers connections) and `Pair`/`MultiForward` (copies signals now); both name the failing edge and report nil ports instead of dereferencing them.
-- **Name lookups are silently forgiving — helpers taking port names must not be.** `Collection.ByName` returns `nil` for a name no port has, `Collection.ByNames` skips such names entirely, and `AllHaveSignals()`/`Every()` on the resulting empty collection is vacuously `true`. So `ByNames("typo").AllHaveSignals()` reports *ready*. Any helper that accepts port names as strings must resolve every name before asking anything about signals, and report the name it could not resolve.
-- **`component`** — `State` is `map[string]any`, persistent across cycles and across `Run`s (see [runtime.md](runtime.md)). Constructors use functional options: `component.New(name, opts...) (*Component, error)`. Ports come in two creation styles: name-based (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` → `i1..i3`) and attach-based (`AttachInputPorts` for pre-built `port.NewInput` ports with options). `LoopbackPipe(out, in)` wires a component to itself (such a mesh never stops naturally). `ErrWaitingForInputs`/`ErrWaitKeepingInputs` are scheduler control-flow sentinels, not failures. `compose.go` holds the `ActivationFunc` combinators — `Sequential`, `When`+`HasSignalsOn`, `RequireInputs`, `Pipeline`+`PipelineStage` — which compose a component's *own* activation (behavior added from outside goes through `BeforeActivation`/`AfterActivation` hooks; see [hooks.md](hooks.md)). `When` skips, `RequireInputs` suspends and keeps: never substitute one for the other, as skipping where waiting was meant drops the partial inputs at drain time.
-- **`hook`** — lives at `internal/hook` (not public API). Generic `hook.Group[T]`, ordered, fail-fast `Trigger`. Three hook levels (mesh/component/port); see [hooks.md](hooks.md).
-- **`cycle`** — has its own `Any`/`Every`/`Count` on its collection type, independent of `signal.Group`.
+- **`signal`**
+  - `payload` is `[]any{value}` (a one-element slice, so `nil` is valid).
+  - Predicate combinators and metadata predicates (`HasMeta`, `HasAnyMeta`, `MetaEquals[T]`,
+    `MetaContains`) live in `predicates.go`.
+  - `ForEach`/`ForEachIf` return `error` only, as on every collection type ([naming.md](naming.md)).
+  - Typed payload accessors are generic methods in `typed.go`: `As[T]()` (error on nil signal,
+    missing payload or wrong type), `PayloadOrDefault[T](d)`, `AsGroup()` (a signal carrying a
+    group; `As[*Group]()` is noisy from outside) and `AsNumber()` (loose `(float64, bool)`
+    widening of `float64`/`float32`/`int`/`int64`/`uint64`, `bool` as 1/0). None panic; all are
+    nil-receiver safe. `Group.FirstAs[T]()`/`FirstPayloadOrDefault(d)` do the same over the first
+    signal.
+  - **No per-type shorthands** (`AsInt`, …): `s.As[int]()` is as short, and `PayloadOrDefault`
+    infers `T` from the default. The one exception is `Float64OrDefault`: an untyped `0` infers
+    `int`, so `s.PayloadOrDefault(0)` silently returns the default for a float64 payload. Do not
+    add the others back for symmetry.
+- **`meta`** — one type, `Meta`: a `map[string]any` whose values are `string | float64`, enforced
+  by the `Value` constraint on every typed method. Constructor: `New()`.
+  - Writes: `Set[T](k, v)`, `SetMany[T](m)`; `T` is inferred. An untyped integer literal is a
+    compile error (`int does not satisfy meta.Value`) — intended; write `1.0`.
+  - Reads: `Value[T](k)` (error names the key, and both types on a mismatch), `ValueOrDefault(k,
+    def)` and `ValueIs(k, v)` (both infer `T`; a wrong-type entry reads as absent), `Has(keys...)`
+    (all present; true for none) and `HasAny(keys...)`. `Keys()` is sorted.
+  - `Clone()` (nil-safe, used by the CoW types) and `Filter(pred)` (predicate sees the value as
+    `any`) return a new store.
+  - The constraint is exact on purpose — no `~`, no ints. A named `type Celsius float64` stored via
+    `~float64` would fail every `Value[float64]` read. Accepting ints would reopen the
+    `PayloadOrDefault(0)` trap. Do not widen it.
+  - Deliberately absent: `Values()`, `Map`, `Every`/`Any`/`Count`/`ForEach`, `Merge`, `Has*From`.
+    On a mixed-type store each would be untyped or half-typed, and none had a caller.
+- **`port`**
+  - `Flush()` fans out, then clears the source. It fires `OnSignalsDelivered` on the source once per
+    pipe after each destination accepts — the only event naming both ends of a pipe
+    (`OnSignalsAdded` fires on the destination and cannot see the sender).
+  - Hook context structs on hot paths are built only behind `hook.Group.IsEmpty()`: a `Trigger`
+    argument escapes to the heap even with no hooks, which would cost one allocation per pipe, per
+    flush, per cycle.
+  - `PipeTo` is output→input only, validates direction at call time, and returns `error`.
+  - `wiring.go` holds the declarative multi-edge helpers: `MultiPipe(...Pipe)` registers
+    connections, `MultiForward(ctx, ...Pair)` copies signals now. Both name the failing edge and
+    report nil ports instead of dereferencing them.
+- **Name lookups forgive silently — helpers taking port names must not.** `Collection.ByName`
+  returns `nil` for an unknown name, `ByNames` skips unknown names, and `AllHaveSignals()`/`Every()`
+  on the empty result is vacuously `true`. So `ByNames("typo").AllHaveSignals()` reports *ready*.
+  A helper that takes port names must resolve every name first and report the one it cannot.
+- **`component`**
+  - `State` is `map[string]any` and persists across cycles and `Run`s ([runtime.md](runtime.md)).
+  - Constructor: `component.New(name, opts...) (*Component, error)` with functional options.
+  - Ports, two styles: by name (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` →
+    `i1..i3`) or by attaching pre-built `port.NewInput` ports (`AttachInputPorts`).
+  - `LoopbackPipe(out, in)` wires a component to itself; such a mesh never stops naturally.
+  - `ErrWaitDroppingInputs`/`ErrWaitKeepingInputs` (both wrap `ErrWaitingForInputs`) are scheduler
+    control flow, not failures.
+  - `compose.go` holds `ActivationFunc` combinators — `Sequential`, `When` + `HasSignalsOn`,
+    `RequireInputs`, `Pipeline` + `PipelineStage` — for a component's *own* activation. Behavior
+    added from outside goes through hooks ([hooks.md](hooks.md)).
+  - `When` skips; `RequireInputs` suspends and keeps. Never swap one for the other: skipping where
+    waiting was meant drops the partial inputs at drain.
+- **`hook`** — `internal/hook`, not public API. Generic `hook.Group[T]`: ordered, fail-fast
+  `Trigger`. See [hooks.md](hooks.md).
+- **`cycle`** — its group has its own `Any`/`Every`/`Count`, independent of `signal.Group`.
 
-## Metadata tiers on groups/collections
-
-Every Group and Collection type carries its **own** `*meta.Meta` (Tier 1). Batch mutation of a container's **contents** (Tier 2a) exists on `signal.Group` **only** — the mutating collections lost their `Set*OnEach`/`Remove*OnEach` batch methods (iterate with `ForEach` and use each element's own store), and the cross-entity scalar aggregation tier (`Min/Max/Avg/SumScalar`, once Tier 2b) was removed with the scalar-statistics API. Do not reintroduce either.
+## Metadata on groups and collections
 
 | Tier | Methods | Where |
 |---|---|---|
-| 1 — entity's own | `Meta()`; mutate via `WithMeta` on `signal.Group` (CoW), the live store everywhere else | all groups/collections |
-| 2a — batch on contents | `WithMetaOnEach(k,v)`, `WithoutMetaOnEach(keys...)` | `signal.Group` only (CoW) |
+| 1 — the container's own store | `Meta()`; change via `WithMeta` on `signal.Group` (CoW), via the live store elsewhere | every group/collection |
+| 2a — batch on contents | `WithMetaOnEach(k, v)`, `WithoutMetaOnEach(keys...)` | `signal.Group` only (CoW) |
 
-`signal.Group` batch methods (Tier 2a) preserve the group's own metadata on the returned group via `copyGroupMeta`.
-
-**`signal.Group.Meta()` returns a clone.** The group is copy-on-write and the live store was the one back door: mutating the returned store used to change the group in place. It now matches `Signal.Meta()` — the only way to a modified group is `WithMeta`. Do not hand the live store back out.
+- Every group and collection carries its **own** `*meta.Meta`.
+- Batch methods exist on `signal.Group` only. Mutating collections have none — iterate with
+  `ForEach` and use each element's store. There is no cross-entity aggregation tier. Do not add
+  either back.
+- `signal.Group` batch methods keep the group's own metadata on the result (`copyGroupMeta`).
+- **`signal.Group.Meta()` returns a clone**, like `Signal.Meta()`. The only way to a changed group
+  is `WithMeta`. Never hand out the live store — it would break CoW.
 
 ## Comment hygiene
 
-Comments must add information beyond the signature. Omit a comment entirely rather than restate what the name already says.
+Comments must add information beyond the signature. If a comment would only restate the name,
+omit it.
 
 **Omit comments on:**
-- Private builder methods whose name is self-explanatory (e.g. `newActivationResultOK`)
+- Private builders with a self-explanatory name (e.g. `newActivationResultOK`)
 - One-line setter bodies (e.g. `p.signals = sg`)
-- Constructors where the doc would only paraphrase the function name
+- Constructors where the doc would only paraphrase the name
 
-**Keep/write comments on:**
-- Exported types and functions (required by Go doc convention)
-- Non-obvious invariants, edge cases, or design constraints
-- Anything that would surprise a reader unfamiliar with the decision
+**Write comments on:**
+- Exported types and functions (Go doc convention)
+- Non-obvious invariants, edge cases, design constraints
+- Anything that would surprise a reader who does not know the decision
 
 **Style:**
-- Type and package-level comments state **what the type is**, not how its methods work — method names go stale
-- No usage guidance ("Use X to do Y") or examples in type definition comments; those belong in method godocs or external docs
-- Method comments: one line where possible
+- Type and package comments say **what the type is**, not how its methods work (method names go
+  stale).
+- No usage guidance ("Use X to do Y") or examples in type comments; those go in method godocs or
+  external docs.
+- Method comments: one line where possible.
 
-**Length — short and on point:**
-
-One line is the default. A rationale that genuinely needs more gets a second short paragraph of
-two or three sentences, and that is the ceiling.
-
+**Length — short and on point.** One line is the default. A rationale that truly needs more gets
+a second short paragraph of two or three sentences. That is the ceiling.
 - **State the constraint, not the story.** "A name no port has fails the activation instead of
-  suspending forever" beats a paragraph reconstructing how a reader might get it wrong.
-- **No file-header essays.** A file-level comment names what the file holds in a sentence. If a
-  file needs several paragraphs to introduce itself, the material is documentation, not a comment.
-- **A paragraph belongs in `docs/wiki/`.** The wiki teaches — narrative, examples, when-to-use-which
-  tables. Godoc reminds. Name the concept in the comment and let the page carry it; duplicating it
-  in source means two things to keep in sync, and the source copy is the one that rots.
-- **Cut the prose voice.** Comments that argue with the reader ("which is the right number", "and
-  that is the point", "the whole reason this exists") are essay, not documentation.
-- Explain the **non-obvious**: an invariant, a footgun, an ordering requirement, a reason the
-  obvious implementation is wrong. Never narrate what the next line plainly does.
+  suspending forever" beats a paragraph on how a reader might get it wrong.
+- **No file-header essays.** A file comment names what the file holds in one sentence.
+- **Paragraphs belong in `docs/wiki/`.** The wiki teaches; godoc reminds. Name the concept in the
+  comment and let the page carry it — a source copy is a second thing to sync, and it rots first.
+- **No essay voice** ("which is the right number", "and that is the point").
+- Explain the **non-obvious**: an invariant, a footgun, an ordering need, why the obvious code is
+  wrong. Never narrate what the next line plainly does.
 
 ## Dead code policy
 
-Do not keep unused **unexported** symbols "for future use". Remove them immediately:
-- Named slice type aliases that carry no methods (e.g. `type Components []*Component`)
-- Unreachable branches (e.g. a second `if len(x) == 0` guard after the first already returned)
+Do not keep unused **unexported** symbols "for future use". Remove them at once:
+- Named slice types with no methods (e.g. `type Components []*Component`)
+- Unreachable branches (e.g. a second `if len(x) == 0` guard after the first returned)
 - Private helpers with no caller
 
-These create noise, mislead readers, and rot silently as the surrounding code evolves.
+They add noise, mislead readers and rot as the code around them changes.
 
-**Exported symbols are different, and this policy does not cover them.** F-Mesh is a library: its
-callers live in `fmesh-examples` (one Go module) and `fmesh-graphviz`, which no analysis
-of this repo can see. "No in-repo caller" is not evidence a public symbol is dead — it is the normal
-state of a public API. Before removing anything exported, compile the downstream repos and get the
-user's decision; see [downstream.md](downstream.md), which records the six symbols a previous
-cleanup removed on exactly that mistaken reasoning.
+**This policy does not cover exported symbols.** F-Mesh is a library. Its callers live in
+`fmesh-examples` (one Go module) and `fmesh-graphviz`, which no analysis of this repo can see.
+"No in-repo caller" is the normal state of public API, not evidence it is dead. Before removing
+anything exported, compile the downstream repos and get the user's decision — see
+[downstream.md](downstream.md).
 
-Exported **error sentinels** are the same trap in miniature: "nothing calls `errors.Is` on it in
-this repo" is expected, because users are the ones who check them.
+Exported **error sentinels** are the same trap: users call `errors.Is` on them, so "no `errors.Is`
+in this repo" is expected.
