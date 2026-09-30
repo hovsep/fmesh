@@ -324,8 +324,11 @@ g = g.WithLabel("k", "v")  // after
 `OnSuccess`, `OnError`, `OnPanic` and `OnWaitingForInputs` are gone. A panicking outcome hook
 fired a second outcome hook (`OnPanic`) and re-ran `AfterActivation`; `AfterActivation` already
 sees every outcome, so the rest was a second, buggy path to the same place. Branch on the result
-instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation` (it now runs
-before the component's own function, not after it).
+instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation`, which is not
+the same: it runs before the component's own function, and its error is a hook failure — the
+function is skipped, the component does not count as activated, its inputs are not cleared, and
+`ErrWaitKeepingInputs` from it does not suspend the component. Behavior that must share the
+component's error path belongs in its activation function, composed with `component.Sequential`.
 
 ```go
 // before
