@@ -8,8 +8,7 @@ import (
 )
 
 // Combinators over ActivationFunc: they build the single function a component is
-// constructed with. Use OnActivation hooks instead when the behavior is added
-// from outside the component rather than composed by it.
+// constructed with.
 
 // Sequential runs activation functions in order, stopping at the first error.
 //

@@ -50,18 +50,6 @@ func TestComponentHooks_FiringOrderOnSuccess(t *testing.T) {
 				log.add("before")
 				return nil
 			})
-			h.OnActivation(func(context.Context, *component.Component) error {
-				log.add("onActivation")
-				return nil
-			})
-			h.OnSuccess(func(context.Context, *component.ActivationContext) error {
-				log.add("success")
-				return nil
-			})
-			h.OnError(func(context.Context, *component.ActivationContext) error {
-				log.add("error")
-				return nil
-			})
 			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
 				log.add("after")
 				return nil
@@ -71,75 +59,50 @@ func TestComponentHooks_FiringOrderOnSuccess(t *testing.T) {
 	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 	require.True(t, c.MaybeActivate(context.Background()).Activated())
 
-	// OnActivation runs after the main function, as part of the same activation.
-	assert.Equal(t, []string{"before", "activation", "onActivation", "success", "after"}, log.events)
+	assert.Equal(t, []string{"before", "activation", "after"}, log.events)
 }
 
-func TestComponentHooks_OutcomeSpecificHooks(t *testing.T) {
+func TestComponentHooks_AfterActivationSeesEveryOutcome(t *testing.T) {
+	// AfterActivation is the one outcome hook: it fires once whatever happened,
+	// and the result code tells the outcomes apart.
 	tests := []struct {
 		name     string
 		activate component.ActivationFunc
-		hook     func(*component.Hooks, *recorder)
 		wantCode component.ActivationResultCode
-		wantLog  []string
 	}{
+		{
+			name:     "success",
+			activate: func(context.Context, *component.Component) error { return nil },
+			wantCode: component.ActivationCodeOK,
+		},
 		{
 			name:     "error",
 			activate: func(context.Context, *component.Component) error { return errors.New("boom") },
-			hook: func(h *component.Hooks, log *recorder) {
-				h.OnError(func(context.Context, *component.ActivationContext) error {
-					log.add("error")
-					return nil
-				})
-			},
 			wantCode: component.ActivationCodeReturnedError,
-			wantLog:  []string{"error", "after"},
 		},
 		{
 			name:     "panic",
 			activate: func(context.Context, *component.Component) error { panic("boom") },
-			hook: func(h *component.Hooks, log *recorder) {
-				h.OnPanic(func(context.Context, *component.ActivationContext) error {
-					log.add("panic")
-					return nil
-				})
-			},
 			wantCode: component.ActivationCodePanicked,
-			wantLog:  []string{"panic", "after"},
 		},
 		{
 			name:     "waiting, dropping inputs",
 			activate: func(context.Context, *component.Component) error { return component.ErrWaitDroppingInputs },
-			hook: func(h *component.Hooks, log *recorder) {
-				h.OnWaitingForInputs(func(context.Context, *component.ActivationContext) error {
-					log.add("waiting")
-					return nil
-				})
-			},
 			wantCode: component.ActivationCodeWaitingForInputsClear,
-			wantLog:  []string{"waiting", "after"},
 		},
 		{
 			name:     "waiting, keeping inputs",
 			activate: func(context.Context, *component.Component) error { return component.ErrWaitKeepingInputs },
-			hook: func(h *component.Hooks, log *recorder) {
-				h.OnWaitingForInputs(func(context.Context, *component.ActivationContext) error {
-					log.add("waiting")
-					return nil
-				})
-			},
 			wantCode: component.ActivationCodeWaitingForInputsKeep,
-			wantLog:  []string{"waiting", "after"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var log recorder
+			var seen []component.ActivationResultCode
 			c := componentWith(t, tt.activate, func(h *component.Hooks) {
-				tt.hook(h, &log)
-				h.AfterActivation(func(context.Context, *component.ActivationContext) error {
-					log.add("after")
+				h.AfterActivation(func(_ context.Context, ac *component.ActivationContext) error {
+					seen = append(seen, ac.Result.Code())
 					return nil
 				})
 			})
@@ -148,7 +111,7 @@ func TestComponentHooks_OutcomeSpecificHooks(t *testing.T) {
 			result := c.MaybeActivate(context.Background())
 
 			assert.Equal(t, tt.wantCode, result.Code())
-			assert.Equal(t, tt.wantLog, log.events)
+			assert.Equal(t, []component.ActivationResultCode{tt.wantCode}, seen)
 		})
 	}
 }

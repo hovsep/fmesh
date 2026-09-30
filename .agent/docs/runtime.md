@@ -65,7 +65,7 @@ external store).
 
 `ActivationResultCode` (in `component/activation_result.go`): `OK`, `NoInput`,
 `ReturnedError`, `Panicked`, `WaitingForInputsClear`, `WaitingForInputsKeep`, `HookFailed`.
-Panics inside activation functions are recovered (with stack trace) and become `Panicked`
+Panics inside activation functions and activation hooks are recovered (with stack trace) and become `Panicked`
 results as a `*component.PanicError` — a component panic never crashes the mesh; the error strategy decides whether the run
 stops. `IsError()` is true for both `ReturnedError` and `HookFailed` results, so component-level
 hook failures stop the mesh under `StopOnFirstErrorOrPanic` and surface in `Run()`'s error.
