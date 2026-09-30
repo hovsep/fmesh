@@ -49,10 +49,7 @@ func Test_Math(t *testing.T) {
 				if err := c1.OutputByName("res").PipeTo(c2.InputByName("num")); err != nil {
 					panic(err)
 				}
-				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
-					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-					CyclesLimit:           10,
-				}))
+				fm := testutil.MustFMesh("fm", fmesh.WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic), fmesh.WithCyclesLimit(10))
 				if err := fm.AddComponents(c1, c2); err != nil {
 					panic(err)
 				}
@@ -153,10 +150,7 @@ func Test_Math(t *testing.T) {
 					panic(err)
 				}
 
-				fm := testutil.MustFMesh("mixed_ports_fm", fmesh.WithConfig(fmesh.Config{
-					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-					CyclesLimit:           10,
-				}))
+				fm := testutil.MustFMesh("mixed_ports_fm", fmesh.WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic), fmesh.WithCyclesLimit(10))
 				if err := fm.AddComponents(processor, verifier); err != nil {
 					panic(err)
 				}

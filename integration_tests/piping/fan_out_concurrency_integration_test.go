@@ -116,9 +116,7 @@ func TestFanOut_sharedSignal_parallelStress_completes(t *testing.T) {
 			}))
 	}
 
-	fm, err := fmesh.New("fan-out-stress", fmesh.WithConfig(fmesh.Config{
-		ErrorHandlingStrategy: fmesh.IgnoreAll,
-	}))
+	fm, err := fmesh.New("fan-out-stress", fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll))
 	require.NoError(t, err)
 	require.NoError(t, fm.AddComponents(
 		producer,
