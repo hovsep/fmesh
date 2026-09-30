@@ -332,9 +332,8 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 }
 
 func TestComponent_MaybeActivate_HookPanics(t *testing.T) {
-	// A hook runs on the activation goroutine, so a panic that escaped it killed
-	// the process. A panicking AfterActivation was also re-run by the recover
-	// block, panicked again inside the deferred call, and crashed anyway.
+	// Hooks run on the activation goroutine, where an escaped panic kills the
+	// process, and each must fire once however the activation ended.
 	ok := func(context.Context, *Component) error { return nil }
 
 	tests := []struct {
@@ -358,6 +357,13 @@ func TestComponent_MaybeActivate_HookPanics(t *testing.T) {
 			after:      func(context.Context, *ActivationContext) error { panic("after boom") },
 			wantStage:  "afterActivation hook failed: panicked: after boom",
 			wantErrs:   1,
+		},
+		{
+			name:       "afterActivation fails after the function panicked",
+			activation: func(context.Context, *Component) error { panic("function boom") },
+			after:      func(context.Context, *ActivationContext) error { return errors.New("after failed") },
+			wantStage:  "afterActivation hook failed: after failed",
+			wantErrs:   2,
 		},
 		{
 			name:       "afterActivation panics after the function panicked",

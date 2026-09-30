@@ -29,10 +29,9 @@ func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 
 // activate runs the activation function between its hooks.
 //
-// Every stage recovers its own panics, so each hook group fires exactly once and
-// a panic anywhere — in a hook or in the function — becomes a result instead of
-// crashing the process from the activation goroutine. AfterActivation is the
-// finally block: it runs even when BeforeActivation failed.
+// Each stage recovers its own panic, so every hook group fires exactly once and
+// a panic anywhere becomes a Panicked result. AfterActivation runs even when
+// BeforeActivation failed.
 func (c *Component) activate(ctx context.Context) *ActivationResult {
 	var result *ActivationResult
 	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation, c); err != nil {
@@ -92,14 +91,14 @@ func (c *Component) panicError(r any) *PanicError {
 	}
 }
 
-// markHookFailed records a failed hook on the result. A hook that panicked marks
-// the result as a panic, so StopOnFirstPanic stops on it just as it does on a
-// panicking activation function.
+// markHookFailed records a failed hook on the result. A panicking hook marks the
+// result Panicked, and a Panicked result stays Panicked, so StopOnFirstPanic
+// always sees the panic.
 func markHookFailed(result *ActivationResult, stage string, err error) {
-	code := ActivationCodeHookFailed
 	if _, panicked := errors.AsType[*PanicError](err); panicked {
-		code = ActivationCodePanicked
+		result.SetActivationCode(ActivationCodePanicked)
+	} else if result.Code() != ActivationCodePanicked {
+		result.SetActivationCode(ActivationCodeHookFailed)
 	}
-	result.SetActivationCode(code).
-		AddActivationError(fmt.Errorf("%s hook failed: %w", stage, err))
+	result.AddActivationError(fmt.Errorf("%s hook failed: %w", stage, err))
 }

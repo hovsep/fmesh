@@ -43,16 +43,16 @@ through a pipe during drain, and `context.Background()` when a caller puts them 
 ## Semantics worth knowing
 
 - **Only two activation hooks, each fired exactly once**: `BeforeActivation`, then the
-  activation function, then `AfterActivation`. There are no per-outcome hooks — they were
-  removed because a panicking outcome hook fired a second outcome hook (`OnPanic`) and re-ran
-  `AfterActivation`. `AfterActivation` sees every outcome and tells them apart by
-  `ctx.Result.Code()`.
+  activation function, then `AfterActivation`. There are no per-outcome hooks:
+  `AfterActivation` sees every outcome and tells them apart by `ctx.Result.Code()`. Don't add
+  per-outcome hooks back — a second hook firing on one outcome is how hooks ran twice.
 - **`AfterActivation` always runs** — success, error, panic, waiting, or a failed
   `BeforeActivation`; a `finally` block.
 - **Hook panics are recovered.** Hooks run on the activation goroutine, where an escaped panic
   would kill the process. Each stage (`BeforeActivation`, the function, `AfterActivation`)
   recovers its own panic, so no stage re-runs; a panicking hook re-codes the result to
   `ActivationCodePanicked` (so `StopOnFirstPanic` stops on it) with a `*component.PanicError`.
+  A `Panicked` result is never re-coded to `HookFailed` by a later failing hook.
 - Behavior added to a component from **outside** (a plugin) goes through these two hooks;
   `component/compose.go` combinators are for a component composing its own activation function.
 - A **failing hook poisons the result**: the activation result is re-coded to
