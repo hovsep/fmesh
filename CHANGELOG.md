@@ -11,8 +11,9 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
-Context support, deterministic runs, livelock detection, a smaller API, and readable failures.
-Everything in this entry is one migration; do it in one pass.
+## [v1.14.0] — Ararat — 2026-09-30
+
+One metadata store, two activation hooks, and configuration through options only.
 
 ### BREAKING
 
@@ -67,6 +68,93 @@ twins (`WithoutMeta(s.Meta().Keys()...)` is the rare case spelled out), `port.Gr
 `SetScalar` (use `g.Meta().Set`), and on the store `Values`, `Map`, `Merge`, `Every`, `Any`,
 `Count`, `ForEach`, `HasAllFrom`, `HasAnyFrom` and the `Mapper`/`ScalarPredicate` types. `Filter`
 stays, with a `func(key string, value any) bool` predicate; `Clone` is new.
+
+**Component activation hooks are `BeforeActivation` and `AfterActivation` only.** `OnActivation`,
+`OnSuccess`, `OnError`, `OnPanic` and `OnWaitingForInputs` are gone. A panicking outcome hook
+fired a second outcome hook (`OnPanic`) and re-ran `AfterActivation`; `AfterActivation` already
+sees every outcome, so the rest was a second, buggy path to the same place. Branch on the result
+instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation`, which is not
+the same: it runs before the component's own function, and its error is a hook failure — the
+function is skipped, the component does not count as activated, its inputs are not cleared, and
+`ErrWaitKeepingInputs` from it does not suspend the component. A hook that writes outputs goes to
+`AfterActivation` instead, guarded by `Result.Code() == ActivationCodeOK` — written before the
+function, they would be sent even when it fails and pile up while it waits. Behavior that must
+share the component's error path belongs in its activation function, composed with
+`component.Sequential`.
+
+```go
+// before
+h.OnError(func(ctx context.Context, ac *component.ActivationContext) error {
+    return ac.Component.ClearInputs(ctx)
+})
+h.OnActivation(latch) // reads inputs, writes state
+h.OnActivation(emit)  // writes outputs
+
+// after
+h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
+    if !ac.Result.IsError() {
+        return nil
+    }
+    return ac.Component.ClearInputs(ctx)
+})
+h.BeforeActivation(latch)
+h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
+    if ac.Result.Code() != component.ActivationCodeOK {
+        return nil
+    }
+    return emit(ctx, ac.Component)
+})
+```
+
+**`WithConfig` and `fmesh.Config` are gone.** `WithConfig` replaced the whole configuration, so
+every field left out of the literal became zero — and zero means "no limit" on every limit. Setting
+only a cycle limit silently removed the time limit and turned off livelock detection. Use the
+single-setting options instead; each starts from the defaults.
+
+```go
+// before
+// fmesh.New("m", fmesh.WithConfig(fmesh.Config{
+//     ErrorHandlingStrategy: fmesh.IgnoreAll,
+//     CyclesLimit:           100,
+// }))
+
+// after
+fmesh.New("m",
+    fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll),
+    fmesh.WithCyclesLimit(100),
+)
+```
+
+### Fixed
+
+- A panic in a component activation hook no longer crashes the process. Hooks run on the
+  activation goroutine, so an escaped panic was fatal: a panicking `BeforeActivation` was never
+  recovered, and a panicking `AfterActivation` was recovered, re-run by the recover block, and
+  panicked again. Hook panics now become `Panicked` results, and each hook runs exactly once.
+
+- Hitting the time limit is reported as `ErrTimeLimitExceeded`, not `ErrRunCanceled`. The
+  deadline was set before the run clock started, so it could fire while the run's measured
+  duration was still under the limit — by as long as the previous run's cleanup took, including
+  any `OnClear` hooks on output ports.
+
+### Migration checklist
+
+1. Replace `Labels()` / `Scalars()` with `Meta()`, and the label/scalar methods and options with
+   the `Meta` ones in the table above. Numeric metadata is `float64`: write `2.0`, not `2`.
+2. Fold `OnSuccess` / `OnError` / `OnPanic` / `OnWaitingForInputs` hooks into one
+   `AfterActivation` that checks `Result.Code()` (or `IsError()` / `IsPanic()`). Move
+   `OnActivation` hooks that read inputs to `BeforeActivation`, and hooks that write outputs to
+   `AfterActivation` guarded by `ActivationCodeOK`.
+3. Replace `fmesh.WithConfig(fmesh.Config{...})` with one option per field you set
+   (`WithErrorHandlingStrategy`, `WithCyclesLimit`, `WithTimeLimit`, …).
+4. Run `go build ./...` — the compiler finds every remaining site.
+
+## [v1.13.0] — Aragatsotn — 2026-08-21
+
+Context support, deterministic runs, livelock detection, a smaller API, and readable failures.
+Everything in this entry is one migration; do it in one pass.
+
+### BREAKING
 
 **`Run` takes a context.**
 
@@ -320,62 +408,6 @@ g.Labels().Set("k", "v")   // before: mutated g. Now: mutates a copy, g unchange
 g = g.WithLabel("k", "v")  // after
 ```
 
-**Component activation hooks are `BeforeActivation` and `AfterActivation` only.** `OnActivation`,
-`OnSuccess`, `OnError`, `OnPanic` and `OnWaitingForInputs` are gone. A panicking outcome hook
-fired a second outcome hook (`OnPanic`) and re-ran `AfterActivation`; `AfterActivation` already
-sees every outcome, so the rest was a second, buggy path to the same place. Branch on the result
-instead. Behavior a plugin injected with `OnActivation` moves to `BeforeActivation`, which is not
-the same: it runs before the component's own function, and its error is a hook failure — the
-function is skipped, the component does not count as activated, its inputs are not cleared, and
-`ErrWaitKeepingInputs` from it does not suspend the component. A hook that writes outputs goes to
-`AfterActivation` instead, guarded by `Result.Code() == ActivationCodeOK` — written before the
-function, they would be sent even when it fails and pile up while it waits. Behavior that must
-share the component's error path belongs in its activation function, composed with
-`component.Sequential`.
-
-```go
-// before
-h.OnError(func(ctx context.Context, ac *component.ActivationContext) error {
-    return ac.Component.ClearInputs(ctx)
-})
-h.OnActivation(latch) // reads inputs, writes state
-h.OnActivation(emit)  // writes outputs
-
-// after
-h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
-    if !ac.Result.IsError() {
-        return nil
-    }
-    return ac.Component.ClearInputs(ctx)
-})
-h.BeforeActivation(latch)
-h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) error {
-    if ac.Result.Code() != component.ActivationCodeOK {
-        return nil
-    }
-    return emit(ctx, ac.Component)
-})
-```
-
-**`WithConfig` and `fmesh.Config` are gone.** `WithConfig` replaced the whole configuration, so
-every field left out of the literal became zero — and zero means "no limit" on every limit. Setting
-only a cycle limit silently removed the time limit and turned off livelock detection. Use the
-single-setting options instead; each starts from the defaults.
-
-```go
-// before
-// fmesh.New("m", fmesh.WithConfig(fmesh.Config{
-//     ErrorHandlingStrategy: fmesh.IgnoreAll,
-//     CyclesLimit:           100,
-// }))
-
-// after
-fmesh.New("m",
-    fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll),
-    fmesh.WithCyclesLimit(100),
-)
-```
-
 **Removed API.** Each of these had no callers in the repo, the examples, or the exporter:
 
 - Batch metadata on the mutating collections — `SetLabelOnEach`, `SetScalarOnEach`,
@@ -530,16 +562,6 @@ fmesh.New("m",
   `OnClear` and the component activation hooks are only built when a hook is registered, saving
   four heap allocations per component per cycle.
 
-- A panic in a component activation hook no longer crashes the process. Hooks run on the
-  activation goroutine, so an escaped panic was fatal: a panicking `BeforeActivation` was never
-  recovered, and a panicking `AfterActivation` was recovered, re-run by the recover block, and
-  panicked again. Hook panics now become `Panicked` results, and each hook runs exactly once.
-
-- Hitting the time limit is reported as `ErrTimeLimitExceeded`, not `ErrRunCanceled`. The
-  deadline was set before the run clock started, so it could fire while the run's measured
-  duration was still under the limit — by as long as the previous run's cleanup took, including
-  any `OnClear` hooks on output ports.
-
 ### Migration checklist
 
 1. `fm.Run()` → `fm.Run(ctx)`.
@@ -566,13 +588,8 @@ fmesh.New("m",
 12. Give `ReducePayloads` a typed accumulator and drop the `.(T)` on the result; drop the error
     from `ContainsPayload` (and the type argument `[any]` if you pass `nil`).
 13. `component.MustGetTyped[T](state, k)` → `v, err := state.GetTyped[T](k)`.
-14. Fold `OnSuccess` / `OnError` / `OnPanic` / `OnWaitingForInputs` hooks into one
-    `AfterActivation` that checks `Result.Code()` (or `IsError()` / `IsPanic()`); move
-    `OnActivation` hooks to `BeforeActivation`.
-15. Replace `fmesh.WithConfig(fmesh.Config{...})` with one option per field you set
-    (`WithErrorHandlingStrategy`, `WithCyclesLimit`, `WithTimeLimit`, …).
-16. Run `go build ./...` — the compiler finds every remaining site.
-17. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
+14. Run `go build ./...` — the compiler finds every remaining site.
+15. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
 
 ## Earlier releases
 
