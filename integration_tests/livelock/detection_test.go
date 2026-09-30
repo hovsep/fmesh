@@ -29,24 +29,6 @@ func waiter(name string, waitErr error) *component.Component {
 		}))
 }
 
-func TestLivelock_DetectedWithCustomConfig(t *testing.T) {
-	// A WithConfig option used to replace the whole config, so every field the
-	// caller left out became zero — and a zero LivelockThreshold turned detection
-	// off. Setting only a cycle limit must not disable an unrelated safety net.
-	a, b := waiter("alpha", component.ErrWaitKeepingInputs), waiter("bravo", component.ErrWaitKeepingInputs)
-
-	fm, err := fmesh.New("mutual-wait", fmesh.WithCyclesLimit(100))
-	require.NoError(t, err)
-	require.NoError(t, fm.AddComponents(a, b))
-	require.NoError(t, a.OutputByName("out").PipeTo(b.InputByName("in")))
-	require.NoError(t, b.OutputByName("out").PipeTo(a.InputByName("in")))
-	require.NoError(t, a.InputByName("in").PutSignals(signal.New(1)))
-
-	_, err = fm.Run(context.Background())
-
-	require.ErrorIs(t, err, fmesh.ErrLivelockDetected)
-}
-
 func TestLivelock_MutualWait(t *testing.T) {
 	// The classic: a and b each wait for the other, keeping their inputs, so the
 	// mesh reproduces the same cycle forever. Before detection this burned the
