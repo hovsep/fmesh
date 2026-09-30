@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
-// Config defines the configuration for the f-mesh.
-type Config struct {
+// config defines the configuration for the f-mesh. It is set only through the
+// With* options, which start from the defaults, so a caller can never leave a
+// field at a zero that means something else (0 is "no limit" on every limit).
+type config struct {
 	// ErrorHandlingStrategy defines how f-mesh will handle errors and panics.
 	ErrorHandlingStrategy ErrorHandlingStrategy
 
@@ -41,8 +43,8 @@ type Config struct {
 }
 
 // newDefaultConfig returns a safe default configuration.
-func newDefaultConfig() Config {
-	return Config{
+func newDefaultConfig() config {
+	return config{
 		ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 		CyclesLimit:           1000,
 		Debug:                 false,
@@ -79,14 +81,6 @@ func WithLivelockThreshold(threshold int) Option {
 // A livelocked mesh then runs until it hits the cycle or time limit.
 func WithoutLivelockDetection() Option {
 	return func(fm *FMesh) error { fm.config.LivelockThreshold = 0; return nil }
-}
-
-// WithConfig is an FMesh option that replaces the entire configuration.
-func WithConfig(config Config) Option {
-	return func(fm *FMesh) error {
-		fm.config = config
-		return nil
-	}
 }
 
 // WithErrorHandlingStrategy is an FMesh option that sets the error handling strategy.

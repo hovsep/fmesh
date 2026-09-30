@@ -344,6 +344,25 @@ h.AfterActivation(func(ctx context.Context, ac *component.ActivationContext) err
 h.BeforeActivation(latch)
 ```
 
+**`WithConfig` and `fmesh.Config` are gone.** `WithConfig` replaced the whole configuration, so
+every field left out of the literal became zero — and zero means "no limit" on every limit. Setting
+only a cycle limit silently removed the time limit and turned off livelock detection. Use the
+single-setting options instead; each starts from the defaults.
+
+```go
+// before
+// fmesh.New("m", fmesh.WithConfig(fmesh.Config{
+//     ErrorHandlingStrategy: fmesh.IgnoreAll,
+//     CyclesLimit:           100,
+// }))
+
+// after
+fmesh.New("m",
+    fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll),
+    fmesh.WithCyclesLimit(100),
+)
+```
+
 **Removed API.** Each of these had no callers in the repo, the examples, or the exporter:
 
 - Batch metadata on the mutating collections — `SetLabelOnEach`, `SetScalarOnEach`,
@@ -537,8 +556,10 @@ h.BeforeActivation(latch)
 14. Fold `OnSuccess` / `OnError` / `OnPanic` / `OnWaitingForInputs` hooks into one
     `AfterActivation` that checks `Result.Code()` (or `IsError()` / `IsPanic()`); move
     `OnActivation` hooks to `BeforeActivation`.
-15. Run `go build ./...` — the compiler finds every remaining site.
-16. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
+15. Replace `fmesh.WithConfig(fmesh.Config{...})` with one option per field you set
+    (`WithErrorHandlingStrategy`, `WithCyclesLimit`, `WithTimeLimit`, …).
+16. Run `go build ./...` — the compiler finds every remaining site.
+17. Run your mesh tests with `-race` (see [603. Caveats](https://github.com/hovsep/fmesh/wiki/603.-Caveats)).
 
 ## Earlier releases
 

@@ -105,10 +105,7 @@ func Test_State(t *testing.T) {
 					panic(err)
 				}
 
-				fm := testutil.MustFMesh("fm", fmesh.WithConfig(fmesh.Config{
-					ErrorHandlingStrategy: fmesh.StopOnFirstErrorOrPanic,
-					CyclesLimit:           10000,
-				}))
+				fm := testutil.MustFMesh("fm", fmesh.WithErrorHandlingStrategy(fmesh.StopOnFirstErrorOrPanic), fmesh.WithCyclesLimit(10000))
 				if err := fm.AddComponents(producer, counter, consumer); err != nil {
 					panic(err)
 				}

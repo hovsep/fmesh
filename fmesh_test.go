@@ -96,34 +96,6 @@ func TestFMesh_WithDescription(t *testing.T) {
 	})
 }
 
-func TestFMesh_WithConfig(t *testing.T) {
-	tests := []struct {
-		name       string
-		config     Config
-		assertions func(t *testing.T, fm *FMesh)
-	}{
-		{
-			name: "custom config",
-			config: Config{
-				ErrorHandlingStrategy: IgnoreAll,
-				CyclesLimit:           9999,
-			},
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, IgnoreAll, fm.config.ErrorHandlingStrategy)
-				assert.Equal(t, 9999, fm.config.CyclesLimit)
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := mustNewFMesh("fm1", WithConfig(tt.config))
-			if tt.assertions != nil {
-				tt.assertions(t, got)
-			}
-		})
-	}
-}
-
 func TestWithErrorHandlingStrategy(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -472,10 +444,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "unsupported error handling strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: 100,
-					CyclesLimit:           0,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(100), WithUnlimitedCycles())
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
@@ -500,9 +469,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first error on first cycle",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstErrorOrPanic))
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
@@ -525,9 +492,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "ErrWaitingForInputs does not stop mesh with StopOnFirstErrorOrPanic strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstErrorOrPanic))
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1", "i2"),
@@ -561,9 +526,7 @@ func TestFMesh_Run(t *testing.T) {
 			// stops naturally — proving ErrWaitKeepingInputs never triggers StopOnFirstErrorOrPanic.
 			name: "ErrWaitKeepingInputs does not stop mesh with StopOnFirstErrorOrPanic strategy",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstErrorOrPanic))
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("trigger", "loop_in"),
@@ -638,9 +601,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "stop on first panic on cycle 3",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstPanic,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstPanic))
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
@@ -699,9 +660,7 @@ func TestFMesh_Run(t *testing.T) {
 		{
 			name: "all errors and panics are ignored",
 			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: IgnoreAll,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(IgnoreAll))
 				require.NoError(t, fm.AddComponents(
 					mustNewComponent("c1",
 						component.WithInputs("i1"),
@@ -999,10 +958,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit an error",
 			getFMesh: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
-					CyclesLimit:           0,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstErrorOrPanic), WithUnlimitedCycles())
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
@@ -1018,9 +974,7 @@ func TestFMesh_mustStop(t *testing.T) {
 		{
 			name: "mesh hit a panic",
 			getFMesh: func() *FMesh {
-				fm := mustNewFMesh("fm", WithConfig(Config{
-					ErrorHandlingStrategy: StopOnFirstPanic,
-				}))
+				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(StopOnFirstPanic))
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
