@@ -2,6 +2,7 @@ package fmesh
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -84,10 +85,16 @@ func WithoutLivelockDetection() Option {
 }
 
 // WithErrorHandlingStrategy is an FMesh option that sets the error handling strategy.
+// An unknown strategy fails New with ErrUnsupportedErrorHandlingStrategy.
 func WithErrorHandlingStrategy(s ErrorHandlingStrategy) Option {
 	return func(fm *FMesh) error {
-		fm.config.ErrorHandlingStrategy = s
-		return nil
+		switch s {
+		case StopOnFirstErrorOrPanic, StopOnFirstPanic, IgnoreAll:
+			fm.config.ErrorHandlingStrategy = s
+			return nil
+		default:
+			return fmt.Errorf("%w: %d", ErrUnsupportedErrorHandlingStrategy, s)
+		}
 	}
 }
 
