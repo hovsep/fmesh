@@ -16,8 +16,7 @@ type keyedPorts = collection.Keyed[*Port]
 // with the same name. Optimized for lookups.
 //
 // Every traversal goes in port-name order — map order would leak into flush and
-// Signals() results and break run determinism. See .agent/docs/design.md for
-// the ordering guarantees this upholds.
+// Signals() results and break run determinism.
 type Collection struct {
 	*keyedPorts
 	meta *meta.Meta
@@ -35,10 +34,9 @@ func NewCollection() *Collection {
 func (c *Collection) Meta() *meta.Meta { return c.meta }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
-// Names that match no port are skipped, which makes the result vacuously ready —
-// see the note on forgiving name lookups in design.md. Duplicated names collapse
-// to one lookup; without the dedupe, the batched Add would stop at the repeat
-// and silently drop every name after it (found by FuzzCollectionNameLookup).
+// Names that match no port are skipped, which makes the result vacuously ready.
+// Duplicated names collapse to one lookup, because the batched Add would stop at the repeat and drop every name
+// after it.
 func (c *Collection) ByNames(names ...string) *Collection {
 	matched := make([]*Port, 0, len(names))
 	seen := make(map[string]bool, len(names))

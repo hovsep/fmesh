@@ -28,7 +28,7 @@ func newHooks() *Hooks {
 	}
 }
 
-// OnCreation registers a hook called on state initialization.
+// OnCreation registers a hook called at the end of New, after options and plugins.
 func (h *Hooks) OnCreation(fn func(context.Context, *Component) error) *Hooks {
 	h.onCreation.Add(fn)
 	return h

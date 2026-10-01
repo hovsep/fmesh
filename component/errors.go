@@ -7,9 +7,6 @@ import (
 
 // These are control-flow signals, not actual failures.
 // They instruct the scheduler how to proceed with the current component.
-//
-// For now we only have two variants, so sentinel errors are sufficient.
-// If more behaviors are introduced, consider switching to a typed error.
 var (
 	// ErrWaitingForInputs is the sentinel both waiting modes wrap. Test for it with
 	// errors.Is when you want to know "is this component waiting" regardless of mode.

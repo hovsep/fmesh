@@ -1,10 +1,8 @@
 // This file keeps the documentation honest about the API.
 //
-// Nothing else does. The README's quick start is compiled by Example in
-// example_test.go, but the wiki is 4,000 lines of Markdown that no compiler ever
-// reads, so a rename leaves it telling users to call something that no longer
-// exists and nothing fails until someone copies the snippet. Both checks here
-// exist because that had already happened.
+// The README's quick start is compiled by Example in example_test.go. The wiki
+// is Markdown that no compiler reads, so a rename leaves it calling API that no
+// longer exists. Three checks catch that:
 //
 //   - TestDocs_ReferenceOnlyExistingAPI — every qualified reference in a Go block
 //     (component.X, signal.X, …) must name a real exported symbol.
@@ -14,7 +12,7 @@
 //   - TestDocs_MethodCallsExistSomewhere — the positive version of the same idea:
 //     every `.SomeExported(` call in a fenced Go block must name a method or
 //     function defined somewhere in this module, or sit on a small allowlist of
-//     external names (stdlib, the profiler module) that snippets legitimately use.
+//     external names (stdlib, fmesh-export) that snippets legitimately use.
 //     The denylist test stays because it also scans Go source comments.
 //
 // Deliberately not checked: argument counts, and prose outside Go blocks — the
