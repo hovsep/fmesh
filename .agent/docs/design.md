@@ -63,7 +63,7 @@ so `Signal.Payload()` cannot be generic and pipes cannot be typed. `Signal.As[T]
 
 A generic that needs one hand-written forwarding method per call site has usually not paid off.
 `internal/hook.Group[T]` sits exactly on that line **on purpose**: 13 hand-written registration
-methods across the three hook levels wrap its 4 methods. That is the price of unexported `Hooks`
+methods across the three hook levels wrap its 3 methods. That is the price of unexported `Hooks`
 fields, which keep closures the only registration path. Do not "fix" either side.
 
 `internal/collection` is shared the same way. `Slice[T]` backs the groups and `Keyed[T]` the
