@@ -122,6 +122,23 @@ func TestStrategies_IgnoreAll(t *testing.T) {
 	}
 }
 
+func TestStrategies_IgnoreAllClearsInputsOfAFailedBeforeActivation(t *testing.T) {
+	sink := testutil.MustComponent("sink",
+		component.WithInputs("in"),
+		component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))
+	sink.SetupHooks(func(h *component.Hooks) {
+		h.BeforeActivation(func(context.Context, *component.Component) error { return errors.New("rejected") })
+	})
+	fm := testutil.MustFMesh("hook-failed", fmesh.WithErrorHandlingStrategy(fmesh.IgnoreAll))
+	require.NoError(t, fm.AddComponents(sink))
+	require.NoError(t, sink.InputByName("in").PutSignals(signal.New(1)))
+
+	_, err := fm.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.False(t, sink.InputByName("in").HasSignals(), "a hook failure clears the inputs like any failure")
+}
+
 func TestStrategies_FailuresAreAlwaysRecordedInRuntimeInfo(t *testing.T) {
 	// Whatever the strategy does about stopping, the results are reported.
 	fm, _ := countingMesh(t, fmesh.IgnoreAll, returnsError)
