@@ -473,6 +473,25 @@ func (fm *FMesh) stop(err error) (bool, error) {
 	return true, err
 }
 
+// strategyError returns the error that stops the mesh under the configured error
+// handling strategy after lastCycle, or nil when the run may continue.
+func (fm *FMesh) strategyError(lastCycle *cycle.Cycle) error {
+	switch fm.config.ErrorHandlingStrategy {
+	case StopOnFirstErrorOrPanic:
+		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
+			return fmt.Errorf("%w, cycle # %d, %w",
+				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle))
+		}
+	case StopOnFirstPanic:
+		if lastCycle.HasActivationPanics() {
+			return fmt.Errorf("%w, cycle # %d, %w",
+				ErrHitAPanic, lastCycle.Number(), cycleFailures(lastCycle))
+		}
+	case IgnoreAll:
+	}
+	return nil
+}
+
 // mustStop defines when f-mesh must stop (it always checks only the last cycle).
 //
 // The order of the checks is load-bearing; see the comments on the ones where it
@@ -500,18 +519,8 @@ func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 
 	// Before the natural stop check, so activation and hook errors are never
 	// silently swallowed when nothing activated in the last cycle.
-	switch fm.config.ErrorHandlingStrategy {
-	case StopOnFirstErrorOrPanic:
-		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
-			return fm.stop(fmt.Errorf("%w, cycle # %d, %w",
-				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle)))
-		}
-	case StopOnFirstPanic:
-		if lastCycle.HasActivationPanics() {
-			return fm.stop(fmt.Errorf("%w, cycle # %d, %w",
-				ErrHitAPanic, lastCycle.Number(), cycleFailures(lastCycle)))
-		}
-	case IgnoreAll:
+	if err := fm.strategyError(lastCycle); err != nil {
+		return fm.stop(err)
 	}
 
 	if !lastCycle.HasActivatedComponents() {
