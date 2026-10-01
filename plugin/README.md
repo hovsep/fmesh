@@ -8,7 +8,7 @@
 | [`profiler`](profiler/README.md) | Measures the mesh: run, cycle and activation timing, per-pipe throughput (unused pipes included) and a per-cycle timeline. |
 
 Exporters are not plugins: they only read a mesh. They live in
-[fmesh-export](https://github.com/hovsep/fmesh-export): JSON, DOT, Mermaid, D2 and PlantUML, all
+[fmesh-export](https://github.com/hovsep/fmesh-export): JSON, YAML, DOT, Mermaid, D2 and PlantUML, all
 implementing its `export.Exporter` interface.
 
 All attach the same way:

@@ -6,7 +6,7 @@ evidence that a public symbol is unused.** Two sibling repos use the public API:
 | Repo | Contents |
 |---|---|
 | [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. One Go module (`basics/`, `patterns/`, `simulation/`, `graphics/`, `internal/`). Its `internal/` package imports `fmesh-export/dot`. |
-| [`hovsep/fmesh-export`](https://github.com/hovsep/fmesh-export) | The diagram exporters documented in wiki `701.-Export`. One Go module: `dot`, `mermaid`, `d2`, `plantuml`. |
+| [`hovsep/fmesh-export`](https://github.com/hovsep/fmesh-export) | The exporters documented in wiki `701.-Export`. One Go module: `json`, `yaml`, `dot`, `mermaid`, `d2`, `plantuml`. |
 
 ## Before deleting any exported symbol
 
