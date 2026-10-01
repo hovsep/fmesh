@@ -11,8 +11,38 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+One interface for every exporter, and exporters are no longer plugins.
+
+### BREAKING
+
+**`plugin/jsonexport` is replaced by the `export` package.** A plugin adds behavior to a run;
+an exporter only reads a mesh, so it is now a plain value. `export.Exporter` is the interface every
+exporter implements, including the diagram formats in
+[fmesh-export](https://github.com/hovsep/fmesh-export). `export.JSON()` is the JSON exporter, and it
+can now export a cycle too.
+
+```go
+// before
+// exporter := jsonexport.New()
+// fm, err := fmesh.New("m", fmesh.WithPlugins(exporter))
+// data, err := exporter.Export()
+// data, err := jsonexport.Export(fm)
+
+// after
+e := export.JSON()
+data, err := e.Export(fm)
+for _, c := range ri.Cycles.All() {
+    frame, err := e.ExportCycle(fm, c) // structure + each component's result
+}
+```
+
+The document types are renamed with a `JSON` prefix (`jsonexport.Mesh` → `export.JSONMesh`, and so
+on), and `ExportCycle` produces a `JSONCycle`.
+
 ### Added
 
+- `export.Exporter`: `Export(fm)` for the structure and `ExportCycle(fm, c)` for one cycle. Call
+  `ExportCycle` on `RuntimeInfo.Cycles` after a run, or from an `AfterCycle` hook during it.
 - `component.WithRetry(n)` runs the activation function up to `n` times while it returns an error.
   The activation fails only when every attempt failed, with one error per attempt. A panic is never
   retried, nor is a waiting-for-inputs result; a canceled context stops the retries. A failed

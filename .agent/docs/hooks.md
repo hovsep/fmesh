@@ -86,6 +86,11 @@ Two levels, same shape: `Name() string` + `Init(T) error`, registered with a `Wi
 option, queried with `PluginRegistered(name)`. A duplicate name is a construction error. A plugin is
 just an initialization bundle — usually it registers hooks.
 
+**Plugins are for behavior, not views.** Something that only reads a mesh (an exporter, a report)
+is a plain value, not a plugin: exporters implement `export.Exporter` (`Export(fm)`,
+`ExportCycle(fm, c)`) and get cycles from `RuntimeInfo.Cycles` or an `AfterCycle` hook. Make
+something a plugin only when it must take part in the run.
+
 | Level | Interface | Registration | `Init` receives | Query |
 |---|---|---|---|---|
 | Component | `component.Plugin` | `component.WithPlugins(...)` | `*Component` | `c.PluginRegistered(name)` |
