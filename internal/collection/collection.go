@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 )
 
 // Slice is the shared read surface for slice-backed groups. It preserves
@@ -143,7 +144,7 @@ type Keyed[T Named] struct {
 	// byName indexes by name, for ByName.
 	byName map[string]T
 	// ordered holds the same items, sorted by name — traversal reads this, so it
-	// costs neither a per-element map lookup nor an allocation. It is rebuilt when
+	// costs neither a per-element map lookup nor an allocation. It is updated when
 	// membership changes rather than lazily on read: items are read from
 	// activation goroutines, and a lazily filled cache would turn a read into a
 	// write.
@@ -160,12 +161,8 @@ func NewKeyed[T Named](kind string) *Keyed[T] {
 	}
 }
 
-// rebuildOrder refreshes the sorted item list. Called once per membership change.
-func (k *Keyed[T]) rebuildOrder() {
-	k.ordered = make([]T, 0, len(k.byName))
-	for _, name := range slices.Sorted(maps.Keys(k.byName)) {
-		k.ordered = append(k.ordered, k.byName[name])
-	}
+func byName[T Named](a, b T) int {
+	return strings.Compare(a.Name(), b.Name())
 }
 
 // ByName returns the item with the given name, or the zero value if absent.
@@ -173,19 +170,42 @@ func (k *Keyed[T]) ByName(name string) T {
 	return k.byName[name]
 }
 
-// Add adds items and returns an error on name conflict. Items before the
-// conflicting one stay added; the order cache is rebuilt on both paths so it
-// never goes stale.
-func (k *Keyed[T]) Add(items ...T) (err error) {
+// Add adds items and returns an error on a name conflict, with the collection
+// or within items. On error nothing is added.
+//
+// The new items are merged into the sorted list in one pass, so adding n items
+// at once costs O(n log n), not a re-sort per item. The list is replaced, never
+// changed in place: a traversal already ranging over it keeps its snapshot.
+func (k *Keyed[T]) Add(items ...T) error {
+	seen := make(map[string]struct{}, len(items))
 	for _, item := range items {
-		if _, exists := k.byName[item.Name()]; exists {
-			err = fmt.Errorf("%s %q already exists", k.kind, item.Name())
-			break
+		_, exists := k.byName[item.Name()]
+		_, repeated := seen[item.Name()]
+		if exists || repeated {
+			return fmt.Errorf("%s %q already exists", k.kind, item.Name())
 		}
+		seen[item.Name()] = struct{}{}
+	}
+	for _, item := range items {
 		k.byName[item.Name()] = item
 	}
-	k.rebuildOrder()
-	return err
+
+	added := slices.SortedFunc(slices.Values(items), byName[T])
+	merged := make([]T, 0, len(k.ordered)+len(added))
+	i, j := 0, 0
+	for i < len(k.ordered) && j < len(added) {
+		if byName(k.ordered[i], added[j]) < 0 {
+			merged = append(merged, k.ordered[i])
+			i++
+		} else {
+			merged = append(merged, added[j])
+			j++
+		}
+	}
+	merged = append(merged, k.ordered[i:]...)
+	merged = append(merged, added[j:]...)
+	k.ordered = merged
+	return nil
 }
 
 // Remove deletes items by name. Names that match nothing are ignored.
@@ -193,7 +213,10 @@ func (k *Keyed[T]) Remove(names ...string) {
 	for _, name := range names {
 		delete(k.byName, name)
 	}
-	k.rebuildOrder()
+	k.ordered = slices.DeleteFunc(slices.Clone(k.ordered), func(item T) bool {
+		_, kept := k.byName[item.Name()]
+		return !kept
+	})
 }
 
 // Reset removes all items. A function for the same reason as Items: keeping

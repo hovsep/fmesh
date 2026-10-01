@@ -149,6 +149,7 @@ func TestSlice_RawAndReplace(t *testing.T) {
 func TestKeyed_Add(t *testing.T) {
 	tests := []struct {
 		name        string
+		existing    []named
 		add         []named
 		wantErr     string
 		wantOrdered []named
@@ -159,22 +160,37 @@ func TestKeyed_Add(t *testing.T) {
 			wantOrdered: []named{"a", "b", "c"},
 		},
 		{
-			name:        "duplicate name errors with the kind noun",
+			name:        "new items merge into the existing order",
+			existing:    []named{"b", "d"},
+			add:         []named{"e", "a", "c"},
+			wantOrdered: []named{"a", "b", "c", "d", "e"},
+		},
+		{
+			name:        "a duplicate within the batch adds nothing",
 			add:         []named{"a", "b", "a"},
 			wantErr:     `widget "a" already exists`,
-			wantOrdered: []named{"a", "b"},
+			wantOrdered: []named{},
+		},
+		{
+			name:        "a name already in the collection adds nothing",
+			existing:    []named{"b"},
+			add:         []named{"a", "b"},
+			wantErr:     `widget "b" already exists`,
+			wantOrdered: []named{"b"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k := NewKeyed[named]("widget")
+			require.NoError(t, k.Add(tt.existing...))
 			err := k.Add(tt.add...)
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
-			assert.Equal(t, tt.wantOrdered, k.AllOrdered(), "order cache must be fresh even after an error")
+			assert.Equal(t, tt.wantOrdered, k.AllOrdered())
+			assert.Equal(t, len(tt.wantOrdered), k.Len())
 		})
 	}
 }
