@@ -11,15 +11,15 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
-One interface for every exporter, and exporters are no longer plugins.
+Exporters are no longer plugins, and all of them live in fmesh-export; components can retry.
 
 ### BREAKING
 
 **`plugin/jsonexport` is removed; JSON export moves to fmesh-export.** A plugin adds behavior to
-a run; an exporter only reads a mesh, so it is now a plain value. fmesh keeps only the contract,
-`export.Exporter`. Every format, JSON included, lives in
-[fmesh-export](https://github.com/hovsep/fmesh-export) as one package per format; the JSON exporter
-is `github.com/hovsep/fmesh-export/json`, and it can now export a cycle too.
+a run; an exporter only reads a mesh, so it is now a plain value. Every format, JSON included,
+lives in [fmesh-export](https://github.com/hovsep/fmesh-export) as one package per format, and they
+all implement that module's `export.Exporter` interface. The JSON exporter is
+`github.com/hovsep/fmesh-export/json`, and it can now export a cycle too.
 
 ```go
 // before
@@ -41,9 +41,6 @@ produces a `json.Cycle`.
 
 ### Added
 
-- `export.Exporter`: `Export(fm)` for the structure and `ExportCycle(fm, c)` for one cycle. Call
-  `ExportCycle` on `RuntimeInfo.Cycles` after a run, or from an `AfterCycle` hook during it.
-  A nil cycle returns `export.ErrNilCycle`, in every exporter.
 - `component.WithRetry(n)` runs the activation function up to `n` times while it returns an error.
   The activation fails only when every attempt failed, with one error per attempt. A panic is never
   retried, nor is a waiting-for-inputs result; a canceled context stops the retries. A failed

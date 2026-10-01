@@ -255,8 +255,8 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 	}
 }
 
-// moduleDefinedNames returns every exported method, interface method and
-// function name defined in any non-test .go file in this module, subpackages and internal/ included —
+// moduleDefinedNames returns every exported method and function name defined in
+// any non-test .go file in this module, subpackages and internal/ included —
 // promoted methods (collection.Keyed, meta.store) are defined there.
 func moduleDefinedNames(t *testing.T) map[string]bool {
 	t.Helper()
@@ -285,30 +285,10 @@ func moduleDefinedNames(t *testing.T) map[string]bool {
 				names[fd.Name.Name] = true
 			}
 		}
-		addInterfaceMethods(file, names)
 		return nil
 	})
 	require.NoError(t, err)
 	return names
-}
-
-// addInterfaceMethods adds the exported method names of every interface in
-// file. They are API too: export.Exporter is implemented outside this module.
-func addInterfaceMethods(file *ast.File, names map[string]bool) {
-	ast.Inspect(file, func(n ast.Node) bool {
-		it, ok := n.(*ast.InterfaceType)
-		if !ok {
-			return true
-		}
-		for _, m := range it.Methods.List {
-			for _, name := range m.Names {
-				if name.IsExported() {
-					names[name.Name] = true
-				}
-			}
-		}
-		return true
-	})
 }
 
 // docsExternalNames is the allowlist for TestDocs_MethodCallsExistSomewhere:
@@ -326,6 +306,10 @@ var docsExternalNames = map[string]bool{
 	"Load": true,                                    // sync/atomic
 	"Exit": true, "Getenv": true, "WriteFile": true, // os
 	"NewRequestWithContext": true, // net/http
+	// the diagram exporters live in their own module (fmesh-export); the wiki shows their entry points
+	"ExportCycles": true, "WithCycles": true,
+	// the exporters and their export.Exporter interface live in fmesh-export (701)
+	"Export": true, "ExportCycle": true,
 	// placeholder interface in a teaching snippet (sink.Publish, 602)
 	"Publish": true,
 }
