@@ -40,7 +40,7 @@ func (a ActivationResultCode) String() string {
 }
 
 const (
-	// ActivationCodeUndefined - used for error handling as zero instance.
+	// ActivationCodeUndefined - the zero value: no code has been set.
 	ActivationCodeUndefined ActivationResultCode = iota
 
 	// ActivationCodeOK - component is activated and did not return any errors.
