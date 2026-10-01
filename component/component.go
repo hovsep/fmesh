@@ -20,6 +20,7 @@ type Component struct {
 	outputPorts  *port.Collection
 	f            ActivationFunc
 	attempts     int // activation attempts while f returns an error; 0 or 1 means no retry
+	retryIf      func(ctx context.Context, attempt int, err error) bool
 	logger       *log.Logger
 	customLogger bool // true when the logger was set explicitly and must not be inherited from the mesh
 	state        State
@@ -46,6 +47,10 @@ func New(name string, opts ...Option) (*Component, error) {
 		if err := opt(c); err != nil {
 			return nil, fmt.Errorf("component %q option failed: %w", name, err)
 		}
+	}
+	// Checked after all options, so WithRetry and WithRetryIf work in any order.
+	if c.retryIf != nil && c.attempts < 2 {
+		return nil, fmt.Errorf("component %q: WithRetryIf needs WithRetry with at least 2 attempts", name)
 	}
 
 	if err := c.initPlugins(); err != nil {

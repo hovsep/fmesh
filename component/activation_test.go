@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
@@ -595,5 +598,163 @@ func TestComponent_WithRetry(t *testing.T) {
 	t.Run("rejects fewer than one attempt", func(t *testing.T) {
 		_, err := New("c1", WithRetry(0))
 		require.ErrorContains(t, err, "retry attempts must be at least 1")
+	})
+}
+
+func TestComponent_WithRetryIf(t *testing.T) {
+	type call struct {
+		attempt int
+		err     error
+	}
+	// activate builds and runs a component whose activation function is f,
+	// recording every call to the retry predicate, which answers with retry.
+	activate := func(t *testing.T, ctx context.Context, attempts int, f ActivationFunc,
+		retry func(ctx context.Context, attempt int, err error) bool,
+	) (*ActivationResult, []call) {
+		t.Helper()
+		var calls []call
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithActivationFunc(f), WithRetry(attempts),
+			WithRetryIf(func(ctx context.Context, attempt int, err error) bool {
+				calls = append(calls, call{attempt, err})
+				return retry(ctx, attempt, err)
+			}))
+		require.NoError(t, err)
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+		return c.MaybeActivate(ctx), calls
+	}
+	always := func(context.Context, int, error) bool { return true }
+	// failing returns an activation function that returns "fail N" on call N.
+	failing := func(runs *int) ActivationFunc {
+		return func(context.Context, *Component) error {
+			*runs++
+			return fmt.Errorf("fail %d", *runs)
+		}
+	}
+
+	t.Run("gets each attempt number and error, but not after the last attempt", func(t *testing.T) {
+		runs := 0
+		result, calls := activate(t, context.Background(), 3, failing(&runs), always)
+
+		assert.Equal(t, 3, runs)
+		assert.Equal(t, ActivationCodeReturnedError, result.Code())
+		assert.Len(t, result.ActivationErrors(), 3)
+		require.Len(t, calls, 2)
+		assert.Equal(t, 1, calls[0].attempt)
+		require.EqualError(t, calls[0].err, "fail 1")
+		assert.Equal(t, 2, calls[1].attempt)
+		require.EqualError(t, calls[1].err, "fail 2")
+	})
+
+	t.Run("returning false stops the retries", func(t *testing.T) {
+		runs := 0
+		result, calls := activate(t, context.Background(), 5, failing(&runs),
+			func(_ context.Context, attempt int, _ error) bool { return attempt < 2 })
+
+		assert.Equal(t, 2, runs)
+		assert.Len(t, calls, 2)
+		assert.Equal(t, ActivationCodeReturnedError, result.Code())
+		assert.Len(t, result.ActivationErrors(), 2, "one error per attempt made")
+	})
+
+	t.Run("not called after a success", func(t *testing.T) {
+		runs := 0
+		f := func(ctx context.Context, this *Component) error {
+			if runs == 1 {
+				runs++
+				return nil
+			}
+			return failing(&runs)(ctx, this)
+		}
+		result, calls := activate(t, context.Background(), 3, f, always)
+
+		assert.Equal(t, ActivationCodeOK, result.Code())
+		assert.Len(t, calls, 1, "called after the failed first attempt only")
+	})
+
+	t.Run("not called on a panic", func(t *testing.T) {
+		result, calls := activate(t, context.Background(), 3,
+			func(context.Context, *Component) error { panic("boom") }, always)
+
+		assert.Equal(t, ActivationCodePanicked, result.Code())
+		assert.Empty(t, calls)
+	})
+
+	t.Run("not called when waiting for inputs", func(t *testing.T) {
+		result, calls := activate(t, context.Background(), 3,
+			func(context.Context, *Component) error { return ErrWaitKeepingInputs }, always)
+
+		assert.Equal(t, ActivationCodeWaitingForInputsKeep, result.Code())
+		assert.Empty(t, calls)
+	})
+
+	t.Run("not called when the context is done", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		runs := 0
+		result, calls := activate(t, ctx, 3, failing(&runs), always)
+
+		assert.Equal(t, 1, runs)
+		assert.Len(t, result.ActivationErrors(), 1)
+		assert.Empty(t, calls)
+	})
+
+	// backoff waits a second before every retry, or gives up when ctx is done.
+	backoff := func(ctx context.Context, _ int, _ error) bool {
+		select {
+		case <-time.After(time.Second):
+			return true
+		case <-ctx.Done():
+			return false
+		}
+	}
+
+	t.Run("backoff waits between attempts", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			runs := 0
+			f := func(ctx context.Context, this *Component) error {
+				if runs == 2 {
+					runs++
+					return nil
+				}
+				return failing(&runs)(ctx, this)
+			}
+			start := time.Now()
+			result, _ := activate(t, context.Background(), 3, f, backoff)
+
+			assert.Equal(t, ActivationCodeOK, result.Code())
+			assert.Equal(t, 2*time.Second, time.Since(start))
+		})
+	})
+
+	t.Run("backoff ends when the context is done", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+			defer cancel()
+			runs := 0
+			start := time.Now()
+			result, calls := activate(t, ctx, 10, failing(&runs), backoff)
+
+			assert.Equal(t, 2500*time.Millisecond, time.Since(start), "the third wait is cut short")
+			assert.Equal(t, 3, runs)
+			assert.Len(t, calls, 3)
+			assert.Equal(t, ActivationCodeReturnedError, result.Code())
+			assert.Len(t, result.ActivationErrors(), 3)
+		})
+	})
+
+	t.Run("needs WithRetry with at least 2 attempts", func(t *testing.T) {
+		_, err := New("c1", WithRetryIf(always))
+		require.ErrorContains(t, err, "WithRetryIf needs WithRetry with at least 2 attempts")
+
+		_, err = New("c1", WithRetryIf(always), WithRetry(1))
+		require.ErrorContains(t, err, "WithRetryIf needs WithRetry with at least 2 attempts")
+
+		_, err = New("c1", WithRetryIf(always), WithRetry(2))
+		require.NoError(t, err, "option order does not matter")
+	})
+
+	t.Run("rejects a nil predicate", func(t *testing.T) {
+		_, err := New("c1", WithRetry(2), WithRetryIf(nil))
+		require.ErrorContains(t, err, "retry predicate must not be nil")
 	})
 }

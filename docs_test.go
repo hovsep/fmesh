@@ -296,10 +296,10 @@ func moduleDefinedNames(t *testing.T) map[string]bool {
 // minimal — every entry is a name the check can no longer question.
 var docsExternalNames = map[string]bool{
 	// stdlib
-	"Background": true, "WithCancel": true, // context
+	"Background": true, "WithCancel": true, "Done": true, // context
 	"Errorf": true, "Printf": true, "Println": true, "Sprintf": true, // fmt / log
 	"HasPrefix": true, "ToLower": true, "ToUpper": true, // strings
-	"Now": true, "Since": true, "Format": true, // time
+	"Now": true, "Since": true, "Format": true, "After": true, // time
 	"Is":    true,              // errors
 	"Itoa":  true,              // strconv
 	"Clone": true, "Min": true, // maps / slices

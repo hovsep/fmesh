@@ -76,11 +76,12 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 			return c.newActivationResultWaitingForInputs(err)
 		}
 
+		failed := err
 		if c.attempts > 1 {
 			err = fmt.Errorf("attempt %d of %d: %w", attempt, c.attempts, err)
 		}
 		failures = append(failures, err)
-		if attempt >= c.attempts || ctx.Err() != nil {
+		if attempt >= c.attempts || ctx.Err() != nil || (c.retryIf != nil && !c.retryIf(ctx, attempt, failed)) {
 			return c.newActivationResultReturnedError(failures...)
 		}
 		if restoreErr := c.restoreOutputs(ctx, outputs); restoreErr != nil {
@@ -94,7 +95,7 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 // every attempt failed, and its result lists each attempt's error. A panic is
 // never retried, and neither is a waiting-for-inputs result. Retrying stops
 // early when the context is done. Activation hooks fire once, around all the
-// attempts.
+// attempts. WithRetryIf decides whether to retry and can wait between attempts.
 //
 // Signals a failed attempt put on the output ports are removed before the next
 // attempt, so retries do not pile up outputs. The reset goes through the port:
@@ -106,6 +107,24 @@ func WithRetry(attempts int) Option {
 			return fmt.Errorf("retry attempts must be at least 1, got %d", attempts)
 		}
 		c.attempts = attempts
+		return nil
+	}
+}
+
+// WithRetryIf is a component option that calls retry after each failed attempt
+// except the last one, with the 1-based attempt number and that attempt's error.
+// Returning false stops the retries, and the activation fails with the errors
+// so far. retry may also wait before the next attempt (backoff); the wait must
+// end when ctx is done.
+//
+// WithRetry still sets the maximum number of attempts. New fails when
+// WithRetryIf is set and WithRetry allows fewer than 2 attempts.
+func WithRetryIf(retry func(ctx context.Context, attempt int, err error) bool) Option {
+	return func(c *Component) error {
+		if retry == nil {
+			return errors.New("retry predicate must not be nil")
+		}
+		c.retryIf = retry
 		return nil
 	}
 }
