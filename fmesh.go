@@ -105,20 +105,26 @@ func WithMeta[T meta.Value](key string, value T) Option {
 	}
 }
 
-// AddComponents adds components to the mesh. Returns an error if any component is invalid or has a duplicate name.
+// AddComponents adds components to the mesh. Returns an error if any component is invalid or has a
+// duplicate name; then no component is added or changed. The OnComponentAdded hooks run after all
+// components are added, and a failing hook leaves them added.
 func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	for _, c := range components {
 		if err := c.ValidateBeforeAddingToMesh(); err != nil {
 			return fmt.Errorf("failed to add component %q: %w", c.Name(), err)
 		}
+	}
 
+	if err := fm.components.Add(components...); err != nil {
+		return fmt.Errorf("failed to add components to mesh: %w", err)
+	}
+
+	for _, c := range components {
 		c.SetParentMesh(fm)
 		c.InheritLogger(fm.logger)
+	}
 
-		if err := fm.components.Add(c); err != nil {
-			return fmt.Errorf("failed to add component %q to mesh: %w", c.Name(), err)
-		}
-
+	for _, c := range components {
 		// Components are added outside a run, so there is no run context yet.
 		if err := fm.hooks.onComponentAdded.Trigger(context.Background(), &ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
 			return fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err)
