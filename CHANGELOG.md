@@ -11,6 +11,14 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+### Added
+
+- `component.WithRetry(n)` runs the activation function up to `n` times while it returns an error.
+  The activation fails only when every attempt failed, with one error per attempt. A panic is never
+  retried, nor is a waiting-for-inputs result; a canceled context stops the retries. A failed
+  attempt's outputs are removed before the next one. `BeforeActivation` and `AfterActivation` fire
+  once around all attempts; the output reset fires the ports' `OnClear` and `OnSignalsAdded` hooks.
+
 ## [v1.15.0] — Gegharkunik — 2026-09-30
 
 A mesh walker, and a JSON exporter built on it.

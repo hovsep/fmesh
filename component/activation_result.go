@@ -143,11 +143,14 @@ func (c *Component) newActivationResultNoInput() *ActivationResult {
 		SetActivationCode(ActivationCodeNoInput)
 }
 
-func (c *Component) newActivationResultReturnedError(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).
+func (c *Component) newActivationResultReturnedError(errs ...error) *ActivationResult {
+	result := NewActivationResult(c.Name()).
 		SetActivated(true).
-		SetActivationCode(ActivationCodeReturnedError).
-		AddActivationError(fmt.Errorf("component returned an error: %w", err))
+		SetActivationCode(ActivationCodeReturnedError)
+	for _, err := range errs {
+		result.AddActivationError(fmt.Errorf("component returned an error: %w", err))
+	}
+	return result
 }
 
 func (c *Component) newActivationResultPanicked(err error) *ActivationResult {

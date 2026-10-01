@@ -19,6 +19,7 @@ type Component struct {
 	inputPorts   *port.Collection
 	outputPorts  *port.Collection
 	f            ActivationFunc
+	attempts     int // activation attempts while f returns an error; 0 or 1 means no retry
 	logger       *log.Logger
 	customLogger bool // true when the logger was set explicitly and must not be inherited from the mesh
 	state        State
