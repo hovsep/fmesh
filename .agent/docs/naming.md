@@ -64,15 +64,18 @@ constructor that takes options (`fmesh.New`, `component.New`, `port.NewInput`, `
 | Logger | `component.WithLogger(l)` |
 | Mesh config | `fmesh.WithCyclesLimit(n)`, `WithTimeLimit(d)`, `WithErrorHandlingStrategy(s)`, … (the only way to set config) |
 
-Post-construction `Set*` methods exist only where mutation after `New()` is required: `SetLogger`,
-`SetParentMesh`, and `InheritLogger`.
+Post-construction `Set*` methods exist only where mutation after `New()` is required, e.g.
+`Component.SetLogger`, `InheritLogger`, `SetParentMesh`, `SetupHooks`, `port.Collection.SetParentComponent`,
+`cycle.Cycle.SetNumber`, `cycle.Group.SetLenLimit`, and `ActivationResult.SetActivated` /
+`SetActivationCode`.
 
 Mutating methods that *append* use `Add*`, even on result types: `ActivationResult.AddActivationError`.
 
 ## Collection/group operations
 
 `Any(p)`, `Every(p)`, `Count(p)`, `Map`, `MapIf`, `Filter`, `ForEach`, `ForEachIf`, `Reduce`,
-`ReducePayloads`, `Join`.
+`ReducePayloads`, `Join`. Keyed collections (`port.Collection`, `component.Collection`) name the
+predicate form `AnyMatch(p)`; their `Any()` returns the first item in name order.
 
 ## Error returns
 
