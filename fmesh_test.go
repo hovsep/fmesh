@@ -423,6 +423,33 @@ func TestFMesh_AddComponents(t *testing.T) {
 	}
 }
 
+func TestFMesh_AddComponents_RejectedChangesNothing(t *testing.T) {
+	t.Run("a duplicate name adds no component of the call", func(t *testing.T) {
+		fm := mustNewFMesh("fm")
+		err := fm.AddComponents(
+			mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
+			mustNewComponent("c2", component.WithActivationFunc(noOpActivationFunc)),
+			mustNewComponent("c1", component.WithActivationFunc(noOpActivationFunc)),
+		)
+
+		require.ErrorContains(t, err, `component "c1" already exists`)
+		assert.True(t, fm.Components().IsEmpty())
+	})
+
+	t.Run("a rejected component keeps its parent mesh", func(t *testing.T) {
+		m1, m2 := mustNewFMesh("m1"), mustNewFMesh("m2")
+		c := mustNewComponent("a", component.WithActivationFunc(noOpActivationFunc))
+		require.NoError(t, m1.AddComponents(c))
+		require.NoError(t, m2.AddComponents(mustNewComponent("a", component.WithActivationFunc(noOpActivationFunc))))
+
+		require.Error(t, m2.AddComponents(c))
+
+		assert.Same(t, m1, c.ParentMesh())
+		_, err := m1.Run(t.Context())
+		require.NoError(t, err)
+	})
+}
+
 func TestFMesh_Run(t *testing.T) {
 	// wantAR is a compact per-component expectation; hasError asserts only the
 	// presence of an activation error, never its message.
