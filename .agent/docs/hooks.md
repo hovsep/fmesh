@@ -87,7 +87,7 @@ option, queried with `PluginRegistered(name)`. A duplicate name is a constructio
 just an initialization bundle — usually it registers hooks.
 
 **Plugins are for behavior, not views.** Something that only reads a mesh (an exporter, a report)
-is a plain value, not a plugin: exporters implement `export.Exporter` (`Export(fm)`,
+is a plain value, not a plugin: exporters implement fmesh-export's `export.Exporter` (`Export(fm)`,
 `ExportCycle(fm, c)`) and get cycles from `RuntimeInfo.Cycles` or an `AfterCycle` hook. Make
 something a plugin only when it must take part in the run.
 
