@@ -11,6 +11,8 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+## [v1.16.0] — Lori — 2026-10-01
+
 Exporters are no longer plugins, and all of them live in fmesh-export; components can retry.
 
 ### BREAKING
