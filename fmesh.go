@@ -398,6 +398,10 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 		return nil, err
 	}
 
+	// AfterRun gets the caller's context: once the time limit has fired, the run
+	// context is done, and an AfterRun that exports or flushes would fail at once.
+	callerCtx := ctx
+
 	// After cleanUpPreviousRun starts the run clock, never before: contextError
 	// tells the time limit from a caller's cancellation by the run's duration,
 	// so the deadline must not fire before that duration reaches the limit.
@@ -411,7 +415,7 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 
 	defer func() {
 		fm.runtimeInfo.markStopped()
-		if err := fm.hooks.afterRun.Trigger(ctx, fm); err != nil {
+		if err := fm.hooks.afterRun.Trigger(callerCtx, fm); err != nil {
 			if runErr == nil {
 				runErr = fmt.Errorf("afterRun hook failed: %w", err)
 			}
