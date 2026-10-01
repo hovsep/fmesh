@@ -130,8 +130,9 @@ a no-op.
    functions return `ctx.Err()`, which would otherwise look like ordinary errors and hide why the
    mesh stopped. A caller deadline shorter than `TimeLimit` is reported as `ErrRunCanceled`, not
    `ErrTimeLimitExceeded` — `contextError` tells them apart by elapsed time.
-4. **Error strategy** (`WithErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`) — checked
-   **before** the natural stop, so errors are never swallowed:
+4. **Error strategy** (`WithErrorHandlingStrategy`, default `StopOnFirstErrorOrPanic`; an unknown
+   one fails `New` with `ErrUnsupportedErrorHandlingStrategy`) — checked **before** the natural
+   stop, so errors are never swallowed:
    - `StopOnFirstErrorOrPanic` → `ErrHitAnErrorOrPanic` (includes hook failures)
    - `StopOnFirstPanic` → errors ignored; panics stop with `ErrHitAPanic`
    - `IgnoreAll` → run until a natural stop or a limit

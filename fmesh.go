@@ -512,8 +512,6 @@ func (fm *FMesh) mustStop(ctx context.Context) (bool, error) {
 				ErrHitAPanic, lastCycle.Number(), cycleFailures(lastCycle)))
 		}
 	case IgnoreAll:
-	default:
-		return fm.stop(ErrUnsupportedErrorHandlingStrategy)
 	}
 
 	if !lastCycle.HasActivatedComponents() {

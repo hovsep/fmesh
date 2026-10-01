@@ -98,31 +98,27 @@ func TestFMesh_WithDescription(t *testing.T) {
 
 func TestWithErrorHandlingStrategy(t *testing.T) {
 	tests := []struct {
-		name       string
-		strategy   ErrorHandlingStrategy
-		assertions func(t *testing.T, fm *FMesh)
+		name     string
+		strategy ErrorHandlingStrategy
+		wantErr  bool
 	}{
-		{
-			name:     "sets ignore all",
-			strategy: IgnoreAll,
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, IgnoreAll, fm.config.ErrorHandlingStrategy)
-			},
-		},
-		{
-			name:     "sets stop on first error or panic",
-			strategy: StopOnFirstErrorOrPanic,
-			assertions: func(t *testing.T, fm *FMesh) {
-				assert.Equal(t, StopOnFirstErrorOrPanic, fm.config.ErrorHandlingStrategy)
-			},
-		},
+		{name: "stop on first error or panic", strategy: StopOnFirstErrorOrPanic},
+		{name: "stop on first panic", strategy: StopOnFirstPanic},
+		{name: "ignore all", strategy: IgnoreAll},
+		// An unknown strategy used to pass New and fail only after the first cycle had run.
+		{name: "unknown strategy is rejected", strategy: IgnoreAll + 1, wantErr: true},
+		{name: "negative strategy is rejected", strategy: -1, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mustNewFMesh("fm1", WithErrorHandlingStrategy(tt.strategy))
-			if tt.assertions != nil {
-				tt.assertions(t, got)
+			fm, err := New("fm1", WithErrorHandlingStrategy(tt.strategy))
+			if tt.wantErr {
+				require.ErrorIs(t, err, ErrUnsupportedErrorHandlingStrategy)
+				assert.Nil(t, fm)
+				return
 			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.strategy, fm.config.ErrorHandlingStrategy)
 		})
 	}
 }
@@ -441,31 +437,6 @@ func TestFMesh_Run(t *testing.T) {
 		wantCycles []map[string]wantAR
 		wantErr    bool
 	}{
-		{
-			name: "unsupported error handling strategy",
-			getFM: func() *FMesh {
-				fm := mustNewFMesh("fm", WithErrorHandlingStrategy(100), WithUnlimitedCycles())
-				require.NoError(t, fm.AddComponents(
-					mustNewComponent("c1",
-						component.WithInputs("i1"),
-						component.WithOutputs("o1"),
-						component.WithDescription("This component simply puts a constant on o1"),
-						component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-							return this.OutputByName("o1").PutSignals(signal.New(77))
-						}),
-					),
-				))
-				return fm
-			},
-			initFM: func(fm *FMesh) {
-				// Fire the mesh
-				mustPutSignals(fm.Components().ByName("c1").InputByName("i1"), signal.New("start c1"))
-			},
-			wantCycles: []map[string]wantAR{
-				{"c1": {activated: true, code: component.ActivationCodeOK}},
-			},
-			wantErr: true,
-		},
 		{
 			name: "stop on first error on first cycle",
 			getFM: func() *FMesh {
