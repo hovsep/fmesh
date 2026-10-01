@@ -1,6 +1,6 @@
-// Package export defines how a mesh is exported, and provides the JSON
-// exporter. Diagram formats (DOT, Mermaid, D2, PlantUML) implement the same
-// interface in github.com/hovsep/fmesh-export.
+// Package export defines the interface every mesh exporter implements. The
+// exporters themselves (JSON, DOT, Mermaid, D2, PlantUML) live in
+// github.com/hovsep/fmesh-export, one package per format.
 package export
 
 import (
