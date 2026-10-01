@@ -21,8 +21,8 @@ F-Mesh uses semantic versioning. While it is pre-production, **minor versions ma
 changes**. [CHANGELOG.md](https://github.com/hovsep/fmesh/blob/main/CHANGELOG.md) lists each one.
 Pin an exact version if that matters to you.
 
-Release tags are plain semver (`v1.12.0`). Each release is named after one of the 17 historical
-capitals of Armenia; the name is in the release title, not the tag. See the
+Release tags are plain semver (`v1.12.0`). Each release is named after an Armenian place; the name
+is in the release title, not the tag. See the
 [releases page](https://github.com/hovsep/fmesh/releases).
 
 # User guide
