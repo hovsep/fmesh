@@ -11,6 +11,12 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+### Added
+
+- `component.WithRetryIf(func(ctx, attempt, err) bool)` decides after each failed attempt whether
+  to retry, and can wait before the next one (backoff). Use it with `WithRetry(n)`, which still
+  sets the maximum number of attempts; without it `New` returns an error.
+
 ## [v1.16.0] — Lori — 2026-10-01
 
 Exporters are no longer plugins, and all of them live in fmesh-export; components can retry.
