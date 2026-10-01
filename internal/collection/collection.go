@@ -177,11 +177,14 @@ func (k *Keyed[T]) ByName(name string) T {
 // at once costs O(n log n), not a re-sort per item. The list is replaced, never
 // changed in place: a traversal already ranging over it keeps its snapshot.
 func (k *Keyed[T]) Add(items ...T) error {
-	for i, item := range items {
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
 		_, exists := k.byName[item.Name()]
-		if exists || slices.ContainsFunc(items[:i], func(other T) bool { return other.Name() == item.Name() }) {
+		_, repeated := seen[item.Name()]
+		if exists || repeated {
 			return fmt.Errorf("%s %q already exists", k.kind, item.Name())
 		}
+		seen[item.Name()] = struct{}{}
 	}
 	for _, item := range items {
 		k.byName[item.Name()] = item
