@@ -49,9 +49,6 @@ func (g *Group) SetLenLimit(limit int) *Group {
 
 // Add adds cycles to the group and returns it. When a length limit is set
 // (SetLenLimit), adding beyond it evicts the oldest cycles.
-// Note: Unlike other collections, cycle errors are NOT propagated to the group
-// because cycles represent historical execution records - users need to access
-// cycles that had errors to understand what happened.
 func (g *Group) Add(cycles ...*Cycle) *Group {
 	collection.AppendItems(&g.cycleSlice, cycles...)
 	g.evictExcess()
