@@ -406,3 +406,194 @@ func TestComponent_MaybeActivate_HookPanics(t *testing.T) {
 		})
 	}
 }
+
+func TestComponent_WithRetry(t *testing.T) {
+	errBoom := errors.New("boom")
+	// fails returns an activation function that fails the first n calls,
+	// writing an output each time, and counts every call.
+	fails := func(n int, calls *int, final error) ActivationFunc {
+		return func(_ context.Context, this *Component) error {
+			*calls++
+			if err := this.OutputByName("o1").PutPayloads(*calls); err != nil {
+				return err
+			}
+			if *calls <= n {
+				return errBoom
+			}
+			return final
+		}
+	}
+
+	tests := []struct {
+		name      string
+		attempts  int
+		activate  func(calls *int) ActivationFunc
+		ctx       func() context.Context
+		wantCalls int
+		wantCode  ActivationResultCode
+		wantErrs  int
+		wantOut   []any
+	}{
+		{
+			name:      "succeeds on a later attempt, keeping only that attempt's outputs",
+			attempts:  3,
+			activate:  func(calls *int) ActivationFunc { return fails(2, calls, nil) },
+			wantCalls: 3,
+			wantCode:  ActivationCodeOK,
+			wantOut:   []any{3},
+		},
+		{
+			name:      "fails only when every attempt failed",
+			attempts:  3,
+			activate:  func(calls *int) ActivationFunc { return fails(3, calls, nil) },
+			wantCalls: 3,
+			wantCode:  ActivationCodeReturnedError,
+			wantErrs:  3,
+			wantOut:   []any{3},
+		},
+		{
+			name:     "a panic on the first attempt is not retried",
+			attempts: 3,
+			activate: func(calls *int) ActivationFunc {
+				return func(context.Context, *Component) error { *calls++; panic("first") }
+			},
+			wantCalls: 1,
+			wantCode:  ActivationCodePanicked,
+			wantErrs:  1,
+		},
+		{
+			name:     "a panic after an error stops the retries",
+			attempts: 3,
+			activate: func(calls *int) ActivationFunc {
+				return func(context.Context, *Component) error {
+					*calls++
+					if *calls == 2 {
+						panic("second")
+					}
+					return errBoom
+				}
+			},
+			wantCalls: 2,
+			wantCode:  ActivationCodePanicked,
+			wantErrs:  1,
+		},
+		{
+			name:      "waiting for inputs is not retried",
+			attempts:  3,
+			activate:  func(calls *int) ActivationFunc { return fails(0, calls, ErrWaitKeepingInputs) },
+			wantCalls: 1,
+			wantCode:  ActivationCodeWaitingForInputsKeep,
+			wantErrs:  1,
+			wantOut:   []any{1},
+		},
+		{
+			name:     "a canceled context stops the retries",
+			attempts: 3,
+			activate: func(calls *int) ActivationFunc { return fails(3, calls, nil) },
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				return ctx
+			},
+			wantCalls: 1,
+			wantCode:  ActivationCodeReturnedError,
+			wantErrs:  1,
+			wantOut:   []any{1},
+		},
+		{
+			name:      "without retry an error fails at once",
+			activate:  func(calls *int) ActivationFunc { return fails(1, calls, nil) },
+			wantCalls: 1,
+			wantCode:  ActivationCodeReturnedError,
+			wantErrs:  1,
+			wantOut:   []any{1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls, before, after := 0, 0, 0
+			opts := []Option{WithInputs("i1"), WithOutputs("o1"), WithActivationFunc(tt.activate(&calls))}
+			if tt.attempts > 0 {
+				opts = append(opts, WithRetry(tt.attempts))
+			}
+			c, err := New("c1", opts...)
+			require.NoError(t, err)
+			c.SetupHooks(func(h *Hooks) {
+				h.BeforeActivation(func(context.Context, *Component) error { before++; return nil })
+				h.AfterActivation(func(context.Context, *ActivationContext) error { after++; return nil })
+			})
+			require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+			ctx := context.Background()
+			if tt.ctx != nil {
+				ctx = tt.ctx()
+			}
+			result := c.MaybeActivate(ctx)
+
+			assert.Equal(t, tt.wantCalls, calls)
+			assert.Equal(t, tt.wantCode, result.Code())
+			assert.Len(t, result.ActivationErrors(), tt.wantErrs)
+			assert.Equal(t, 1, before, "BeforeActivation fires once per activation")
+			assert.Equal(t, 1, after, "AfterActivation fires once per activation")
+			if tt.wantOut != nil {
+				assert.Equal(t, tt.wantOut, c.OutputByName("o1").Signals().AllPayloads())
+			}
+		})
+	}
+
+	t.Run("each attempt's error is reported", func(t *testing.T) {
+		calls := 0
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithRetry(2),
+			WithActivationFunc(fails(2, &calls, nil)))
+		require.NoError(t, err)
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate(context.Background())
+
+		require.ErrorIs(t, result.ActivationError(), errBoom)
+		require.ErrorContains(t, result.ActivationError(), "attempt 1 of 2: boom")
+		assert.ErrorContains(t, result.ActivationError(), "attempt 2 of 2: boom")
+	})
+
+	t.Run("outputs from before the activation survive a retry", func(t *testing.T) {
+		calls := 0
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithRetry(2),
+			WithActivationFunc(fails(1, &calls, nil)))
+		require.NoError(t, err)
+		require.NoError(t, c.OutputByName("o1").PutPayloads("earlier"))
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate(context.Background())
+
+		assert.Equal(t, ActivationCodeOK, result.Code())
+		assert.Equal(t, []any{"earlier", 2}, c.OutputByName("o1").Signals().AllPayloads())
+	})
+
+	t.Run("the output reset fires the port's hooks", func(t *testing.T) {
+		// Documented behavior: the reset goes through Port.Clear and
+		// PutSignalGroups, so port hooks see it.
+		calls := 0
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithRetry(2),
+			WithActivationFunc(fails(1, &calls, nil)))
+		require.NoError(t, err)
+		require.NoError(t, c.OutputByName("o1").PutPayloads("earlier"))
+
+		clears, added := 0, 0
+		c.OutputByName("o1").SetupHooks(func(h *port.Hooks) {
+			h.OnClear(func(context.Context, *port.ClearContext) error { clears++; return nil })
+			h.OnSignalsAdded(func(context.Context, *port.SignalsAddedContext) error { added++; return nil })
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate(context.Background())
+
+		require.Equal(t, ActivationCodeOK, result.Code())
+		assert.Equal(t, 1, clears, "one reset between the two attempts")
+		assert.Equal(t, 3, added, "attempt 1 output, the earlier signal put back, attempt 2 output")
+	})
+
+	t.Run("rejects fewer than one attempt", func(t *testing.T) {
+		_, err := New("c1", WithRetry(0))
+		require.ErrorContains(t, err, "retry attempts must be at least 1")
+	})
+}

@@ -48,6 +48,10 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
   one outcome makes hooks run twice.
 - **`AfterActivation` always runs** — on success, error, panic, waiting, or a failed
   `BeforeActivation`. Treat it as a `finally` block.
+- **`WithRetry` does not repeat activation hooks.** All attempts are one activation:
+  `BeforeActivation` and `AfterActivation` fire once around them. The output reset between
+  attempts goes through `Port.Clear` / `PutSignalGroups` on purpose, so the port's `OnClear` and
+  `OnSignalsAdded` hooks do fire for each changed output port. That is documented, not a bug.
 - **Hook panics are recovered.** Hooks run on the activation goroutine, where an escaped panic
   would kill the process. Each stage (`BeforeActivation`, the function, `AfterActivation`)
   recovers its own panic, so no stage re-runs. A panicking hook re-codes the result to
