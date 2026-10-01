@@ -25,8 +25,7 @@ type Mode uint8
 
 const (
 	// ModeTiming measures wall-clock time: runs, cycles, and each component's
-	// activations. The only dimension attributable to the mesh rather than the
-	// process, and the default.
+	// activations. The default.
 	ModeTiming Mode = 1 << iota
 
 	// ModeThroughput counts the signals moving through each pipe. Registers a
@@ -260,10 +259,8 @@ func labelGoroutines(meshName string, c *component.Component) {
 // the lock, just before the activation returns to the scheduler) and the end as
 // early as possible (before the lock, the instant the activation finished).
 //
-// Stamping the start *before* its lock instead looks symmetrical and is much
-// worse -- it moves the BeforeActivation contention into the window, where it
-// dominates. Measured on a 500-component cycle doing ~2us of work each: ~18us
-// reported this way, ~180us with the start stamped early.
+// Do not stamp the start before its lock: that moves the BeforeActivation
+// contention into the window, where it dominates.
 func (p *Plugin) instrument(c *component.Component) {
 	c.SetupHooks(func(hooks *component.Hooks) {
 		hooks.BeforeActivation(func(_ context.Context, this *component.Component) error {
@@ -374,8 +371,7 @@ func (p *Plugin) Reset() {
 // Report renders the profile as text, slowest component first.
 //
 // Each dimension beyond timing contributes a block only when its mode is
-// enabled, so a default profiler reports exactly what it always did. The
-// timeline is summarized rather than tabulated -- use [Plugin.Timeline] for the
+// enabled. The timeline is summarized rather than tabulated -- use [Plugin.Timeline] for the
 // rows themselves.
 func (p *Plugin) Report() string {
 	var b strings.Builder

@@ -6,7 +6,7 @@
 // through the OnComponentAdded hook, so they are things you add to a mesh rather
 // than things components opt into.
 //
-//	profiler -- measures where a mesh spends its time, which pipes carry its
-//	            traffic, and what the Go runtime did while it ran
+//	profiler -- measures where a mesh spends its time and which pipes carry
+//	            its traffic
 //	autowire -- connects components by naming convention instead of by hand
 package plugin
