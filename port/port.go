@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
@@ -283,29 +284,38 @@ func (p *Port) HasPipes() bool {
 // PipeTo connects this port to destination ports.
 // Flushing fans out the same *Signal pointers to every destination, so
 // payloads must be treated as immutable by all receiving components.
+// A failing pipe hook removes that pipe; pipes made earlier in the call stay.
 func (p *Port) PipeTo(destPorts ...*Port) error {
 	for _, destPort := range destPorts {
 		if err := validatePipe(p, destPort); err != nil {
 			return fmt.Errorf("pipe validation failed: %w", err)
 		}
+		index := p.pipes.Len()
 		p.pipes.add(destPort)
 
-		// Wiring happens before there is a run to cancel, so the pipe hooks get
-		// context.Background() like every other construction-time hook.
-		if err := p.hooks.onOutboundPipe.Trigger(context.Background(), &OutboundPipeContext{
-			SourcePort:      p,
-			DestinationPort: destPort,
-		}); err != nil {
-			return fmt.Errorf("onOutboundPipe hook failed: %w", err)
+		if err := p.triggerPipeHooks(destPort); err != nil {
+			p.pipes.setPorts(slices.Delete(slices.Clone(p.pipes.raw()), index, index+1))
+			return err
 		}
+	}
+	return nil
+}
 
-		// Trigger OnInboundPipe hook on destination port
-		if err := destPort.hooks.onInboundPipe.Trigger(context.Background(), &InboundPipeContext{
-			DestinationPort: destPort,
-			SourcePort:      p,
-		}); err != nil {
-			return fmt.Errorf("onInboundPipe hook failed: %w", err)
-		}
+// triggerPipeHooks fires OnOutboundPipe on this port, then OnInboundPipe on the
+// destination. Wiring happens before there is a run to cancel, so the pipe hooks
+// get context.Background() like every other construction-time hook.
+func (p *Port) triggerPipeHooks(destPort *Port) error {
+	if err := p.hooks.onOutboundPipe.Trigger(context.Background(), &OutboundPipeContext{
+		SourcePort:      p,
+		DestinationPort: destPort,
+	}); err != nil {
+		return fmt.Errorf("onOutboundPipe hook failed: %w", err)
+	}
+	if err := destPort.hooks.onInboundPipe.Trigger(context.Background(), &InboundPipeContext{
+		DestinationPort: destPort,
+		SourcePort:      p,
+	}); err != nil {
+		return fmt.Errorf("onInboundPipe hook failed: %w", err)
 	}
 	return nil
 }

@@ -98,6 +98,18 @@ func TestPortHooks_PipeHooksFireOnBothEnds(t *testing.T) {
 	assert.Equal(t, []string{"out->in1"}, inbound)
 }
 
+func TestPortHooks_FailingPipeHookRemovesThatPipe(t *testing.T) {
+	source := testutil.MustOutputPort("out")
+	ok := testutil.MustInputPort("ok")
+	rejecting := testutil.MustInputPort("rejecting").SetupHooks(func(h *port.Hooks) {
+		h.OnInboundPipe(func(context.Context, *port.InboundPipeContext) error { return errors.New("no") })
+	})
+
+	require.ErrorContains(t, source.PipeTo(ok, rejecting), "onInboundPipe hook failed")
+
+	assert.Equal(t, []*port.Port{ok}, source.Pipes().All(), "the earlier pipe stays, the rejected one is gone")
+}
+
 func TestPortHooks_MultipleHooksRunInRegistrationOrder(t *testing.T) {
 	var log recorder
 
