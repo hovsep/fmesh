@@ -15,11 +15,11 @@ One interface for every exporter, and exporters are no longer plugins.
 
 ### BREAKING
 
-**`plugin/jsonexport` is replaced by the `export` package.** A plugin adds behavior to a run;
-an exporter only reads a mesh, so it is now a plain value. `export.Exporter` is the interface every
-exporter implements, including the diagram formats in
-[fmesh-export](https://github.com/hovsep/fmesh-export). `export.JSON()` is the JSON exporter, and it
-can now export a cycle too.
+**`plugin/jsonexport` is removed; JSON export moves to fmesh-export.** A plugin adds behavior to
+a run; an exporter only reads a mesh, so it is now a plain value. fmesh keeps only the contract,
+`export.Exporter`. Every format, JSON included, lives in
+[fmesh-export](https://github.com/hovsep/fmesh-export) as one package per format; the JSON exporter
+is `github.com/hovsep/fmesh-export/json`, and it can now export a cycle too.
 
 ```go
 // before
@@ -28,16 +28,16 @@ can now export a cycle too.
 // data, err := exporter.Export()
 // data, err := jsonexport.Export(fm)
 
-// after
-e := export.JSON()
+// after: import "github.com/hovsep/fmesh-export/json"
+e := json.New()
 data, err := e.Export(fm)
 for _, c := range ri.Cycles.All() {
     frame, err := e.ExportCycle(fm, c) // structure + each component's result
 }
 ```
 
-The document types are renamed with a `JSON` prefix (`jsonexport.Mesh` → `export.JSONMesh`, and so
-on), and `ExportCycle` produces a `JSONCycle`.
+The document types move with it (`jsonexport.Mesh` → `json.Mesh`, and so on), and `ExportCycle`
+produces a `json.Cycle`.
 
 ### Added
 

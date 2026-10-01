@@ -7,9 +7,9 @@
 | [`autowire`](autowire/README.md) | Connects components by port-name convention instead of `PipeTo` calls. Wiring works in both directions, so `AddComponents` order does not matter. |
 | [`profiler`](profiler/README.md) | Measures the mesh: run, cycle and activation timing, per-pipe throughput (unused pipes included) and a per-cycle timeline. |
 
-Exporters are not plugins: they only read a mesh. See the [`export`](../export) package (the
-`Exporter` interface and the JSON exporter) and [fmesh-export](https://github.com/hovsep/fmesh-export)
-for DOT, Mermaid, D2 and PlantUML.
+Exporters are not plugins: they only read a mesh. They implement the [`export.Exporter`](../export)
+interface and live in [fmesh-export](https://github.com/hovsep/fmesh-export): JSON, DOT, Mermaid,
+D2 and PlantUML.
 
 All attach the same way:
 
