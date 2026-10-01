@@ -478,7 +478,7 @@ func TestComponent_WithRetry(t *testing.T) {
 			},
 			wantCalls: 2,
 			wantCode:  ActivationCodePanicked,
-			wantErrs:  1,
+			wantErrs:  2,
 		},
 		{
 			name:      "waiting for inputs is not retried",
@@ -593,6 +593,47 @@ func TestComponent_WithRetry(t *testing.T) {
 		require.Equal(t, ActivationCodeOK, result.Code())
 		assert.Equal(t, 1, clears, "one reset between the two attempts")
 		assert.Equal(t, 3, added, "attempt 1 output, the earlier signal put back, attempt 2 output")
+	})
+
+	t.Run("an output empty before the activation is only cleared", func(t *testing.T) {
+		calls := 0
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithRetry(2),
+			WithActivationFunc(fails(1, &calls, nil)))
+		require.NoError(t, err)
+
+		var added []int
+		c.OutputByName("o1").SetupHooks(func(h *port.Hooks) {
+			h.OnSignalsAdded(func(_ context.Context, ac *port.SignalsAddedContext) error {
+				added = append(added, len(ac.SignalsAdded))
+				return nil
+			})
+		})
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate(context.Background())
+
+		require.Equal(t, ActivationCodeOK, result.Code())
+		assert.Equal(t, []int{1, 1}, added, "one output per attempt, no empty refill")
+	})
+
+	t.Run("a panic keeps the errors of earlier attempts", func(t *testing.T) {
+		calls := 0
+		c, err := New("c1", WithInputs("i1"), WithOutputs("o1"), WithRetry(3),
+			WithActivationFunc(func(context.Context, *Component) error {
+				calls++
+				if calls == 2 {
+					panic("second")
+				}
+				return errBoom
+			}))
+		require.NoError(t, err)
+		require.NoError(t, c.InputByName("i1").PutSignals(signal.New(1)))
+
+		result := c.MaybeActivate(context.Background())
+
+		require.ErrorIs(t, result.ActivationError(), errBoom)
+		var panicErr *PanicError
+		assert.ErrorAs(t, result.ActivationError(), &panicErr)
 	})
 
 	t.Run("rejects fewer than one attempt", func(t *testing.T) {
@@ -740,6 +781,19 @@ func TestComponent_WithRetryIf(t *testing.T) {
 			assert.Equal(t, ActivationCodeReturnedError, result.Code())
 			assert.Len(t, result.ActivationErrors(), 3)
 		})
+	})
+
+	t.Run("no attempt runs after the context ends during the wait", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		runs := 0
+		result, calls := activate(t, ctx, 3, failing(&runs), func(context.Context, int, error) bool {
+			cancel()
+			return true
+		})
+
+		assert.Equal(t, 1, runs)
+		assert.Len(t, calls, 1)
+		assert.Equal(t, ActivationCodeReturnedError, result.Code())
 	})
 
 	t.Run("needs WithRetry with at least 2 attempts", func(t *testing.T) {
