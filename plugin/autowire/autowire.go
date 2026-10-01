@@ -33,8 +33,8 @@ type Plugin struct {
 
 // Prefixed wires an output to any input named "<prefix><component>_<port>".
 //
-// It is the shape most meshes converge on: "habitat_gas_environmental_gas" is
-// the gas factor's environmental_gas output, and reads as one.
+// For example, Prefixed("habitat_") wires component gas's environmental_gas
+// output to an input named "habitat_gas_environmental_gas".
 func Prefixed(prefix string) *Plugin {
 	return &Plugin{
 		PluginName: "autowire:prefixed:" + prefix,
