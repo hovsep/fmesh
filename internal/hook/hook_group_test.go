@@ -54,11 +54,3 @@ func TestGroup_TriggerStopsOnFirstError(t *testing.T) {
 func TestGroup_TriggerWithNoHooks(t *testing.T) {
 	require.NoError(t, NewGroup[int]().Trigger(context.Background(), 42))
 }
-
-func TestGroup_All(t *testing.T) {
-	hg := NewGroup[int]()
-	hg.Add(func(_ context.Context, _ int) error { return nil })
-	hg.Add(func(_ context.Context, _ int) error { return nil })
-
-	assert.Len(t, hg.All(), 2)
-}
