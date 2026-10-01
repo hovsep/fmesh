@@ -3,8 +3,10 @@ package component
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -246,6 +248,50 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 		}))
 		assert.Equal(t, 0, count)
 	})
+
+	t.Run("visits results in component-name order", func(t *testing.T) {
+		// Ranging over the map visited results in a different order on every call.
+		collection, names := newNamedResultCollection()
+		var visited []string
+		require.NoError(t, collection.ForEach(func(r *ActivationResult) error {
+			visited = append(visited, r.ComponentName())
+			return nil
+		}))
+		assert.Equal(t, names, visited)
+	})
+
+	t.Run("action may change the collection", func(t *testing.T) {
+		// The action ran under the read lock, so Remove/Add/Clear from it deadlocked.
+		collection, _ := newNamedResultCollection()
+		done := make(chan error, 1)
+		go func() {
+			done <- collection.ForEach(func(r *ActivationResult) error {
+				collection.Remove(r.ComponentName())
+				collection.Add(NewActivationResult("added-" + r.ComponentName()))
+				collection.Clear()
+				return nil
+			})
+		}()
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("ForEach deadlocked when the action changed the collection")
+		}
+	})
+}
+
+// newNamedResultCollection adds enough results that map order is visibly not name order.
+func newNamedResultCollection() (collection *ActivationResultCollection, names []string) {
+	collection = NewActivationResultCollection()
+	names = make([]string, 0, 32)
+	for i := range 32 {
+		names = append(names, fmt.Sprintf("c%02d", i))
+	}
+	for _, name := range slices.Backward(names) {
+		collection.Add(NewActivationResult(name))
+	}
+	return collection, names
 }
 
 func TestActivationResultCollection_Clear(t *testing.T) {
@@ -365,6 +411,16 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 			return true
 		})
 		assert.Nil(t, result)
+	})
+
+	t.Run("returns the first match in component-name order", func(t *testing.T) {
+		// Ranging over the map returned a different match on identical calls.
+		collection, names := newNamedResultCollection()
+		for range 10 {
+			result := collection.FindAny(func(*ActivationResult) bool { return true })
+			require.NotNil(t, result)
+			assert.Equal(t, names[0], result.ComponentName())
+		}
 	})
 }
 
