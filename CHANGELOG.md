@@ -43,6 +43,7 @@ on), and `ExportCycle` produces a `JSONCycle`.
 
 - `export.Exporter`: `Export(fm)` for the structure and `ExportCycle(fm, c)` for one cycle. Call
   `ExportCycle` on `RuntimeInfo.Cycles` after a run, or from an `AfterCycle` hook during it.
+  A nil cycle returns `export.ErrNilCycle`, in every exporter.
 - `component.WithRetry(n)` runs the activation function up to `n` times while it returns an error.
   The activation fails only when every attempt failed, with one error per attempt. A panic is never
   retried, nor is a waiting-for-inputs result; a canceled context stops the retries. A failed

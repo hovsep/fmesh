@@ -86,6 +86,9 @@ func (e *JSONExporter) Export(fm *fmesh.FMesh) ([]byte, error) {
 // ExportCycle returns the structure and the results of c as indented JSON,
 // shaped as JSONCycle.
 func (e *JSONExporter) ExportCycle(fm *fmesh.FMesh, c *cycle.Cycle) ([]byte, error) {
+	if c == nil {
+		return nil, ErrNilCycle
+	}
 	mesh, err := structureOf(fm)
 	if err != nil {
 		return nil, err
