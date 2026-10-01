@@ -7,7 +7,8 @@ import (
 )
 
 // ActivationResultCollection is a collection of activation results.
-// Thread-safe for concurrent access during activation.
+// Thread-safe for concurrent access during activation. Traversals walk a component-name-ordered
+// snapshot, so callbacks run without the lock held.
 type ActivationResultCollection struct {
 	mu                sync.RWMutex
 	activationResults map[string]*ActivationResult
@@ -45,38 +46,17 @@ func (c *ActivationResultCollection) Remove(componentNames ...string) *Activatio
 
 // HasActivationErrors tells whether the collection contains at least one activation result with error and respective code.
 func (c *ActivationResultCollection) HasActivationErrors() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, ar := range c.activationResults {
-		if ar.IsError() {
-			return true
-		}
-	}
-	return false
+	return c.Any((*ActivationResult).IsError)
 }
 
 // HasActivationPanics tells whether the collection contains at least one activation result with panic and respective code.
 func (c *ActivationResultCollection) HasActivationPanics() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, ar := range c.activationResults {
-		if ar.IsPanic() {
-			return true
-		}
-	}
-	return false
+	return c.Any((*ActivationResult).IsPanic)
 }
 
 // HasActivatedComponents tells when at least one component in the cycle has activated.
 func (c *ActivationResultCollection) HasActivatedComponents() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, ar := range c.activationResults {
-		if ar.Activated() {
-			return true
-		}
-	}
-	return false
+	return c.Any((*ActivationResult).Activated)
 }
 
 // ByName returns the activation result by component name.
@@ -125,9 +105,7 @@ func (c *ActivationResultCollection) IsEmpty() bool {
 
 // Every returns true if all activation results match the predicate.
 func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
+	for _, result := range c.AllOrdered() {
 		if !predicate(result) {
 			return false
 		}
@@ -137,22 +115,13 @@ func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
 
 // Any returns true if any activation result matches the predicate.
 func (c *ActivationResultCollection) Any(predicate ResultPredicate) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
-		if predicate(result) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(c.AllOrdered(), predicate)
 }
 
 // Count returns the number of activation results that match the predicate.
 func (c *ActivationResultCollection) Count(predicate ResultPredicate) int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	count := 0
-	for _, result := range c.activationResults {
+	for _, result := range c.AllOrdered() {
 		if predicate(result) {
 			count++
 		}
@@ -160,11 +129,10 @@ func (c *ActivationResultCollection) Count(predicate ResultPredicate) int {
 	return count
 }
 
-// ForEach applies the action to each activation result. Returns the first error encountered.
+// ForEach applies the action to each activation result in component-name order and returns the first error.
+// It walks a snapshot, so the action may change the collection.
 func (c *ActivationResultCollection) ForEach(action func(*ActivationResult) error) error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
+	for _, result := range c.AllOrdered() {
 		if err := action(result); err != nil {
 			return err
 		}
@@ -180,13 +148,9 @@ func (c *ActivationResultCollection) Clear() *ActivationResultCollection {
 	return c
 }
 
-// FindAny returns any arbitrary activation result that matches the predicate.
-// Returns nil if no match found.
-// Note: Map iteration order is not guaranteed, so this may return different items on each call.
+// FindAny returns the first activation result matching the predicate, in component-name order, or nil.
 func (c *ActivationResultCollection) FindAny(predicate ResultPredicate) *ActivationResult {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, ar := range c.activationResults {
+	for _, ar := range c.AllOrdered() {
 		if predicate(ar) {
 			return ar
 		}
@@ -196,10 +160,8 @@ func (c *ActivationResultCollection) FindAny(predicate ResultPredicate) *Activat
 
 // Filter returns a new collection with activation results that match the predicate.
 func (c *ActivationResultCollection) Filter(predicate ResultPredicate) *ActivationResultCollection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	filtered := NewActivationResultCollection()
-	for _, ar := range c.activationResults {
+	for _, ar := range c.AllOrdered() {
 		if predicate(ar) {
 			filtered.Add(ar)
 		}
