@@ -11,6 +11,8 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 
 ## [Unreleased]
 
+## [v1.17.0] — Syunik — 2026-10-01
+
 ### Added
 
 - `component.WithRetryIf(func(ctx, attempt, err) bool)` decides after each failed attempt whether
