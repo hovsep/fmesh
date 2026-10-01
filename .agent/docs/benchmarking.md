@@ -74,8 +74,8 @@ hundreds and thousands of components:
 
 `with-signal-movement − scheduling-only` ≈ the cost of moving signals. Each `Run` sustains N cycles
 with `WithCyclesLimit(N)` + `WithUnlimitedTime()`, so `ErrReachedMaxAllowedCycles` is the expected
-stop, not a failure. Inputs are re-primed each `Run`: the cycle-limit stop skips the final drain, and
-signals do not carry across `Run` calls.
+stop, not a failure. Inputs can persist across `Run` calls (the "keep" kind retains them), so each `Run`
+first clears every input and puts exactly one signal back (`primeInputs`).
 
 ## Size sweeps reveal complexity class
 
