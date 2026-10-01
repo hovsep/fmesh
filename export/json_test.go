@@ -113,6 +113,11 @@ func TestJSON_ExportCycle(t *testing.T) {
 		assert.Contains(t, dst.Errors[0], "boom")
 	})
 
+	t.Run("a nil cycle is an error", func(t *testing.T) {
+		_, err := JSON().ExportCycle(fm, nil)
+		require.ErrorIs(t, err, ErrNilCycle)
+	})
+
 	t.Run("works from an AfterCycle hook", func(t *testing.T) {
 		// Streaming: export each cycle as it ends, with no history kept.
 		var frames [][]byte
