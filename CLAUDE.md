@@ -48,7 +48,7 @@ build. Key linters: `errcheck`, `govet` (shadow), `prealloc`, `dupl`, `gocyclo` 
 - **API compatibility is not a concern.** F-Mesh is not used in production. Any public API may be
   changed or broken until this doc says otherwise. No deprecation shims or compat layers.
   **But breaking it is the user's call, not a side effect of a cleanup.** `fmesh-examples` (one Go
-  module) and `fmesh-graphviz` use the public API, and nothing in this repo references most of it.
+  module) and `fmesh-export` use the public API, and nothing in this repo references most of it.
   Compile them before removing an exported symbol — see `.agent/docs/downstream.md`.
 - Ask before relaxing a constraint or adding a new pattern, helper or abstraction.
 - **Release tags are plain semver** (`v1.12.0`). A suffix (`v1.11.1-Shirak`) makes a pre-release,

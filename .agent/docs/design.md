@@ -203,7 +203,7 @@ Do not keep unused **unexported** symbols "for future use". Remove them at once:
 They add noise, mislead readers and rot as the code around them changes.
 
 **This policy does not cover exported symbols.** F-Mesh is a library. Its callers live in
-`fmesh-examples` (one Go module) and `fmesh-graphviz`, which no analysis of this repo can see.
+`fmesh-examples` (one Go module) and `fmesh-export`, which no analysis of this repo can see.
 "No in-repo caller" is the normal state of public API, not evidence it is dead. Before removing
 anything exported, compile the downstream repos and get the user's decision — see
 [downstream.md](downstream.md).

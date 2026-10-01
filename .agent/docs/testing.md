@@ -33,7 +33,7 @@
 ## Coverage is not a usage signal
 
 A method used only by its own unit test is not dead. The library's callers are in
-`fmesh-examples` and `fmesh-graphviz`, which no test here mentions. Never delete exported API on
+`fmesh-examples` and `fmesh-export`, which no test here mentions. Never delete exported API on
 "own-package test only" grounds; see [downstream.md](downstream.md).
 
 ## Documentation is tested too

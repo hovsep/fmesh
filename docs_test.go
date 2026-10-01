@@ -306,7 +306,7 @@ var docsExternalNames = map[string]bool{
 	"Load": true,                                    // sync/atomic
 	"Exit": true, "Getenv": true, "WriteFile": true, // os
 	"NewRequestWithContext": true, // net/http
-	// the DOT exporter lives in its own module (fmesh-graphviz); the wiki shows its entry points
+	// the diagram exporters live in their own module (fmesh-export); the wiki shows their entry points
 	"ExportCycles": true, "WithCycles": true,
 	// placeholder interface in a teaching snippet (sink.Publish, 602)
 	"Publish": true,

@@ -55,6 +55,7 @@ capitals of Armenia; the name is in the release title, not the tag. See the
 * [profiler](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/profiler): bundled mesh plugin
 * [autowire](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/autowire): bundled mesh plugin
 * [jsonexport](https://pkg.go.dev/github.com/hovsep/fmesh/plugin/jsonexport): bundled mesh plugin
+* [fmesh-export](https://github.com/hovsep/fmesh-export): DOT, Mermaid, D2 and PlantUML exporter plugins
 
 The `cycle` package appears in the run report: see [402. Inspecting a run](https://github.com/hovsep/fmesh/wiki/402.-Inspecting-a-run).
 
@@ -62,16 +63,16 @@ The `cycle` package appears in the run report: see [402. Inspecting a run](https
 
 [fmesh-examples](https://github.com/hovsep/fmesh-examples) has runnable programs, from small demos to full apps:
 
-- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/pipeline): a text pipeline built from chained stages
-- [filter](https://github.com/hovsep/fmesh-examples/tree/main/filter): metadata-based content routing
-- [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/fibonacci): a generator built on a loopback pipe
-- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/electric_circuit): a stateful feedback loop that stops on its own
-- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/load_balancer): round-robin dispatch/collect with indexed ports
-- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/async_input): a mesh driven by live external input (HTTP crawler)
-- [nesting](https://github.com/hovsep/fmesh-examples/tree/main/nesting): a mesh running inside a component
-- [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/can_bus): a broadcast bus; the advanced variant models the full CAN stack
+- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/basics/pipeline): a text pipeline built from chained stages
+- [filter](https://github.com/hovsep/fmesh-examples/tree/main/basics/filter): metadata-based content routing
+- [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/patterns/fibonacci): a generator built on a loopback pipe
+- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/simulation/electric_circuit): a stateful feedback loop that stops on its own
+- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/patterns/load_balancer): round-robin dispatch/collect with indexed ports
+- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/patterns/async_input): a mesh driven by live external input (HTTP crawler)
+- [nesting](https://github.com/hovsep/fmesh-examples/tree/main/patterns/nesting): a mesh running inside a component
+- [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/simulation/can_bus): a broadcast bus; the advanced variant models the full CAN stack
 - [simulation](https://github.com/hovsep/fmesh-examples/tree/main/simulation): a step-by-step simulation driven from a REPL
-- [life](https://github.com/hovsep/fmesh-examples/tree/main/life): a large body simulation with nested meshes and a live TUI
-- [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphviz): static and per-cycle graph export
+- [life](https://github.com/hovsep/fmesh-examples/tree/main/simulation/life): a large body simulation with nested meshes and a live TUI
+- [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphics/graphviz): static and per-cycle graph export
 
 The techniques they use are listed in [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes).
