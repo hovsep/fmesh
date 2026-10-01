@@ -44,8 +44,8 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
 
 - **Only two, each fired exactly once**: `BeforeActivation`, the activation function, then
   `AfterActivation`. There are no per-outcome hooks: `AfterActivation` sees every outcome and tells
-  them apart by `ctx.Result.Code()`. Do not add per-outcome hooks back — a second hook firing on
-  one outcome makes hooks run twice.
+  them apart by `ac.Result.Code()` (`ac` is the `*component.ActivationContext`). Do not add
+  per-outcome hooks back — a second hook firing on one outcome makes hooks run twice.
 - **`AfterActivation` always runs** — on success, error, panic, waiting, or a failed
   `BeforeActivation`. Treat it as a `finally` block.
 - **`WithRetry` does not repeat activation hooks.** All attempts are one activation:
