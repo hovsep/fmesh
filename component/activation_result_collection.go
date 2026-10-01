@@ -7,8 +7,10 @@ import (
 )
 
 // ActivationResultCollection is a collection of activation results.
-// Thread-safe for concurrent access during activation. Traversals walk a component-name-ordered
-// snapshot, so callbacks run without the lock held.
+// Thread-safe for concurrent access during activation. ForEach and FindAny walk a
+// component-name-ordered snapshot, so their callbacks run without the lock held.
+// The order-independent queries (Any, Every, Count, Filter and the Has* methods)
+// read under the lock and must not change the collection from their predicate.
 type ActivationResultCollection struct {
 	mu                sync.RWMutex
 	activationResults map[string]*ActivationResult
@@ -105,7 +107,9 @@ func (c *ActivationResultCollection) IsEmpty() bool {
 
 // Every returns true if all activation results match the predicate.
 func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
-	for _, result := range c.AllOrdered() {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, result := range c.activationResults {
 		if !predicate(result) {
 			return false
 		}
@@ -115,13 +119,22 @@ func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
 
 // Any returns true if any activation result matches the predicate.
 func (c *ActivationResultCollection) Any(predicate ResultPredicate) bool {
-	return slices.ContainsFunc(c.AllOrdered(), predicate)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, result := range c.activationResults {
+		if predicate(result) {
+			return true
+		}
+	}
+	return false
 }
 
 // Count returns the number of activation results that match the predicate.
 func (c *ActivationResultCollection) Count(predicate ResultPredicate) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	count := 0
-	for _, result := range c.AllOrdered() {
+	for _, result := range c.activationResults {
 		if predicate(result) {
 			count++
 		}
@@ -160,8 +173,10 @@ func (c *ActivationResultCollection) FindAny(predicate ResultPredicate) *Activat
 
 // Filter returns a new collection with activation results that match the predicate.
 func (c *ActivationResultCollection) Filter(predicate ResultPredicate) *ActivationResultCollection {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	filtered := NewActivationResultCollection()
-	for _, ar := range c.AllOrdered() {
+	for _, ar := range c.activationResults {
 		if predicate(ar) {
 			filtered.Add(ar)
 		}
