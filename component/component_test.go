@@ -154,4 +154,11 @@ func TestComponent_Chainability(t *testing.T) {
 		assert.NotNil(t, c.Outputs().ByName("out2"))
 		assert.NotNil(t, c.Outputs().ByName("out3"))
 	})
+
+	t.Run("a duplicate in one call adds none of its ports", func(t *testing.T) {
+		c := mustNew("c1")
+		require.Error(t, c.AddInputs("a", "b", "a"))
+
+		assert.True(t, c.Inputs().IsEmpty())
+	})
 }
