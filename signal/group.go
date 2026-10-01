@@ -7,14 +7,13 @@ import (
 	"github.com/hovsep/fmesh/meta"
 )
 
-// Group represents an ordered list of signals.
-// Like Signal it is copy-on-write: the embedded slice is never mutated after
-// construction; every mutator builds a new group.
 // signalSlice hides the embedded field name so it cannot be reached or
 // reassigned from outside; only the base's exported read methods promote.
 type signalSlice = collection.Slice[*Signal]
 
 // Group represents an ordered list of signals.
+// Like Signal it is copy-on-write: the embedded slice is never mutated after
+// construction; every mutator builds a new group.
 type Group struct {
 	signalSlice
 	meta *meta.Meta
