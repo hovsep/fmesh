@@ -6,8 +6,8 @@ F-Mesh is pre-production. **Minor versions may contain breaking changes** until 
 removed; every one is listed under a `BREAKING` heading below. Pin an exact version if that matters
 to you.
 
-Release tags are plain semver (`v1.12.0`). The Armenian capital naming lives in the GitHub release
-title — a suffix in the tag makes Go treat the release as a pre-release and hides it from `go get`.
+Release tags are plain semver (`v1.12.0`). The release's Armenian place name lives in the GitHub
+release title — a suffix in the tag makes Go treat the release as a pre-release and hides it from `go get`.
 
 ## [Unreleased]
 
@@ -16,8 +16,8 @@ title — a suffix in the tag makes Go treat the release as a pre-release and hi
 ### Added
 
 - `component.WithRetryIf(func(ctx, attempt, err) bool)` decides after each failed attempt whether
-  to retry, and can wait before the next one (backoff). Use it with `WithRetry(n)`, which still
-  sets the maximum number of attempts; without it `New` returns an error.
+  to retry, and can wait before the next one (backoff). Use it with `WithRetry(n)`, `n` ≥ 2, which
+  still sets the maximum number of attempts; otherwise `New` returns an error.
 
 ## [v1.16.0] — Lori — 2026-10-01
 
