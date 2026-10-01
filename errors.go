@@ -23,7 +23,7 @@ var (
 	ErrHitAnErrorOrPanic = errors.New("f-mesh hit an error or panic and will be stopped")
 	// ErrHitAPanic is returned when f-mesh hit a panic and will be stopped.
 	ErrHitAPanic = errors.New("f-mesh hit a panic and will be stopped")
-	// ErrUnsupportedErrorHandlingStrategy is returned when an unsupported error handling strategy is used.
+	// ErrUnsupportedErrorHandlingStrategy is returned by New when WithErrorHandlingStrategy gets an unknown strategy.
 	ErrUnsupportedErrorHandlingStrategy = errors.New("unsupported error handling strategy")
 	// ErrReachedMaxAllowedCycles is returned when the maximum number of allowed cycles is reached.
 	ErrReachedMaxAllowedCycles = errors.New("reached max allowed cycles")
