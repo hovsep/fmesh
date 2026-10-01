@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,6 +183,33 @@ func TestMeshHooks_AfterRunFiresOnAFailedRun(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, beforeRun)
 	assert.True(t, afterRun, "AfterRun runs in a defer, so a failed run still triggers it")
+}
+
+func TestMeshHooks_AfterRunContextOutlivesTheTimeLimit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		slow := testutil.MustComponent("slow",
+			component.WithInputs("in"), component.WithOutputs("out"),
+			component.WithActivationFunc(func(context.Context, *component.Component) error {
+				time.Sleep(time.Second)
+				return nil
+			}))
+		require.NoError(t, slow.LoopbackPipe("out", "in"))
+		fm := testutil.MustFMesh("slow-mesh", fmesh.WithTimeLimit(500*time.Millisecond))
+		require.NoError(t, fm.AddComponents(slow))
+		testutil.MustPutSignals(slow.InputByName("in"), signal.New(1))
+		var afterRunErr error
+		fm.SetupHooks(func(h *fmesh.Hooks) {
+			h.AfterRun(func(ctx context.Context, _ *fmesh.FMesh) error {
+				afterRunErr = ctx.Err()
+				return nil
+			})
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorIs(t, err, fmesh.ErrTimeLimitExceeded)
+		assert.NoError(t, afterRunErr, "AfterRun can still do I/O after the time limit")
+	})
 }
 
 func TestMeshHooks_BeforeRunFailureAbortsTheRun(t *testing.T) {
