@@ -296,12 +296,14 @@ func TestActivationResult_ActivationErrorWithComponentName(t *testing.T) {
 		assert.Contains(t, wrappedErr.Error(), "activation failed")
 	})
 
-	t.Run("wraps nil activation error", func(t *testing.T) {
+	t.Run("keeps the original error in the chain", func(t *testing.T) {
+		assert.ErrorIs(t, r.ActivationErrorWithComponentName(), err)
+	})
+
+	t.Run("nil without activation errors", func(t *testing.T) {
+		// Wrapping a nil error rendered "%!w(<nil>)" and turned success into a non-nil error.
 		r := NewActivationResult("comp")
-		wrappedErr := r.ActivationErrorWithComponentName()
-		// The method wraps even nil errors, so it always returns an error
-		require.Error(t, wrappedErr)
-		assert.Contains(t, wrappedErr.Error(), "comp")
+		assert.NoError(t, r.ActivationErrorWithComponentName())
 	})
 }
 
