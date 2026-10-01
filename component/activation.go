@@ -37,7 +37,9 @@ func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 func (c *Component) activate(ctx context.Context) *ActivationResult {
 	var result *ActivationResult
 	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation, c); err != nil {
-		result = NewActivationResult(c.Name())
+		// Activated, though the function was skipped: the drain clears its inputs
+		// like any failed activation's, instead of letting them pile up.
+		result = NewActivationResult(c.Name()).SetActivated(true)
 		markHookFailed(result, "beforeActivation", err)
 	} else {
 		result = c.runActivationFunc(ctx)

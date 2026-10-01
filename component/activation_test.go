@@ -267,7 +267,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 }
 
 func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
-	t.Run("beforeActivation hook fails: ActivationCodeHookFailed, not activated, error captured", func(t *testing.T) {
+	t.Run("beforeActivation hook fails: ActivationCodeHookFailed, activated, error captured", func(t *testing.T) {
 		c, err := New("c1",
 			WithInputs("i1"),
 			WithActivationFunc(func(_ context.Context, this *Component) error { return nil }),
@@ -283,7 +283,7 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		result := c.MaybeActivate(context.Background())
 
 		assert.Equal(t, ActivationCodeHookFailed, result.Code())
-		assert.False(t, result.Activated())
+		assert.True(t, result.Activated(), "activated so the drain clears its inputs")
 		require.Error(t, result.ActivationError())
 		require.ErrorContains(t, result.ActivationError(), "before hook error")
 		assert.Len(t, result.ActivationErrors(), 1)
