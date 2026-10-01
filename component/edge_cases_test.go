@@ -34,10 +34,16 @@ func TestComponent_LoopbackPipe_NamesTheMissingPort(t *testing.T) {
 func TestWithIndexedPorts(t *testing.T) {
 	c := mustNew("c", WithIndexedInputs("i", 1, 3), WithIndexedOutputs("o", 1, 2))
 
-	assert.Equal(t, 3, c.Inputs().Len())
-	assert.NotNil(t, c.InputByName("i2"))
-	assert.Equal(t, 2, c.Outputs().Len())
-	assert.NotNil(t, c.OutputByName("o2"))
+	// Exact names, so an off-by-one at either end of the range fails.
+	portNames := func(ports *port.Collection) []string {
+		names := make([]string, 0, ports.Len())
+		for _, p := range ports.AllOrdered() {
+			names = append(names, p.Name())
+		}
+		return names
+	}
+	assert.Equal(t, []string{"i1", "i2", "i3"}, portNames(c.Inputs()))
+	assert.Equal(t, []string{"o1", "o2"}, portNames(c.Outputs()))
 
 	_, err := New("bad", WithIndexedInputs("i", 3, 1))
 	require.ErrorIs(t, err, port.ErrInvalidRangeForIndexedGroup)
