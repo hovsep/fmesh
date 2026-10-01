@@ -55,13 +55,16 @@ func (c *Component) activate(ctx context.Context) *ActivationResult {
 
 // runActivationFunc runs the activation function and turns its outcome into a result.
 func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationResult) {
+	var failures []error
 	defer func() {
 		if r := recover(); r != nil {
 			result = c.newActivationResultPanicked(c.panicError(r))
+			for _, err := range failures {
+				result.AddActivationError(fmt.Errorf("component returned an error: %w", err))
+			}
 		}
 	}()
 
-	var failures []error
 	for attempt := 1; ; attempt++ {
 		var outputs map[*port.Port]*signal.Group
 		if c.attempts > 1 {
@@ -81,7 +84,7 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 			err = fmt.Errorf("attempt %d of %d: %w", attempt, c.attempts, err)
 		}
 		failures = append(failures, err)
-		if attempt >= c.attempts || ctx.Err() != nil || (c.retryIf != nil && !c.retryIf(ctx, attempt, failed)) {
+		if attempt >= c.attempts || !c.shouldRetry(ctx, attempt, failed) {
 			return c.newActivationResultReturnedError(failures...)
 		}
 		if restoreErr := c.restoreOutputs(ctx, outputs); restoreErr != nil {
@@ -90,10 +93,23 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 	}
 }
 
+// shouldRetry reports whether a failed attempt gets another one. The context is
+// checked again after retryIf, which may have waited until it was done.
+func (c *Component) shouldRetry(ctx context.Context, attempt int, err error) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	if c.retryIf != nil && !c.retryIf(ctx, attempt, err) {
+		return false
+	}
+	return ctx.Err() == nil
+}
+
 // WithRetry is a component option that runs the activation function up to
 // attempts times while it returns an error. The activation fails only when
 // every attempt failed, and its result lists each attempt's error. A panic is
-// never retried, and neither is a waiting-for-inputs result. Retrying stops
+// never retried, and neither is a waiting-for-inputs result; a panic on a later
+// attempt keeps the errors of the attempts before it. Retrying stops
 // early when the context is done. Activation hooks fire once, around all the
 // attempts. WithRetryIf decides whether to retry and can wait between attempts.
 //
@@ -150,7 +166,7 @@ func (c *Component) restoreOutputs(ctx context.Context, outputs map[*port.Port]*
 		if err := p.Clear(ctx); err != nil {
 			return fmt.Errorf("failed to reset output port %q between attempts: %w", p.Name(), err)
 		}
-		if before != nil {
+		if before != nil && !before.IsEmpty() {
 			if err := p.PutSignalGroups(before); err != nil {
 				return fmt.Errorf("failed to reset output port %q between attempts: %w", p.Name(), err)
 			}
