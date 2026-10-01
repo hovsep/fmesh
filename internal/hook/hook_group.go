@@ -28,11 +28,6 @@ func (g *Group[T]) Add(hook func(context.Context, T) error) *Group[T] {
 	return g
 }
 
-// All returns all hooks in the group.
-func (g *Group[T]) All() []func(context.Context, T) error {
-	return g.hooks
-}
-
 // IsEmpty reports whether the group has no hooks.
 //
 // Hot paths use it to skip building a context struct that nothing will read:
