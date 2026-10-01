@@ -5,9 +5,8 @@ evidence that a public symbol is unused.** Two sibling repos use the public API:
 
 | Repo | Contents |
 |---|---|
-| [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. One Go module (`basics/`, `patterns/`, `simulation/`, `graphics/`, `internal/`). Its `internal/` package imports `fmesh-graphviz/dot`. |
-| [`hovsep/fmesh-graphviz`](https://github.com/hovsep/fmesh-graphviz) | The DOT exporter documented in wiki `701.-Export`. |
-| `fmesh-mermaid` (local only, `../fmesh-mermaid`) | The Mermaid exporter plugin. Not on GitHub yet. |
+| [`hovsep/fmesh-examples`](https://github.com/hovsep/fmesh-examples) | Every documented example. One Go module (`basics/`, `patterns/`, `simulation/`, `graphics/`, `internal/`). Its `internal/` package imports `fmesh-export/dot`. |
+| [`hovsep/fmesh-export`](https://github.com/hovsep/fmesh-export) | The diagram exporters documented in wiki `701.-Export`. One Go module: `dot`, `mermaid`, `d2`, `plantuml`. |
 
 ## Before deleting any exported symbol
 
@@ -32,24 +31,24 @@ predicted this better than reference counts:
 
 Run this before proposing any public API removal, and again before finishing.
 
-Both repos are usually checked out next to this one (`../fmesh-graphviz`, `../fmesh-examples`);
+Both repos are usually checked out next to this one (`../fmesh-export`, `../fmesh-examples`);
 clone them if not. Neither has a `replace`. Add one for the check and drop it after — it must not
 be committed.
 
 ```bash
 # 1. The exporter first: the examples' internal/ package imports it, so while it
 #    fails to build, every example calling internal.HandleGraphFlag fails too.
-cd ../fmesh-graphviz
+cd ../fmesh-export
 go mod edit -replace github.com/hovsep/fmesh=../fmesh
 go build -gcflags=-e ./... && go vet ./...
 
 # 2. Then the examples (one module), against both working copies
 cd ../fmesh-examples
-go mod edit -replace github.com/hovsep/fmesh=../fmesh -replace github.com/hovsep/fmesh-graphviz=../fmesh-graphviz
+go mod edit -replace github.com/hovsep/fmesh=../fmesh -replace github.com/hovsep/fmesh-export=../fmesh-export
 go build -gcflags=-e ./... && go vet ./...
 
 # 3. Afterwards, in both
-go mod edit -dropreplace github.com/hovsep/fmesh -dropreplace github.com/hovsep/fmesh-graphviz
+go mod edit -dropreplace github.com/hovsep/fmesh -dropreplace github.com/hovsep/fmesh-export
 ```
 
 Do not skip these three:

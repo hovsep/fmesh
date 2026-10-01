@@ -8,6 +8,9 @@
 | [`profiler`](profiler/README.md) | Measures the mesh: run, cycle and activation timing, per-pipe throughput (unused pipes included) and a per-cycle timeline. |
 | [`jsonexport`](jsonexport/README.md) | Exports the mesh structure (components, ports, pipes, descriptions, metadata) as JSON. |
 
+Diagram exporters (DOT, Mermaid, D2, PlantUML) live in the separate module
+[fmesh-export](https://github.com/hovsep/fmesh-export).
+
 All attach the same way:
 
 ```go
