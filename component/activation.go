@@ -22,7 +22,7 @@ func WithActivationFunc(f ActivationFunc) Option {
 // The context is handed to the activation function and to every hook fired around it.
 func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 	if !c.Inputs().AnyHasSignals() {
-		return NewActivationResult(c.name, ActivationCodeNoInput)
+		return c.newResult(ActivationCodeNoInput)
 	}
 
 	return c.activate(ctx)
@@ -38,7 +38,7 @@ func (c *Component) activate(ctx context.Context) *ActivationResult {
 	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation.Trigger, c); err != nil {
 		// Activated, though the function was skipped: the drain clears its inputs
 		// like any failed activation's, instead of letting them pile up.
-		result = NewActivationResult(c.name, ActivationCodeHookFailed)
+		result = c.newResult(ActivationCodeHookFailed)
 		markHookFailed(result, "beforeActivation", err)
 	} else {
 		result = c.runActivationFunc(ctx)
@@ -59,7 +59,7 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 	var failures []error
 	defer func() {
 		if r := recover(); r != nil {
-			result = NewActivationResult(c.name, ActivationCodePanicked, append([]error{c.panicError(r)}, failures...)...)
+			result = c.newResult(ActivationCodePanicked, append([]error{c.panicError(r)}, failures...)...)
 		}
 	}()
 
@@ -72,9 +72,9 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 		err := c.f(ctx, c)
 		switch {
 		case err == nil:
-			return NewActivationResult(c.name, ActivationCodeOK)
+			return c.newResult(ActivationCodeOK)
 		case errors.Is(err, ErrWaitingForInputs):
-			return NewActivationResult(c.name, waitingCode(err), err)
+			return c.newResult(waitingCode(err), err)
 		}
 
 		failure := err
@@ -83,10 +83,10 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 		}
 		failures = append(failures, fmt.Errorf("component returned an error: %w", failure))
 		if attempt >= c.attempts || !c.shouldRetry(ctx, attempt, err) {
-			return NewActivationResult(c.name, ActivationCodeReturnedError, failures...)
+			return c.newResult(ActivationCodeReturnedError, failures...)
 		}
 		if restoreErr := c.restoreOutputs(ctx, outputs); restoreErr != nil {
-			return NewActivationResult(c.name, ActivationCodeReturnedError,
+			return c.newResult(ActivationCodeReturnedError,
 				append(failures, fmt.Errorf("component returned an error: %w", restoreErr))...)
 		}
 	}
