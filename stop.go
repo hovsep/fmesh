@@ -82,9 +82,8 @@ func (fm *FMesh) strategyError(lastCycle *cycle.Cycle) error {
 	return nil
 }
 
-// cycleFailures describes what went wrong in a cycle, joining only the parts
-// that actually happened: a nil error passed to %w renders "%!w(<nil>)", so
-// each part is guarded even though callers only arrive with at least one.
+// cycleFailures joins the activation errors and panics of a cycle. Each part is
+// guarded because a nil error passed to %w renders "%!w(<nil>)".
 func cycleFailures(c *cycle.Cycle) error {
 	var parts []error
 	if activationErrors := c.AllErrorsCombined(); activationErrors != nil {
@@ -92,9 +91,6 @@ func cycleFailures(c *cycle.Cycle) error {
 	}
 	if panics := c.AllPanicsCombined(); panics != nil {
 		parts = append(parts, fmt.Errorf("activation panics: %w", panics))
-	}
-	if len(parts) == 0 {
-		return errors.New("no activation errors or panics recorded")
 	}
 	return errors.Join(parts...)
 }

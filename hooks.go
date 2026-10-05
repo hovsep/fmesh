@@ -44,9 +44,8 @@ func newHooks() *Hooks {
 }
 
 // logActivationResultsInDebug is a default afterCycle hook: in debug mode it
-// logs every recorded activation result. The stack is kept out of a panic's
-// message so logs stay readable, which would lose it entirely if debug mode did
-// not print it here.
+// logs every recorded activation result, and the stack of each panic, which a
+// PanicError keeps out of its message.
 func logActivationResultsInDebug(_ context.Context, cc *CycleContext) error {
 	fm := cc.FMesh
 	if !fm.IsDebug() {

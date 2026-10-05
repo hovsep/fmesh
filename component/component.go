@@ -33,14 +33,13 @@ type Component struct {
 func New(name string, opts ...Option) (*Component, error) {
 	c := &Component{
 		name:        name,
-		description: "",
 		meta:        meta.New(),
 		inputPorts:  port.NewCollection(),
 		outputPorts: port.NewCollection(),
 		logger:      newDefaultLogger(name),
 		state:       newState(),
 		hooks:       newHooks(),
-		plugins:     newPlugins(),
+		plugins:     plugin.NewRegistry[*Component](),
 	}
 
 	for _, opt := range opts {

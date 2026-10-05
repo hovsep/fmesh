@@ -1,10 +1,6 @@
 package component
 
-import (
-	"fmt"
-
-	"github.com/hovsep/fmesh/internal/plugin"
-)
+import "fmt"
 
 // Plugin defines the component plugin interface.
 type Plugin interface {
@@ -35,9 +31,4 @@ func (c *Component) initPlugins() error {
 		return fmt.Errorf("component %q %w", c.name, err)
 	}
 	return nil
-}
-
-// newPlugins is a constructor for the component plugin registry.
-func newPlugins() *plugin.Registry[*Component] {
-	return plugin.NewRegistry[*Component]()
 }

@@ -123,17 +123,8 @@ func (p *Port) setSignals(signalsGroup *signal.Group) {
 	p.signals = signalsGroup
 }
 
-// mustExist panics when the receiver is nil.
-//
-// Name lookups return nil for a name no port has, and that is deliberate — see
-// the note on forgiving lookups in design.md. What is not useful is where the
-// nil surfaces: it reaches a field access several frames later, and the panic
-// reads "invalid memory address" at a line that is not the mistake.
-//
-// This is not a new failure mode. The dereference panicked anyway; this one
-// names the cause, and component activation recovers it into a PanicError that
-// already carries the component name. A nil pointer has no identity, so the
-// message cannot name the port itself.
+// mustExist panics with ErrNilPort on a nil receiver, naming the usual cause (a
+// lookup by an unknown name) instead of a nil dereference frames later.
 func (p *Port) mustExist() {
 	if p == nil {
 		panic(ErrNilPort)
@@ -224,14 +215,11 @@ func (p *Port) Clear(ctx context.Context) error {
 	return nil
 }
 
-// Flush pushes signals to pipes and clears the port (output ports only).
-// Fan-out forwards the same *Signal pointers to every destination — payloads
-// must be treated as immutable by all receivers.
-// Delivery to every pipe is attempted even when some fail; the errors are
-// joined and the port is cleared only when all deliveries succeeded, so
-// successfully delivered signals are never lost, but a retry after a partial
-// failure re-delivers to the destinations that already received them.
-// Each successful delivery fires the OnSignalsDelivered hook on this port.
+// Flush delivers the port's signals through every pipe, then clears it (output
+// ports only). Every destination receives the same *Signal pointers.
+//
+// Every pipe is attempted; on any failure the errors are joined and the port is
+// not cleared, so a retry re-delivers to the destinations that succeeded.
 func (p *Port) Flush(ctx context.Context) error {
 	p.mustExist()
 	if p.IsInput() {
@@ -242,7 +230,6 @@ func (p *Port) Flush(ctx context.Context) error {
 		return nil
 	}
 
-	// Materialized once for the whole fan-out rather than per destination.
 	signals := p.Signals().All()
 	// The hook context escapes to the heap whether or not anything reads it, so
 	// the common case of no hook must not reach the composite literal.
@@ -251,7 +238,6 @@ func (p *Port) Flush(ctx context.Context) error {
 	var deliveryErrs error
 	// ForEach avoids cloning the pipe slice on every flush (hot path)
 	_ = p.pipes.ForEach(func(outboundPort *Port) error {
-		// Fan-Out
 		if err := outboundPort.putSignals(ctx, signals); err != nil {
 			deliveryErrs = errors.Join(deliveryErrs, err)
 			return nil

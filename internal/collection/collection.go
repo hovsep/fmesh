@@ -111,11 +111,9 @@ func (s *Slice[T]) ForEachIf(pred func(T) bool, action func(T) error) error {
 	return nil
 }
 
-// The backing-slice accessors are package functions, not methods: a method
-// would be promoted onto the embedding types' public method sets, and on the
-// copy-on-write types a public mutator reopens the hole Group.Meta() once
-// was. A function in an internal package is unreachable from outside the
-// module.
+// The backing-slice accessors are package functions, not methods, so they are
+// not promoted onto the embedding types' public surface (a mutator would break
+// copy-on-write on signal.Group).
 
 // Items returns the live backing slice, not a clone — internal hot paths only.
 // Callers on copy-on-write types must not mutate it.
@@ -141,13 +139,9 @@ type Named interface {
 // Keyed is a name-indexed collection with deterministic name-ordered
 // traversal. It cannot carry two items with the same name.
 type Keyed[T Named] struct {
-	// byName indexes by name, for ByName.
 	byName map[string]T
-	// ordered holds the same items, sorted by name — traversal reads this, so it
-	// costs neither a per-element map lookup nor an allocation. It is updated when
-	// membership changes rather than lazily on read: items are read from
-	// activation goroutines, and a lazily filled cache would turn a read into a
-	// write.
+	// ordered holds the same items sorted by name, for traversal. It is rebuilt
+	// on membership change, never lazily: reads come from activation goroutines.
 	ordered []T
 	// kind is the element noun used in error messages, e.g. "port".
 	kind string
@@ -250,12 +244,8 @@ func (k *Keyed[T]) AllOrdered() []T {
 	return slices.Clone(k.ordered)
 }
 
-// Each yields every item in name order, without allocating and without a map
-// lookup per item.
-//
-// This is the internal form of AllOrdered, for traversals that run for every
-// component on every cycle, where neither a slice copy nor a hash lookup per
-// item belongs. Range over it: for item := range k.Each.
+// Each yields every item in name order without allocating: the hot-path form of
+// AllOrdered. Range over it: for item := range k.Each.
 func (k *Keyed[T]) Each(yield func(T) bool) {
 	for _, item := range k.ordered {
 		if !yield(item) {

@@ -31,14 +31,13 @@ type FMesh struct {
 // New creates a new F-Mesh with the default configuration and applies any provided options.
 func New(name string, opts ...Option) (*FMesh, error) {
 	fm := &FMesh{
-		name:        name,
-		description: "",
-		meta:        meta.New(),
-		components:  component.NewCollection(),
-		logger:      newDefaultLogger(name),
-		config:      newDefaultConfig(),
-		hooks:       newHooks(),
-		plugins:     newPlugins(),
+		name:       name,
+		meta:       meta.New(),
+		components: component.NewCollection(),
+		logger:     newDefaultLogger(name),
+		config:     newDefaultConfig(),
+		hooks:      newHooks(),
+		plugins:    plugin.NewRegistry[*FMesh](),
 	}
 	for _, opt := range opts {
 		if err := opt(fm); err != nil {

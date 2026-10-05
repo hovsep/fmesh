@@ -18,9 +18,7 @@ import (
 // flags and combine with |.
 //
 // Dimensions are opt-in because their costs differ by orders of magnitude and an
-// always-on dimension distorts what it measures. This mirrors how Go's own
-// profiles work: CPU and heap are cheap enough to default on, block and mutex
-// have to be switched on deliberately.
+// always-on dimension distorts what it measures.
 type Mode uint8
 
 const (
@@ -97,12 +95,6 @@ func (s Stat) with(d time.Duration) Stat {
 // Plugin measures where a mesh spends its time: whole runs, single cycles, and
 // each component's activations.
 //
-// The component numbers are the interesting ones, and they are the reason this
-// is a plugin rather than something you reach for a CPU profile to answer. A Go
-// profile of a mesh is dominated by the scheduler and tells you almost nothing
-// about which component is slow, because every component's work is the same
-// handful of runtime calls. Timing activations directly names the culprit.
-//
 // What it measures beyond timing is selected with [Mode]: per-pipe throughput
 // and a per-cycle timeline.
 //
@@ -144,7 +136,7 @@ func New(modes ...Mode) *Plugin {
 		enabled = ModeTiming
 	}
 
-	p := &Plugin{
+	return &Plugin{
 		modes:         enabled,
 		components:    make(map[string]Stat),
 		started:       make(map[string]time.Time),
@@ -152,7 +144,6 @@ func New(modes ...Mode) *Plugin {
 		timelineLimit: defaultTimelineLimit,
 		current:       -1,
 	}
-	return p
 }
 
 // Modes reports the dimensions this profiler measures.
