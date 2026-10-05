@@ -75,18 +75,9 @@ func (s *Signal) MapPayload(mapper PayloadMapper) *Signal {
 	return out
 }
 
-// Payload returns the signal's payload. The value is shallow: if the payload is
-// a pointer, slice, or map, the caller must not mutate it — after fan-out the
-// same payload may be shared by components activating concurrently.
-//
-// This does not fail. nil is a valid payload, and the only way to hold a signal
-// without one is to have built a zero-value Signal instead of calling New —
-// a construction bug, not a runtime condition, and not worth an error return on
-// the single most-called accessor in the library. Such a signal reads as nil.
-//
-// For the payload as a concrete type, and an error when it is not that type,
-// use [Signal.As]. For "was there a signal at all", check the group: Group.First returns
-// nil for an empty one.
+// Payload returns the signal's payload. It is shallow: after fan-out the same
+// pointer, slice or map may be shared by components activating concurrently, so
+// never mutate it. nil is a valid payload. For a concrete type use [Signal.As].
 func (s *Signal) Payload() any {
 	return s.payload
 }

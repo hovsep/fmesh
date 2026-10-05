@@ -82,7 +82,6 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 }
 
 func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
-	// Clear all output ports to prevent signal accumulation between runs
 	if err := fm.Components().ForEach(func(c *component.Component) error {
 		if err := c.ClearOutputs(ctx); err != nil {
 			return fmt.Errorf("failed to clear outputs of component %q: %w", c.Name(), err)
@@ -92,7 +91,6 @@ func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 		return err
 	}
 
-	// Init runtime info
 	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
 	fm.runtimeInfo.markStarted()
 
@@ -121,9 +119,8 @@ func (fm *FMesh) contextError(ctx context.Context) error {
 	return fmt.Errorf("%w: %w", ErrRunCanceled, err)
 }
 
-// runCycle runs one activation cycle (tries to activate ready components).
-// Returns any error that occurred.
-// The cycle is always added to runtimeInfo even if an error occurred.
+// runCycle activates every component that has input, concurrently, and records
+// the cycle in runtimeInfo however it ends.
 func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 	nextNumber := 1
 	if lastCycle := fm.runtimeInfo.Cycles.Last(); lastCycle != nil {
@@ -131,14 +128,11 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 	}
 	newCycle := cycle.New().SetNumber(nextNumber)
 
-	// Recorded however the cycle ends, so a failed cycle still shows up in the
-	// run history. Deferred rather than repeated at each exit; it runs after the
-	// afterCycle hook, which therefore sees the cycle in its CycleContext but not
-	// yet in RuntimeInfo.Cycles.
+	// Runs after the afterCycle hook, which therefore sees the cycle in its
+	// CycleContext but not yet in RuntimeInfo.Cycles.
 	defer fm.runtimeInfo.Cycles.Add(newCycle)
 
-	// AfterCycle runs however the cycle ends, like AfterRun and AfterActivation,
-	// so a hook that pairs with BeforeCycle always sees the end of its cycle.
+	// AfterCycle runs however the cycle ends, so it always pairs with BeforeCycle.
 	defer func() {
 		if hookErr := fm.hooks.afterCycle.TriggerAll(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); hookErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", hookErr))
@@ -162,11 +156,8 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 		}
 		wg.Go(func() {
 			ar := c.MaybeActivate(ctx)
-			// Components with no input produce pure noise in runtime info (in sparse
-			// meshes it's most of the history), so their result is never recorded. A
-			// missing result means "had no input"; the run loop treats absent results
-			// as not-activated. Only NoInput is skipped here — WaitingForInputs*,
-			// errors, panics, and HookFailed results are still recorded.
+			// A missing result means "had no input": recording NoInput would fill
+			// the history of a sparse mesh with noise.
 			if ar.Code() == component.ActivationCodeNoInput {
 				return
 			}
@@ -192,7 +183,6 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 	}
 
 	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
-		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
 			return nil
 		}
@@ -208,7 +198,6 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 func (fm *FMesh) clearInputs(ctx context.Context) error {
 	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
 		if component.WantsToKeepInputs(activationResult) {
-			// Component wants to keep inputs for the next cycle
 			return nil
 		}
 

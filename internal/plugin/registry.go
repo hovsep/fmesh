@@ -1,11 +1,5 @@
-// Package plugin provides the storage and initialization order shared by the
-// mesh- and component-level plugin systems.
-//
-// Not part of the public API: the two public Plugin interfaces
-// (fmesh.Plugin, component.Plugin) and their WithPlugins options stay where
-// users expect them. Only the parts that were identical at both levels — the
-// by-name container, the duplicate check, and the init order — live here, so a
-// third level cannot drift from the first two.
+// Package plugin provides the registry shared by the mesh- and component-level
+// plugin systems: the by-name container, the duplicate check and the init order.
 package plugin
 
 import (
@@ -48,12 +42,8 @@ func (r *Registry[T]) Has(name string) bool {
 	return r.plugins[name] != nil
 }
 
-// InitAll runs every plugin's Init against the target, in name order.
-//
-// The order is sorted rather than whatever the map yields because plugins
-// register hooks, and hooks fire in registration order. Ranging a map would make
-// the order in which two plugins observe the same event differ between runs of
-// the same program.
+// InitAll runs every plugin's Init against the target, in name order: plugins
+// register hooks, and hooks fire in registration order.
 func (r *Registry[T]) InitAll(target T) error {
 	for _, name := range slices.Sorted(maps.Keys(r.plugins)) {
 		if err := r.plugins[name].Init(target); err != nil {

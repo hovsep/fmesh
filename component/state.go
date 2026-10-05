@@ -2,14 +2,10 @@ package component
 
 import "fmt"
 
-// State is a key-value storage that persists between activation cycles of a component.
-// It allows storing and retrieving arbitrary data using string keys.
+// State is a component's key-value storage that persists across cycles and runs.
 //
-// State is a plain map with no locking. That is safe for the common case —
-// each component has its own instance and activates on one goroutine at a
-// time — but not in general: sharing one State between components, or touching
-// it from port hooks (which can fire on other components' activation
-// goroutines), is a data race.
+// It is a plain map with no locking: sharing one State between components, or
+// touching it from port hooks (which fire on other activation goroutines), races.
 type State map[string]any
 
 // newState creates a new component state.
@@ -92,9 +88,8 @@ func (s State) SetIfAbsent(key string, value any) bool {
 	return true
 }
 
-// Upsert applies the given function to the value associated with the key,
-// replacing it with the result.
-// Creates a new key if not exists.
+// Upsert replaces the value under key with fn applied to it, creating the key
+// when absent (fn then receives nil).
 func (s State) Upsert(key string, fn func(old any) any) {
 	s[key] = fn(s[key])
 }
@@ -111,14 +106,8 @@ func (s State) Update(key string, fn func(old any) any) bool {
 	return true
 }
 
-// UpdateAndGet is Upsert plus the value it stored, for the common case where the
-// new value is needed immediately — a counter that has to be emitted in the same
-// activation, say. Reading it back with Get would work but repeats the key, and
-// a second map lookup is a second chance to mistype it.
-//
-// Like Upsert and unlike Update, this creates the key when absent: fn receives
-// nil and its result is stored, so the returned value is always the one now in
-// the state.
+// UpdateAndGet is Upsert that also returns the stored value. Like Upsert and
+// unlike Update, it creates the key when absent: fn then receives nil.
 func (s State) UpdateAndGet(key string, fn func(old any) any) any {
 	updated := fn(s[key])
 	s[key] = updated

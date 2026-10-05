@@ -1,10 +1,6 @@
 package fmesh
 
-import (
-	"fmt"
-
-	"github.com/hovsep/fmesh/internal/plugin"
-)
+import "fmt"
 
 // Plugin defines the mesh plugin interface — the home for cross-cutting
 // concerns (component.Plugin is the per-component counterpart).
@@ -40,9 +36,4 @@ func (fm *FMesh) initPlugins() error {
 		return fmt.Errorf("fmesh %q %w", fm.name, err)
 	}
 	return nil
-}
-
-// newPlugins is a constructor for the mesh plugin registry.
-func newPlugins() *plugin.Registry[*FMesh] {
-	return plugin.NewRegistry[*FMesh]()
 }

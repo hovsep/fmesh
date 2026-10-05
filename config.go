@@ -20,10 +20,8 @@ type config struct {
 	// 0 means no limit (use WithUnlimitedCycles to express this explicitly).
 	CyclesLimit int
 
-	// TimeLimit defines the maximum duration F-Mesh can run, counted from the
-	// start of Run. It becomes a deadline on the run context, so activation
-	// functions that respect their context stop at it; one that ignores its
-	// context runs past it, since a running cycle is never interrupted.
+	// TimeLimit is the maximum duration of a Run. It becomes a deadline on the
+	// run context; a running cycle is never interrupted.
 	// 0 means no limit (use WithUnlimitedTime to express this explicitly).
 	TimeLimit time.Duration
 
@@ -32,13 +30,8 @@ type config struct {
 	CyclesHistoryLimit int
 
 	// LivelockThreshold is how many consecutive stalled cycles end the run with
-	// ErrLivelockDetected. A cycle is stalled when every component that activated
-	// was waiting and keeping its inputs and the mesh's pending signals did not
-	// change, which means the next cycle would be identical to this one, as long
-	// as activation depends only on inputs: a waiter that proceeds because of its
-	// State, the clock or the outside world needs a higher threshold or none.
-	//
-	// The default of 2 rather than 1 keeps the detector conservative.
+	// ErrLivelockDetected (see livelockDetector.detect). A waiter that proceeds
+	// on State, the clock or the outside world needs a higher threshold or none.
 	// 0 disables detection (use WithoutLivelockDetection to say so explicitly).
 	LivelockThreshold int
 }
@@ -48,18 +41,13 @@ func newDefaultConfig() config {
 	return config{
 		ErrorHandlingStrategy: StopOnFirstErrorOrPanic,
 		CyclesLimit:           1000,
-		Debug:                 false,
 		TimeLimit:             5 * time.Second,
-		CyclesHistoryLimit:    0,
 		LivelockThreshold:     2,
 	}
 }
 
-// setPositive assigns a config field that must be greater than 0.
-//
-// Zero is reserved as "no limit" on every one of these fields, which is why it is
-// rejected rather than accepted: a caller passing 0 almost always means a limit,
-// not the removal of one, and the message names the option that does remove it.
+// setPositive assigns a limit that must be greater than 0. Zero means "no limit",
+// so it is rejected: msg names the option that removes the limit explicitly.
 func setPositive(value int, field *int, msg string) error {
 	if value <= 0 {
 		return errors.New(msg)

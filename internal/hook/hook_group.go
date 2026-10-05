@@ -1,11 +1,7 @@
 // Package hook provides a generic, type-safe hook system for F-Mesh.
 //
-// Hooks allow extending framework behavior at specific execution points without
-// modifying core logic. All hooks maintain insertion order and support chainable operations.
-//
-// Every hook takes a context as its first argument, so a hook that does I/O
-// participates in the cancellation of the run that triggered it. Hooks fired
-// outside a run (construction, wiring, seeding) receive context.Background().
+// Hooks fire in insertion order. Hooks fired outside a run (construction,
+// wiring, seeding) receive context.Background().
 package hook
 
 import (
@@ -30,11 +26,8 @@ func (g *Group[T]) Add(hook func(context.Context, T) error) *Group[T] {
 	return g
 }
 
-// IsEmpty reports whether the group has no hooks.
-//
-// Hot paths use it to skip building a context struct that nothing will read:
-// Trigger's argument reaches an indirect call, so it escapes to the heap whether
-// or not any hook is registered.
+// IsEmpty reports whether the group has no hooks. Hot paths check it before
+// building a Trigger argument, which escapes to the heap even with no hooks.
 func (g *Group[T]) IsEmpty() bool {
 	return len(g.hooks) == 0
 }
