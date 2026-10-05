@@ -11,13 +11,6 @@ release title — a suffix in the tag makes Go treat the release as a pre-releas
 
 ## [Unreleased]
 
-### Fixed
-
-- Livelock detection counts a stall from its first cycle. A stall that began right after a
-  productive cycle could take one cycle more than `WithLivelockThreshold(n)` to be reported.
-- The livelock error no longer says components "never activated" when they only have no input
-  signals in the stalled cycle: `N other component(s) have no input signals`.
-
 ## [v1.17.0] — Syunik — 2026-10-01
 
 ### Added
