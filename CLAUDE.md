@@ -76,7 +76,7 @@ The root package `fmesh` orchestrates. The graph primitives live in subpackages:
 | Execution tick | `*cycle.Cycle` | `cycle` |
 | String / numeric metadata | `*meta.Meta` | `meta` |
 
-**Execution loop** (`fmesh.go`: `Run(ctx)` → `runCycle` → `mustStop` → `drainComponents`). Each
+**Execution loop** (`run.go`, `stop.go`: `Run(ctx)` → `runCycle` → `mustStop` → `drainComponents`). Each
 cycle activates all ready components concurrently (one goroutine each) and collects their
 `ActivationResult`s. The drain then clears inputs and flushes outputs through pipes. The mesh stops
 naturally when no component activated in a cycle, or on the cycle limit, time limit, error strategy
