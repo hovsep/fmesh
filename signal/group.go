@@ -16,12 +16,17 @@ type signalSlice = collection.Slice[*Signal]
 // construction; every mutator builds a new group.
 type Group struct {
 	signalSlice
-	meta *meta.Meta
+	meta *meta.Meta // nil until metadata is added
 }
 
 func newGroupFromSignals(signals []*Signal) *Group {
-	g := &Group{meta: meta.New()}
-	g.replace(slices.Clone(signals))
+	return adoptSignals(slices.Clone(signals))
+}
+
+// adoptSignals wraps a slice the caller just built and will not touch again.
+func adoptSignals(signals []*Signal) *Group {
+	g := &Group{}
+	g.replace(signals)
 	return g
 }
 
@@ -31,7 +36,7 @@ func NewGroup(payloads ...any) *Group {
 	for i, payload := range payloads {
 		signals[i] = New(payload)
 	}
-	return newGroupFromSignals(signals)
+	return adoptSignals(signals)
 }
 
 // raw and replace are the only touchpoints with the backing slice; Group is
@@ -148,7 +153,7 @@ func (g *Group) With(signals ...*Signal) *Group {
 		}
 		newSignals = append(newSignals, sig)
 	}
-	return newGroupFromSignals(newSignals)
+	return adoptSignals(newSignals)
 }
 
 // WithPayloads returns a new group with signals created from the given payloads appended.
@@ -158,7 +163,7 @@ func (g *Group) WithPayloads(payloads ...any) *Group {
 	for i, p := range payloads {
 		newSignals[g.Len()+i] = New(p)
 	}
-	return newGroupFromSignals(newSignals)
+	return adoptSignals(newSignals)
 }
 
 // Join returns a new group containing signals from both groups. A nil other is
@@ -170,7 +175,7 @@ func (g *Group) Join(other *Group) *Group {
 	newSignals := make([]*Signal, g.Len()+other.Len())
 	copy(newSignals, g.raw())
 	copy(newSignals[g.Len():], other.raw())
-	return newGroupFromSignals(newSignals)
+	return adoptSignals(newSignals)
 }
 
 // Filter returns a new group with signals that pass the predicate.
@@ -181,7 +186,7 @@ func (g *Group) Filter(p Predicate) *Group {
 			filtered = append(filtered, s)
 		}
 	}
-	return newGroupFromSignals(filtered)
+	return adoptSignals(filtered)
 }
 
 // Map returns a new group with every signal transformed by the mapper.
@@ -193,7 +198,7 @@ func (g *Group) Map(m Mapper) *Group {
 			mapped = append(mapped, result)
 		}
 	}
-	return newGroupFromSignals(mapped)
+	return adoptSignals(mapped)
 }
 
 // MapIf is like Map but applies the mapper only to signals matching the predicate.
@@ -209,7 +214,7 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 			mapped = append(mapped, cloned)
 		}
 	}
-	return newGroupFromSignals(mapped)
+	return adoptSignals(mapped)
 }
 
 // MapPayloads returns a new group with every payload transformed by the mapper.
@@ -218,7 +223,7 @@ func (g *Group) MapPayloads(mapper PayloadMapper) *Group {
 	for _, s := range g.raw() {
 		mapped = append(mapped, s.MapPayload(mapper))
 	}
-	return newGroupFromSignals(mapped)
+	return adoptSignals(mapped)
 }
 
 // MapPayloadsIf is like MapPayloads but applies the mapper only to signals matching the predicate.
@@ -231,7 +236,7 @@ func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group 
 			mapped[i] = cloneSignal(s)
 		}
 	}
-	return newGroupFromSignals(mapped)
+	return adoptSignals(mapped)
 }
 
 // Reduce accumulates all signals into a single signal using the given function.

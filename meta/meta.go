@@ -21,22 +21,28 @@ type Predicate func(key string, value any) bool
 // Write methods modify the receiver in place and return it for chaining.
 // Clone and Filter are the non-mutating methods; each returns a new Meta.
 type Meta struct {
-	entries map[string]any
+	entries map[string]any // nil until the first write; reads of a nil map are safe
 }
 
 // New creates an empty Meta.
 func New() *Meta {
-	return &Meta{entries: make(map[string]any)}
+	return &Meta{}
 }
 
 // Set adds or updates one entry (upsert semantics).
 func (m *Meta) Set[T Value](key string, value T) *Meta {
+	if m.entries == nil {
+		m.entries = make(map[string]any)
+	}
 	m.entries[key] = value
 	return m
 }
 
 // SetMany adds or updates every entry of values (upsert semantics).
 func (m *Meta) SetMany[T Value](values map[string]T) *Meta {
+	if m.entries == nil && len(values) > 0 {
+		m.entries = make(map[string]any, len(values))
+	}
 	for k, v := range values {
 		m.entries[k] = v
 	}
@@ -131,7 +137,7 @@ func (m *Meta) All() map[string]any {
 func (m *Meta) Clone() *Meta {
 	c := New()
 	if m != nil {
-		maps.Copy(c.entries, m.entries)
+		c.entries = maps.Clone(m.entries)
 	}
 	return c
 }
@@ -141,6 +147,9 @@ func (m *Meta) Filter(pred Predicate) *Meta {
 	filtered := New()
 	for k, v := range m.entries {
 		if pred(k, v) {
+			if filtered.entries == nil {
+				filtered.entries = make(map[string]any)
+			}
 			filtered.entries[k] = v
 		}
 	}

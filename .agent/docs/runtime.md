@@ -188,8 +188,9 @@ complexity classes are what lasts.
 
 - **Width scales near-linearly.** ~1.5–4 µs of scheduler overhead per component per cycle, and
   ~300 B of heap per component. A 10⁶-component mesh builds in ~2 s and runs one wave in ~10 s. But
-  `runCycle` starts one goroutine per component per cycle, ready or not, so at 10⁷ components the
-  goroutine stacks alone (tens of GiB) risk OOM before speed is the problem.
+  `runCycle` starts one goroutine per ready component per cycle (each grows to ~16 KB of stack), so
+  a wave across 10⁷ components needs tens of GiB of stacks alone and risks OOM before speed is the
+  problem. Components with no input get no goroutine.
 - **Fan-in is O(N²).** Each delivery copies the destination port's whole signal group
   (`port.putSignals` → `signal.Group.With`). N outputs into one input port become impractical near
   N ≈ 10⁵ (tens of seconds in one drain). Guarded by `BenchmarkMeshRun/fan-in`.

@@ -177,6 +177,11 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 
 	// ForEach avoids cloning the component slice on every cycle (hot path)
 	_ = fm.Components().ForEach(func(c *component.Component) error {
+		// No goroutine for a component with nothing to read: in a sparse mesh
+		// that is most of them, and MaybeActivate would only report NoInput.
+		if !c.Inputs().AnyHasSignals() {
+			return nil
+		}
 		wg.Go(func() {
 			ar := c.MaybeActivate(ctx)
 			// Components with no input produce pure noise in runtime info (in sparse
@@ -203,11 +208,10 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 // results: drain order decides fan-in order and must be deterministic. A
 // component with no result did not activate at all.
 func (fm *FMesh) forEachActivatedComponent(
-	components []*component.Component,
 	action func(*component.Component, *component.ActivationResult) error,
 ) error {
 	results := fm.runtimeInfo.Cycles.Last().ActivationResults()
-	for _, c := range components {
+	for c := range fm.Components().Each {
 		activationResult := results.ByName(c.Name())
 		if activationResult == nil || !activationResult.Activated() {
 			continue
@@ -226,13 +230,11 @@ func (fm *FMesh) forEachActivatedComponent(
 // be merged into one: flushing delivers signals into downstream input ports, so
 // a single pass would clear away what an earlier component had just delivered.
 func (fm *FMesh) drainComponents(ctx context.Context) error {
-	components := fm.Components().AllOrdered()
-
-	if err := fm.clearInputs(ctx, components); err != nil {
+	if err := fm.clearInputs(ctx); err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedToDrain, err)
 	}
 
-	return fm.forEachActivatedComponent(components, func(c *component.Component, activationResult *component.ActivationResult) error {
+	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
 		// Components waiting for inputs are never drained
 		if component.IsWaitingForInput(activationResult) {
 			return nil
@@ -246,8 +248,8 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 }
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
-func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Component) error {
-	return fm.forEachActivatedComponent(components, func(c *component.Component, activationResult *component.ActivationResult) error {
+func (fm *FMesh) clearInputs(ctx context.Context) error {
+	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
 		if component.WantsToKeepInputs(activationResult) {
 			// Component wants to keep inputs for the next cycle
 			return nil
