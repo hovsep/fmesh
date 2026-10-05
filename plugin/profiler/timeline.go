@@ -104,7 +104,7 @@ func (p *Plugin) closeRecord(cycleCtx *fmesh.CycleContext) {
 	activations := results.Count(func(r *component.ActivationResult) bool { return r.Activated() })
 	errs := results.Count((*component.ActivationResult).IsError)
 	panics := results.Count((*component.ActivationResult).IsPanic)
-	waiting := results.Count(component.IsWaitingForInput)
+	waiting := results.Count((*component.ActivationResult).IsWaiting)
 
 	p.mu.Lock()
 	defer p.mu.Unlock()

@@ -12,15 +12,6 @@ type named string
 
 func (n named) Name() string { return string(n) }
 
-// firstOf returns the first item in name order, the way facades implement Any().
-func firstOf(k *Keyed[named]) named {
-	for n := range k.Each {
-		return n
-	}
-	var zero named
-	return zero
-}
-
 func newSlice(items ...int) *Slice[int] {
 	s := &Slice[int]{}
 	AppendItems(s, items...)
@@ -201,7 +192,7 @@ func TestKeyed_Lookups(t *testing.T) {
 
 	assert.Equal(t, named("a"), k.ByName("a"))
 	assert.Equal(t, named(""), k.ByName("missing"))
-	assert.Equal(t, named("a"), firstOf(k), "first in name order, not insertion order")
+	assert.Equal(t, named("a"), k.First(), "first in name order, not insertion order")
 	assert.Equal(t, 2, k.Len())
 	assert.False(t, k.IsEmpty())
 	assert.Equal(t, map[string]named{"a": "a", "b": "b"}, k.All())
@@ -257,14 +248,14 @@ func TestKeyed_Predicates(t *testing.T) {
 
 	empty := NewKeyed[named]("widget")
 	assert.True(t, empty.Every(isA), "vacuous truth on empty")
-	assert.False(t, empty.AnyMatch(isA))
-	assert.Equal(t, named(""), empty.FindAny(isA))
-	assert.Equal(t, named(""), firstOf(empty))
+	assert.False(t, empty.Any(isA))
+	assert.Equal(t, named(""), empty.Find(isA))
+	assert.Equal(t, named(""), empty.First())
 
 	k := NewKeyed[named]("widget")
 	require.NoError(t, k.Add("a", "b"))
-	assert.True(t, k.AnyMatch(isA))
+	assert.True(t, k.Any(isA))
 	assert.False(t, k.Every(isA))
 	assert.Equal(t, 1, k.Count(isA))
-	assert.Equal(t, named("a"), k.FindAny(isA))
+	assert.Equal(t, named("a"), k.Find(isA))
 }

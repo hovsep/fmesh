@@ -32,8 +32,8 @@ func TestPlugins_ConventionWiredMesh(t *testing.T) {
 		autowire.Prefixed("env_"),
 	))
 
-	assert.True(t, fm.PluginRegistered("autowire:broadcast:tick->time"))
-	assert.True(t, fm.PluginRegistered("autowire:prefixed:env_"))
+	assert.True(t, fm.HasPlugin("autowire:broadcast:tick->time"))
+	assert.True(t, fm.HasPlugin("autowire:prefixed:env_"))
 
 	// The clock is the only component that wires anything by hand, and only to
 	// itself: a loopback is not something a naming convention can express.

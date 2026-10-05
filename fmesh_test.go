@@ -757,9 +757,9 @@ func TestFMesh_Run(t *testing.T) {
 					assert.Equal(t, want.activated, gotAR.Activated(), "cycle %d: %q activated flag", i+1, name)
 					assert.Equal(t, want.code, gotAR.Code(), "cycle %d: %q activation code", i+1, name)
 					if want.hasError {
-						assert.Error(t, gotAR.ActivationError(), "cycle %d: %q must carry an activation error", i+1, name)
+						assert.Error(t, gotAR.Err(), "cycle %d: %q must carry an activation error", i+1, name)
 					} else {
-						assert.NoError(t, gotAR.ActivationError(), "cycle %d: %q must not carry an activation error", i+1, name)
+						assert.NoError(t, gotAR.Err(), "cycle %d: %q must not carry an activation error", i+1, name)
 					}
 				}
 			}
@@ -870,13 +870,13 @@ func TestFMesh_runCycle(t *testing.T) {
 			want: cycle.New().AddActivationResults(
 				component.NewActivationResult("c1").
 					SetActivated(true).
-					SetActivationCode(component.ActivationCodeOK),
+					SetCode(component.ActivationCodeOK),
 				component.NewActivationResult("c2").
 					SetActivated(true).
-					SetActivationCode(component.ActivationCodeOK),
+					SetCode(component.ActivationCodeOK),
 				component.NewActivationResult("c3").
 					SetActivated(true).
-					SetActivationCode(component.ActivationCodeOK),
+					SetCode(component.ActivationCodeOK),
 			).SetNumber(1),
 		},
 	}
@@ -914,7 +914,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						SetActivationCode(component.ActivationCodeOK),
+						SetCode(component.ActivationCodeOK),
 				).SetNumber(5)
 
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
@@ -930,7 +930,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						SetActivationCode(component.ActivationCodeOK),
+						SetCode(component.ActivationCodeOK),
 				).SetNumber(1001)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
@@ -945,7 +945,7 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(false).
-						SetActivationCode(component.ActivationCodeNoInput),
+						SetCode(component.ActivationCodeNoInput),
 				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
@@ -960,8 +960,8 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						SetActivationCode(component.ActivationCodeReturnedError).
-						AddActivationError(errors.New("c1 activation finished with error")),
+						SetCode(component.ActivationCodeReturnedError).
+						AddError(errors.New("c1 activation finished with error")),
 				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm
@@ -976,8 +976,8 @@ func TestFMesh_mustStop(t *testing.T) {
 				c := cycle.New().AddActivationResults(
 					component.NewActivationResult("c1").
 						SetActivated(true).
-						SetActivationCode(component.ActivationCodePanicked).
-						AddActivationError(errors.New("c1 panicked")),
+						SetCode(component.ActivationCodePanicked).
+						AddError(errors.New("c1 panicked")),
 				).SetNumber(5)
 				fm.runtimeInfo.Cycles = fm.runtimeInfo.Cycles.Add(c)
 				return fm

@@ -2,6 +2,7 @@ package cycle
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/meta"
@@ -55,7 +56,8 @@ func (c *Cycle) joinActivationErrors(matching component.ResultPredicate) error {
 	var joined error
 	for _, activationResult := range c.ActivationResults().AllOrdered() {
 		if matching(activationResult) {
-			joined = errors.Join(joined, activationResult.ActivationErrorWithComponentName())
+			joined = errors.Join(joined,
+				fmt.Errorf("component %s has activation error: %w", activationResult.ComponentName(), activationResult.Err()))
 		}
 	}
 	return joined
@@ -80,7 +82,7 @@ func (c *Cycle) AllActivatedAreWaiting() bool {
 	if !c.HasActivatedComponents() {
 		return false
 	}
-	return c.ActivationResults().Every(component.IsWaitingForInput)
+	return c.ActivationResults().Every((*component.ActivationResult).IsWaiting)
 }
 
 // AddActivationResults adds multiple activation results.

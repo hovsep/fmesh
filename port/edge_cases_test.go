@@ -55,10 +55,10 @@ func TestMultiForward_NamesTheFailingPair(t *testing.T) {
 }
 
 func TestCollection_AnyRemoveAndMetadata(t *testing.T) {
-	assert.Nil(t, mustNewCollection().Any())
+	assert.Nil(t, mustNewCollection().First())
 
 	col := mustNewCollection(mustInput("b"), mustInput("a"))
-	assert.Equal(t, "a", col.Any().Name(), "name order, so the answer is stable")
+	assert.Equal(t, "a", col.First().Name(), "name order, so the answer is stable")
 
 	col.Remove("a")
 	assert.Nil(t, col.ByName("a"))

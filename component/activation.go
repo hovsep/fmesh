@@ -200,9 +200,9 @@ func (c *Component) panicError(r any) *PanicError {
 // always sees the panic.
 func markHookFailed(result *ActivationResult, stage string, err error) {
 	if _, panicked := errors.AsType[*PanicError](err); panicked {
-		result.SetActivationCode(ActivationCodePanicked)
+		result.SetCode(ActivationCodePanicked)
 	} else if result.Code() != ActivationCodePanicked {
-		result.SetActivationCode(ActivationCodeHookFailed)
+		result.SetCode(ActivationCodeHookFailed)
 	}
-	result.AddActivationError(fmt.Errorf("%s hook failed: %w", stage, err))
+	result.AddError(fmt.Errorf("%s hook failed: %w", stage, err))
 }

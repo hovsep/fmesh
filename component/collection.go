@@ -34,15 +34,6 @@ func (c *Collection) Remove(names ...string) *Collection {
 	return c
 }
 
-// Any returns the first component in the collection by name order.
-// Returns nil if the collection is empty. Stable across runs.
-func (c *Collection) Any() *Component {
-	for comp := range c.Each {
-		return comp
-	}
-	return nil
-}
-
 // Filter returns a new collection with components that match the predicate.
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	matched := make([]*Component, 0, c.Len())

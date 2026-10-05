@@ -25,8 +25,8 @@ func WithPlugins(plugins ...Plugin) Option {
 	}
 }
 
-// PluginRegistered returns true if the plugin is registered.
-func (fm *FMesh) PluginRegistered(name string) bool {
+// HasPlugin reports whether a plugin with that name is registered.
+func (fm *FMesh) HasPlugin(name string) bool {
 	return fm.plugins.Has(name)
 }
 

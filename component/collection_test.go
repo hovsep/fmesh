@@ -233,6 +233,6 @@ func TestCollection_PromotedReadSurface(t *testing.T) {
 		assert.Equal(t, 2, collection.Len())
 		assert.False(t, collection.IsEmpty())
 		assert.Equal(t, "c1", collection.AllOrdered()[0].Name(), "traversal is name-ordered")
-		assert.True(t, collection.AnyMatch(func(c *Component) bool { return c.Name() == "c2" }))
+		assert.True(t, collection.Any(func(c *Component) bool { return c.Name() == "c2" }))
 	})
 }

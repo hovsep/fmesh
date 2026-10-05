@@ -254,8 +254,17 @@ func (k *Keyed[T]) Each(yield func(T) bool) {
 	}
 }
 
-// AnyMatch returns true if any item matches the predicate.
-func (k *Keyed[T]) AnyMatch(pred func(T) bool) bool {
+// First returns the first item in name order, or the zero value if empty.
+func (k *Keyed[T]) First() T {
+	if len(k.ordered) == 0 {
+		var zero T
+		return zero
+	}
+	return k.ordered[0]
+}
+
+// Any returns true if any item matches the predicate.
+func (k *Keyed[T]) Any(pred func(T) bool) bool {
 	return slices.ContainsFunc(k.ordered, pred)
 }
 
@@ -281,9 +290,9 @@ func (k *Keyed[T]) Count(pred func(T) bool) int {
 	return count
 }
 
-// FindAny returns the first item matching the predicate, in name order.
+// Find returns the first item matching the predicate, in name order.
 // Returns the zero value if no match found.
-func (k *Keyed[T]) FindAny(pred func(T) bool) T {
+func (k *Keyed[T]) Find(pred func(T) bool) T {
 	for _, item := range k.ordered {
 		if pred(item) {
 			return item

@@ -67,15 +67,16 @@ constructor that takes options (`fmesh.New`, `component.New`, `port.NewInput`, `
 Post-construction `Set*` methods exist only where mutation after `New()` is required, e.g.
 `Component.SetLogger`, `InheritLogger`, `SetParentMesh`, `SetupHooks`, `port.Collection.SetParentComponent`,
 `cycle.Cycle.SetNumber`, `cycle.Group.SetLenLimit`, and `ActivationResult.SetActivated` /
-`SetActivationCode`.
+`SetCode`.
 
-Mutating methods that *append* use `Add*`, even on result types: `ActivationResult.AddActivationError`.
+Mutating methods that *append* use `Add*`, even on result types: `ActivationResult.AddError`.
 
 ## Collection/group operations
 
 `Any(p)`, `Every(p)`, `Count(p)`, `Map`, `MapIf`, `Filter`, `ForEach`, `ForEachIf`, `Reduce`,
-`ReducePayloads`, `Join`. Keyed collections (`port.Collection`, `component.Collection`) name the
-predicate form `AnyMatch(p)`; their `Any()` returns the first item in name order.
+`ReducePayloads`, `Join`, `Find(p)`, `First()`. The names mean the same on every group and
+collection; keyed collections (`port.Collection`, `component.Collection`) traverse in name order,
+so their `First()` is the first by name.
 
 ## Error returns
 
@@ -100,4 +101,6 @@ Functions that take and return an `ActivationFunc` are named for what they do, w
 Do not repeat the package name in a type or function name:
 - `meta`: `Predicate`, `Value` (not `MetaPredicate`/`MetaValue`). `meta.Meta` itself is the
   accepted exception, like `context.Context`.
-- `component`: `ResultPredicate`, `ResultMapper` (not `ActivationResultPredicate`/`…Mapper`).
+- `component`: `ResultPredicate` (not `ActivationResultPredicate`).
+- Methods on a type do not repeat it: `ActivationResult.Err()`, `SetCode`, `AddError` (not
+  `ActivationError()`, `SetActivationCode`, `AddActivationError`).

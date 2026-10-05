@@ -195,7 +195,7 @@ func TestGroup_AllMatch(t *testing.T) {
 	})
 }
 
-func TestGroup_AnyMatch(t *testing.T) {
+func TestGroup_Any(t *testing.T) {
 	t.Run("returns true when at least one matches", func(t *testing.T) {
 		group := NewOutputGroup("p1", "p2", "p3")
 		result := group.Any(func(p *Port) bool {

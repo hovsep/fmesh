@@ -1,9 +1,6 @@
 package component
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 // ActivationResult defines the result (possibly an error) of the activation of a given component in a given cycle.
 type ActivationResult struct {
@@ -82,23 +79,14 @@ func (ar *ActivationResult) Activated() bool {
 	return ar.activated
 }
 
-// ActivationError returns all accumulated activation errors joined into a single error, or nil if there are none.
-func (ar *ActivationResult) ActivationError() error {
+// Err returns all accumulated activation errors joined into one, or nil if there are none.
+func (ar *ActivationResult) Err() error {
 	return errors.Join(ar.activationErrors...)
 }
 
-// ActivationErrors returns all accumulated activation errors as a slice.
-func (ar *ActivationResult) ActivationErrors() []error {
+// Errors returns all accumulated activation errors.
+func (ar *ActivationResult) Errors() []error {
 	return ar.activationErrors
-}
-
-// ActivationErrorWithComponentName returns the activation error prefixed with the component name, or nil if there is none.
-func (ar *ActivationResult) ActivationErrorWithComponentName() error {
-	err := ar.ActivationError()
-	if err == nil {
-		return nil
-	}
-	return fmt.Errorf("component %s has activation error: %w", ar.componentName, err)
 }
 
 // Code returns the activation result code.
@@ -117,21 +105,31 @@ func (ar *ActivationResult) IsPanic() bool {
 	return ar.code == ActivationCodePanicked && len(ar.activationErrors) > 0
 }
 
+// IsWaiting reports whether the component was waiting for inputs, in either mode.
+func (ar *ActivationResult) IsWaiting() bool {
+	return ar.code == ActivationCodeWaitingForInputsClear || ar.code == ActivationCodeWaitingForInputsKeep
+}
+
+// KeepsInputs reports whether the component is waiting and keeping its inputs for the next cycle.
+func (ar *ActivationResult) KeepsInputs() bool {
+	return ar.code == ActivationCodeWaitingForInputsKeep
+}
+
 // SetActivated sets the activated flag and returns the activation result.
 func (ar *ActivationResult) SetActivated(activated bool) *ActivationResult {
 	ar.activated = activated
 	return ar
 }
 
-// SetActivationCode sets the activation code and returns the activation result.
-func (ar *ActivationResult) SetActivationCode(code ActivationResultCode) *ActivationResult {
+// SetCode sets the activation code and returns the activation result.
+func (ar *ActivationResult) SetCode(code ActivationResultCode) *ActivationResult {
 	ar.code = code
 	return ar
 }
 
-// AddActivationError appends an error to the activation result's error list and returns the activation result.
-func (ar *ActivationResult) AddActivationError(activationError error) *ActivationResult {
-	ar.activationErrors = append(ar.activationErrors, activationError)
+// AddError appends an error to the activation result and returns it.
+func (ar *ActivationResult) AddError(err error) *ActivationResult {
+	ar.activationErrors = append(ar.activationErrors, err)
 	return ar
 }
 
@@ -150,15 +148,4 @@ func waitingCode(err error) ActivationResultCode {
 		return ActivationCodeWaitingForInputsKeep
 	}
 	return ActivationCodeWaitingForInputsClear
-}
-
-// IsWaitingForInput returns true if the component was waiting for inputs.
-func IsWaitingForInput(activationResult *ActivationResult) bool {
-	return activationResult.Code() == ActivationCodeWaitingForInputsClear ||
-		activationResult.Code() == ActivationCodeWaitingForInputsKeep
-}
-
-// WantsToKeepInputs returns true if the component wants to keep inputs.
-func WantsToKeepInputs(activationResult *ActivationResult) bool {
-	return activationResult.Code() == ActivationCodeWaitingForInputsKeep
 }

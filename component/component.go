@@ -106,8 +106,8 @@ func (c *Component) SetParentMesh(parentMesh ParentMesh) *Component {
 	return c
 }
 
-// ValidateBeforeAddingToMesh checks if the component is good to be added into mesh.
-func (c *Component) ValidateBeforeAddingToMesh() error {
+// Validate checks that the component can be added to a mesh: it has an activation function and owns its ports.
+func (c *Component) Validate() error {
 	if c.f == nil {
 		return errors.New("activation function is not set")
 	}
