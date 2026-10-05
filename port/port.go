@@ -186,8 +186,7 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 	p.mustExist()
 
 	for _, group := range signalGroups {
-		signals := group.All()
-		if err := p.PutSignals(signals...); err != nil {
+		if err := p.PutSignals(group.All()...); err != nil {
 			return err
 		}
 	}
@@ -236,11 +235,10 @@ func (p *Port) Flush(ctx context.Context) error {
 	notifyDelivery := !p.hooks.onSignalsDelivered.IsEmpty()
 
 	var deliveryErrs error
-	// ForEach avoids cloning the pipe slice on every flush (hot path)
-	_ = p.pipes.ForEach(func(outboundPort *Port) error {
+	for _, outboundPort := range p.pipes.raw() {
 		if err := outboundPort.putSignals(ctx, signals); err != nil {
 			deliveryErrs = errors.Join(deliveryErrs, err)
-			return nil
+			continue
 		}
 
 		if notifyDelivery {
@@ -252,8 +250,7 @@ func (p *Port) Flush(ctx context.Context) error {
 				deliveryErrs = errors.Join(deliveryErrs, fmt.Errorf("onSignalsDelivered hook failed: %w", err))
 			}
 		}
-		return nil
-	})
+	}
 	if deliveryErrs != nil {
 		return deliveryErrs
 	}
@@ -326,20 +323,17 @@ func validatePipe(srcPort, dstPort *Port) error {
 // The same *Signal pointers are shared with the destination; payloads must be
 // treated as immutable because downstream components activate concurrently.
 func ForwardSignals(ctx context.Context, source, dest *Port) error {
-	signals := source.Signals().All()
-	return dest.putSignals(ctx, signals)
+	return dest.putSignals(ctx, source.Signals().All())
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(ctx context.Context, source, dest *Port, p signal.Predicate) error {
-	filteredSignals := source.Signals().Filter(p).All()
-	return dest.putSignals(ctx, filteredSignals)
+	return dest.putSignals(ctx, source.Signals().Filter(p).All())
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(ctx context.Context, source, dest *Port, mapperFunc signal.Mapper) error {
-	mappedSignals := source.Signals().Map(mapperFunc).All()
-	return dest.putSignals(ctx, mappedSignals)
+	return dest.putSignals(ctx, source.Signals().Map(mapperFunc).All())
 }
 
 // ParentComponent returns the port's parent component.

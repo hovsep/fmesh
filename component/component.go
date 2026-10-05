@@ -112,25 +112,21 @@ func (c *Component) ValidateBeforeAddingToMesh() error {
 		return errors.New("activation function is not set")
 	}
 
-	if err := c.Inputs().ForEach(func(p *port.Port) error {
-		if p.ParentComponent() == nil {
-			return fmt.Errorf("input port %q has no parent component", p.Name())
-		}
-		if p.ParentComponent() != c {
-			return fmt.Errorf("input port %q has wrong parent component", p.Name())
-		}
-		return nil
-	}); err != nil {
+	if err := c.validatePortParents("input", c.inputPorts); err != nil {
 		return err
 	}
+	return c.validatePortParents("output", c.outputPorts)
+}
 
-	return c.Outputs().ForEach(func(p *port.Port) error {
-		if p.ParentComponent() == nil {
-			return fmt.Errorf("output port %q has no parent component", p.Name())
+func (c *Component) validatePortParents(side string, ports *port.Collection) error {
+	for p := range ports.Each {
+		switch p.ParentComponent() {
+		case nil:
+			return fmt.Errorf("%s port %q has no parent component", side, p.Name())
+		case c:
+		default:
+			return fmt.Errorf("%s port %q has wrong parent component", side, p.Name())
 		}
-		if p.ParentComponent() != c {
-			return fmt.Errorf("output port %q has wrong parent component", p.Name())
-		}
-		return nil
-	})
+	}
+	return nil
 }

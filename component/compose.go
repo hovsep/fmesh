@@ -86,14 +86,15 @@ func Pipeline(inputPortNames []string, outputPortName string, stages ...Pipeline
 			return fmt.Errorf("pipeline output port %q does not exist", outputPortName)
 		}
 
-		signals := signal.NewGroup()
+		inputs := make([]*signal.Signal, 0, len(inputPortNames))
 		for _, name := range inputPortNames {
 			in := this.InputByName(name)
 			if in == nil {
 				return fmt.Errorf("pipeline input port %q does not exist", name)
 			}
-			signals = signals.With(in.Signals().All()...)
+			inputs = append(inputs, in.Signals().All()...)
 		}
+		signals := signal.NewGroup().With(inputs...)
 
 		for i, stage := range stages {
 			next, err := stage(signals)

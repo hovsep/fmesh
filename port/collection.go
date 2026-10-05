@@ -111,12 +111,11 @@ func (c *Collection) Remove(names ...string) *Collection {
 
 // Signals returns all signals of all ports in the collection.
 func (c *Collection) Signals() *signal.Group {
-	group := signal.NewGroup()
+	signals := make([]*signal.Signal, 0, c.Len())
 	for p := range c.Each {
-		signals := p.Signals().All()
-		group = group.With(signals...)
+		signals = append(signals, p.Signals().All()...)
 	}
-	return group
+	return signal.NewGroup().With(signals...)
 }
 
 // Any returns the first port in the collection by name order.

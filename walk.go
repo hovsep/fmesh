@@ -31,9 +31,11 @@ func (fm *FMesh) Walk(v Visitor) error {
 		if err := v.VisitComponent(c); err != nil {
 			return err
 		}
-		for _, p := range append(c.Inputs().AllOrdered(), c.Outputs().AllOrdered()...) {
-			if err := v.VisitPort(c, p); err != nil {
-				return err
+		for _, ports := range []*port.Collection{c.Inputs(), c.Outputs()} {
+			for p := range ports.Each {
+				if err := v.VisitPort(c, p); err != nil {
+					return err
+				}
 			}
 		}
 	}

@@ -82,13 +82,10 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 }
 
 func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
-	if err := fm.Components().ForEach(func(c *component.Component) error {
+	for c := range fm.components.Each {
 		if err := c.ClearOutputs(ctx); err != nil {
 			return fmt.Errorf("failed to clear outputs of component %q: %w", c.Name(), err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
@@ -147,12 +144,11 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 
 	var wg sync.WaitGroup
 
-	// ForEach avoids cloning the component slice on every cycle (hot path)
-	_ = fm.Components().ForEach(func(c *component.Component) error {
+	for c := range fm.components.Each {
 		// No goroutine for a component with nothing to read: in a sparse mesh
 		// that is most of them, and MaybeActivate would only report NoInput.
 		if !c.Inputs().AnyHasSignals() {
-			return nil
+			continue
 		}
 		wg.Go(func() {
 			ar := c.MaybeActivate(ctx)
@@ -163,8 +159,7 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 			}
 			newCycle.AddActivationResults(ar)
 		})
-		return nil
-	})
+	}
 
 	wg.Wait()
 
@@ -217,7 +212,7 @@ func (fm *FMesh) forEachActivatedComponent(
 	action func(*component.Component, *component.ActivationResult) error,
 ) error {
 	results := fm.runtimeInfo.Cycles.Last().ActivationResults()
-	for c := range fm.Components().Each {
+	for c := range fm.components.Each {
 		activationResult := results.ByName(c.Name())
 		if activationResult == nil || !activationResult.Activated() {
 			continue
