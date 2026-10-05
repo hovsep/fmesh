@@ -74,7 +74,7 @@ The root package `fmesh` orchestrates. The graph primitives live in subpackages:
 | Connection (output→input) | `PipeTo` | `port` |
 | Building block | `*component.Component` | `component` |
 | Execution tick | `*cycle.Cycle` | `cycle` |
-| String / numeric metadata | `*meta.Meta` | `meta` |
+| String / bool / numeric metadata | `*meta.Meta` | `meta` |
 
 **Execution loop** (`run.go`, `stop.go`: `Run(ctx)` → `runCycle` → `mustStop` → `drainComponents`). Each
 cycle activates all ready components concurrently (one goroutine each) and collects their

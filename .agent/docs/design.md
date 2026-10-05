@@ -99,18 +99,23 @@ nothing per instance and render normally in godoc. Two limits:
     infers `T` from the default. The one exception is `Float64OrDefault`: an untyped `0` infers
     `int`, so `s.PayloadOrDefault(0)` silently returns the default for a float64 payload. Do not
     add the others back for symmetry.
-- **`meta`** — one type, `Meta`: a `map[string]any` whose values are `string | float64`, enforced
-  by the `Value` constraint on every typed method. Constructor: `New()`.
-  - Writes: `Set[T](k, v)`, `SetMany[T](m)`; `T` is inferred. An untyped integer literal is a
-    compile error (`int does not satisfy meta.Value`) — intended; write `1.0`.
+- **`meta`** — one type, `Meta`: a `map[string]any` whose values are `string`, `bool` or any Go
+  integer or float type, enforced by the `Value` constraint on every typed method. Constructor:
+  `New()`.
+  - Writes: `Set[T](k, v)`, `SetMany[T](m)`; `T` is inferred, so `Set("n", 3)` stores an `int`.
   - Reads: `Value[T](k)` (error names the key, and both types on a mismatch), `ValueOrDefault(k,
     def)` and `ValueIs(k, v)` (both infer `T`; a wrong-type entry reads as absent), `Has(keys...)`
     (all present; true for none) and `HasAny(keys...)`. `Keys()` is sorted.
   - `Clone()` (nil-safe, used by the CoW types) and `Filter(pred)` (predicate sees the value as
     `any`) return a new store.
-  - The constraint is exact on purpose — no `~`, no ints. A named `type Celsius float64` stored via
-    `~float64` would fail every `Value[float64]` read. Accepting ints would reopen the
-    `PayloadOrDefault(0)` trap. Do not widen it.
+  - Reads are exact — no numeric conversion. An entry reads back only as the type it was written
+    with: an `int` fails `Value[int64]` and `Value[float64]`, and `ValueOrDefault(k, 0.0)` on an
+    `int` entry returns the default. This is the `PayloadOrDefault(0)` trap, accepted because int
+    metadata is too useful to forbid. Do not add conversion: it needs a type switch over every
+    number type and a rule for lossy cases.
+  - The constraint is `cmp.Ordered | ~bool`, so named types such as `type Celsius float64` are
+    allowed — users attach their own domain types. Exact reads apply: a `Celsius` entry reads with
+    `Value[Celsius]`, fails `Value[float64]`, and a `Filter` predicate sees it as `Celsius`.
   - Deliberately absent: `Values()`, `Map`, `Every`/`Any`/`Count`/`ForEach`, `Merge`, `Has*From`.
     On a mixed-type store each would be untyped or half-typed, and none had a caller.
 - **`port`**
