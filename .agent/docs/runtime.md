@@ -137,7 +137,8 @@ a no-op.
    - `StopOnFirstPanic` → errors ignored; panics stop with `ErrHitAPanic`
    - `IgnoreAll` → run until a natural stop or a limit
 5. **Natural stop** — no component activated in the last cycle → `nil`. The normal end. A mesh
-   with a loopback pipe or a self-feeding component never stops naturally.
+   with a loopback pipe or a self-feeding component stops naturally only once it stops emitting
+   into the loop.
 6. **Livelock** (`WithLivelockThreshold(n)`, default **2**; `WithoutLivelockDetection` disables) →
    `ErrLivelockDetected`. After the natural stop (a livelocked cycle activated something) and last
    (a real error is always the better explanation).

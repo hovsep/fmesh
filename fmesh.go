@@ -153,7 +153,8 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 	// Recorded however the cycle ends, so a failed cycle still shows up in the
 	// run history. Deferred rather than repeated at each exit; it runs after the
-	// afterCycle hook, which therefore never sees the cycle it is closing.
+	// afterCycle hook, which therefore sees the cycle in its CycleContext but not
+	// yet in RuntimeInfo.Cycles.
 	defer fm.runtimeInfo.Cycles.Add(newCycle)
 
 	if err := fm.hooks.beforeCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
@@ -164,7 +165,7 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	// ForEach avoids cloning the component map on every cycle (hot path)
+	// ForEach avoids cloning the component slice on every cycle (hot path)
 	_ = fm.Components().ForEach(func(c *component.Component) error {
 		wg.Go(func() {
 			ar := c.MaybeActivate(ctx)

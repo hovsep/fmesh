@@ -133,7 +133,8 @@ nothing per instance and render normally in godoc. Two limits:
   - Constructor: `component.New(name, opts...) (*Component, error)` with functional options.
   - Ports, two styles: by name (`WithInputs`/`AddInputs`, `WithIndexedInputs("i", 1, 3)` →
     `i1..i3`) or by attaching pre-built `port.NewInput` ports (`AttachInputPorts`).
-  - `LoopbackPipe(out, in)` wires a component to itself; such a mesh never stops naturally.
+  - `LoopbackPipe(out, in)` wires a component to itself; such a mesh stops naturally only once the
+    component stops emitting into the loop.
   - `ErrWaitDroppingInputs`/`ErrWaitKeepingInputs` (both wrap `ErrWaitingForInputs`) are scheduler
     control flow, not failures.
   - `compose.go` holds `ActivationFunc` combinators — `Sequential`, `When` + `HasSignalsOn`,

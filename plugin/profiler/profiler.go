@@ -256,7 +256,7 @@ func labelGoroutines(meshName string, c *component.Component) {
 // same lock as the stats rather than in a field. Every component in a cycle
 // therefore queues on this one mutex, and the goal is to keep that queueing
 // outside the measured window: the start is stamped as late as possible (inside
-// the lock, just before the activation returns to the scheduler) and the end as
+// the lock, just before the activation function starts) and the end as
 // early as possible (before the lock, the instant the activation finished).
 //
 // Do not stamp the start before its lock: that moves the BeforeActivation

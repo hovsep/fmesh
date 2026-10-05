@@ -3,8 +3,8 @@
 // A component owns named input and output ports and an activation function
 // that runs once per cycle when inputs are ready. Components are built with
 // [New] and functional options (WithInputs, WithActivationFunc, ...); after a
-// run, each cycle exposes an [ActivationResult] per component describing
-// whether and how it activated. Component types mutate in place.
+// run, each cycle exposes an [ActivationResult] per component that had input,
+// describing how it activated. Component types mutate in place.
 //
 // One activation function can be composed from several with [Sequential],
 // [When], [RequireInputs] and [Pipeline].

@@ -47,7 +47,7 @@ A method used only by its own unit test is not dead. The library's callers are i
   - `TestDocs_NoRemovedMethodNames` — rejects a denylist of removed method names, which catches
     calls on a variable (`c.Meta().AddLabel(...)`). Also scans Go source comments.
   - `TestDocs_MethodCallsExistSomewhere` — every `.SomeExported(` call names a method or function
-    defined in this module, or is on a small allowlist of external names (stdlib, profiler).
+    defined in this module, or is on a small allowlist of external names (stdlib, fmesh-export).
 - Not checked: compilation (snippets are fragments with elisions), argument counts, and prose
   outside Go blocks. Method names count as valid for a package qualifier, because docs shadow
   package names with variables (`port.Signals()` on a `*Port` named `port`).
