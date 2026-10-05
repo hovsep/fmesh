@@ -37,7 +37,7 @@ func TestComponent_Plugin(t *testing.T) {
 		// Activate component
 		activationResult := c.MaybeActivate(context.Background())
 
-		assert.True(t, activationResult.activated)
+		assert.True(t, activationResult.Activated())
 		assert.False(t, activationResult.IsError())
 		assert.False(t, activationResult.IsPanic())
 		assert.InDelta(t, 77.5, c.State().Get("base_price"), 0.0001)

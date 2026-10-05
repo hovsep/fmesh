@@ -22,7 +22,7 @@ func WithActivationFunc(f ActivationFunc) Option {
 // The context is handed to the activation function and to every hook fired around it.
 func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 	if !c.Inputs().AnyHasSignals() {
-		return c.newResult(ActivationCodeNoInput)
+		return NewActivationResult(c.name, ActivationCodeNoInput)
 	}
 
 	return c.activate(ctx)
@@ -38,7 +38,7 @@ func (c *Component) activate(ctx context.Context) *ActivationResult {
 	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation.Trigger, c); err != nil {
 		// Activated, though the function was skipped: the drain clears its inputs
 		// like any failed activation's, instead of letting them pile up.
-		result = c.newResult(ActivationCodeHookFailed)
+		result = NewActivationResult(c.name, ActivationCodeHookFailed)
 		markHookFailed(result, "beforeActivation", err)
 	} else {
 		result = c.runActivationFunc(ctx)
@@ -59,7 +59,7 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 	var failures []error
 	defer func() {
 		if r := recover(); r != nil {
-			result = c.newResult(ActivationCodePanicked, append([]error{c.panicError(r)}, failures...)...)
+			result = NewActivationResult(c.name, ActivationCodePanicked, append([]error{c.panicError(r)}, failures...)...)
 		}
 	}()
 
@@ -72,9 +72,9 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 		err := c.f(ctx, c)
 		switch {
 		case err == nil:
-			return c.newResult(ActivationCodeOK)
+			return NewActivationResult(c.name, ActivationCodeOK)
 		case errors.Is(err, ErrWaitingForInputs):
-			return c.newResult(waitingCode(err), err)
+			return NewActivationResult(c.name, waitingCode(err), err)
 		}
 
 		failure := err
@@ -83,10 +83,10 @@ func (c *Component) runActivationFunc(ctx context.Context) (result *ActivationRe
 		}
 		failures = append(failures, fmt.Errorf("component returned an error: %w", failure))
 		if attempt >= c.attempts || !c.shouldRetry(ctx, attempt, err) {
-			return c.newResult(ActivationCodeReturnedError, failures...)
+			return NewActivationResult(c.name, ActivationCodeReturnedError, failures...)
 		}
 		if restoreErr := c.restoreOutputs(ctx, outputs); restoreErr != nil {
-			return c.newResult(ActivationCodeReturnedError,
+			return NewActivationResult(c.name, ActivationCodeReturnedError,
 				append(failures, fmt.Errorf("component returned an error: %w", restoreErr))...)
 		}
 	}
@@ -200,9 +200,9 @@ func (c *Component) panicError(r any) *PanicError {
 // always sees the panic.
 func markHookFailed(result *ActivationResult, stage string, err error) {
 	if _, panicked := errors.AsType[*PanicError](err); panicked {
-		result.SetCode(ActivationCodePanicked)
+		result.code = ActivationCodePanicked
 	} else if result.Code() != ActivationCodePanicked {
-		result.SetCode(ActivationCodeHookFailed)
+		result.code = ActivationCodeHookFailed
 	}
-	result.AddError(fmt.Errorf("%s hook failed: %w", stage, err))
+	result.activationErrors = append(result.activationErrors, fmt.Errorf("%s hook failed: %w", stage, err))
 }

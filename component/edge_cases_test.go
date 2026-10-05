@@ -128,7 +128,7 @@ func TestActivationResultCode_String(t *testing.T) {
 
 func TestActivationResultCollection_ForEach_StopsOnError(t *testing.T) {
 	c := NewActivationResultCollection()
-	c.Add(NewActivationResult("a"), NewActivationResult("b"))
+	c.Add(NewActivationResult("a", ActivationCodeUndefined), NewActivationResult("b", ActivationCodeUndefined))
 
 	errStop := errors.New("stop")
 	calls := 0

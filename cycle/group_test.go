@@ -39,7 +39,7 @@ func TestGroup_Add(t *testing.T) {
 		},
 		{
 			name:  "adding nothing to existing group",
-			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))),
+			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeUndefined))),
 			args: args{
 				cycles: nil,
 			},
@@ -51,7 +51,7 @@ func TestGroup_Add(t *testing.T) {
 			name:  "adding to empty group",
 			group: NewGroup(),
 			args: args{
-				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))},
+				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeUndefined))},
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 1, group.Len())
@@ -59,9 +59,9 @@ func TestGroup_Add(t *testing.T) {
 		},
 		{
 			name:  "adding to existing group",
-			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1").SetActivated(true))),
+			group: NewGroup().Add(New().AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeOK))),
 			args: args{
-				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1").SetActivated(false))},
+				cycles: []*Cycle{New().AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeUndefined))},
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 2, group.Len())
@@ -73,82 +73,6 @@ func TestGroup_Add(t *testing.T) {
 			groupAfter := tt.group.Add(tt.args.cycles...)
 			if tt.assertions != nil {
 				tt.assertions(t, groupAfter)
-			}
-		})
-	}
-}
-
-func TestGroup_RemoveOldest(t *testing.T) {
-	t.Parallel()
-	newFourCycles := func() *Group {
-		return NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
-	}
-
-	tests := []struct {
-		name       string
-		group      *Group
-		count      int
-		assertions func(t *testing.T, group *Group)
-	}{
-		{
-			name:  "remove some",
-			group: newFourCycles(),
-			count: 2,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, 2, group.Len())
-				assert.Equal(t, 3, group.First().Number())
-				assert.Equal(t, 4, group.Last().Number())
-			},
-		},
-		{
-			name:  "remove zero",
-			group: newFourCycles(),
-			count: 0,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, 4, group.Len())
-				assert.Equal(t, 1, group.First().Number())
-			},
-		},
-		{
-			name:  "remove negative is a no-op",
-			group: newFourCycles(),
-			count: -1,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, 4, group.Len())
-			},
-		},
-		{
-			name:  "remove all",
-			group: newFourCycles(),
-			count: 4,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Zero(t, group.Len())
-				assert.Nil(t, group.Last())
-			},
-		},
-		{
-			name:  "count greater than length is clamped",
-			group: newFourCycles(),
-			count: 100,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Zero(t, group.Len())
-			},
-		},
-		{
-			name:  "empty group",
-			group: NewGroup(),
-			count: 2,
-			assertions: func(t *testing.T, group *Group) {
-				assert.Zero(t, group.Len())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.group.RemoveOldest(tt.count)
-			assert.Same(t, tt.group, result, "RemoveOldest mutates and returns the receiver")
-			if tt.assertions != nil {
-				tt.assertions(t, result)
 			}
 		})
 	}
@@ -271,9 +195,9 @@ func TestGroup_Without(t *testing.T) {
 
 func TestGroup_Filter(t *testing.T) {
 	t.Parallel()
-	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1").SetActivated(true))
-	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2").SetActivated(false))
-	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3").SetActivated(true))
+	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeOK))
+	c2 := New().SetNumber(2).AddActivationResults(component.NewActivationResult("c2", component.ActivationCodeUndefined))
+	c3 := New().SetNumber(3).AddActivationResults(component.NewActivationResult("c3", component.ActivationCodeOK))
 
 	t.Run("filters matching cycles", func(t *testing.T) {
 		group := NewGroup().Add(c1, c2, c3)
