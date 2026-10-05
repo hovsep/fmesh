@@ -300,23 +300,22 @@ func (fm *FMesh) countPendingSignals() int {
 // updates the stall bookkeeping. Called once per cycle.
 //
 // A cycle is stalled when every component that activated was waiting and keeping
-// its inputs *and* the pending signal count is unchanged — both halves are
-// needed: the first alone flags legitimate input accumulation, the second alone
-// flags a busy-but-idempotent mesh. A waiter that drops its inputs never stalls:
-// the count is taken before the drain clears them, so it would look unchanged.
+// its inputs *and* the pending signal count is what the previous drain left —
+// both halves are needed: the first alone flags inputs a hook or an activation
+// function changed, the second alone flags a busy-but-idempotent mesh. A waiter
+// that drops its inputs never stalls: the count is taken before the drain clears
+// them, so it would look unchanged.
 func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	if fm.config.LivelockThreshold <= 0 {
 		return false
 	}
 
-	pending := fm.countPendingSignals()
 	allKeeping := lastCycle.HasActivatedComponents() && lastCycle.ActivationResults().Every(component.WantsToKeepInputs)
-	if allKeeping && pending == fm.pendingSignals {
+	if allKeeping && fm.countPendingSignals() == fm.pendingSignals {
 		fm.stalledCycles++
 	} else {
 		fm.stalledCycles = 0
 	}
-	fm.pendingSignals = pending
 
 	return fm.stalledCycles >= fm.config.LivelockThreshold
 }
@@ -348,14 +347,13 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 	var detail strings.Builder
 	starved, named, waiting := 0, 0, 0
 	for _, c := range fm.Components().AllOrdered() {
-		activationResult := lastCycle.ActivationResults().ByName(c.Name())
-		if activationResult == nil || !component.IsWaitingForInput(activationResult) {
-			// A component with no input is not recorded at all. Counting them is
-			// worth the line: in a mutual wait only the component that happens to
-			// hold the signal shows up above, and the one starving it is invisible.
-			if activationResult == nil {
-				starved++
-			}
+		// In a stalled cycle every recorded result is a wait keeping inputs, so a
+		// component is either waiting or had no input and was not recorded.
+		if lastCycle.ActivationResults().ByName(c.Name()) == nil {
+			// Counting them is worth the line: in a mutual wait only the component
+			// that happens to hold the signal shows up above, and the one starving
+			// it is invisible.
+			starved++
 			continue
 		}
 
@@ -374,12 +372,8 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 		}
 		named++
 
-		mode := "dropping inputs"
-		if component.WantsToKeepInputs(activationResult) {
-			mode = "keeping inputs"
-		}
-		fmt.Fprintf(&detail, "\n  %q is waiting (%s): empty input ports %v, holding signals on %v",
-			c.Name(), mode, empty, holding)
+		fmt.Fprintf(&detail, "\n  %q is waiting (keeping inputs): empty input ports %v, holding signals on %v",
+			c.Name(), empty, holding)
 	}
 
 	if waiting > named {
@@ -387,7 +381,7 @@ func (fm *FMesh) livelockError(lastCycle *cycle.Cycle) error {
 	}
 
 	if starved > 0 {
-		fmt.Fprintf(&detail, "\n  %d other component(s) never activated: no signals ever reached them", starved)
+		fmt.Fprintf(&detail, "\n  %d other component(s) have no input signals", starved)
 	}
 
 	return fmt.Errorf("%w: no progress for %d consecutive cycles, stopped at cycle #%d. "+
@@ -458,6 +452,12 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 
 		if err := fm.drainComponents(ctx); err != nil {
 			return ri, err
+		}
+
+		// The baseline the next livelock check compares against: taken after the
+		// drain, so the cycle signals were just delivered into counts in full.
+		if fm.config.LivelockThreshold > 0 {
+			fm.pendingSignals = fm.countPendingSignals()
 		}
 	}
 }
