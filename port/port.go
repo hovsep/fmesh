@@ -10,6 +10,9 @@ import (
 	"github.com/hovsep/fmesh/signal"
 )
 
+// emptyGroup is shared by every cleared port: groups are copy-on-write.
+var emptyGroup = signal.NewGroup()
+
 // Direction represents the direction of a port.
 type Direction int
 
@@ -203,7 +206,7 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 // Clear removes all signals.
 func (p *Port) Clear(ctx context.Context) error {
 	signalsCleared := p.Signals().Len()
-	p.setSignals(signal.NewGroup())
+	p.setSignals(emptyGroup)
 
 	// Same allocation guard as putSignals: this runs for every port on every
 	// cycle, and the context struct escapes even with no hooks registered.

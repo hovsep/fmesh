@@ -3,7 +3,6 @@ package signal
 import (
 	"testing"
 
-	"github.com/hovsep/fmesh/meta"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,8 +23,7 @@ func TestNew(t *testing.T) {
 				payload: nil,
 			},
 			want: &Signal{
-				payload: []any{nil},
-				meta:    meta.New(),
+				payload: nil,
 			},
 		},
 		{
@@ -34,8 +32,7 @@ func TestNew(t *testing.T) {
 				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
 			want: &Signal{
-				payload: []any{[]any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil}},
-				meta:    meta.New(),
+				payload: []any{123, "hello", []int{1, 2, 3}, map[string]int{"key": 42}, []byte{}, nil},
 			},
 		},
 	}
