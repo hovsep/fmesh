@@ -116,6 +116,12 @@ func (ar *ActivationResult) KeepsInputs() bool {
 	return ar.code == ActivationCodeWaitingForInputsKeep
 }
 
+// newResult does not call NewActivationResult: the extra inlining level grows
+// the activation frames enough to force a stack copy on every activation goroutine.
+func (c *Component) newResult(code ActivationResultCode, errs ...error) *ActivationResult {
+	return &ActivationResult{componentName: c.name, code: code, activationErrors: errs}
+}
+
 func waitingCode(err error) ActivationResultCode {
 	if errors.Is(err, ErrWaitKeepingInputs) {
 		return ActivationCodeWaitingForInputsKeep
