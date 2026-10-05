@@ -34,7 +34,9 @@ type config struct {
 	// LivelockThreshold is how many consecutive stalled cycles end the run with
 	// ErrLivelockDetected. A cycle is stalled when every component that activated
 	// was waiting and keeping its inputs and the mesh's pending signals did not
-	// change, which means the next cycle would be identical to this one.
+	// change, which means the next cycle would be identical to this one, as long
+	// as activation depends only on inputs: a waiter that proceeds because of its
+	// State, the clock or the outside world needs a higher threshold or none.
 	//
 	// The default of 2 rather than 1 keeps the detector conservative.
 	// 0 disables detection (use WithoutLivelockDetection to say so explicitly).

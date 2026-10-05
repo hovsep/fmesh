@@ -143,12 +143,17 @@ a no-op.
    `ErrLivelockDetected`. After the natural stop (a livelocked cycle activated something) and last
    (a real error is always the better explanation).
    - A cycle is *stalled* when every activated component returned `ErrWaitKeepingInputs` **and**
-     the mesh's pending signal count did not change. Both halves are needed: the first alone flags a
-     component legitimately accumulating; the second alone flags a busy but idempotent mesh.
+     the mesh's pending signal count (after activation) equals the count the previous drain left.
+     Both halves are needed: the first alone flags a component a hook or its own activation
+     function feeds or consumes; the second alone flags a busy but idempotent mesh. The baseline is
+     taken after the drain, so `n` is exact: a stall that starts right after a productive cycle
+     stops the run `n` cycles later, not `n+1`.
    - `n` stalled cycles in a row end the run. The error names each waiting component with its empty
-     and non-empty input ports, plus a count of components that never activated.
-   - This is exact, not a guess: waiting components are not drained, so a stalled cycle moves no
-     signals and the next cycle is identical. Waiters that *drop* inputs never count as stalled:
+     and non-empty input ports, plus a count of components with no input signals.
+   - Waiting components are not drained, so a stalled cycle moves no signals, and the next cycle
+     is identical **as long as activation depends only on inputs**. A waiter that proceeds because
+     of its `State()`, the clock or the outside world is a false positive; so is a hook that swaps
+     signals one for one. Waiters that *drop* inputs never count as stalled:
      next cycle they have no input (a natural stop). The pending count alone cannot tell, because
      it is taken before the drain clears the dropped inputs.
 
