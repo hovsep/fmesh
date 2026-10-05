@@ -72,8 +72,7 @@ func (c *Cycle) HasActivatedComponents() bool {
 }
 
 // AllActivatedAreWaiting reports whether every component that activated in this
-// cycle did so only to say it is waiting for inputs — half the livelock test, the
-// other half being that no signal moved (see FMesh.detectLivelock).
+// cycle did so only to say it is waiting for inputs.
 //
 // Components that did not activate are not recorded at all, so an idle mesh does
 // not read as stalled.

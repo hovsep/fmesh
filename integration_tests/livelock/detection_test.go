@@ -128,17 +128,21 @@ func TestLivelock_DroppingWaitersStopNaturally(t *testing.T) {
 	// A waiter that drops its inputs clears them, so next cycle it has nothing to
 	// activate on and the mesh ends naturally. That is not a livelock and must
 	// not be reported as one.
-	c := waiter("dropper", component.ErrWaitDroppingInputs)
+	for _, threshold := range []int{1, 2} {
+		c := waiter("dropper", component.ErrWaitDroppingInputs)
 
-	fm, err := fmesh.New("dropping")
-	require.NoError(t, err)
-	require.NoError(t, fm.AddComponents(c))
-	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+		// The pending count is taken before the drain clears the dropped
+		// inputs, so with a threshold of 1 the first cycle used to look stalled.
+		fm, err := fmesh.New("dropping", fmesh.WithLivelockThreshold(threshold))
+		require.NoError(t, err)
+		require.NoError(t, fm.AddComponents(c))
+		require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
 
-	ri, err := fm.Run(context.Background())
+		ri, err := fm.Run(context.Background())
 
-	require.NoError(t, err, "a self-resolving wait is a natural stop, not a livelock")
-	assert.LessOrEqual(t, ri.Cycles.Len(), 3)
+		require.NoError(t, err, "a self-resolving wait is a natural stop, not a livelock (threshold %d)", threshold)
+		assert.LessOrEqual(t, ri.Cycles.Len(), 3)
+	}
 }
 
 func TestLivelock_ProgressingMeshIsUntouched(t *testing.T) {

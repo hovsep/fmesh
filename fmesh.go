@@ -289,17 +289,19 @@ func (fm *FMesh) countPendingSignals() int {
 // detectLivelock reports whether the mesh has stopped making progress, and
 // updates the stall bookkeeping. Called once per cycle.
 //
-// A cycle is stalled when every component that activated was waiting for inputs
-// *and* the pending signal count is unchanged — both halves are needed: the
-// first alone flags legitimate input accumulation, the second alone flags a
-// busy-but-idempotent mesh. Only waiters that keep their inputs can stall.
+// A cycle is stalled when every component that activated was waiting and keeping
+// its inputs *and* the pending signal count is unchanged — both halves are
+// needed: the first alone flags legitimate input accumulation, the second alone
+// flags a busy-but-idempotent mesh. A waiter that drops its inputs never stalls:
+// the count is taken before the drain clears them, so it would look unchanged.
 func (fm *FMesh) detectLivelock(lastCycle *cycle.Cycle) bool {
 	if fm.config.LivelockThreshold <= 0 {
 		return false
 	}
 
 	pending := fm.countPendingSignals()
-	if lastCycle.AllActivatedAreWaiting() && pending == fm.pendingSignals {
+	allKeeping := lastCycle.HasActivatedComponents() && lastCycle.ActivationResults().Every(component.WantsToKeepInputs)
+	if allKeeping && pending == fm.pendingSignals {
 		fm.stalledCycles++
 	} else {
 		fm.stalledCycles = 0
