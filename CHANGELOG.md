@@ -11,6 +11,13 @@ release title — a suffix in the tag makes Go treat the release as a pre-releas
 
 ## [Unreleased]
 
+### Fixed
+
+- The mesh no longer keeps a run's cycle history after `Run` returns. A caller that dropped the
+  returned `RuntimeInfo` used to leave every cycle of that run in memory until the next `Run`.
+- With `WithCyclesHistoryLimit(n)`, evicting the oldest cycle no longer copies the whole window on
+  every cycle; a limit of 100,000 made each cycle about 3× slower.
+
 ## [v1.17.0] — Syunik — 2026-10-01
 
 ### Added

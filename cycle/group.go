@@ -65,6 +65,9 @@ func (g *Group) evictExcess() {
 // RemoveOldest removes the count oldest cycles (from the front of the group) in place and
 // returns the group. count is clamped to [0, Len()]. Evicted cycles are cleared from the
 // backing array so they become unreachable and can be garbage-collected.
+//
+// The front is sliced off rather than the rest shifted down, so evicting one cycle per Add
+// costs O(1) amortized: the live cycles are copied only when append reallocates.
 func (g *Group) RemoveOldest(count int) *Group {
 	if count <= 0 {
 		return g
@@ -74,9 +77,8 @@ func (g *Group) RemoveOldest(count int) *Group {
 	}
 
 	cycles := g.raw()
-	copy(cycles, cycles[count:])
-	clear(cycles[len(cycles)-count:])
-	g.replace(cycles[:len(cycles)-count])
+	clear(cycles[:count])
+	g.replace(cycles[count:])
 
 	return g
 }
