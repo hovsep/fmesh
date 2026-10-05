@@ -26,8 +26,8 @@ const timelineEvictionShare = 4
 // A cycle's drain runs after its AfterCycle hook, so SignalsMoved is filled in
 // after Duration is. Two consequences: the last cycle of a run always reports
 // zero signals moved, because the run stops before draining it; and a Duration of
-// zero on a record means the cycle never reached AfterCycle, which is a failed
-// hook rather than an instant cycle.
+// zero on a record means the cycle never reached AfterCycle, which is a hook that
+// panicked rather than an instant cycle.
 type CycleRecord struct {
 	// Run is the 1-based index of the run this cycle belongs to. Cycle numbers
 	// restart at 1 on every run, so Number alone is not a unique x-axis once
@@ -109,7 +109,9 @@ func (p *Plugin) closeRecord(cycleCtx *fmesh.CycleContext) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.current < 0 {
+	// AfterCycle runs even when an earlier BeforeCycle hook failed before ours
+	// opened a record; the current one then belongs to the previous cycle.
+	if p.current < 0 || p.timeline[p.current].Number != cycleCtx.Cycle.Number() {
 		return
 	}
 	record := &p.timeline[p.current]

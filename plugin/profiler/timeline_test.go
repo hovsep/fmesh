@@ -2,6 +2,7 @@ package profiler
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hovsep/fmesh"
@@ -220,4 +221,44 @@ func TestProfiler_TimelineRecordsWaiting(t *testing.T) {
 	records := p.Timeline()
 	require.NotEmpty(t, records)
 	assert.Equal(t, 1, records[0].Waiting)
+}
+
+// failCycleAfter is a plugin whose BeforeCycle fails from a given cycle on. Its
+// name sorts before "profiler", so its hook runs first and the profiler's
+// BeforeCycle never runs for that cycle.
+type failCycleAfter int
+
+func (failCycleAfter) Name() string { return "a-fail-cycle" }
+
+func (n failCycleAfter) Init(fm *fmesh.FMesh) error {
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.BeforeCycle(func(_ context.Context, cc *fmesh.CycleContext) error {
+			if cc.Cycle.Number() > int(n) {
+				return errors.New("stop")
+			}
+			return nil
+		})
+	})
+	return nil
+}
+
+// AfterCycle runs even when BeforeCycle failed, so the profiler's AfterCycle can
+// fire for a cycle it never opened a record for. It must not overwrite the
+// previous cycle's record with it.
+func TestProfiler_TimelineSkipsACycleItNeverOpened(t *testing.T) {
+	p := New(ModeTimeline)
+	fm, err := fmesh.New("m", fmesh.WithPlugins(p, failCycleAfter(1)))
+	require.NoError(t, err)
+
+	c := countdown("looper", 5)
+	require.NoError(t, fm.AddComponents(c))
+	require.NoError(t, c.InputByName("i1").PutSignals(signal.New("go")))
+
+	_, err = fm.Run(context.Background())
+	require.Error(t, err)
+
+	records := p.Timeline()
+	require.Len(t, records, 1)
+	assert.Equal(t, 1, records[0].Number)
+	assert.Equal(t, 1, records[0].Activations, "the failed cycle 2 activated nothing and must not overwrite cycle 1")
 }

@@ -8,18 +8,31 @@
 // outside a run (construction, wiring, seeding) receive context.Background().
 package hook
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // Group is a generic ordered collection of hooks.
 // It maintains insertion order and supports triggering all hooks in sequence.
-// Hooks return errors for fail-fast behavior.
 type Group[T any] struct {
 	hooks []func(context.Context, T) error
+	// runAll makes Trigger run every hook even after one fails.
+	runAll bool
 }
 
-// NewGroup creates a new hook group.
+// NewGroup creates a fail-fast hook group, for hooks that run before an action
+// and can stop it: the first error skips the remaining hooks.
 func NewGroup[T any]() *Group[T] {
 	return &Group[T]{}
+}
+
+// NewObserverGroup creates a hook group for hooks that run after an action and
+// cannot stop it: every hook runs, and their errors are joined. One failing
+// observer must not hide the event from the others, such as a plugin that
+// flushes in AfterRun.
+func NewObserverGroup[T any]() *Group[T] {
+	return &Group[T]{runAll: true}
 }
 
 // Add appends a hook to the group, maintaining insertion order.
@@ -37,13 +50,18 @@ func (g *Group[T]) IsEmpty() bool {
 	return len(g.hooks) == 0
 }
 
-// Trigger executes all hooks in order with the provided argument.
-// Returns the first error encountered (fail-fast).
+// Trigger executes the hooks in order with the provided argument. A fail-fast
+// group returns the first error; an observer group runs every hook and returns
+// their errors joined.
 func (g *Group[T]) Trigger(ctx context.Context, arg T) error {
+	var errs []error
 	for _, hook := range g.hooks {
 		if err := hook(ctx, arg); err != nil {
-			return err
+			if !g.runAll {
+				return err
+			}
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }

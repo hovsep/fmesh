@@ -54,3 +54,20 @@ func TestGroup_TriggerStopsOnFirstError(t *testing.T) {
 func TestGroup_TriggerWithNoHooks(t *testing.T) {
 	require.NoError(t, NewGroup[int]().Trigger(context.Background(), 42))
 }
+
+// An observer group runs every hook, so one failing observer does not hide the
+// event from the ones after it.
+func TestObserverGroup_TriggerRunsEveryHook(t *testing.T) {
+	first, second := errors.New("first"), errors.New("second")
+	ran := 0
+
+	hg := NewObserverGroup[int]()
+	hg.Add(func(_ context.Context, _ int) error { ran++; return first })
+	hg.Add(func(_ context.Context, _ int) error { ran++; return nil })
+	hg.Add(func(_ context.Context, _ int) error { ran++; return second })
+
+	err := hg.Trigger(context.Background(), 1)
+	require.ErrorIs(t, err, first)
+	require.ErrorIs(t, err, second)
+	assert.Equal(t, 3, ran)
+}
