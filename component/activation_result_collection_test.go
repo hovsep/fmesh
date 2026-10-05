@@ -40,8 +40,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			collection: NewActivationResultCollection(),
 			args: args{
 				activationResults: []*ActivationResult{
-					mustNew("c1").newResult(ActivationCodeOK),
-					mustNew("c2").newResult(ActivationCodeReturnedError, errors.New("oops")),
+					NewActivationResult("c1", ActivationCodeOK),
+					NewActivationResult("c2", ActivationCodeReturnedError, errors.New("oops")),
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
@@ -54,13 +54,13 @@ func TestActivationResultCollection_Add(t *testing.T) {
 		{
 			name: "adding to non-empty collection",
 			collection: NewActivationResultCollection().Add(
-				mustNew("c1").newResult(ActivationCodeOK),
-				mustNew("c2").newResult(ActivationCodeOK),
+				NewActivationResult("c1", ActivationCodeOK),
+				NewActivationResult("c2", ActivationCodeOK),
 			),
 			args: args{
 				activationResults: []*ActivationResult{
-					mustNew("c4").newResult(ActivationCodeNoInput),
-					mustNew("c5").newResult(ActivationCodePanicked, errors.New("panic")),
+					NewActivationResult("c4", ActivationCodeNoInput),
+					NewActivationResult("c5", ActivationCodePanicked, errors.New("panic")),
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
@@ -82,8 +82,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 }
 
 func TestActivationResultCollection_ByName(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
 	collection := NewActivationResultCollection().Add(r1, r2)
 
 	t.Run("existing result", func(t *testing.T) {
@@ -100,8 +100,8 @@ func TestActivationResultCollection_ByName(t *testing.T) {
 }
 
 func TestActivationResultCollection_All(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
 
 	t.Run("returns all results", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
@@ -120,7 +120,7 @@ func TestActivationResultCollection_All(t *testing.T) {
 
 func TestActivationResultCollection_AllOrdered(t *testing.T) {
 	c := NewActivationResultCollection()
-	c.Add(NewActivationResult("charlie"), NewActivationResult("alpha"), NewActivationResult("bravo"))
+	c.Add(NewActivationResult("charlie", ActivationCodeUndefined), NewActivationResult("alpha", ActivationCodeUndefined), NewActivationResult("bravo", ActivationCodeUndefined))
 
 	ordered := c.AllOrdered()
 	require.Len(t, ordered, 3)
@@ -138,15 +138,15 @@ func TestActivationResultCollection_IsEmpty(t *testing.T) {
 	})
 
 	t.Run("non-empty collection", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(NewActivationResult("c1"))
+		collection := NewActivationResultCollection().Add(NewActivationResult("c1", ActivationCodeUndefined))
 		assert.False(t, collection.IsEmpty())
 	})
 }
 
 func TestActivationResultCollection_Every(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(true)
-	r3 := NewActivationResult("c3").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeOK)
+	r3 := NewActivationResult("c3", ActivationCodeUndefined)
 
 	t.Run("all match", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
@@ -174,8 +174,8 @@ func TestActivationResultCollection_Every(t *testing.T) {
 }
 
 func TestActivationResultCollection_Any(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
 
 	t.Run("at least one matches", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
@@ -203,9 +203,9 @@ func TestActivationResultCollection_Any(t *testing.T) {
 }
 
 func TestActivationResultCollection_Count(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
-	r3 := NewActivationResult("c3").SetActivated(true)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
+	r3 := NewActivationResult("c3", ActivationCodeOK)
 
 	t.Run("counts matching results", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2, r3)
@@ -225,9 +225,9 @@ func TestActivationResultCollection_Count(t *testing.T) {
 }
 
 func TestActivationResultCollection_ForEach(t *testing.T) {
-	r1 := NewActivationResult("c1")
-	r2 := NewActivationResult("c2")
-	r3 := NewActivationResult("c3")
+	r1 := NewActivationResult("c1", ActivationCodeUndefined)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
+	r3 := NewActivationResult("c3", ActivationCodeUndefined)
 
 	t.Run("applies action to all results", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2, r3)
@@ -261,14 +261,12 @@ func TestActivationResultCollection_ForEach(t *testing.T) {
 	})
 
 	t.Run("action may change the collection", func(t *testing.T) {
-		// The action ran under the read lock, so Remove/Add/Clear from it deadlocked.
+		// The action ran under the read lock, so an Add from it deadlocked.
 		collection, _ := newNamedResultCollection()
 		done := make(chan error, 1)
 		go func() {
 			done <- collection.ForEach(func(r *ActivationResult) error {
-				collection.Remove(r.ComponentName())
-				collection.Add(NewActivationResult("added-" + r.ComponentName()))
-				collection.Clear()
+				collection.Add(NewActivationResult("added-"+r.ComponentName(), ActivationCodeUndefined))
 				return nil
 			})
 		}()
@@ -289,85 +287,48 @@ func newNamedResultCollection() (collection *ActivationResultCollection, names [
 		names = append(names, fmt.Sprintf("c%02d", i))
 	}
 	for _, name := range slices.Backward(names) {
-		collection.Add(NewActivationResult(name))
+		collection.Add(NewActivationResult(name, ActivationCodeUndefined))
 	}
 	return collection, names
 }
 
-func TestActivationResultCollection_Clear(t *testing.T) {
-	r1 := NewActivationResult("c1")
-	r2 := NewActivationResult("c2")
-
-	t.Run("clears all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2)
-		assert.Equal(t, 2, collection.Len())
-		collection.Clear()
-		assert.Equal(t, 0, collection.Len())
-		assert.True(t, collection.IsEmpty())
-	})
-}
-
-func TestActivationResultCollection_Remove(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
-	r3 := NewActivationResult("c3").SetActivated(true)
-
-	t.Run("removes by component name", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2, r3)
-		result := collection.Remove("c2")
-		assert.Equal(t, 2, result.Len())
-	})
-
-	t.Run("removes multiple", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2, r3)
-		result := collection.Remove("c1", "c2")
-		assert.Equal(t, 1, result.Len())
-	})
-
-	t.Run("removes all", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2)
-		result := collection.Remove("c1", "c2")
-		assert.Equal(t, 0, result.Len())
-	})
-}
-
 func TestActivationResult_IsWaiting(t *testing.T) {
 	t.Run("is waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsClear)
+		r := NewActivationResult("c", ActivationCodeWaitingForInputsClear)
 		assert.True(t, r.IsWaiting())
 	})
 
 	t.Run("is waiting and keeping inputs", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsKeep)
+		r := NewActivationResult("c", ActivationCodeWaitingForInputsKeep)
 		assert.True(t, r.IsWaiting())
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeOK)
+		r := NewActivationResult("c", ActivationCodeOK)
 		assert.False(t, r.IsWaiting())
 	})
 }
 
 func TestActivationResult_KeepsInputs(t *testing.T) {
 	t.Run("wants to keep", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsKeep)
+		r := NewActivationResult("c", ActivationCodeWaitingForInputsKeep)
 		assert.True(t, r.KeepsInputs())
 	})
 
 	t.Run("does not want to keep", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsClear)
+		r := NewActivationResult("c", ActivationCodeWaitingForInputsClear)
 		assert.False(t, r.KeepsInputs())
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetCode(ActivationCodeOK)
+		r := NewActivationResult("c", ActivationCodeOK)
 		assert.False(t, r.KeepsInputs())
 	})
 }
 
 func TestActivationResultCollection_Find(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
 
 	t.Run("one found", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
@@ -405,8 +366,8 @@ func TestActivationResultCollection_Find(t *testing.T) {
 }
 
 func TestActivationResultCollection_Filter(t *testing.T) {
-	r1 := NewActivationResult("c1").SetActivated(true)
-	r2 := NewActivationResult("c2").SetActivated(false)
+	r1 := NewActivationResult("c1", ActivationCodeOK)
+	r2 := NewActivationResult("c2", ActivationCodeUndefined)
 
 	t.Run("one found", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
@@ -443,23 +404,20 @@ func mustNew(name string, opts ...Option) *Component {
 	return c
 }
 
-func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
+func TestActivationResult_Errors(t *testing.T) {
 	err1 := errors.New("first error")
 	err2 := errors.New("second error")
 	err3 := errors.New("third error")
 
 	t.Run("single error", func(t *testing.T) {
-		r := NewActivationResult("c").AddError(err1)
+		r := NewActivationResult("c", ActivationCodeUndefined, err1)
 		assert.Len(t, r.Errors(), 1)
 		require.Error(t, r.Err())
 		assert.ErrorIs(t, r.Err(), err1)
 	})
 
 	t.Run("multiple errors accumulate", func(t *testing.T) {
-		r := NewActivationResult("c").
-			AddError(err1).
-			AddError(err2).
-			AddError(err3)
+		r := NewActivationResult("c", ActivationCodeUndefined, err1, err2, err3)
 		assert.Len(t, r.Errors(), 3)
 		require.ErrorIs(t, r.Err(), err1)
 		require.ErrorIs(t, r.Err(), err2)
@@ -467,7 +425,7 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 	})
 
 	t.Run("no errors returns nil", func(t *testing.T) {
-		r := NewActivationResult("c")
+		r := NewActivationResult("c", ActivationCodeUndefined)
 		assert.Empty(t, r.Errors())
 		require.NoError(t, r.Err())
 	})
@@ -485,7 +443,7 @@ func TestActivationResultCollection_ConcurrentAddAndRead(t *testing.T) {
 	for w := range writers {
 		wg.Go(func() {
 			for i := range perWriter {
-				collection.Add(NewActivationResult(fmt.Sprintf("c%d_%d", w, i)).SetActivated(true))
+				collection.Add(NewActivationResult(fmt.Sprintf("c%d_%d", w, i), ActivationCodeOK))
 			}
 		})
 	}

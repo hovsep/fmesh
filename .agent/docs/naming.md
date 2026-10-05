@@ -66,10 +66,8 @@ constructor that takes options (`fmesh.New`, `component.New`, `port.NewInput`, `
 
 Post-construction `Set*` methods exist only where mutation after `New()` is required, e.g.
 `Component.SetLogger`, `InheritLogger`, `SetParentMesh`, `SetupHooks`, `port.Collection.SetParentComponent`,
-`cycle.Cycle.SetNumber`, `cycle.Group.SetLenLimit`, and `ActivationResult.SetActivated` /
-`SetCode`.
-
-Mutating methods that *append* use `Add*`, even on result types: `ActivationResult.AddError`.
+`cycle.Cycle.SetNumber` and `cycle.Group.SetLenLimit`. `ActivationResult` has none: it is built
+whole by `NewActivationResult(name, code, errs...)`, and `Activated()` is derived from the code.
 
 ## Collection/group operations
 
@@ -102,5 +100,5 @@ Do not repeat the package name in a type or function name:
 - `meta`: `Predicate`, `Value` (not `MetaPredicate`/`MetaValue`). `meta.Meta` itself is the
   accepted exception, like `context.Context`.
 - `component`: `ResultPredicate` (not `ActivationResultPredicate`).
-- Methods on a type do not repeat it: `ActivationResult.Err()`, `SetCode`, `AddError` (not
-  `ActivationError()`, `SetActivationCode`, `AddActivationError`).
+- Methods on a type do not repeat it: `ActivationResult.Err()`, `Errors()` (not
+  `ActivationError()`, `ActivationErrors()`).

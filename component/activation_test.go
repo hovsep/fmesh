@@ -65,9 +65,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, err)
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				SetCode(ActivationCodeNoInput),
+			wantActivationResult: NewActivationResult("c1", ActivationCodeNoInput),
 		},
 		{
 			name: "activated with error",
@@ -82,10 +80,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(true).
-				SetCode(ActivationCodeReturnedError).
-				AddError(errors.New("component returned an error: test error")),
+			wantActivationResult: NewActivationResult("c1", ActivationCodeReturnedError, errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -101,9 +96,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(true).
-				SetCode(ActivationCodeOK),
+			wantActivationResult: NewActivationResult("c1", ActivationCodeOK),
 		},
 		{
 			name: "component panicked with error",
@@ -119,10 +112,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(true).
-				SetCode(ActivationCodePanicked).
-				AddError(errors.New("panicked: oh shrimps")),
+			wantActivationResult: NewActivationResult("c1", ActivationCodePanicked, errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -138,10 +128,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(true).
-				SetCode(ActivationCodePanicked).
-				AddError(errors.New("panicked: oh shrimps")),
+			wantActivationResult: NewActivationResult("c1", ActivationCodePanicked, errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component is waiting for inputs",
@@ -162,7 +149,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: &ActivationResult{
 				componentName:    "c1",
-				activated:        true,
 				code:             ActivationCodeWaitingForInputsClear,
 				activationErrors: []error{ErrWaitingForInputs},
 			},
@@ -186,7 +172,6 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: &ActivationResult{
 				componentName:    "c1",
-				activated:        true,
 				code:             ActivationCodeWaitingForInputsKeep,
 				activationErrors: []error{ErrWaitKeepingInputs},
 			},
@@ -205,9 +190,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, err)
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(false).
-				SetCode(ActivationCodeNoInput),
+			wantActivationResult: NewActivationResult("c1", ActivationCodeNoInput),
 			loggerAssertions: func(t *testing.T, output []byte) {
 				assert.Empty(t, output)
 			},
@@ -226,10 +209,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 				require.NoError(t, c.InputByName("i1").PutSignals(signal.New(123)))
 				return c
 			},
-			wantActivationResult: NewActivationResult("c1").
-				SetActivated(true).
-				SetCode(ActivationCodeReturnedError).
-				AddError(errors.New("component returned an error: test error")),
+			wantActivationResult: NewActivationResult("c1", ActivationCodeReturnedError, errors.New("component returned an error: test error")),
 			loggerAssertions: func(t *testing.T, output []byte) {
 				assert.NotEmpty(t, output)
 				assert.Contains(t, string(output), "c1: This line must be logged")

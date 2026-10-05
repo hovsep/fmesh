@@ -34,18 +34,6 @@ func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult)
 	return c
 }
 
-// Remove removes activation results by component name and returns the collection.
-func (c *ActivationResultCollection) Remove(componentNames ...string) *ActivationResultCollection {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, name := range componentNames {
-		delete(c.activationResults, name)
-	}
-
-	return c
-}
-
 // HasActivationErrors tells whether the collection contains at least one activation result with error and respective code.
 func (c *ActivationResultCollection) HasActivationErrors() bool {
 	return c.Any((*ActivationResult).IsError)
@@ -148,14 +136,6 @@ func (c *ActivationResultCollection) ForEach(action func(*ActivationResult) erro
 		}
 	}
 	return nil
-}
-
-// Clear removes all activation results from the collection.
-func (c *ActivationResultCollection) Clear() *ActivationResultCollection {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.activationResults = make(map[string]*ActivationResult)
-	return c
 }
 
 // Find returns the first activation result matching the predicate, in component-name order, or nil.

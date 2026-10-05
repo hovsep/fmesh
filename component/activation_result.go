@@ -2,10 +2,9 @@ package component
 
 import "errors"
 
-// ActivationResult defines the result (possibly an error) of the activation of a given component in a given cycle.
+// ActivationResult is how one component's activation in one cycle ended.
 type ActivationResult struct {
 	componentName    string
-	activated        bool
 	code             ActivationResultCode
 	activationErrors []error // All errors accumulated during activation (component error + any hook errors)
 }
@@ -62,10 +61,12 @@ const (
 	ActivationCodeHookFailed
 )
 
-// NewActivationResult creates a new activation result for the given component.
-func NewActivationResult(componentName string) *ActivationResult {
+// NewActivationResult creates the result of one activation of the named component.
+func NewActivationResult(componentName string, code ActivationResultCode, errs ...error) *ActivationResult {
 	return &ActivationResult{
-		componentName: componentName,
+		componentName:    componentName,
+		code:             code,
+		activationErrors: errs,
 	}
 }
 
@@ -74,9 +75,9 @@ func (ar *ActivationResult) ComponentName() string {
 	return ar.componentName
 }
 
-// Activated returns true if the component was activated.
+// Activated reports whether the activation ran: every code but NoInput and Undefined.
 func (ar *ActivationResult) Activated() bool {
-	return ar.activated
+	return ar.code != ActivationCodeNoInput && ar.code != ActivationCodeUndefined
 }
 
 // Err returns all accumulated activation errors joined into one, or nil if there are none.
@@ -113,34 +114,6 @@ func (ar *ActivationResult) IsWaiting() bool {
 // KeepsInputs reports whether the component is waiting and keeping its inputs for the next cycle.
 func (ar *ActivationResult) KeepsInputs() bool {
 	return ar.code == ActivationCodeWaitingForInputsKeep
-}
-
-// SetActivated sets the activated flag and returns the activation result.
-func (ar *ActivationResult) SetActivated(activated bool) *ActivationResult {
-	ar.activated = activated
-	return ar
-}
-
-// SetCode sets the activation code and returns the activation result.
-func (ar *ActivationResult) SetCode(code ActivationResultCode) *ActivationResult {
-	ar.code = code
-	return ar
-}
-
-// AddError appends an error to the activation result and returns it.
-func (ar *ActivationResult) AddError(err error) *ActivationResult {
-	ar.activationErrors = append(ar.activationErrors, err)
-	return ar
-}
-
-// newResult builds a finished result. Every code but NoInput means the component activated.
-func (c *Component) newResult(code ActivationResultCode, errs ...error) *ActivationResult {
-	return &ActivationResult{
-		componentName:    c.name,
-		activated:        code != ActivationCodeNoInput,
-		code:             code,
-		activationErrors: errs,
-	}
 }
 
 func waitingCode(err error) ActivationResultCode {

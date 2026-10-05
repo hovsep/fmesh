@@ -53,32 +53,17 @@ func (g *Group) Add(cycles ...*Cycle) *Group {
 	return g
 }
 
-// evictExcess removes the oldest cycles beyond the configured length limit.
+// evictExcess drops the oldest cycles beyond the length limit. The front is
+// sliced off rather than the rest shifted down, so evicting one cycle per Add is
+// O(1) amortized; evicted slots are cleared so the cycles can be collected.
 func (g *Group) evictExcess() {
-	if g.lenLimit > 0 && g.Len() > g.lenLimit {
-		g.RemoveOldest(g.Len() - g.lenLimit)
+	excess := g.Len() - g.lenLimit
+	if g.lenLimit == 0 || excess <= 0 {
+		return
 	}
-}
-
-// RemoveOldest removes the count oldest cycles (from the front of the group) in place and
-// returns the group. count is clamped to [0, Len()]. Evicted cycles are cleared from the
-// backing array so they become unreachable and can be garbage-collected.
-//
-// The front is sliced off rather than the rest shifted down, so evicting one cycle per Add
-// costs O(1) amortized: the live cycles are copied only when append reallocates.
-func (g *Group) RemoveOldest(count int) *Group {
-	if count <= 0 {
-		return g
-	}
-	if count > g.Len() {
-		count = g.Len()
-	}
-
 	cycles := g.raw()
-	clear(cycles[:count])
-	g.replace(cycles[count:])
-
-	return g
+	clear(cycles[:excess])
+	g.replace(cycles[excess:])
 }
 
 // derive returns an empty group carrying the receiver's length limit and copies
