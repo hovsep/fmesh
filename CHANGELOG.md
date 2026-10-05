@@ -11,13 +11,6 @@ release title — a suffix in the tag makes Go treat the release as a pre-releas
 
 ## [Unreleased]
 
-### Changed
-
-- A run allocates about half as much. Signals, groups and metadata stores no longer build an
-  empty metadata map until something is written to them, group operations copy their signal slice
-  once instead of twice, a cleared port shares one empty group, and a payload is no longer boxed in
-  a one-element slice. Components with no input no longer get a goroutine each cycle.
-
 ## [v1.17.0] — Syunik — 2026-10-01
 
 ### Added
