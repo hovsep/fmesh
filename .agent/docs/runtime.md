@@ -141,14 +141,15 @@ a no-op.
 6. **Livelock** (`WithLivelockThreshold(n)`, default **2**; `WithoutLivelockDetection` disables) →
    `ErrLivelockDetected`. After the natural stop (a livelocked cycle activated something) and last
    (a real error is always the better explanation).
-   - A cycle is *stalled* when every activated component returned a waiting result **and** the
-     mesh's pending signal count did not change. Both halves are needed: the first alone flags a
+   - A cycle is *stalled* when every activated component returned `ErrWaitKeepingInputs` **and**
+     the mesh's pending signal count did not change. Both halves are needed: the first alone flags a
      component legitimately accumulating; the second alone flags a busy but idempotent mesh.
    - `n` stalled cycles in a row end the run. The error names each waiting component with its empty
      and non-empty input ports, plus a count of components that never activated.
    - This is exact, not a guess: waiting components are not drained, so a stalled cycle moves no
-     signals and the next cycle is identical. Waiters that *drop* inputs cannot trigger it —
-     dropping changes the pending count, and next cycle they have no input (a natural stop).
+     signals and the next cycle is identical. Waiters that *drop* inputs never count as stalled:
+     next cycle they have no input (a natural stop). The pending count alone cannot tell, because
+     it is taken before the drain clears the dropped inputs.
 
 In tests that expect a limit: with defaults, an infinite busy mesh stops after 1000 cycles or 5s,
 whichever comes first; a stalled mesh stops after 2 cycles via livelock detection.
