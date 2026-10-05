@@ -17,22 +17,11 @@ import (
 // It maintains insertion order and supports triggering all hooks in sequence.
 type Group[T any] struct {
 	hooks []func(context.Context, T) error
-	// runAll makes Trigger run every hook even after one fails.
-	runAll bool
 }
 
-// NewGroup creates a fail-fast hook group, for hooks that run before an action
-// and can stop it: the first error skips the remaining hooks.
+// NewGroup creates a new hook group.
 func NewGroup[T any]() *Group[T] {
 	return &Group[T]{}
-}
-
-// NewObserverGroup creates a hook group for hooks that run after an action and
-// cannot stop it: every hook runs, and their errors are joined. One failing
-// observer must not hide the event from the others, such as a plugin that
-// flushes in AfterRun.
-func NewObserverGroup[T any]() *Group[T] {
-	return &Group[T]{runAll: true}
 }
 
 // Add appends a hook to the group, maintaining insertion order.
@@ -50,16 +39,26 @@ func (g *Group[T]) IsEmpty() bool {
 	return len(g.hooks) == 0
 }
 
-// Trigger executes the hooks in order with the provided argument. A fail-fast
-// group returns the first error; an observer group runs every hook and returns
-// their errors joined.
+// Trigger executes all hooks in order with the provided argument.
+// Returns the first error encountered (fail-fast). It is for hooks that run
+// before an action and can stop it.
 func (g *Group[T]) Trigger(ctx context.Context, arg T) error {
+	for _, hook := range g.hooks {
+		if err := hook(ctx, arg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TriggerAll executes every hook in order, even after one fails, and returns
+// their errors joined. It is for hooks that observe an action already done:
+// one failing observer must not hide the event from the others, such as a
+// plugin that flushes in AfterRun.
+func (g *Group[T]) TriggerAll(ctx context.Context, arg T) error {
 	var errs []error
 	for _, hook := range g.hooks {
 		if err := hook(ctx, arg); err != nil {
-			if !g.runAll {
-				return err
-			}
 			errs = append(errs, err)
 		}
 	}

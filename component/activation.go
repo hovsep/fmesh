@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/hovsep/fmesh/internal/hook"
 	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 )
@@ -36,7 +35,7 @@ func (c *Component) MaybeActivate(ctx context.Context) *ActivationResult {
 // BeforeActivation failed.
 func (c *Component) activate(ctx context.Context) *ActivationResult {
 	var result *ActivationResult
-	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation, c); err != nil {
+	if err := triggerRecovering(ctx, c, c.hooks.beforeActivation.Trigger, c); err != nil {
 		// Activated, though the function was skipped: the drain clears its inputs
 		// like any failed activation's, instead of letting them pile up.
 		result = NewActivationResult(c.Name()).SetActivated(true)
@@ -48,7 +47,7 @@ func (c *Component) activate(ctx context.Context) *ActivationResult {
 	// The IsEmpty guard keeps the context struct off the heap in the common
 	// no-hook case — it escapes whether or not anything reads it.
 	if !c.hooks.afterActivation.IsEmpty() {
-		if err := triggerRecovering(ctx, c, c.hooks.afterActivation, &ActivationContext{Component: c, Result: result}); err != nil {
+		if err := triggerRecovering(ctx, c, c.hooks.afterActivation.TriggerAll, &ActivationContext{Component: c, Result: result}); err != nil {
 			markHookFailed(result, "afterActivation", err)
 		}
 	}
@@ -179,13 +178,13 @@ func (c *Component) restoreOutputs(ctx context.Context, outputs map[*port.Port]*
 
 // triggerRecovering triggers a hook group, turning a panic in any hook into a
 // *PanicError.
-func triggerRecovering[T any](ctx context.Context, c *Component, group *hook.Group[T], arg T) (err error) {
+func triggerRecovering[T any](ctx context.Context, c *Component, trigger func(context.Context, T) error, arg T) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = c.panicError(r)
 		}
 	}()
-	return group.Trigger(ctx, arg)
+	return trigger(ctx, arg)
 }
 
 // panicError captures a recovered value. Called from the deferred recover, the

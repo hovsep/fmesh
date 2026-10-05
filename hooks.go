@@ -35,11 +35,11 @@ type Hooks struct {
 // newHooks creates a new hooks registry with default hooks.
 func newHooks() *Hooks {
 	return &Hooks{
-		onComponentAdded: hook.NewObserverGroup[*ComponentAddedContext](),
+		onComponentAdded: hook.NewGroup[*ComponentAddedContext](),
 		beforeRun:        hook.NewGroup[*FMesh]().Add(validateMeshStructure),
-		afterRun:         hook.NewObserverGroup[*FMesh](),
+		afterRun:         hook.NewGroup[*FMesh](),
 		beforeCycle:      hook.NewGroup[*CycleContext](),
-		afterCycle:       hook.NewObserverGroup[*CycleContext]().Add(logActivationResultsInDebug),
+		afterCycle:       hook.NewGroup[*CycleContext]().Add(logActivationResultsInDebug),
 	}
 }
 

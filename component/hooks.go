@@ -24,7 +24,7 @@ func newHooks() *Hooks {
 	return &Hooks{
 		onCreation:       hook.NewGroup[*Component](),
 		beforeActivation: hook.NewGroup[*Component](),
-		afterActivation:  hook.NewObserverGroup[*ActivationContext](),
+		afterActivation:  hook.NewGroup[*ActivationContext](),
 	}
 }
 
