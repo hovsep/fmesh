@@ -107,7 +107,8 @@ func WithMeta[T meta.Value](key string, value T) Option {
 
 // AddComponents adds components to the mesh. Returns an error if any component is invalid or has a
 // duplicate name; then no component is added or changed. The OnComponentAdded hooks run after all
-// components are added, and a failing hook leaves them added.
+// components are added, for every component even when one fails, and a failing hook leaves them
+// added.
 func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	for _, c := range components {
 		if err := c.ValidateBeforeAddingToMesh(); err != nil {
@@ -124,15 +125,16 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 		c.InheritLogger(fm.logger)
 	}
 
+	var hookErrs []error
 	for _, c := range components {
 		// Components are added outside a run, so there is no run context yet.
 		if err := fm.hooks.onComponentAdded.Trigger(context.Background(), &ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
-			return fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err)
+			hookErrs = append(hookErrs, fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err))
 		}
 	}
 
 	fm.LogDebug("%d components added to mesh", fm.Components().Len())
-	return nil
+	return errors.Join(hookErrs...)
 }
 
 // SetupHooks configures hooks for the mesh using a closure.
@@ -144,7 +146,7 @@ func (fm *FMesh) SetupHooks(configure func(*Hooks)) *FMesh {
 // runCycle runs one activation cycle (tries to activate ready components).
 // Returns any error that occurred.
 // The cycle is always added to runtimeInfo even if an error occurred.
-func (fm *FMesh) runCycle(ctx context.Context) error {
+func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 	nextNumber := 1
 	if lastCycle := fm.runtimeInfo.Cycles.Last(); lastCycle != nil {
 		nextNumber = lastCycle.Number() + 1
@@ -156,6 +158,14 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	// afterCycle hook, which therefore sees the cycle in its CycleContext but not
 	// yet in RuntimeInfo.Cycles.
 	defer fm.runtimeInfo.Cycles.Add(newCycle)
+
+	// AfterCycle runs however the cycle ends, like AfterRun and AfterActivation,
+	// so a hook that pairs with BeforeCycle always sees the end of its cycle.
+	defer func() {
+		if hookErr := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); hookErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", hookErr))
+		}
+	}()
 
 	if err := fm.hooks.beforeCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
 		return fmt.Errorf("failed to run cycle: beforeCycle hook failed: %w", err)
@@ -183,10 +193,6 @@ func (fm *FMesh) runCycle(ctx context.Context) error {
 	})
 
 	wg.Wait()
-
-	if err := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); err != nil {
-		return fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", err)
-	}
 
 	return nil
 }
@@ -428,9 +434,7 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 	defer func() {
 		fm.runtimeInfo.markStopped()
 		if err := fm.hooks.afterRun.Trigger(callerCtx, fm); err != nil {
-			if runErr == nil {
-				runErr = fmt.Errorf("afterRun hook failed: %w", err)
-			}
+			runErr = errors.Join(runErr, fmt.Errorf("afterRun hook failed: %w", err))
 		}
 	}()
 

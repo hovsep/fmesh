@@ -194,6 +194,27 @@ func TestComponentHooks_AccumulateInRegistrationOrder(t *testing.T) {
 	assert.Equal(t, []string{"first", "second", "third"}, log.events)
 }
 
+func TestComponentHooks_EveryAfterActivationRunsWhenOneFails(t *testing.T) {
+	var log recorder
+	c := componentWith(t, func(context.Context, *component.Component) error { return nil },
+		func(h *component.Hooks) {
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
+				log.add("first")
+				return errors.New("first failed")
+			})
+			h.AfterActivation(func(context.Context, *component.ActivationContext) error {
+				log.add("second")
+				return nil
+			})
+		})
+
+	require.NoError(t, c.InputByName("in").PutSignals(signal.New(1)))
+	ar := c.MaybeActivate(context.Background())
+
+	assert.Equal(t, []string{"first", "second"}, log.events)
+	assert.Equal(t, component.ActivationCodeHookFailed, ar.Code())
+}
+
 func TestComponentHooks_FireForEveryComponentInAMeshRun(t *testing.T) {
 	var log recorder
 

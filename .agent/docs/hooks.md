@@ -7,8 +7,18 @@ Source: `hooks.go`, `component/hooks.go`, `component/activation.go`, `port/hooks
 ## The hook primitive
 
 `hook.Group[T]` in `internal/hook` (not public API) is an ordered slice of
-`func(context.Context, T) error`. `Trigger(ctx, arg)` runs them in insertion order and is
-**fail-fast** on the first error.
+`func(context.Context, T) error`. `Trigger(ctx, arg)` runs them in insertion order. Two kinds:
+
+- `NewGroup` is **fail-fast** on the first error. For hooks that run before an action and can stop
+  it: `BeforeRun`, `BeforeCycle`, `BeforeActivation`, `OnCreation`, `OnSignalsAdded`, the pipe
+  hooks.
+- `NewObserverGroup` runs **every** hook and joins their errors. For hooks that observe something
+  already done: `AfterRun`, `AfterCycle`, `AfterActivation`, `OnComponentAdded`,
+  `OnSignalsDelivered`, `OnClear`. One failing observer must not hide the event from the others
+  (a plugin flushing in `AfterRun`, autowire in `OnComponentAdded`).
+
+Each `After` hook runs even when its `Before` hook failed: `AfterRun`, `AfterCycle` and
+`AfterActivation` are `finally` blocks.
 
 Registration is chainable and goes through `SetupHooks(func(*Hooks))` closures (or the
 `component.WithHooks` option). The `Hooks` structs' fields are unexported, so closures are the only
@@ -68,8 +78,9 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
 
 - A failing `BeforeCycle`/`AfterCycle` hook aborts the run (wrapped inline:
   `failed to run cycle: beforeCycle hook failed: …`). A failing `BeforeCycle` skips that cycle's
-  `AfterCycle`; `AfterRun` still runs. A failing `OnComponentAdded` hook fails `AddComponents`
-  but leaves every component added, and the components after it never reach the hook.
+  activations, and `AfterCycle` and `AfterRun` still run. A failing `OnComponentAdded` hook fails
+  `AddComponents` but leaves every component added, and the hook still runs for each of them.
+- A failing `AfterRun` is joined to the run's error rather than replacing or being dropped by it.
 - **Only the activation goroutine recovers panics.** Mesh hooks, and port hooks fired from the
   drain or from a caller's own `PutSignals`/`PipeTo`/`Clear`, run on the caller's goroutine and
   their panics propagate out of `Run` (or `AddComponents`, `PipeTo`, ...). The same port hook

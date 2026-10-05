@@ -252,6 +252,24 @@ func TestMeshHooks_CycleHookFailuresAbortTheRun(t *testing.T) {
 		assert.Equal(t, 1, ri.Cycles.Len(), "the cycle that failed to start is still recorded")
 	})
 
+	t.Run("AfterCycle still runs when BeforeCycle failed", func(t *testing.T) {
+		var afterCycle int
+		fm := twoCycleMesh(t)
+		fm.SetupHooks(func(h *fmesh.Hooks) {
+			h.BeforeCycle(func(context.Context, *fmesh.CycleContext) error { return errors.New("no cycles today") })
+			h.AfterCycle(func(context.Context, *fmesh.CycleContext) error {
+				afterCycle++
+				return errors.New("bookkeeping failed")
+			})
+		})
+
+		_, err := fm.Run(context.Background())
+
+		require.ErrorContains(t, err, "no cycles today")
+		require.ErrorContains(t, err, "bookkeeping failed")
+		assert.Equal(t, 1, afterCycle)
+	})
+
 	t.Run("AfterCycle", func(t *testing.T) {
 		fm := twoCycleMesh(t)
 		fm.SetupHooks(func(h *fmesh.Hooks) {
@@ -266,8 +284,6 @@ func TestMeshHooks_CycleHookFailuresAbortTheRun(t *testing.T) {
 }
 
 func TestMeshHooks_AfterRunFailureBecomesTheRunError(t *testing.T) {
-	// A run that would have succeeded reports the AfterRun failure; a run that
-	// already failed keeps its own error (covered by AfterRunFiresOnAFailedRun).
 	fm := twoCycleMesh(t)
 	fm.SetupHooks(func(h *fmesh.Hooks) {
 		h.AfterRun(func(context.Context, *fmesh.FMesh) error { return errors.New("cleanup failed") })
@@ -277,4 +293,62 @@ func TestMeshHooks_AfterRunFailureBecomesTheRunError(t *testing.T) {
 
 	require.ErrorContains(t, err, "afterRun hook failed")
 	require.ErrorContains(t, err, "cleanup failed")
+}
+
+// A run that already failed keeps its own error, and the AfterRun failure is
+// joined to it rather than dropped.
+func TestMeshHooks_AfterRunFailureJoinsAFailedRunsError(t *testing.T) {
+	fm := twoCycleMesh(t)
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.BeforeCycle(func(context.Context, *fmesh.CycleContext) error { return errors.New("no cycles today") })
+		h.AfterRun(func(context.Context, *fmesh.FMesh) error { return errors.New("cleanup failed") })
+	})
+
+	_, err := fm.Run(context.Background())
+
+	require.ErrorContains(t, err, "no cycles today")
+	require.ErrorContains(t, err, "cleanup failed")
+}
+
+// After hooks observe an event they cannot stop, so one failing hook does not
+// hide the event from the hooks after it.
+func TestMeshHooks_EveryAfterHookRunsWhenOneFails(t *testing.T) {
+	var afterCycle, afterRun int
+	fm := twoCycleMesh(t)
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.AfterCycle(func(context.Context, *fmesh.CycleContext) error { return errors.New("first") })
+		h.AfterCycle(func(context.Context, *fmesh.CycleContext) error { afterCycle++; return nil })
+		h.AfterRun(func(context.Context, *fmesh.FMesh) error { return errors.New("first") })
+		h.AfterRun(func(context.Context, *fmesh.FMesh) error { afterRun++; return nil })
+	})
+
+	_, err := fm.Run(context.Background())
+
+	require.Error(t, err)
+	assert.Equal(t, 1, afterCycle)
+	assert.Equal(t, 1, afterRun)
+}
+
+// A failing OnComponentAdded hook leaves the components added, so it must still
+// see every one of them: a plugin that wires components on arrival would
+// otherwise miss the rest of the batch for good.
+func TestMeshHooks_OnComponentAddedSeesEveryComponentWhenOneFails(t *testing.T) {
+	var added []string
+	fm := testutil.MustFMesh("registry")
+	fm.SetupHooks(func(h *fmesh.Hooks) {
+		h.OnComponentAdded(func(_ context.Context, ctx *fmesh.ComponentAddedContext) error {
+			added = append(added, ctx.Component.Name())
+			if ctx.Component.Name() == "c1" {
+				return errors.New("rejected")
+			}
+			return nil
+		})
+	})
+
+	noop := component.WithActivationFunc(func(context.Context, *component.Component) error { return nil })
+	err := fm.AddComponents(testutil.MustComponent("c1", noop), testutil.MustComponent("c2", noop))
+
+	require.ErrorContains(t, err, `onComponentAdded hook failed for component "c1"`)
+	assert.Equal(t, []string{"c1", "c2"}, added)
+	assert.Equal(t, 2, fm.Components().Len())
 }
