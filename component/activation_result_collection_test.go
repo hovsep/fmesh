@@ -40,8 +40,8 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			collection: NewActivationResultCollection(),
 			args: args{
 				activationResults: []*ActivationResult{
-					mustNew("c1").newActivationResultOK(),
-					mustNew("c2").newActivationResultReturnedError(errors.New("oops")),
+					mustNew("c1").newResult(ActivationCodeOK),
+					mustNew("c2").newResult(ActivationCodeReturnedError, errors.New("oops")),
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
@@ -54,13 +54,13 @@ func TestActivationResultCollection_Add(t *testing.T) {
 		{
 			name: "adding to non-empty collection",
 			collection: NewActivationResultCollection().Add(
-				mustNew("c1").newActivationResultOK(),
-				mustNew("c2").newActivationResultOK(),
+				mustNew("c1").newResult(ActivationCodeOK),
+				mustNew("c2").newResult(ActivationCodeOK),
 			),
 			args: args{
 				activationResults: []*ActivationResult{
-					mustNew("c4").newActivationResultNoInput(),
-					mustNew("c5").newActivationResultPanicked(errors.New("panic")),
+					mustNew("c4").newResult(ActivationCodeNoInput),
+					mustNew("c5").newResult(ActivationCodePanicked, errors.New("panic")),
 				},
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {

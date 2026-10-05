@@ -20,11 +20,9 @@ type Group struct {
 
 // NewGroup creates a group of cycles.
 func NewGroup() *Group {
-	g := &Group{
+	return &Group{
 		meta: meta.New(),
 	}
-	g.replace(make([]*Cycle, 0))
-	return g
 }
 
 func (g *Group) raw() []*Cycle { return collection.Items(&g.cycleSlice) }
@@ -105,7 +103,7 @@ func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := g.derive()
 	for _, cyc := range g.raw() {
 		if predicate(cyc) {
-			filtered = filtered.Add(cyc)
+			filtered.Add(cyc)
 		}
 	}
 	return filtered
@@ -119,10 +117,10 @@ func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
 	for _, c := range g.raw() {
 		if predicate(c) {
 			if transformedCyc := mapper(c); transformedCyc != nil {
-				mapped = mapped.Add(transformedCyc)
+				mapped.Add(transformedCyc)
 			}
 		} else {
-			mapped = mapped.Add(c)
+			mapped.Add(c)
 		}
 	}
 	return mapped
@@ -134,7 +132,7 @@ func (g *Group) Map(mapper Mapper) *Group {
 	mapped := g.derive()
 	for _, cyc := range g.raw() {
 		if transformedCyc := mapper(cyc); transformedCyc != nil {
-			mapped = mapped.Add(transformedCyc)
+			mapped.Add(transformedCyc)
 		}
 	}
 	return mapped

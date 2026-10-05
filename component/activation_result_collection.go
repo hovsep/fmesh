@@ -65,10 +65,7 @@ func (c *ActivationResultCollection) HasActivatedComponents() bool {
 func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if result, ok := c.activationResults[name]; ok {
-		return result
-	}
-	return nil
+	return c.activationResults[name]
 }
 
 // All returns a shallow copy of all activation results as a map.

@@ -6,7 +6,6 @@ import (
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
-	"github.com/hovsep/fmesh/port"
 )
 
 // livelockDetector is the per-run bookkeeping that tells a mesh making progress
@@ -39,12 +38,11 @@ func (d *livelockDetector) takeBaseline() {
 // It is the cheapest thing that answers "did anything move?" — see detect.
 func (d *livelockDetector) countPendingSignals() int {
 	total := 0
-	_ = d.components.ForEach(func(c *component.Component) error {
-		return c.Inputs().ForEach(func(p *port.Port) error {
+	for c := range d.components.Each {
+		for p := range c.Inputs().Each {
 			total += p.Signals().Len()
-			return nil
-		})
-	})
+		}
+	}
 	return total
 }
 

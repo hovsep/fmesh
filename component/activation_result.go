@@ -135,44 +135,21 @@ func (ar *ActivationResult) AddActivationError(activationError error) *Activatio
 	return ar
 }
 
-func (c *Component) newActivationResultOK() *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(true).
-		SetActivationCode(ActivationCodeOK)
-}
-
-func (c *Component) newActivationResultNoInput() *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(false).
-		SetActivationCode(ActivationCodeNoInput)
-}
-
-func (c *Component) newActivationResultReturnedError(errs ...error) *ActivationResult {
-	result := NewActivationResult(c.Name()).
-		SetActivated(true).
-		SetActivationCode(ActivationCodeReturnedError)
-	for _, err := range errs {
-		result.AddActivationError(fmt.Errorf("component returned an error: %w", err))
+// newResult builds a finished result. Every code but NoInput means the component activated.
+func (c *Component) newResult(code ActivationResultCode, errs ...error) *ActivationResult {
+	return &ActivationResult{
+		componentName:    c.name,
+		activated:        code != ActivationCodeNoInput,
+		code:             code,
+		activationErrors: errs,
 	}
-	return result
 }
 
-func (c *Component) newActivationResultPanicked(err error) *ActivationResult {
-	return NewActivationResult(c.Name()).
-		SetActivated(true).
-		SetActivationCode(ActivationCodePanicked).
-		AddActivationError(err)
-}
-
-func (c *Component) newActivationResultWaitingForInputs(err error) *ActivationResult {
-	activationCode := ActivationCodeWaitingForInputsClear
+func waitingCode(err error) ActivationResultCode {
 	if errors.Is(err, ErrWaitKeepingInputs) {
-		activationCode = ActivationCodeWaitingForInputsKeep
+		return ActivationCodeWaitingForInputsKeep
 	}
-	return NewActivationResult(c.Name()).
-		SetActivated(true).
-		SetActivationCode(activationCode).
-		AddActivationError(err)
+	return ActivationCodeWaitingForInputsClear
 }
 
 // IsWaitingForInput returns true if the component was waiting for inputs.

@@ -161,32 +161,31 @@ func (c *Component) InputByName(name string) *port.Port {
 
 // FlushOutputs pushes signals out of the component outputs to pipes and clears outputs.
 func (c *Component) FlushOutputs(ctx context.Context) error {
-	return c.Outputs().ForEach(func(out *port.Port) error {
+	for out := range c.outputPorts.Each {
 		if err := out.Flush(ctx); err != nil {
 			return fmt.Errorf("failed to flush output port %q: %w", out.Name(), err)
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // ClearInputs clears all input ports.
 func (c *Component) ClearInputs(ctx context.Context) error {
-	return c.Inputs().ForEach(func(p *port.Port) error {
-		if err := p.Clear(ctx); err != nil {
-			return fmt.Errorf("failed to clear input port %q: %w", p.Name(), err)
-		}
-		return nil
-	})
+	return clearPorts(ctx, "input", c.inputPorts)
 }
 
 // ClearOutputs clears all output ports.
 func (c *Component) ClearOutputs(ctx context.Context) error {
-	return c.Outputs().ForEach(func(p *port.Port) error {
+	return clearPorts(ctx, "output", c.outputPorts)
+}
+
+func clearPorts(ctx context.Context, side string, ports *port.Collection) error {
+	for p := range ports.Each {
 		if err := p.Clear(ctx); err != nil {
-			return fmt.Errorf("failed to clear output port %q: %w", p.Name(), err)
+			return fmt.Errorf("failed to clear %s port %q: %w", side, p.Name(), err)
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // LoopbackPipe creates a pipe between output and input ports of the component.

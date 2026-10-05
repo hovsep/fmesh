@@ -36,14 +36,9 @@ func NewOutputGroup(names ...string) *Group {
 func newGroupOfDirection(direction Direction, names ...string) *Group {
 	ports := make([]*Port, len(names))
 	for i, name := range names {
-		ports[i] = newPortOfDirection(direction, name)
+		ports[i], _ = newPort(direction, name) // no opts, never fails
 	}
 	return NewGroup().setPorts(ports)
-}
-
-func newPortOfDirection(direction Direction, name string) *Port {
-	p, _ := newPort(direction, name) // no opts, never fails
-	return p
 }
 
 func (g *Group) raw() []*Port { return collection.Items(&g.portSlice) }

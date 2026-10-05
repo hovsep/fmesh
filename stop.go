@@ -66,20 +66,22 @@ func (fm *FMesh) stop(err error) (bool, error) {
 // strategyError returns the error that stops the mesh under the configured error
 // handling strategy after lastCycle, or nil when the run may continue.
 func (fm *FMesh) strategyError(lastCycle *cycle.Cycle) error {
+	var reason error
 	switch fm.config.ErrorHandlingStrategy {
 	case StopOnFirstErrorOrPanic:
 		if lastCycle.HasActivationErrors() || lastCycle.HasActivationPanics() {
-			return fmt.Errorf("%w, cycle # %d, %w",
-				ErrHitAnErrorOrPanic, lastCycle.Number(), cycleFailures(lastCycle))
+			reason = ErrHitAnErrorOrPanic
 		}
 	case StopOnFirstPanic:
 		if lastCycle.HasActivationPanics() {
-			return fmt.Errorf("%w, cycle # %d, %w",
-				ErrHitAPanic, lastCycle.Number(), cycleFailures(lastCycle))
+			reason = ErrHitAPanic
 		}
 	case IgnoreAll:
 	}
-	return nil
+	if reason == nil {
+		return nil
+	}
+	return fmt.Errorf("%w, cycle # %d, %w", reason, lastCycle.Number(), cycleFailures(lastCycle))
 }
 
 // cycleFailures joins the activation errors and panics of a cycle. Each part is
