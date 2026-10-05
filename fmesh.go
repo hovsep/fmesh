@@ -432,6 +432,9 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 		if err := fm.hooks.afterRun.TriggerAll(callerCtx, fm); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("afterRun hook failed: %w", err))
 		}
+		// The history now belongs to the caller: holding it here would keep a
+		// discarded run's cycles alive until the next Run.
+		fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
 	}()
 
 	if err := fm.hooks.beforeRun.Trigger(ctx, fm); err != nil {

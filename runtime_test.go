@@ -344,6 +344,34 @@ func Test_MultipleRun(t *testing.T) {
 			assert.Equal(t, 1, runResult.Cycles.First().Number())
 			assert.Equal(t, 4, runResult.Cycles.Last().Number())
 		})
+
+		t.Run("window stays exact over many evictions", func(t *testing.T) {
+			fm := newRepeaterMesh(WithCyclesHistoryLimit(5))
+			require.NoError(t, fm.ComponentByName("repeater").InputByName("in").PutSignals(signal.New(200)))
+			runResult, err := fm.Run(context.Background())
+			require.NoError(t, err)
+
+			// 201 activated cycles + 1 empty one; the last 5 are kept, in order.
+			require.Equal(t, 5, runResult.Cycles.Len())
+			for i, c := range runResult.Cycles.All() {
+				assert.Equal(t, 198+i, c.Number())
+			}
+		})
+	})
+
+	t.Run("the mesh lets go of a run's history once Run returns", func(t *testing.T) {
+		fm := mustNewFMesh("test fm")
+		require.NoError(t, fm.AddComponents(mustNewComponent("c",
+			component.WithInputs("in"),
+			component.WithActivationFunc(func(context.Context, *component.Component) error { return nil }))))
+		require.NoError(t, fm.ComponentByName("c").InputByName("in").PutSignals(signal.New(1)))
+
+		runResult, err := fm.Run(context.Background())
+		require.NoError(t, err)
+
+		assert.Equal(t, 2, runResult.Cycles.Len(), "the caller keeps the whole history")
+		assert.NotSame(t, runResult, fm.runtimeInfo)
+		assert.Zero(t, fm.runtimeInfo.Cycles.Len())
 	})
 
 	t.Run("NoInput activation results are never recorded", func(t *testing.T) {
