@@ -35,8 +35,8 @@ func (c *Collection) Meta() *meta.Meta { return c.meta }
 
 // ByNames retrieves a subset of ports by their names, returning a new collection.
 // Names that match no port are skipped, which makes the result vacuously ready.
-// Duplicated names collapse to one lookup, because the batched Add would stop at the repeat and drop every name
-// after it.
+// Duplicated names collapse to one lookup, because the batched Add rejects a repeated name and would add none of
+// them.
 func (c *Collection) ByNames(names ...string) *Collection {
 	matched := make([]*Port, 0, len(names))
 	seen := make(map[string]bool, len(names))

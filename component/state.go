@@ -8,8 +8,8 @@ import "fmt"
 // State is a plain map with no locking. That is safe for the common case —
 // each component has its own instance and activates on one goroutine at a
 // time — but not in general: sharing one State between components, or touching
-// it from port hooks (which can fire concurrently during a flush), is a data
-// race.
+// it from port hooks (which can fire on other components' activation
+// goroutines), is a data race.
 type State map[string]any
 
 // newState creates a new component state.
