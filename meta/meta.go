@@ -1,23 +1,26 @@
 package meta
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
 )
 
-// Value is the set of types a Meta entry can hold. It is exact on purpose: a
-// named type such as `type Celsius float64` is rejected at compile time, so
-// every entry reads back with the type it was written with. An untyped
-// integer literal does not compile either — write 1.0, not 1.
+// Value is the set of types a Meta entry can hold: string, bool, every Go
+// integer and float type, and named types built on them, such as
+// `type Celsius float64`. An entry reads back only as the type it was written
+// with: Set("n", 3) stores an int, so read it with Value[int], not
+// Value[int64] or Value[float64]; Set("t", Celsius(36.6)) reads back with
+// Value[Celsius], not Value[float64].
 type Value interface {
-	string | float64
+	cmp.Ordered | ~bool
 }
 
-// Predicate tests one entry. value is a string or a float64.
+// Predicate tests one entry. value holds one of the [Value] types.
 type Predicate func(key string, value any) bool
 
-// Meta is a mutable key→value store for string and numeric metadata.
+// Meta is a mutable key→value store for string, bool and numeric metadata.
 // Write methods modify the receiver in place and return it for chaining.
 // Clone and Filter are the non-mutating methods; each returns a new Meta.
 type Meta struct {
@@ -64,7 +67,7 @@ func (m *Meta) Clear() *Meta {
 }
 
 // Value returns the entry for key as T. It fails when the key is absent or
-// holds the other type; the error names the key either way.
+// holds another type; the error names the key either way.
 func (m *Meta) Value[T Value](key string) (T, error) {
 	var zero T
 	raw, ok := m.entries[key]
@@ -79,7 +82,7 @@ func (m *Meta) Value[T Value](key string) (T, error) {
 }
 
 // ValueOrDefault returns the entry for key as T, or def when the key is absent
-// or holds the other type. T is inferred from def: pass 0.0, not 0.
+// or holds another type. T is inferred from def: 0 reads an int, 0.0 a float64.
 func (m *Meta) ValueOrDefault[T Value](key string, def T) T {
 	if v, ok := m.entries[key].(T); ok {
 		return v

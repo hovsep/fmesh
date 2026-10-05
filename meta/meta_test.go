@@ -59,7 +59,7 @@ func TestMeta_Set(t *testing.T) {
 
 func TestMeta_Value(t *testing.T) {
 	t.Parallel()
-	m := New().Set("s", "text").Set("f", 1.5)
+	m := New().Set("s", "text").Set("f", 1.5).Set("i", 3).Set("b", true).Set("u", uint8(7))
 
 	t.Run("string found", func(t *testing.T) {
 		got, err := m.Value[string]("s")
@@ -71,6 +71,37 @@ func TestMeta_Value(t *testing.T) {
 		got, err := m.Value[float64]("f")
 		require.NoError(t, err)
 		assert.InDelta(t, 1.5, got, 1e-9)
+	})
+
+	t.Run("int, bool and sized ints found", func(t *testing.T) {
+		i, err := m.Value[int]("i")
+		require.NoError(t, err)
+		assert.Equal(t, 3, i)
+		b, err := m.Value[bool]("b")
+		require.NoError(t, err)
+		assert.True(t, b)
+		u, err := m.Value[uint8]("u")
+		require.NoError(t, err)
+		assert.Equal(t, uint8(7), u)
+	})
+
+	// Numbers are not converted: an untyped 3 is stored as int and reads back
+	// only as int.
+	t.Run("another number type errors", func(t *testing.T) {
+		_, err := m.Value[float64]("i")
+		require.ErrorContains(t, err, "holds int, not float64")
+		_, err = m.Value[int64]("i")
+		require.ErrorContains(t, err, "holds int, not int64")
+	})
+
+	t.Run("named type reads only as itself", func(t *testing.T) {
+		type celsius float64
+		named := New().Set("t", celsius(36.6))
+		got, err := named.Value[celsius]("t")
+		require.NoError(t, err)
+		assert.InDelta(t, 36.6, float64(got), 1e-9)
+		_, err = named.Value[float64]("t")
+		require.ErrorContains(t, err, "not float64")
 	})
 
 	t.Run("missing key errors and names the key", func(t *testing.T) {
@@ -92,10 +123,13 @@ func TestMeta_Value(t *testing.T) {
 
 func TestMeta_ValueOrDefault(t *testing.T) {
 	t.Parallel()
-	m := New().Set("s", "text").Set("f", 1.5)
+	m := New().Set("s", "text").Set("f", 1.5).Set("i", 3).Set("b", true)
 
 	assert.Equal(t, "text", m.ValueOrDefault("s", "dflt"))
 	assert.InDelta(t, 1.5, m.ValueOrDefault("f", 0.0), 1e-9)
+	assert.Equal(t, 3, m.ValueOrDefault("i", 0))
+	assert.True(t, m.ValueOrDefault("b", false))
+	assert.InDelta(t, 9.0, m.ValueOrDefault("i", 9.0), 1e-9, "int entry read as float64 reads as absent")
 	assert.Equal(t, "dflt", m.ValueOrDefault("missing", "dflt"))
 	assert.InDelta(t, 9.0, m.ValueOrDefault("s", 9.0), 1e-9, "wrong type reads as absent")
 }
@@ -117,6 +151,14 @@ func TestMeta_ValueIs(t *testing.T) {
 	t.Run("same key, other type, is not a match", func(t *testing.T) {
 		m := New().Set("k", "1")
 		assert.False(t, m.ValueIs("k", 1.0))
+	})
+
+	t.Run("int and bool match only their own type", func(t *testing.T) {
+		m := New().Set("n", 1).Set("ok", true)
+		assert.True(t, m.ValueIs("n", 1))
+		assert.False(t, m.ValueIs("n", 1.0))
+		assert.True(t, m.ValueIs("ok", true))
+		assert.False(t, m.ValueIs("ok", false))
 	})
 }
 
