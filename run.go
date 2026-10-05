@@ -178,7 +178,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 	}
 
 	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
-		if component.IsWaitingForInput(activationResult) {
+		if activationResult.IsWaiting() {
 			return nil
 		}
 
@@ -192,7 +192,7 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 // clearInputs clears all the input ports of all components activated in the latest cycle.
 func (fm *FMesh) clearInputs(ctx context.Context) error {
 	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
-		if component.WantsToKeepInputs(activationResult) {
+		if activationResult.KeepsInputs() {
 			return nil
 		}
 

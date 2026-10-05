@@ -49,7 +49,7 @@ func TestWithIndexedPorts(t *testing.T) {
 	require.ErrorIs(t, err, port.ErrInvalidRangeForIndexedGroup)
 }
 
-func TestComponent_ValidateBeforeAddingToMesh_PortParents(t *testing.T) {
+func TestComponent_Validate_PortParents(t *testing.T) {
 	noop := WithActivationFunc(func(context.Context, *Component) error { return nil })
 	t.Run("a port attached to two components belongs to the last one", func(t *testing.T) {
 		shared, err := port.NewInput("in")
@@ -58,8 +58,8 @@ func TestComponent_ValidateBeforeAddingToMesh_PortParents(t *testing.T) {
 		require.NoError(t, first.AttachInputPorts(shared))
 		require.NoError(t, second.AttachInputPorts(shared))
 
-		require.ErrorContains(t, first.ValidateBeforeAddingToMesh(), `input port "in" has wrong parent component`)
-		require.NoError(t, second.ValidateBeforeAddingToMesh())
+		require.ErrorContains(t, first.Validate(), `input port "in" has wrong parent component`)
+		require.NoError(t, second.Validate())
 	})
 
 	t.Run("the same for an output port", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestComponent_ValidateBeforeAddingToMesh_PortParents(t *testing.T) {
 		require.NoError(t, first.AttachOutputPorts(shared))
 		require.NoError(t, second.AttachOutputPorts(shared))
 
-		require.ErrorContains(t, first.ValidateBeforeAddingToMesh(), `output port "out" has wrong parent component`)
+		require.ErrorContains(t, first.Validate(), `output port "out" has wrong parent component`)
 	})
 
 	t.Run("a port added behind the component's back has no parent", func(t *testing.T) {
@@ -80,20 +80,20 @@ func TestComponent_ValidateBeforeAddingToMesh_PortParents(t *testing.T) {
 
 		c := mustNew("c", noop)
 		require.NoError(t, c.Inputs().Add(in))
-		require.ErrorContains(t, c.ValidateBeforeAddingToMesh(), `input port "in" has no parent component`)
+		require.ErrorContains(t, c.Validate(), `input port "in" has no parent component`)
 
 		d := mustNew("d", noop)
 		require.NoError(t, d.Outputs().Add(out))
-		require.ErrorContains(t, d.ValidateBeforeAddingToMesh(), `output port "out" has no parent component`)
+		require.ErrorContains(t, d.Validate(), `output port "out" has no parent component`)
 	})
 }
 
 func TestCollection_AnyAndMetadata(t *testing.T) {
 	col := NewCollection()
-	assert.Nil(t, col.Any(), "empty collection has nothing to return")
+	assert.Nil(t, col.First(), "empty collection has nothing to return")
 
 	require.NoError(t, col.Add(mustNew("b"), mustNew("a")))
-	assert.Equal(t, "a", col.Any().Name(), "name order, so the answer is stable")
+	assert.Equal(t, "a", col.First().Name(), "name order, so the answer is stable")
 
 	col.Meta().Set("k", "v")
 	col.Meta().Set("s", 1.0)

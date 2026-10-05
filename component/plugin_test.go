@@ -48,8 +48,8 @@ func TestComponent_Plugin(t *testing.T) {
 		}), 0.0001)
 		assert.True(t, c.Meta().ValueIs("plugin/price/version", "v1.2.4"))
 		assert.True(t, c.Meta().ValueIs("plugin/price/threshold", 105.54))
-		assert.True(t, c.PluginRegistered("PricePlugin"))
-		assert.False(t, c.PluginRegistered("nope"))
+		assert.True(t, c.HasPlugin("PricePlugin"))
+		assert.False(t, c.HasPlugin("nope"))
 	})
 
 	t.Run("plugins can be registered only once", func(t *testing.T) {

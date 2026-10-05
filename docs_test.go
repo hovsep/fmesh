@@ -187,6 +187,9 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		"AsOrDefault", "FirstAsOrDefault", "AsFloat64OrDefault",
 		"OnActivation", "OnSuccess", "OnError", "OnPanic", "OnWaitingForInputs",
 		"WithConfig",
+		"AnyMatch", "FindAny", "ActivationError", "ActivationErrors", "AddActivationError",
+		"SetActivationCode", "ActivationErrorWithComponentName", "IsWaitingForInput",
+		"WantsToKeepInputs", "ValidateBeforeAddingToMesh", "PluginRegistered",
 	}
 	banned := make(map[string]bool, len(removed))
 	for _, name := range removed {

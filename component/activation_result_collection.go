@@ -7,7 +7,7 @@ import (
 )
 
 // ActivationResultCollection is a collection of activation results.
-// Thread-safe for concurrent access during activation. ForEach and FindAny walk a
+// Thread-safe for concurrent access during activation. ForEach and Find walk a
 // component-name-ordered snapshot, so their callbacks run without the lock held.
 // The order-independent queries (Any, Every, Count, Filter and the Has* methods)
 // read under the lock and must not change the collection from their predicate.
@@ -158,8 +158,8 @@ func (c *ActivationResultCollection) Clear() *ActivationResultCollection {
 	return c
 }
 
-// FindAny returns the first activation result matching the predicate, in component-name order, or nil.
-func (c *ActivationResultCollection) FindAny(predicate ResultPredicate) *ActivationResult {
+// Find returns the first activation result matching the predicate, in component-name order, or nil.
+func (c *ActivationResultCollection) Find(predicate ResultPredicate) *ActivationResult {
 	for _, ar := range c.AllOrdered() {
 		if predicate(ar) {
 			return ar

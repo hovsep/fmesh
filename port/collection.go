@@ -56,7 +56,7 @@ func (c *Collection) ByNames(names ...string) *Collection {
 
 // AnyHasSignals returns true if at least one port in collection has signals.
 func (c *Collection) AnyHasSignals() bool {
-	return c.AnyMatch(func(p *Port) bool {
+	return c.Any(func(p *Port) bool {
 		return p.HasSignals()
 	})
 }
@@ -116,17 +116,6 @@ func (c *Collection) Signals() *signal.Group {
 		signals = append(signals, p.Signals().All()...)
 	}
 	return signal.NewGroup().With(signals...)
-}
-
-// Any returns the first port in the collection by name order.
-// Returns nil if the collection is empty.
-// The name says "any" because callers should not depend on which one they get;
-// it is nonetheless stable across runs, like every traversal here.
-func (c *Collection) Any() *Port {
-	for p := range c.Each {
-		return p
-	}
-	return nil
 }
 
 // Filter returns a new collection containing only ports that match the predicate.

@@ -103,7 +103,7 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
 ## Plugins
 
 Two levels, same shape: `Name() string` + `Init(T) error`, registered with a `WithPlugins(...)`
-option, queried with `PluginRegistered(name)`. A duplicate name is a construction error. A plugin is
+option, queried with `HasPlugin(name)`. A duplicate name is a construction error. A plugin is
 just an initialization bundle — usually it registers hooks.
 
 **Plugins are for behavior, not views.** Something that only reads a mesh (an exporter, a report)
@@ -113,8 +113,8 @@ something a plugin only when it must take part in the run.
 
 | Level | Interface | Registration | `Init` receives | Query |
 |---|---|---|---|---|
-| Component | `component.Plugin` | `component.WithPlugins(...)` | `*Component` | `c.PluginRegistered(name)` |
-| Mesh | `fmesh.Plugin` | `fmesh.WithPlugins(...)` | `*FMesh` | `fm.PluginRegistered(name)` |
+| Component | `component.Plugin` | `component.WithPlugins(...)` | `*Component` | `c.HasPlugin(name)` |
+| Mesh | `fmesh.Plugin` | `fmesh.WithPlugins(...)` | `*FMesh` | `fm.HasPlugin(name)` |
 
 - Storage, the duplicate check and init order are shared: both levels hold an
   `internal/plugin.Registry[T]` and call its `InitAll`. Only the public interfaces and the

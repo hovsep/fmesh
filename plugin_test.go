@@ -18,7 +18,7 @@ func TestFMesh_Plugin(t *testing.T) {
 		fm, err := New("fm1", WithPlugins(counter))
 		require.NoError(t, err)
 		require.NotNil(t, fm)
-		assert.True(t, fm.PluginRegistered("activationCounter"))
+		assert.True(t, fm.HasPlugin("activationCounter"))
 		assert.True(t, fm.Meta().ValueIs("plugin/counter/version", "v1"))
 
 		// The plugin instruments whatever arrives, not what was there when it was

@@ -331,69 +331,47 @@ func TestActivationResultCollection_Remove(t *testing.T) {
 	})
 }
 
-func TestActivationResult_ActivationErrorWithComponentName(t *testing.T) {
-	err := errors.New("activation failed")
-	r := NewActivationResult("my-component").AddActivationError(err)
-
-	t.Run("returns error with component name", func(t *testing.T) {
-		wrappedErr := r.ActivationErrorWithComponentName()
-		require.Error(t, wrappedErr)
-		assert.Contains(t, wrappedErr.Error(), "my-component")
-		assert.Contains(t, wrappedErr.Error(), "activation failed")
-	})
-
-	t.Run("keeps the original error in the chain", func(t *testing.T) {
-		assert.ErrorIs(t, r.ActivationErrorWithComponentName(), err)
-	})
-
-	t.Run("nil without activation errors", func(t *testing.T) {
-		// Wrapping a nil error rendered "%!w(<nil>)" and turned success into a non-nil error.
-		r := NewActivationResult("comp")
-		assert.NoError(t, r.ActivationErrorWithComponentName())
-	})
-}
-
-func TestActivationResult_IsWaitingForInput(t *testing.T) {
+func TestActivationResult_IsWaiting(t *testing.T) {
 	t.Run("is waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsClear)
-		assert.True(t, IsWaitingForInput(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsClear)
+		assert.True(t, r.IsWaiting())
 	})
 
 	t.Run("is waiting and keeping inputs", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsKeep)
-		assert.True(t, IsWaitingForInput(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsKeep)
+		assert.True(t, r.IsWaiting())
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeOK)
-		assert.False(t, IsWaitingForInput(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeOK)
+		assert.False(t, r.IsWaiting())
 	})
 }
 
-func TestActivationResult_WantsToKeepInputs(t *testing.T) {
+func TestActivationResult_KeepsInputs(t *testing.T) {
 	t.Run("wants to keep", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsKeep)
-		assert.True(t, WantsToKeepInputs(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsKeep)
+		assert.True(t, r.KeepsInputs())
 	})
 
 	t.Run("does not want to keep", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeWaitingForInputsClear)
-		assert.False(t, WantsToKeepInputs(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeWaitingForInputsClear)
+		assert.False(t, r.KeepsInputs())
 	})
 
 	t.Run("not waiting", func(t *testing.T) {
-		r := NewActivationResult("c").SetActivationCode(ActivationCodeOK)
-		assert.False(t, WantsToKeepInputs(r))
+		r := NewActivationResult("c").SetCode(ActivationCodeOK)
+		assert.False(t, r.KeepsInputs())
 	})
 }
 
-func TestActivationResultCollection_FindAny(t *testing.T) {
+func TestActivationResultCollection_Find(t *testing.T) {
 	r1 := NewActivationResult("c1").SetActivated(true)
 	r2 := NewActivationResult("c2").SetActivated(false)
 
 	t.Run("one found", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r1, r2)
-		result := collection.FindAny(func(r *ActivationResult) bool {
+		result := collection.Find(func(r *ActivationResult) bool {
 			return r.Activated()
 		})
 		assert.Equal(t, "c1", result.ComponentName())
@@ -401,7 +379,7 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 
 	t.Run("none match", func(t *testing.T) {
 		collection := NewActivationResultCollection().Add(r2)
-		result := collection.FindAny(func(r *ActivationResult) bool {
+		result := collection.Find(func(r *ActivationResult) bool {
 			return r.ComponentName() == "c3"
 		})
 		assert.Nil(t, result)
@@ -409,7 +387,7 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 
 	t.Run("empty collection returns nil", func(t *testing.T) {
 		collection := NewActivationResultCollection()
-		result := collection.FindAny(func(r *ActivationResult) bool {
+		result := collection.Find(func(r *ActivationResult) bool {
 			return true
 		})
 		assert.Nil(t, result)
@@ -419,7 +397,7 @@ func TestActivationResultCollection_FindAny(t *testing.T) {
 		// Ranging over the map returned a different match on identical calls.
 		collection, names := newNamedResultCollection()
 		for range 10 {
-			result := collection.FindAny(func(*ActivationResult) bool { return true })
+			result := collection.Find(func(*ActivationResult) bool { return true })
 			require.NotNil(t, result)
 			assert.Equal(t, names[0], result.ComponentName())
 		}
@@ -471,27 +449,27 @@ func TestActivationResult_WithActivationError_Accumulates(t *testing.T) {
 	err3 := errors.New("third error")
 
 	t.Run("single error", func(t *testing.T) {
-		r := NewActivationResult("c").AddActivationError(err1)
-		assert.Len(t, r.ActivationErrors(), 1)
-		require.Error(t, r.ActivationError())
-		assert.ErrorIs(t, r.ActivationError(), err1)
+		r := NewActivationResult("c").AddError(err1)
+		assert.Len(t, r.Errors(), 1)
+		require.Error(t, r.Err())
+		assert.ErrorIs(t, r.Err(), err1)
 	})
 
 	t.Run("multiple errors accumulate", func(t *testing.T) {
 		r := NewActivationResult("c").
-			AddActivationError(err1).
-			AddActivationError(err2).
-			AddActivationError(err3)
-		assert.Len(t, r.ActivationErrors(), 3)
-		require.ErrorIs(t, r.ActivationError(), err1)
-		require.ErrorIs(t, r.ActivationError(), err2)
-		assert.ErrorIs(t, r.ActivationError(), err3)
+			AddError(err1).
+			AddError(err2).
+			AddError(err3)
+		assert.Len(t, r.Errors(), 3)
+		require.ErrorIs(t, r.Err(), err1)
+		require.ErrorIs(t, r.Err(), err2)
+		assert.ErrorIs(t, r.Err(), err3)
 	})
 
 	t.Run("no errors returns nil", func(t *testing.T) {
 		r := NewActivationResult("c")
-		assert.Empty(t, r.ActivationErrors())
-		require.NoError(t, r.ActivationError())
+		assert.Empty(t, r.Errors())
+		require.NoError(t, r.Err())
 	})
 }
 

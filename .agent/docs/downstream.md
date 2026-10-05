@@ -13,7 +13,7 @@ evidence that a public symbol is unused.** Two sibling repos use the public API:
 Static analysis of this repo cannot see these callers:
 - `gopls references` may show a method used only by its own unit test while downstream depends on it.
 - Grepping the sibling repos for `package.Symbol` is **not** enough. It finds
-  `component.WithIndexedInputs` but misses method calls like `.FindAny(...)`, which are most of
+  `component.WithIndexedInputs` but misses method calls like `.Find(...)`, which are most of
   what deletions remove.
 
 **The only reliable check is to compile them** (next section).

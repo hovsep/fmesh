@@ -60,7 +60,7 @@ func (d *livelockDetector) detect(lastCycle *cycle.Cycle) bool {
 		return false
 	}
 
-	allKeeping := lastCycle.HasActivatedComponents() && lastCycle.ActivationResults().Every(component.WantsToKeepInputs)
+	allKeeping := lastCycle.HasActivatedComponents() && lastCycle.ActivationResults().Every((*component.ActivationResult).KeepsInputs)
 	if allKeeping && d.countPendingSignals() == d.pendingSignals {
 		d.stalledCycles++
 	} else {

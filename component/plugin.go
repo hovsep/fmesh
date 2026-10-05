@@ -20,8 +20,8 @@ func WithPlugins(plugins ...Plugin) Option {
 	}
 }
 
-// PluginRegistered returns true if the plugin is registered.
-func (c *Component) PluginRegistered(name string) bool {
+// HasPlugin reports whether a plugin with that name is registered.
+func (c *Component) HasPlugin(name string) bool {
 	return c.plugins.Has(name)
 }
 

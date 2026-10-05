@@ -67,7 +67,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
-				SetActivationCode(ActivationCodeNoInput),
+				SetCode(ActivationCodeNoInput),
 		},
 		{
 			name: "activated with error",
@@ -84,8 +84,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
-				SetActivationCode(ActivationCodeReturnedError).
-				AddActivationError(errors.New("component returned an error: test error")),
+				SetCode(ActivationCodeReturnedError).
+				AddError(errors.New("component returned an error: test error")),
 		},
 		{
 			name: "activated without error",
@@ -103,7 +103,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
-				SetActivationCode(ActivationCodeOK),
+				SetCode(ActivationCodeOK),
 		},
 		{
 			name: "component panicked with error",
@@ -121,8 +121,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
-				SetActivationCode(ActivationCodePanicked).
-				AddActivationError(errors.New("panicked: oh shrimps")),
+				SetCode(ActivationCodePanicked).
+				AddError(errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component panicked with string",
@@ -140,8 +140,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
-				SetActivationCode(ActivationCodePanicked).
-				AddActivationError(errors.New("panicked: oh shrimps")),
+				SetCode(ActivationCodePanicked).
+				AddError(errors.New("panicked: oh shrimps")),
 		},
 		{
 			name: "component is waiting for inputs",
@@ -207,7 +207,7 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(false).
-				SetActivationCode(ActivationCodeNoInput),
+				SetCode(ActivationCodeNoInput),
 			loggerAssertions: func(t *testing.T, output []byte) {
 				assert.Empty(t, output)
 			},
@@ -228,8 +228,8 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			},
 			wantActivationResult: NewActivationResult("c1").
 				SetActivated(true).
-				SetActivationCode(ActivationCodeReturnedError).
-				AddActivationError(errors.New("component returned an error: test error")),
+				SetCode(ActivationCodeReturnedError).
+				AddError(errors.New("component returned an error: test error")),
 			loggerAssertions: func(t *testing.T, output []byte) {
 				assert.NotEmpty(t, output)
 				assert.Contains(t, string(output), "c1: This line must be logged")
@@ -249,11 +249,11 @@ func TestComponent_MaybeActivate(t *testing.T) {
 			assert.Equal(t, tt.wantActivationResult.Code(), gotActivationResult.Code())
 			switch {
 			case tt.wantActivationResult.IsError():
-				require.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
+				require.EqualError(t, gotActivationResult.Err(), tt.wantActivationResult.Err().Error())
 			case tt.wantActivationResult.IsPanic():
 				// Panics used to land in the else branch below, so the expected
 				// message was never compared with anything.
-				require.EqualError(t, gotActivationResult.ActivationError(), tt.wantActivationResult.ActivationError().Error())
+				require.EqualError(t, gotActivationResult.Err(), tt.wantActivationResult.Err().Error())
 			default:
 				assert.False(t, gotActivationResult.IsError())
 				assert.False(t, gotActivationResult.IsPanic())
@@ -284,9 +284,9 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 
 		assert.Equal(t, ActivationCodeHookFailed, result.Code())
 		assert.True(t, result.Activated(), "activated so the drain clears its inputs")
-		require.Error(t, result.ActivationError())
-		require.ErrorContains(t, result.ActivationError(), "before hook error")
-		assert.Len(t, result.ActivationErrors(), 1)
+		require.Error(t, result.Err())
+		require.ErrorContains(t, result.Err(), "before hook error")
+		assert.Len(t, result.Errors(), 1)
 	})
 
 	t.Run("afterActivation hook fails after an error: both errors accumulated", func(t *testing.T) {
@@ -307,9 +307,9 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		result := c.MaybeActivate(context.Background())
 
 		assert.Equal(t, ActivationCodeHookFailed, result.Code())
-		assert.Len(t, result.ActivationErrors(), 2)
-		require.ErrorContains(t, result.ActivationError(), "component error")
-		assert.ErrorContains(t, result.ActivationError(), "afterActivation hook error")
+		assert.Len(t, result.Errors(), 2)
+		require.ErrorContains(t, result.Err(), "component error")
+		assert.ErrorContains(t, result.Err(), "afterActivation hook error")
 	})
 
 	t.Run("afterActivation hook fails: ActivationCodeHookFailed, error accumulated", func(t *testing.T) {
@@ -328,9 +328,9 @@ func TestComponent_MaybeActivate_HookFailures(t *testing.T) {
 		result := c.MaybeActivate(context.Background())
 
 		assert.Equal(t, ActivationCodeHookFailed, result.Code())
-		require.Error(t, result.ActivationError())
-		require.ErrorContains(t, result.ActivationError(), "afterActivation hook error")
-		assert.Len(t, result.ActivationErrors(), 1)
+		require.Error(t, result.Err())
+		require.ErrorContains(t, result.Err(), "afterActivation hook error")
+		assert.Len(t, result.Errors(), 1)
 	})
 }
 
@@ -401,10 +401,10 @@ func TestComponent_MaybeActivate_HookPanics(t *testing.T) {
 			assert.Equal(t, 1, afterCalls, "AfterActivation must run exactly once")
 			assert.Equal(t, ActivationCodePanicked, result.Code())
 			assert.True(t, result.IsPanic())
-			assert.Len(t, result.ActivationErrors(), tt.wantErrs)
-			require.ErrorContains(t, result.ActivationError(), tt.wantStage)
+			assert.Len(t, result.Errors(), tt.wantErrs)
+			require.ErrorContains(t, result.Err(), tt.wantStage)
 			var panicErr *PanicError
-			require.ErrorAs(t, result.ActivationError(), &panicErr)
+			require.ErrorAs(t, result.Err(), &panicErr)
 			assert.NotEmpty(t, panicErr.Stack)
 		})
 	}
@@ -535,7 +535,7 @@ func TestComponent_WithRetry(t *testing.T) {
 
 			assert.Equal(t, tt.wantCalls, calls)
 			assert.Equal(t, tt.wantCode, result.Code())
-			assert.Len(t, result.ActivationErrors(), tt.wantErrs)
+			assert.Len(t, result.Errors(), tt.wantErrs)
 			assert.Equal(t, 1, before, "BeforeActivation fires once per activation")
 			assert.Equal(t, 1, after, "AfterActivation fires once per activation")
 			if tt.wantOut != nil {
@@ -553,9 +553,9 @@ func TestComponent_WithRetry(t *testing.T) {
 
 		result := c.MaybeActivate(context.Background())
 
-		require.ErrorIs(t, result.ActivationError(), errBoom)
-		require.ErrorContains(t, result.ActivationError(), "attempt 1 of 2: boom")
-		assert.ErrorContains(t, result.ActivationError(), "attempt 2 of 2: boom")
+		require.ErrorIs(t, result.Err(), errBoom)
+		require.ErrorContains(t, result.Err(), "attempt 1 of 2: boom")
+		assert.ErrorContains(t, result.Err(), "attempt 2 of 2: boom")
 	})
 
 	t.Run("outputs from before the activation survive a retry", func(t *testing.T) {
@@ -631,9 +631,9 @@ func TestComponent_WithRetry(t *testing.T) {
 
 		result := c.MaybeActivate(context.Background())
 
-		require.ErrorIs(t, result.ActivationError(), errBoom)
+		require.ErrorIs(t, result.Err(), errBoom)
 		var panicErr *PanicError
-		assert.ErrorAs(t, result.ActivationError(), &panicErr)
+		assert.ErrorAs(t, result.Err(), &panicErr)
 	})
 
 	t.Run("rejects fewer than one attempt", func(t *testing.T) {
@@ -678,7 +678,7 @@ func TestComponent_WithRetryIf(t *testing.T) {
 
 		assert.Equal(t, 3, runs)
 		assert.Equal(t, ActivationCodeReturnedError, result.Code())
-		assert.Len(t, result.ActivationErrors(), 3)
+		assert.Len(t, result.Errors(), 3)
 		require.Len(t, calls, 2)
 		assert.Equal(t, 1, calls[0].attempt)
 		require.EqualError(t, calls[0].err, "fail 1")
@@ -694,7 +694,7 @@ func TestComponent_WithRetryIf(t *testing.T) {
 		assert.Equal(t, 2, runs)
 		assert.Len(t, calls, 2)
 		assert.Equal(t, ActivationCodeReturnedError, result.Code())
-		assert.Len(t, result.ActivationErrors(), 2, "one error per attempt made")
+		assert.Len(t, result.Errors(), 2, "one error per attempt made")
 	})
 
 	t.Run("not called after a success", func(t *testing.T) {
@@ -735,7 +735,7 @@ func TestComponent_WithRetryIf(t *testing.T) {
 		result, calls := activate(t, ctx, 3, failing(&runs), always)
 
 		assert.Equal(t, 1, runs)
-		assert.Len(t, result.ActivationErrors(), 1)
+		assert.Len(t, result.Errors(), 1)
 		assert.Empty(t, calls)
 	})
 
@@ -779,7 +779,7 @@ func TestComponent_WithRetryIf(t *testing.T) {
 			assert.Equal(t, 3, runs)
 			assert.Len(t, calls, 3)
 			assert.Equal(t, ActivationCodeReturnedError, result.Code())
-			assert.Len(t, result.ActivationErrors(), 3)
+			assert.Len(t, result.Errors(), 3)
 		})
 	})
 

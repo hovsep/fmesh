@@ -103,7 +103,7 @@ func WithMeta[T meta.Value](key string, value T) Option {
 // added.
 func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	for _, c := range components {
-		if err := c.ValidateBeforeAddingToMesh(); err != nil {
+		if err := c.Validate(); err != nil {
 			return fmt.Errorf("failed to add component %q: %w", c.Name(), err)
 		}
 	}

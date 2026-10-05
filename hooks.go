@@ -53,8 +53,8 @@ func logActivationResultsInDebug(_ context.Context, cc *CycleContext) error {
 	}
 	_ = cc.Cycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
 		fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
-			ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.ActivationError())
-		if panicErr, ok := errors.AsType[*component.PanicError](ar.ActivationError()); ok {
+			ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.Err())
+		if panicErr, ok := errors.AsType[*component.PanicError](ar.Err()); ok {
 			fm.LogDebug("stack trace for component %s:\n%s", ar.ComponentName(), panicErr.StackTrace())
 		}
 		return nil
