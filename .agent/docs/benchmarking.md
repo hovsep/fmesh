@@ -108,7 +108,7 @@ Mesh-scale gotchas:
 
 ## When to add one
 
-Add or extend a benchmark when a change touches a hot path — the run loop (`fmesh.go`
+Add or extend a benchmark when a change touches a hot path — the run loop (`run.go`
 `runCycle`/`drainComponents`), the port drain/flush path, or any CoW method on
 `signal.Signal`/`signal.Group` — especially if it could add an allocation or a copy.
 

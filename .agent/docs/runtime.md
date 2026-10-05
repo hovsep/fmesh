@@ -1,7 +1,7 @@
 # Runtime — execution model
 
-How a mesh runs. Source: `fmesh.go` (`Run`, `runCycle`, `mustStop`, `drainComponents`),
-`component/activation.go`, `component/activation_result.go`.
+How a mesh runs. Source: `run.go` (`Run`, `runCycle`, `drainComponents`), `stop.go` (`mustStop`),
+`livelock.go`, `component/activation.go`, `component/activation_result.go`.
 
 ## Run loop
 
