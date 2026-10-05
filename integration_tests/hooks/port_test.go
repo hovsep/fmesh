@@ -257,7 +257,7 @@ func TestPortHooks_FailuresDuringTheDrainFailTheRun(t *testing.T) {
 		_, err := fm.Run(context.Background())
 
 		require.ErrorIs(t, err, fmesh.ErrFailedToDrain)
-		require.ErrorContains(t, err, `failed to clear input ports: component "producer"`)
+		require.ErrorContains(t, err, `failed to clear input ports: component "producer": failed to clear input port "in"`)
 	})
 
 	t.Run("a refusing OnSignalsAdded on the destination", func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestPortHooks_FailuresDuringTheDrainFailTheRun(t *testing.T) {
 
 		ri, err := fm.Run(context.Background())
 
-		require.ErrorContains(t, err, "onClear hook failed")
+		require.ErrorContains(t, err, `failed to clear outputs of component "producer": failed to clear output port "out": onClear hook failed`)
 		assert.Nil(t, ri, "no run started, so no runtime info")
 	})
 }
