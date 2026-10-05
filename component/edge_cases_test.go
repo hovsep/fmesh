@@ -16,7 +16,7 @@ func TestNew_OnCreationHookFailureFailsConstruction(t *testing.T) {
 	_, err := New("c", WithHooks(func(h *Hooks) {
 		h.OnCreation(func(context.Context, *Component) error { return errors.New("not today") })
 	}))
-	require.ErrorContains(t, err, "on creation hook failed")
+	require.ErrorContains(t, err, "onCreation hook failed")
 	require.ErrorContains(t, err, "not today")
 }
 

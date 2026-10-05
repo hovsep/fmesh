@@ -172,14 +172,20 @@ func (c *Component) FlushOutputs(ctx context.Context) error {
 // ClearInputs clears all input ports.
 func (c *Component) ClearInputs(ctx context.Context) error {
 	return c.Inputs().ForEach(func(p *port.Port) error {
-		return p.Clear(ctx)
+		if err := p.Clear(ctx); err != nil {
+			return fmt.Errorf("failed to clear input port %q: %w", p.Name(), err)
+		}
+		return nil
 	})
 }
 
 // ClearOutputs clears all output ports.
 func (c *Component) ClearOutputs(ctx context.Context) error {
 	return c.Outputs().ForEach(func(p *port.Port) error {
-		return p.Clear(ctx)
+		if err := p.Clear(ctx); err != nil {
+			return fmt.Errorf("failed to clear output port %q: %w", p.Name(), err)
+		}
+		return nil
 	})
 }
 

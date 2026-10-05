@@ -52,8 +52,8 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
   `BeforeActivation` and `AfterActivation` fire once around them. The output reset between
   attempts goes through `Port.Clear` / `PutSignalGroups` on purpose, so the port's `OnClear` and
   `OnSignalsAdded` hooks do fire for each changed output port. That is documented, not a bug.
-- **Hook panics are recovered.** Hooks run on the activation goroutine, where an escaped panic
-  would kill the process. Each stage (`BeforeActivation`, the function, `AfterActivation`)
+- **Hook panics are recovered.** Activation hooks run on the activation goroutine, where an
+  escaped panic would kill the process. Each stage (`BeforeActivation`, the function, `AfterActivation`)
   recovers its own panic, so no stage re-runs. A panicking hook re-codes the result to
   `ActivationCodePanicked` with a `*component.PanicError` (so `StopOnFirstPanic` stops on it).
 - **A failing hook poisons the result**: it is re-coded to `ActivationCodeHookFailed` with the hook
@@ -67,8 +67,14 @@ through a pipe during the drain, and `context.Background()` when a caller puts t
 ## Other semantics
 
 - A failing `BeforeCycle`/`AfterCycle` hook aborts the run (wrapped inline:
-  `failed to run cycle: beforeCycle hook failed: …`). A failing `OnComponentAdded` hook fails
-  `AddComponents`.
+  `failed to run cycle: beforeCycle hook failed: …`). A failing `BeforeCycle` skips that cycle's
+  `AfterCycle`; `AfterRun` still runs. A failing `OnComponentAdded` hook fails `AddComponents`
+  but leaves every component added, and the components after it never reach the hook.
+- **Only the activation goroutine recovers panics.** Mesh hooks, and port hooks fired from the
+  drain or from a caller's own `PutSignals`/`PipeTo`/`Clear`, run on the caller's goroutine and
+  their panics propagate out of `Run` (or `AddComponents`, `PipeTo`, ...). The same port hook
+  therefore panics out of `Run` from the drain but becomes a `Panicked` result when the component
+  itself puts the signals during activation.
 - The mesh registers **two default hooks**. Do not clear either group without re-adding the
   equivalent:
   - a `BeforeRun` hook that validates mesh structure on every run (empty mesh →

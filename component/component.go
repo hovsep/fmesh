@@ -59,7 +59,7 @@ func New(name string, opts ...Option) (*Component, error) {
 
 	// Construction happens outside any run, so there is no run context to inherit.
 	if err := c.hooks.onCreation.Trigger(context.Background(), c); err != nil {
-		return nil, fmt.Errorf("component %q on creation hook failed: %w", name, err)
+		return nil, fmt.Errorf("onCreation hook failed for component %q: %w", name, err)
 	}
 
 	return c, nil

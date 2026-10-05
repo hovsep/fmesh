@@ -257,7 +257,10 @@ func (fm *FMesh) clearInputs(ctx context.Context, components []*component.Compon
 func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 	// Clear all output ports to prevent signal accumulation between runs
 	if err := fm.Components().ForEach(func(c *component.Component) error {
-		return c.ClearOutputs(ctx)
+		if err := c.ClearOutputs(ctx); err != nil {
+			return fmt.Errorf("failed to clear outputs of component %q: %w", c.Name(), err)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
