@@ -55,8 +55,8 @@ type Hooks struct {
 func newHooks() *Hooks {
 	return &Hooks{
 		onSignalsAdded:     hook.NewGroup[*SignalsAddedContext](),
-		onSignalsDelivered: hook.NewObserverGroup[*SignalsDeliveredContext](),
-		onClear:            hook.NewObserverGroup[*ClearContext](),
+		onSignalsDelivered: hook.NewGroup[*SignalsDeliveredContext](),
+		onClear:            hook.NewGroup[*ClearContext](),
 		onInboundPipe:      hook.NewGroup[*InboundPipeContext](),
 		onOutboundPipe:     hook.NewGroup[*OutboundPipeContext](),
 	}

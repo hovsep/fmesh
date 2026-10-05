@@ -211,7 +211,7 @@ func (p *Port) Clear(ctx context.Context) error {
 		return nil
 	}
 
-	if err := p.hooks.onClear.Trigger(ctx, &ClearContext{
+	if err := p.hooks.onClear.TriggerAll(ctx, &ClearContext{
 		Port:           p,
 		SignalsCleared: signalsCleared,
 	}); err != nil {
@@ -255,7 +255,7 @@ func (p *Port) Flush(ctx context.Context) error {
 		}
 
 		if notifyDelivery {
-			if err := p.hooks.onSignalsDelivered.Trigger(ctx, &SignalsDeliveredContext{
+			if err := p.hooks.onSignalsDelivered.TriggerAll(ctx, &SignalsDeliveredContext{
 				SourcePort:       p,
 				DestinationPort:  outboundPort,
 				SignalsDelivered: signals,

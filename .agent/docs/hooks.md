@@ -7,15 +7,18 @@ Source: `hooks.go`, `component/hooks.go`, `component/activation.go`, `port/hooks
 ## The hook primitive
 
 `hook.Group[T]` in `internal/hook` (not public API) is an ordered slice of
-`func(context.Context, T) error`. `Trigger(ctx, arg)` runs them in insertion order. Two kinds:
+`func(context.Context, T) error`, run in insertion order by one of two methods:
 
-- `NewGroup` is **fail-fast** on the first error. For hooks that run before an action and can stop
-  it: `BeforeRun`, `BeforeCycle`, `BeforeActivation`, `OnCreation`, `OnSignalsAdded`, the pipe
-  hooks.
-- `NewObserverGroup` runs **every** hook and joins their errors. For hooks that observe something
-  already done: `AfterRun`, `AfterCycle`, `AfterActivation`, `OnComponentAdded`,
+- `Trigger(ctx, arg)` is **fail-fast** on the first error. For hooks that run before an action and
+  can stop it: `BeforeRun`, `BeforeCycle`, `BeforeActivation`, `OnCreation`, `OnSignalsAdded`, the
+  pipe hooks.
+- `TriggerAll(ctx, arg)` runs **every** hook and joins their errors. For hooks that observe
+  something already done: `AfterRun`, `AfterCycle`, `AfterActivation`, `OnComponentAdded`,
   `OnSignalsDelivered`, `OnClear`. One failing observer must not hide the event from the others
   (a plugin flushing in `AfterRun`, autowire in `OnComponentAdded`).
+
+The choice is made at the call site rather than stored on the group: a flag field would grow every
+port's five groups and every component's three.
 
 Each `After` hook runs even when its `Before` hook failed: `AfterRun`, `AfterCycle` and
 `AfterActivation` are `finally` blocks.

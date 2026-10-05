@@ -128,7 +128,7 @@ func (fm *FMesh) AddComponents(components ...*component.Component) error {
 	var hookErrs []error
 	for _, c := range components {
 		// Components are added outside a run, so there is no run context yet.
-		if err := fm.hooks.onComponentAdded.Trigger(context.Background(), &ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
+		if err := fm.hooks.onComponentAdded.TriggerAll(context.Background(), &ComponentAddedContext{FMesh: fm, Component: c}); err != nil {
 			hookErrs = append(hookErrs, fmt.Errorf("onComponentAdded hook failed for component %q: %w", c.Name(), err))
 		}
 	}
@@ -162,7 +162,7 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 	// AfterCycle runs however the cycle ends, like AfterRun and AfterActivation,
 	// so a hook that pairs with BeforeCycle always sees the end of its cycle.
 	defer func() {
-		if hookErr := fm.hooks.afterCycle.Trigger(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); hookErr != nil {
+		if hookErr := fm.hooks.afterCycle.TriggerAll(ctx, &CycleContext{FMesh: fm, Cycle: newCycle}); hookErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed to run cycle: afterCycle hook failed: %w", hookErr))
 		}
 	}()
@@ -433,7 +433,7 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 
 	defer func() {
 		fm.runtimeInfo.markStopped()
-		if err := fm.hooks.afterRun.Trigger(callerCtx, fm); err != nil {
+		if err := fm.hooks.afterRun.TriggerAll(callerCtx, fm); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("afterRun hook failed: %w", err))
 		}
 	}()
