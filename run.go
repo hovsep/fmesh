@@ -88,7 +88,7 @@ func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
 		}
 	}
 
-	fm.runtimeInfo = newRuntimeInfo(fm.config.CyclesHistoryLimit)
+	// New and the end of every Run leave a fresh runtime info behind.
 	fm.runtimeInfo.markStarted()
 
 	fm.livelock = newLivelockDetector(fm.components, fm.config.LivelockThreshold)

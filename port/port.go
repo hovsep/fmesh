@@ -280,7 +280,7 @@ func (p *Port) PipeTo(destPorts ...*Port) error {
 		p.pipes.add(destPort)
 
 		if err := p.triggerPipeHooks(destPort); err != nil {
-			p.pipes.setPorts(slices.Delete(slices.Clone(p.pipes.raw()), index, index+1))
+			p.pipes.setPorts(slices.Delete(p.pipes.raw(), index, index+1))
 			return err
 		}
 	}
