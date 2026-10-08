@@ -71,8 +71,13 @@ whole by `NewActivationResult(name, code, errs...)`, and `Activated()` is derive
 
 ## Collection/group operations
 
-Every group and collection has `Len`, `IsEmpty`, `First()`, `Find(p)`, `Any(p)`, `Every(p)`,
-`Count(p)`, `Filter(p)` and `ForEach`; groups add `Last()`. The names mean the same on every type;
+Every group and collection has `All()`, `Len`, `IsEmpty`, `First()`, `Find(p)`, `Any(p)`,
+`Every(p)`, `Count(p)` and `Filter(p)`; groups add `Last()`.
+
+`All()` returns an `iter.Seq[T]`, the Go convention for a collection's iterator, and is the only
+traversal: there is no `ForEach` callback form, because a range loop handles `break`, `continue`
+and an early `return err` without one. It allocates nothing; `slices.Collect(x.All())` gives a
+slice. Other iterators are named for the sequence they walk (`signal.Group.Payloads()`). The names mean the same on every type;
 keyed collections (`port.Collection`, `component.Collection`) traverse in name order, so their
 `First()` is the first by name.
 
@@ -83,8 +88,7 @@ The other containers hold live, mutable entities: "mapping" one is an in-place l
 ## Error returns
 
 Fallible methods return `error` last. Truly infallible ones (`Filter`, `Map`, `signal.Signal`
-builders) keep their fluent return type. `ForEach` on every collection type returns `error` (stops
-on the first).
+builders) keep their fluent return type.
 
 ## Predicates
 

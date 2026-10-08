@@ -37,7 +37,7 @@ func (c *Collection) Remove(names ...string) *Collection {
 // Filter returns a new collection with components that match the predicate.
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	matched := make([]*Component, 0, c.Len())
-	for comp := range c.Each {
+	for comp := range c.All() {
 		if predicate(comp) {
 			matched = append(matched, comp)
 		}

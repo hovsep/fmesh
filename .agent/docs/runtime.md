@@ -115,7 +115,7 @@ strategy.
 ## Drain (`drainComponents`)
 
 Runs after every non-final cycle, over activated components in **name order**
-(`Collection.AllOrdered`), so fan-in order is deterministic. Two passes, which cannot be merged
+(`Collection.All`), so fan-in order is deterministic. Two passes, which cannot be merged
 (flushing delivers into downstream inputs, and a single pass would clear them):
 
 1. Clear the inputs of every activated component, except `WaitingForInputsKeep`.

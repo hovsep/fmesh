@@ -152,7 +152,12 @@ func (p *Port) PutSignals(signals ...*signal.Signal) error {
 // When the OnSignalsAdded hook fails, the port is restored to its previous state.
 func (p *Port) PutPayloads(payloads ...any) error {
 	p.mustExist()
-	return p.putSignals(context.Background(), signal.NewGroup(payloads...).All())
+	return p.putSignals(context.Background(), signalsOf(signal.NewGroup(payloads...)))
+}
+
+// signalsOf copies a group's signals into a slice sized in one allocation.
+func signalsOf(g *signal.Group) []*signal.Signal {
+	return slices.AppendSeq(make([]*signal.Signal, 0, g.Len()), g.All())
 }
 
 // putSignals adds signals to the port and triggers the OnSignalsAdded hook,
@@ -186,7 +191,7 @@ func (p *Port) PutSignalGroups(signalGroups ...*signal.Group) error {
 	p.mustExist()
 
 	for _, group := range signalGroups {
-		if err := p.PutSignals(group.All()...); err != nil {
+		if err := p.putSignals(context.Background(), signalsOf(group)); err != nil {
 			return err
 		}
 	}
@@ -229,7 +234,7 @@ func (p *Port) Flush(ctx context.Context) error {
 		return nil
 	}
 
-	signals := p.Signals().All()
+	signals := signalsOf(p.Signals())
 	// The hook context escapes to the heap whether or not anything reads it, so
 	// the common case of no hook must not reach the composite literal.
 	notifyDelivery := !p.hooks.onSignalsDelivered.IsEmpty()
@@ -323,17 +328,17 @@ func validatePipe(srcPort, dstPort *Port) error {
 // The same *Signal pointers are shared with the destination; payloads must be
 // treated as immutable because downstream components activate concurrently.
 func ForwardSignals(ctx context.Context, source, dest *Port) error {
-	return dest.putSignals(ctx, source.Signals().All())
+	return dest.putSignals(ctx, signalsOf(source.Signals()))
 }
 
 // ForwardWithFilter copies signals that pass filter function from source to dest port.
 func ForwardWithFilter(ctx context.Context, source, dest *Port, p signal.Predicate) error {
-	return dest.putSignals(ctx, source.Signals().Filter(p).All())
+	return dest.putSignals(ctx, signalsOf(source.Signals().Filter(p)))
 }
 
 // ForwardWithMap applies mapperFunc to each signal and copies it to the dest port.
 func ForwardWithMap(ctx context.Context, source, dest *Port, mapperFunc signal.Mapper) error {
-	return dest.putSignals(ctx, source.Signals().Map(mapperFunc).All())
+	return dest.putSignals(ctx, signalsOf(source.Signals().Map(mapperFunc)))
 }
 
 // ParentComponent returns the port's parent component.

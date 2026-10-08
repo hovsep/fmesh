@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/hovsep/fmesh/internal/collection"
@@ -123,13 +124,16 @@ func (g *Group) FirstAs[T any]() (T, error) {
 	return first.As[T]()
 }
 
-// AllPayloads returns a slice with all payloads of all signals in the group.
-func (g *Group) AllPayloads() []any {
-	all := make([]any, g.Len())
-	for i, sig := range g.raw() {
-		all[i] = sig.Payload()
+// Payloads returns an iterator over the payloads of the signals, in order.
+// Use slices.Collect(g.Payloads()) for a slice.
+func (g *Group) Payloads() iter.Seq[any] {
+	return func(yield func(any) bool) {
+		for _, sig := range g.raw() {
+			if !yield(sig.Payload()) {
+				return
+			}
+		}
 	}
-	return all
 }
 
 // With returns a new group with the given signals appended. The receiver is never modified.

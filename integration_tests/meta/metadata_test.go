@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ func Test_MetaOnSignals(t *testing.T) {
 		grp := signal.NewGroup(1, 2, 3).WithMetaOnEach("priority", 5.0)
 		assert.Equal(t, 3, grp.Len())
 
-		signals := grp.All()
+		signals := slices.Collect(grp.All())
 		for _, s := range signals {
 			v, err := s.Meta().Value[float64]("priority")
 			require.NoError(t, err)
@@ -36,7 +37,7 @@ func Test_MetaOnSignals(t *testing.T) {
 			WithMetaOnEach("humidity", 0.55).
 			WithoutMetaOnEach("humidity")
 
-		signals := grp.All()
+		signals := slices.Collect(grp.All())
 		for _, s := range signals {
 			assert.True(t, s.Meta().Has("temp"))
 			assert.False(t, s.Meta().Has("humidity"))
@@ -82,7 +83,7 @@ func Test_GroupOwnMeta(t *testing.T) {
 		assert.InDelta(t, 42.0, v, 1e-9)
 
 		// Elements have "temp" but not "batch_id"
-		signals := grp.All()
+		signals := slices.Collect(grp.All())
 		for _, s := range signals {
 			assert.True(t, s.Meta().Has("temp"))
 			assert.False(t, s.Meta().Has("batch_id"))
@@ -121,16 +122,17 @@ func Test_MetaFlowsThroughAMesh(t *testing.T) {
 				outPort := this.OutputByName("out")
 
 				// Process each signal and normalize its keys
-				err := inPort.Signals().ForEach(func(sig *signal.Signal) error {
+				for sig := range inPort.Signals().All() {
 					// Normalize keys to lowercase
 					newSignal := signal.New(sig.Payload())
 					for _, k := range sig.Meta().Keys() {
 						newSignal = newSignal.WithMeta(strings.ToLower(k), sig.Meta().ValueOrDefault(k, ""))
 					}
-					return outPort.PutSignals(newSignal)
-				})
-
-				return err
+					if err := outPort.PutSignals(newSignal); err != nil {
+						return err
+					}
+				}
+				return nil
 			}),
 		)
 

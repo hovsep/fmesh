@@ -193,6 +193,7 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		"SetActivated", "SetCode", "AddError", "RemoveOldest",
 		"PutSignalsOnEach", "PipeEachTo", "ContainsPayloadFunc", "Reduce", "Without",
 		"NewInputGroup", "NewOutputGroup",
+		"ForEach", "ForEachIf", "AllOrdered", "AllPayloads", "Each",
 	}
 	banned := make(map[string]bool, len(removed))
 	for _, name := range removed {
@@ -304,9 +305,9 @@ var docsExternalNames = map[string]bool{
 	"Errorf": true, "Printf": true, "Println": true, "Sprintf": true, // fmt / log
 	"HasPrefix": true, "ToLower": true, "ToUpper": true, // strings
 	"Now": true, "Since": true, "Format": true, "After": true, // time
-	"Is":    true,              // errors
-	"Itoa":  true,              // strconv
-	"Clone": true, "Min": true, // maps / slices
+	"Is":    true,                               // errors
+	"Itoa":  true,                               // strconv
+	"Clone": true, "Min": true, "Collect": true, // maps / slices
 	"Load": true,                                    // sync/atomic
 	"Exit": true, "Getenv": true, "WriteFile": true, // os
 	"NewRequestWithContext": true, // net/http

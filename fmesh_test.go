@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -774,7 +775,7 @@ func TestFMesh_Run(t *testing.T) {
 			}
 
 			require.Equal(t, len(tt.wantCycles), got.Cycles.Len(), "cycle count mismatch")
-			gotCycles := got.Cycles.All()
+			gotCycles := slices.Collect(got.Cycles.All())
 			for i, wantResults := range tt.wantCycles {
 				gotResults := gotCycles[i].ActivationResults()
 				assert.Equal(t, len(wantResults), gotResults.Len(), "cycle %d: activation result count mismatch", i+1)
@@ -877,7 +878,7 @@ func TestFMesh_runCycle(t *testing.T) {
 								return err
 							}
 
-							signals := signal.NewGroup(2, 3, 4, 5).All()
+							signals := slices.Collect(signal.NewGroup(2, 3, 4, 5).All())
 							return this.OutputByName("o2").PutSignals(signals...)
 						})),
 					mustNewComponent("c3",

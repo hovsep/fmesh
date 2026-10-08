@@ -77,34 +77,34 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify input ports (both simple and advanced)
-		inputs := processor.Inputs().All()
+		inputs := processor.Inputs()
 		require.NoError(t, err)
-		assert.Len(t, inputs, 4, "should have 4 input ports")
+		assert.Equal(t, 4, inputs.Len(), "should have 4 input ports")
 
 		// Simple port (created with AddInputs) has no description
-		rawData := inputs["raw_data"]
+		rawData := inputs.ByName("raw_data")
 		assert.NotNil(t, rawData)
 		assert.Empty(t, rawData.Description())
 
 		// Advanced port (created with AttachInputPorts) has description and metadata
-		config := inputs["config"]
+		config := inputs.ByName("config")
 		assert.NotNil(t, config)
 		assert.Equal(t, "Configuration parameters", config.Description())
 		assert.True(t, config.Meta().Has("required"))
 		assert.True(t, config.Meta().Has("type"))
 
 		// Verify output ports (both simple and advanced)
-		outputs := processor.Outputs().All()
+		outputs := processor.Outputs()
 		require.NoError(t, err)
-		assert.Len(t, outputs, 3, "should have 3 output ports")
+		assert.Equal(t, 3, outputs.Len(), "should have 3 output ports")
 
 		// Simple port has no description
-		processed := outputs["processed"]
+		processed := outputs.ByName("processed")
 		assert.NotNil(t, processed)
 		assert.Empty(t, processed.Description())
 
 		// Advanced port has description and metadata
-		errors := outputs["errors"]
+		errors := outputs.ByName("errors")
 		assert.NotNil(t, errors)
 		assert.Equal(t, "Error details if processing fails", errors.Description())
 		assert.True(t, errors.Meta().Has("severity"))
@@ -235,16 +235,12 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 				})
 
 				// Apply operation to all ports (add processing entry)
-				if err := inputs.ForEach(func(p *port.Port) error {
+				for p := range inputs.All() {
 					p.Meta().Set("checked", "true")
-					return nil
-				}); err != nil {
-					return err
 				}
 
-				highPriorityCount := highPriorityPorts.All()
 				summary := fmt.Sprintf("Total: %d, WithSignals: %d, HighPriority: %d",
-					inputs.Len(), portsWithSignals, len(highPriorityCount))
+					inputs.Len(), portsWithSignals, highPriorityPorts.Len())
 
 				return this.OutputByName("summary").PutSignals(signal.New(summary))
 			}),
@@ -268,9 +264,8 @@ func Test_PortCreationAndManipulation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Total: 5, WithSignals: 3, HighPriority: 1", summary.(string))
 
-		require.NoError(t, c.Inputs().ForEach(func(p *port.Port) error {
+		for p := range c.Inputs().All() {
 			assert.True(t, p.Meta().Has("checked"))
-			return nil
-		}))
+		}
 	})
 }

@@ -1,6 +1,8 @@
 package port
 
 import (
+	"slices"
+
 	"github.com/hovsep/fmesh/internal/collection"
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
@@ -75,8 +77,8 @@ func (c *Collection) Remove(names ...string) *Collection {
 // Signals returns all signals of all ports in the collection.
 func (c *Collection) Signals() *signal.Group {
 	signals := make([]*signal.Signal, 0, c.Len())
-	for p := range c.Each {
-		signals = append(signals, p.Signals().All()...)
+	for p := range c.All() {
+		signals = slices.AppendSeq(signals, p.Signals().All())
 	}
 	return signal.NewGroup().With(signals...)
 }
@@ -84,7 +86,7 @@ func (c *Collection) Signals() *signal.Group {
 // Filter returns a new collection containing only ports that match the predicate.
 func (c *Collection) Filter(predicate Predicate) *Collection {
 	matched := make([]*Port, 0, c.Len())
-	for port := range c.Each {
+	for port := range c.All() {
 		if predicate(port) {
 			matched = append(matched, port)
 		}
@@ -96,7 +98,7 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 
 // SetParentComponent sets the parent component on all ports in the collection and returns the collection.
 func (c *Collection) SetParentComponent(comp ParentComponent) *Collection {
-	for p := range c.Each {
+	for p := range c.All() {
 		p.setParentComponent(comp)
 	}
 	return c

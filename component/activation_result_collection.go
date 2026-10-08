@@ -2,13 +2,15 @@ package component
 
 import (
 	"cmp"
+	"iter"
 	"slices"
 	"sync"
 )
 
 // ActivationResultCollection is a collection of activation results.
-// Thread-safe for concurrent access during activation. ForEach and Find walk a
-// component-name-ordered snapshot, so their callbacks run without the lock held.
+// Thread-safe for concurrent access during activation. All and Find walk the
+// component-name-ordered list as it was when they started, so their loop bodies
+// run without the lock held.
 // The order-independent queries (Any, Every, Count, Filter and the Has* methods)
 // read under the lock and must not change the collection from their predicate.
 type ActivationResultCollection struct {
@@ -29,6 +31,9 @@ func byName(a, b *ActivationResult) int { return cmp.Compare(a.componentName, b.
 // Add adds multiple activation results and returns the collection. A result for
 // a component already in the collection, or repeated later in the same call,
 // replaces the earlier one.
+//
+// The results list is replaced, never changed in place, so an iterator already
+// walking it keeps its snapshot.
 func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult) *ActivationResultCollection {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -40,14 +45,16 @@ func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult)
 		return c
 	}
 
+	results := slices.Clone(c.results)
 	for _, ar := range activationResults {
-		i, found := slices.BinarySearchFunc(c.results, ar.componentName, compareName)
+		i, found := slices.BinarySearchFunc(results, ar.componentName, compareName)
 		if found {
-			c.results[i] = ar
+			results[i] = ar
 			continue
 		}
-		c.results = slices.Insert(c.results, i, ar)
+		results = slices.Insert(results, i, ar)
 	}
+	c.results = results
 	return c
 }
 
@@ -105,24 +112,25 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	return c.results[i]
 }
 
-// All returns a shallow copy of all activation results as a map.
-// A copy is returned so the caller cannot mutate the internal state.
-func (c *ActivationResultCollection) All() map[string]*ActivationResult {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	result := make(map[string]*ActivationResult, len(c.results))
-	for _, ar := range c.results {
-		result[ar.componentName] = ar
+// All returns an iterator over the results in component-name order. It walks the
+// list as it was when ranging started, so the loop body may change the collection.
+// It allocates nothing; use slices.Collect(c.All()) for an independent slice.
+func (c *ActivationResultCollection) All() iter.Seq[*ActivationResult] {
+	return func(yield func(*ActivationResult) bool) {
+		for _, ar := range c.snapshot() {
+			if !yield(ar) {
+				return
+			}
+		}
 	}
-	return result
 }
 
-// AllOrdered returns the results sorted by component name — the order to use
-// for anything rendered, so that output does not follow map order.
-func (c *ActivationResultCollection) AllOrdered() []*ActivationResult {
+// snapshot returns the current results list. Add replaces the list rather than
+// changing it, so the caller may read it without holding the lock.
+func (c *ActivationResultCollection) snapshot() []*ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return slices.Clone(c.results)
+	return c.results
 }
 
 // Len returns the number of activation results in the collection.
@@ -169,20 +177,9 @@ func (c *ActivationResultCollection) Count(predicate ResultPredicate) int {
 	return count
 }
 
-// ForEach applies the action to each activation result in component-name order and returns the first error.
-// It walks a snapshot, so the action may change the collection.
-func (c *ActivationResultCollection) ForEach(action func(*ActivationResult) error) error {
-	for _, result := range c.AllOrdered() {
-		if err := action(result); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Find returns the first activation result matching the predicate, in component-name order, or nil.
 func (c *ActivationResultCollection) Find(predicate ResultPredicate) *ActivationResult {
-	for _, ar := range c.AllOrdered() {
+	for _, ar := range c.snapshot() {
 		if predicate(ar) {
 			return ar
 		}

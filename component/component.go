@@ -119,7 +119,7 @@ func (c *Component) Validate() error {
 }
 
 func (c *Component) validatePortParents(side string, ports *port.Collection) error {
-	for p := range ports.Each {
+	for p := range ports.All() {
 		switch p.ParentComponent() {
 		case nil:
 			return fmt.Errorf("%s port %q has no parent component", side, p.Name())

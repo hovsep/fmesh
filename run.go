@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -83,7 +84,7 @@ func (fm *FMesh) Run(ctx context.Context) (ri *RuntimeInfo, runErr error) {
 }
 
 func (fm *FMesh) cleanUpPreviousRun(ctx context.Context) error {
-	for c := range fm.components.Each {
+	for c := range fm.components.All() {
 		if err := c.ClearOutputs(ctx); err != nil {
 			return fmt.Errorf("failed to clear outputs of component %q: %w", c.Name(), err)
 		}
@@ -185,7 +186,7 @@ func (fm *FMesh) prepareCycle() ([]readyComponent, []*component.ActivationResult
 
 	ready := fm.ready[:0]
 	i := 0
-	for c := range fm.components.Each {
+	for c := range fm.components.All() {
 		// A component with nothing to read gets no worker: in a sparse mesh that
 		// is most of them, and MaybeActivate would only report NoInput.
 		if c.Inputs().AnyHasSignals() {
@@ -251,7 +252,8 @@ func (fm *FMesh) activate(ctx context.Context, ready []readyComponent, slots []*
 // be merged into one: flushing delivers signals into downstream input ports, so
 // a single pass would clear away what an earlier component had just delivered.
 func (fm *FMesh) drainComponents(ctx context.Context) error {
-	results := fm.runtimeInfo.Cycles.Last().ActivationResults().AllOrdered()
+	activationResults := fm.runtimeInfo.Cycles.Last().ActivationResults()
+	results := slices.AppendSeq(make([]*component.ActivationResult, 0, activationResults.Len()), activationResults.All())
 	if err := fm.clearInputs(ctx, results); err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedToDrain, err)
 	}
@@ -292,7 +294,7 @@ func (fm *FMesh) forEachActivatedComponent(
 	results []*component.ActivationResult,
 	action func(*component.Component, *component.ActivationResult) error,
 ) error {
-	for c := range fm.components.Each {
+	for c := range fm.components.All() {
 		for len(results) > 0 && results[0].ComponentName() < c.Name() {
 			results = results[1:]
 		}

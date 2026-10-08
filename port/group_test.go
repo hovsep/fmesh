@@ -1,6 +1,7 @@
 package port
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -75,7 +76,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to empty group",
 			group: newGroup(),
 			args: args{
-				ports: newOutputGroup("p1", "p2", "p3").All(),
+				ports: slices.Collect(newOutputGroup("p1", "p2", "p3").All()),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 3, group.Len())
@@ -85,7 +86,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "adding to non-empty group",
 			group: newOutputGroup("p1", "p2", "p3"),
 			args: args{
-				ports: newOutputGroup("p4", "p5", "p6").All(),
+				ports: slices.Collect(newOutputGroup("p4", "p5", "p6").All()),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 6, group.Len())
@@ -102,68 +103,14 @@ func TestGroup_With(t *testing.T) {
 	}
 }
 
-func TestGroup_ForEach(t *testing.T) {
-	t.Run("applies action to each port", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "p3")
-		count := 0
-		err := group.ForEach(func(p *Port) error {
-			count++
-			return nil
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("stops on error", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "p3")
-		err := group.ForEach(func(p *Port) error {
-			return assert.AnError
-		})
-		assert.Error(t, err)
-	})
-}
-
-func TestGroup_ForEachIf(t *testing.T) {
-	t.Run("applies action only to matching ports", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "special1", "special2")
-		count := 0
-		err := group.ForEachIf(
-			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
-			func(p *Port) error { count++; return nil },
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 2, count)
-	})
-
-	t.Run("applies action to all when predicate always true", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "p3")
-		count := 0
-		err := group.ForEachIf(
-			func(p *Port) bool { return true },
-			func(p *Port) error { count++; return nil },
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 3, count)
-	})
-
-	t.Run("applies action to none when predicate always false", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "p3")
-		count := 0
-		err := group.ForEachIf(
-			func(p *Port) bool { return false },
-			func(p *Port) error { count++; return nil },
-		)
-		require.NoError(t, err)
-		assert.Equal(t, 0, count)
-	})
-
-	t.Run("stops on error", func(t *testing.T) {
-		group := newOutputGroup("p1", "p2", "p3")
-		err := group.ForEachIf(
-			func(p *Port) bool { return true },
-			func(p *Port) error { return assert.AnError },
-		)
-		assert.Error(t, err)
+func TestGroup_All(t *testing.T) {
+	t.Run("yields every port in insertion order", func(t *testing.T) {
+		group := newOutputGroup("p2", "p1", "p3")
+		var names []string
+		for p := range group.All() {
+			names = append(names, p.Name())
+		}
+		assert.Equal(t, []string{"p2", "p1", "p3"}, names)
 	})
 }
 

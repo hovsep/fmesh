@@ -43,10 +43,10 @@ func TestGroup_WithMetaOnEach(t *testing.T) {
 
 	next := g.WithMetaOnEach("seen", "yes")
 
-	for _, s := range next.All() {
+	for s := range next.All() {
 		assert.True(t, s.Meta().ValueIs("seen", "yes"))
 	}
-	for _, s := range g.All() {
+	for s := range g.All() {
 		assert.False(t, s.Meta().Has("seen"), "receiver's signals must not change")
 	}
 	assert.True(t, next.Meta().ValueIs("batch", "A"), "the group's own metadata is preserved")
@@ -62,7 +62,7 @@ func TestGroup_WithoutMetaOnEach(t *testing.T) {
 	next := g.WithoutMetaOnEach("k")
 
 	require.Equal(t, 2, next.Len())
-	for _, s := range next.All() {
+	for s := range next.All() {
 		assert.False(t, s.Meta().Has("k"))
 	}
 	assert.True(t, next.First().Meta().ValueIs("keep", "me"))

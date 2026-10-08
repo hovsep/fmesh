@@ -54,7 +54,7 @@ func (c *Cycle) AllPanicsCombined() error {
 // matches.
 func (c *Cycle) joinActivationErrors(matching component.ResultPredicate) error {
 	var joined error
-	for _, activationResult := range c.ActivationResults().AllOrdered() {
+	for activationResult := range c.ActivationResults().All() {
 		if matching(activationResult) {
 			joined = errors.Join(joined,
 				fmt.Errorf("component %s has activation error: %w", activationResult.ComponentName(), activationResult.Err()))

@@ -3,6 +3,7 @@ package fmesh
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -73,7 +74,7 @@ func buildThroughputMesh(b *testing.B, size int, kind activationKind) *FMesh {
 				component.WithInputs("in"),
 				component.WithOutputs("out"),
 				component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
-					return this.OutputByName("out").PutSignals(this.InputByName("in").Signals().All()...)
+					return this.OutputByName("out").PutSignals(slices.Collect(this.InputByName("in").Signals().All())...)
 				}))
 			require.NoError(b, err)
 			components[i] = c

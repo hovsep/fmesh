@@ -84,7 +84,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			},
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
 				names := make([]string, 0, collection.Len())
-				for _, ar := range collection.AllOrdered() {
+				for ar := range collection.All() {
 					names = append(names, ar.ComponentName())
 				}
 				assert.Equal(t, []string{"c1", "c2", "c3"}, names)
@@ -106,7 +106,7 @@ func TestActivationResultCollection_Add(t *testing.T) {
 			assertions: func(t *testing.T, collection *ActivationResultCollection) {
 				assert.Equal(t, 3, collection.Len())
 				assert.Equal(t, ActivationCodeReturnedError, collection.ByName("c3").Code())
-				assert.Equal(t, "c2", collection.AllOrdered()[1].ComponentName())
+				assert.Equal(t, "c2", slices.Collect(collection.All())[1].ComponentName())
 			},
 		},
 	}
@@ -136,38 +136,6 @@ func TestActivationResultCollection_ByName(t *testing.T) {
 		result := collection.ByName("c3")
 		assert.Nil(t, result)
 	})
-}
-
-func TestActivationResultCollection_All(t *testing.T) {
-	r1 := NewActivationResult("c1", ActivationCodeOK)
-	r2 := NewActivationResult("c2", ActivationCodeUndefined)
-
-	t.Run("returns all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2)
-		all := collection.All()
-		assert.Len(t, all, 2)
-		assert.Contains(t, all, "c1")
-		assert.Contains(t, all, "c2")
-	})
-
-	t.Run("empty collection", func(t *testing.T) {
-		collection := NewActivationResultCollection()
-		all := collection.All()
-		assert.Empty(t, all)
-	})
-}
-
-func TestActivationResultCollection_AllOrdered(t *testing.T) {
-	c := NewActivationResultCollection()
-	c.Add(NewActivationResult("charlie", ActivationCodeUndefined), NewActivationResult("alpha", ActivationCodeUndefined), NewActivationResult("bravo", ActivationCodeUndefined))
-
-	ordered := c.AllOrdered()
-	require.Len(t, ordered, 3)
-	assert.Equal(t, "alpha", ordered[0].ComponentName())
-	assert.Equal(t, "bravo", ordered[1].ComponentName())
-	assert.Equal(t, "charlie", ordered[2].ComponentName())
-
-	assert.Empty(t, NewActivationResultCollection().AllOrdered())
 }
 
 func TestActivationResultCollection_IsEmpty(t *testing.T) {
@@ -263,57 +231,39 @@ func TestActivationResultCollection_Count(t *testing.T) {
 	})
 }
 
-func TestActivationResultCollection_ForEach(t *testing.T) {
-	r1 := NewActivationResult("c1", ActivationCodeUndefined)
-	r2 := NewActivationResult("c2", ActivationCodeUndefined)
-	r3 := NewActivationResult("c3", ActivationCodeUndefined)
-
-	t.Run("applies action to all results", func(t *testing.T) {
-		collection := NewActivationResultCollection().Add(r1, r2, r3)
-		count := 0
-		require.NoError(t, collection.ForEach(func(r *ActivationResult) error {
-			count++
-			return nil
-		}))
-		assert.Equal(t, 3, count)
-	})
-
+func TestActivationResultCollection_All(t *testing.T) {
 	t.Run("empty collection", func(t *testing.T) {
-		collection := NewActivationResultCollection()
-		count := 0
-		require.NoError(t, collection.ForEach(func(r *ActivationResult) error {
-			count++
-			return nil
-		}))
-		assert.Equal(t, 0, count)
+		assert.Empty(t, slices.Collect(NewActivationResultCollection().All()))
 	})
 
 	t.Run("visits results in component-name order", func(t *testing.T) {
 		// Ranging over the map visited results in a different order on every call.
 		collection, names := newNamedResultCollection()
 		var visited []string
-		require.NoError(t, collection.ForEach(func(r *ActivationResult) error {
+		for r := range collection.All() {
 			visited = append(visited, r.ComponentName())
-			return nil
-		}))
+		}
 		assert.Equal(t, names, visited)
 	})
 
-	t.Run("action may change the collection", func(t *testing.T) {
-		// The action ran under the read lock, so an Add from it deadlocked.
-		collection, _ := newNamedResultCollection()
-		done := make(chan error, 1)
+	t.Run("loop body may change the collection", func(t *testing.T) {
+		// A body that ran under the read lock deadlocked on Add.
+		collection, names := newNamedResultCollection()
+		done := make(chan []string, 1)
 		go func() {
-			done <- collection.ForEach(func(r *ActivationResult) error {
+			var visited []string
+			for r := range collection.All() {
+				visited = append(visited, r.ComponentName())
 				collection.Add(NewActivationResult("added-"+r.ComponentName(), ActivationCodeUndefined))
-				return nil
-			})
+			}
+			done <- visited
 		}()
 		select {
-		case err := <-done:
-			require.NoError(t, err)
+		case visited := <-done:
+			assert.Equal(t, names, visited, "the walk keeps the list it started with")
+			assert.Equal(t, 2*len(names), collection.Len())
 		case <-time.After(5 * time.Second):
-			t.Fatal("ForEach deadlocked when the action changed the collection")
+			t.Fatal("All deadlocked when the loop body changed the collection")
 		}
 	})
 }

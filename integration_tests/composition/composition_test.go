@@ -5,6 +5,7 @@ package composition
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -118,7 +119,7 @@ func TestCombinators_PipelineTransformsSignalsThroughStages(t *testing.T) {
 	require.NoError(t, err)
 
 	// 1,5,50 -> doubled 2,10,100 -> kept 2,10
-	assert.Equal(t, []any{2, 10}, c.OutputByName("out").Signals().AllPayloads())
+	assert.Equal(t, []any{2, 10}, slices.Collect(c.OutputByName("out").Signals().Payloads()))
 }
 
 func TestNestedMesh_RunsInsideAComponent(t *testing.T) {

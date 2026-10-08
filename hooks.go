@@ -8,7 +8,6 @@ import (
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
 	"github.com/hovsep/fmesh/internal/hook"
-	"github.com/hovsep/fmesh/port"
 )
 
 // CycleContext provides context for cycle-level hooks.
@@ -51,14 +50,13 @@ func logActivationResultsInDebug(_ context.Context, cc *CycleContext) error {
 	if !fm.IsDebug() {
 		return nil
 	}
-	_ = cc.Cycle.ActivationResults().ForEach(func(ar *component.ActivationResult) error {
+	for ar := range cc.Cycle.ActivationResults().All() {
 		fm.LogDebug("activation result for component %s: activated: %t, code: %s, is error: %t, is panic: %t, error: %v",
 			ar.ComponentName(), ar.Activated(), ar.Code(), ar.IsError(), ar.IsPanic(), ar.Err())
 		if panicErr, ok := errors.AsType[*component.PanicError](ar.Err()); ok {
 			fm.LogDebug("stack trace for component %s:\n%s", ar.ComponentName(), panicErr.StackTrace())
 		}
-		return nil
-	})
+	}
 	return nil
 }
 
@@ -69,7 +67,7 @@ func validateMeshStructure(_ context.Context, fm *FMesh) error {
 	if fm.Components().IsEmpty() {
 		return ErrNoComponents
 	}
-	for _, c := range fm.Components().AllOrdered() {
+	for c := range fm.Components().All() {
 		if err := validateComponentStructure(fm, c); err != nil {
 			return err
 		}
@@ -81,22 +79,21 @@ func validateComponentStructure(fm *FMesh, c *component.Component) error {
 	if c.ParentMesh() != fm {
 		return fmt.Errorf("component %q has wrong parent mesh", c.Name())
 	}
-	return c.Outputs().ForEach(func(p *port.Port) error {
+	for p := range c.Outputs().All() {
 		if p.ParentComponent() != c {
 			return fmt.Errorf("output port %q has wrong parent component in component %q", p.Name(), c.Name())
 		}
-		return p.Pipes().ForEach(func(dest *port.Port) error {
-			parent := dest.ParentComponent()
-			destComponent, ok := parent.(*component.Component)
+		for dest := range p.Pipes().All() {
+			destComponent, ok := dest.ParentComponent().(*component.Component)
 			if !ok || destComponent == nil {
 				return fmt.Errorf("destination port %q has invalid parent component", dest.Name())
 			}
 			if destComponent.ParentMesh() != fm {
 				return fmt.Errorf("destination component %q belongs to a different mesh", destComponent.Name())
 			}
-			return nil
-		})
-	})
+		}
+	}
+	return nil
 }
 
 // OnComponentAdded registers a hook called after each component is successfully added to the mesh.

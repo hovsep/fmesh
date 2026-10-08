@@ -3,6 +3,7 @@ package piping
 import (
 	"context"
 	"math/rand"
+	"slices"
 	"testing"
 	"time"
 
@@ -162,7 +163,7 @@ func Test_Fan(t *testing.T) {
 				assert.Equal(t, 3, resultSignals.Len())
 
 				// And they are all different
-				signals := resultSignals.All()
+				signals := slices.Collect(resultSignals.All())
 				sig0, err := resultSignals.FirstPayload()
 				require.NoError(t, err)
 				sig1 := signals[1].Payload()
@@ -178,7 +179,7 @@ func Test_Fan(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run(context.Background())
-			cycles := runResult.Cycles.All()
+			cycles := slices.Collect(runResult.Cycles.All())
 			tt.assertions(t, fm, cycles, err)
 		})
 	}

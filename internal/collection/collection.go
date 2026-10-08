@@ -4,7 +4,7 @@ package collection
 
 import (
 	"fmt"
-	"maps"
+	"iter"
 	"slices"
 	"strings"
 )
@@ -26,10 +26,17 @@ func (s *Slice[T]) IsEmpty() bool {
 	return s.Len() == 0
 }
 
-// All returns a cloned slice of items. The slice is independent of the
-// collection; the items inside are shared.
-func (s *Slice[T]) All() []T {
-	return slices.Clone(s.items)
+// All returns an iterator over the items in insertion order. It allocates
+// nothing; use slices.Collect(s.All()) for an independent slice. A loop body
+// must not add to a mutating group it is ranging over.
+func (s *Slice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, item := range s.items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
 }
 
 // First returns the first item, or the zero value if empty.
@@ -86,29 +93,6 @@ func (s *Slice[T]) Find(pred func(T) bool) T {
 	}
 	var zero T
 	return zero
-}
-
-// ForEach applies the action to each item. Returns the first error encountered.
-func (s *Slice[T]) ForEach(action func(T) error) error {
-	for _, item := range s.items {
-		if err := action(item); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ForEachIf applies the action only to items that match the predicate.
-// Returns the first error encountered.
-func (s *Slice[T]) ForEachIf(pred func(T) bool, action func(T) error) error {
-	for _, item := range s.items {
-		if pred(item) {
-			if err := action(item); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // The backing-slice accessors are package functions, not methods, so they are
@@ -213,13 +197,6 @@ func (k *Keyed[T]) Remove(names ...string) {
 	})
 }
 
-// Reset removes all items. A function for the same reason as Items: keeping
-// Clear off the method set keeps it off every embedding type's public surface.
-func Reset[T Named](k *Keyed[T]) {
-	k.byName = make(map[string]T)
-	k.ordered = nil
-}
-
 // Len returns the number of items.
 func (k *Keyed[T]) Len() int {
 	return len(k.byName)
@@ -230,26 +207,19 @@ func (k *Keyed[T]) IsEmpty() bool {
 	return k.Len() == 0
 }
 
-// All returns a shallow copy of all items as a map.
-// A copy is returned so the caller cannot mutate the internal state.
-func (k *Keyed[T]) All() map[string]T {
-	return maps.Clone(k.byName)
-}
-
-// AllOrdered returns all items sorted by name.
-// This is the order every traversal on the collection uses.
-// A copy is returned so the caller cannot reorder the collection's own state;
-// internal traversals range over Each instead.
-func (k *Keyed[T]) AllOrdered() []T {
-	return slices.Clone(k.ordered)
-}
-
-// Each yields every item in name order without allocating: the hot-path form of
-// AllOrdered. Range over it: for item := range k.Each.
-func (k *Keyed[T]) Each(yield func(T) bool) {
-	for _, item := range k.ordered {
-		if !yield(item) {
-			return
+// All returns an iterator over the items in name order, the order every
+// traversal on the collection uses. It allocates nothing; use
+// slices.Collect(k.All()) for an independent slice.
+//
+// The iterator walks the sorted list as it was when ranging started: Add and
+// Remove replace the list rather than change it, so a loop body may change the
+// collection.
+func (k *Keyed[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, item := range k.ordered {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }
@@ -300,15 +270,4 @@ func (k *Keyed[T]) Find(pred func(T) bool) T {
 	}
 	var zero T
 	return zero
-}
-
-// ForEach applies the action to each item in name order.
-// Returns the first error encountered.
-func (k *Keyed[T]) ForEach(action func(T) error) error {
-	for _, item := range k.ordered {
-		if err := action(item); err != nil {
-			return err
-		}
-	}
-	return nil
 }

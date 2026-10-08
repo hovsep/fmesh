@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/hovsep/fmesh/port"
@@ -410,7 +411,7 @@ func TestComponent_FlushOutputs(t *testing.T) {
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {
 				destPort := componentAfterFlush.OutputByName("o1").Pipes().First()
-				allPayloads := destPort.Signals().AllPayloads()
+				allPayloads := slices.Collect(destPort.Signals().Payloads())
 				assert.Contains(t, allPayloads, 777)
 				assert.Contains(t, allPayloads, 888)
 				assert.Len(t, allPayloads, 2)

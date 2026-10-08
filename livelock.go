@@ -38,8 +38,8 @@ func (d *livelockDetector) takeBaseline() {
 // It is the cheapest thing that answers "did anything move?" — see detect.
 func (d *livelockDetector) countPendingSignals() int {
 	total := 0
-	for c := range d.components.Each {
-		for p := range c.Inputs().Each {
+	for c := range d.components.All() {
+		for p := range c.Inputs().All() {
 			total += p.Signals().Len()
 		}
 	}
@@ -78,7 +78,7 @@ func (d *livelockDetector) error(lastCycle *cycle.Cycle) error {
 
 	var detail strings.Builder
 	starved, named, waiting := 0, 0, 0
-	for _, c := range d.components.AllOrdered() {
+	for c := range d.components.All() {
 		// In a stalled cycle every recorded result is a wait keeping inputs, so a
 		// component is either waiting or had no input and was not recorded.
 		if lastCycle.ActivationResults().ByName(c.Name()) == nil {
@@ -90,7 +90,7 @@ func (d *livelockDetector) error(lastCycle *cycle.Cycle) error {
 		}
 
 		var empty, holding []string
-		for _, p := range c.Inputs().AllOrdered() {
+		for p := range c.Inputs().All() {
 			if p.HasSignals() {
 				holding = append(holding, p.Name())
 			} else {

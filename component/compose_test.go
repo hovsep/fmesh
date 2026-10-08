@@ -3,6 +3,7 @@ package component
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -176,6 +177,6 @@ func TestPipelineReadsInputsInOrder(t *testing.T) {
 
 	require.NoError(t, Pipeline([]string{"d", "a", "b"}, "out")(context.Background(), c))
 
-	payloads := c.OutputByName("out").Signals().AllPayloads()
+	payloads := slices.Collect(c.OutputByName("out").Signals().Payloads())
 	assert.Equal(t, []any{"d", "a", "b"}, payloads)
 }

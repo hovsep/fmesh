@@ -75,5 +75,6 @@ comm -13 /tmp/e.base /tmp/e.fmesh   # errors only your branch introduces
 
 Breaking these repos is sometimes correct, but it is the user's decision, not a detail to absorb
 into a cleanup. Report the exact symbol list and who calls each one. Say where the replacement is
-truly better — e.g. `Components().All()` returns a map, so iterating it is non-deterministic;
-`AllOrdered()` is better for anything that renders output.
+truly better — e.g. `Components().All()` once returned a map, so iterating it was
+non-deterministic; the name-ordered iterator that replaced it is better for anything that
+renders output.
