@@ -80,7 +80,7 @@ func FuzzCollectionNameLookup(f *testing.F) {
 			t.Fatalf("ByNames returned %d ports, want %d (unknown names must be skipped, known ones kept once)",
 				subset.Len(), distinctKnownLookups)
 		}
-		for _, p := range subset.AllOrdered() {
+		for p := range subset.All() {
 			if !known[p.Name()] {
 				t.Fatalf("ByNames returned port %q the collection does not hold", p.Name())
 			}

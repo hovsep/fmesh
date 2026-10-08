@@ -86,17 +86,20 @@ func (a *Plugin) Init(fm *fmesh.FMesh) error {
 		hooks.OnComponentAdded(func(_ context.Context, added *fmesh.ComponentAddedContext) error {
 			arrived := added.Component
 
-			return added.FMesh.Components().ForEach(func(existing *component.Component) error {
+			for existing := range added.FMesh.Components().All() {
 				if existing == arrived {
 					// Wiring a component to itself would be a loopback, which is
 					// never what a convention meant to express.
-					return nil
+					continue
 				}
 				if err := a.connect(existing, arrived); err != nil {
 					return err
 				}
-				return a.connect(arrived, existing)
-			})
+				if err := a.connect(arrived, existing); err != nil {
+					return err
+				}
+			}
+			return nil
 		})
 	})
 	return nil
@@ -104,23 +107,26 @@ func (a *Plugin) Init(fm *fmesh.FMesh) error {
 
 // connect pipes every output of source to the matching input of destination.
 func (a *Plugin) connect(source, destination *component.Component) error {
-	return source.Outputs().ForEach(func(out *port.Port) error {
+	for out := range source.Outputs().All() {
 		name := a.InputNameFor(source, out)
 		if name == "" {
-			return nil
+			continue
 		}
 		in := destination.InputByName(name)
 		if in == nil {
-			return nil
+			continue
 		}
 		if isPipedTo(out, in) {
 			// Pipes are not deduplicated, and a port flushes once per pipe, so a
 			// second identical pipe would deliver every signal twice. Two
 			// conventions on the same mesh can easily agree on one pair.
-			return nil
+			continue
 		}
-		return out.PipeTo(in)
-	})
+		if err := out.PipeTo(in); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // isPipedTo reports whether out already pipes to in.

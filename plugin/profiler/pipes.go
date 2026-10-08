@@ -72,12 +72,9 @@ type pipeKey struct {
 // the component arrives are caught by OnOutboundPipe; output ports added later
 // are not, the same limitation Autowire has.
 func (p *Plugin) instrumentPipes(c *component.Component) error {
-	return c.Outputs().ForEach(func(out *port.Port) error {
-		if err := out.Pipes().ForEach(func(in *port.Port) error {
+	for out := range c.Outputs().All() {
+		for in := range out.Pipes().All() {
 			p.registerPipe(out, in)
-			return nil
-		}); err != nil {
-			return err
 		}
 
 		out.SetupHooks(func(hooks *port.Hooks) {
@@ -90,8 +87,8 @@ func (p *Plugin) instrumentPipes(c *component.Component) error {
 				return nil
 			})
 		})
-		return nil
-	})
+	}
+	return nil
 }
 
 // registerPipe records a pipe that has carried nothing yet.

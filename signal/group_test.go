@@ -2,6 +2,7 @@ package signal
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: nil,
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals := group.All()
+				signals := slices.Collect(group.All())
 				assert.Empty(t, signals)
 				assert.Zero(t, group.Len())
 			},
@@ -35,7 +36,7 @@ func TestNewGroup(t *testing.T) {
 				payloads: []any{1, nil, 3},
 			},
 			assertions: func(t *testing.T, group *Group) {
-				signals := group.All()
+				signals := slices.Collect(group.All())
 				assert.Equal(t, 3, group.Len())
 				assert.Contains(t, signals, New(1))
 				assert.Contains(t, signals, New(nil))
@@ -91,7 +92,7 @@ func TestGroup_FirstPayload(t *testing.T) {
 	}
 }
 
-func TestGroup_AllPayloads(t *testing.T) {
+func TestGroup_Payloads(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name            string
@@ -102,7 +103,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 		{
 			name:  "empty group",
 			group: NewGroup(),
-			want:  []any{},
+			want:  nil,
 		},
 		{
 			name:  "with payloads",
@@ -112,7 +113,7 @@ func TestGroup_AllPayloads(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.group.AllPayloads())
+			assert.Equal(t, tt.want, slices.Collect(tt.group.Payloads()))
 		})
 	}
 }
@@ -148,7 +149,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to empty group",
 			group: NewGroup(),
 			args: args{
-				signals: NewGroup(3, 4, 5).All(),
+				signals: slices.Collect(NewGroup(3, 4, 5).All()),
 			},
 			want: NewGroup(3, 4, 5),
 		},
@@ -156,7 +157,7 @@ func TestGroup_With(t *testing.T) {
 			name:  "addition to group",
 			group: NewGroup(1, 2, 3),
 			args: args{
-				signals: NewGroup(4, 5, 6).All(),
+				signals: slices.Collect(NewGroup(4, 5, 6).All()),
 			},
 			want: NewGroup(1, 2, 3, 4, 5, 6),
 		},
@@ -620,8 +621,8 @@ func TestGroup_NilPayloadInvariant(t *testing.T) {
 		assert.Nil(t, last)
 	})
 
-	t.Run("AllPayloads includes nil entries", func(t *testing.T) {
-		payloads := NewGroup(1, nil, 2).AllPayloads()
+	t.Run("Payloads includes nil entries", func(t *testing.T) {
+		payloads := slices.Collect(NewGroup(1, nil, 2).Payloads())
 		assert.Equal(t, []any{1, nil, 2}, payloads)
 	})
 
@@ -643,10 +644,9 @@ func TestGroup_MapDropsNilResults(t *testing.T) {
 	t.Run("Map drops nil mapper results", func(t *testing.T) {
 		g := NewGroup(1, 2, 3, 4).Map(dropOdd)
 		assert.Equal(t, 2, g.Len())
-		require.NoError(t, g.ForEach(func(s *Signal) error {
+		for s := range g.All() {
 			assert.NotNil(t, s.Payload())
-			return nil
-		}))
+		}
 	})
 
 	t.Run("MapIf drops nil mapper results and keeps non-matching signals", func(t *testing.T) {
@@ -658,7 +658,7 @@ func TestGroup_MapDropsNilResults(t *testing.T) {
 		})
 		assert.Equal(t, 2, g.Len())
 
-		payloads := g.AllPayloads()
+		payloads := slices.Collect(g.Payloads())
 		assert.Equal(t, []any{2, 4}, payloads)
 	})
 }

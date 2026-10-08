@@ -19,7 +19,6 @@ import (
 	"github.com/hovsep/fmesh"
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/internal/testutil"
-	"github.com/hovsep/fmesh/port"
 	"github.com/hovsep/fmesh/signal"
 )
 
@@ -44,10 +43,9 @@ func TestOrdering_AcrossPortsOfOneComponent(t *testing.T) {
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
-				_ = this.Inputs().Signals().ForEach(func(s *signal.Signal) error {
+				for s := range this.Inputs().Signals().All() {
 					fmt.Fprint(&order, s.Payload())
-					return nil
-				})
+				}
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
 			}))
 
@@ -95,17 +93,16 @@ func TestOrdering_FlushAcrossOutputPorts(t *testing.T) {
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
-				_ = this.InputByName("in").Signals().ForEach(func(s *signal.Signal) error {
+				for s := range this.InputByName("in").Signals().All() {
 					fmt.Fprint(&order, s.Payload())
-					return nil
-				})
+				}
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
 			}))
 
 		fm, err := fmesh.New("fan-out-in")
 		require.NoError(t, err)
 		require.NoError(t, fm.AddComponents(source, sink))
-		for out := range source.Outputs().Each {
+		for out := range source.Outputs().All() {
 			require.NoError(t, out.PipeTo(sink.InputByName("in")))
 		}
 		require.NoError(t, source.InputByName("in").PutSignals(signal.New("go")))
@@ -142,10 +139,9 @@ func TestOrdering_MultipleUpstreamsIntoOnePort(t *testing.T) {
 			component.WithOutputs("out"),
 			component.WithActivationFunc(func(_ context.Context, this *component.Component) error {
 				var order strings.Builder
-				_ = this.InputByName("in").Signals().ForEach(func(s *signal.Signal) error {
+				for s := range this.InputByName("in").Signals().All() {
 					fmt.Fprint(&order, s.Payload())
-					return nil
-				})
+				}
 				return this.OutputByName("out").PutSignals(signal.New(order.String()))
 			}))
 
@@ -177,10 +173,9 @@ func TestOrdering_WithinOnePortIsFIFO(t *testing.T) {
 	}
 
 	var got []any
-	_ = in.Signals().ForEach(func(s *signal.Signal) error {
+	for s := range in.Signals().All() {
 		got = append(got, s.Payload())
-		return nil
-	})
+	}
 
 	require.Len(t, got, 50)
 	for i := range 50 {
@@ -188,21 +183,13 @@ func TestOrdering_WithinOnePortIsFIFO(t *testing.T) {
 	}
 }
 
-func TestOrdering_AllOrderedMatchesTraversal(t *testing.T) {
+func TestOrdering_AllFollowsPortNames(t *testing.T) {
 	c := testutil.MustComponent("c", component.WithInputs("zebra", "alpha", "middle"))
 
-	var viaForEach []string
-	require.NoError(t, c.Inputs().ForEach(func(p *port.Port) error {
-		viaForEach = append(viaForEach, p.Name())
-		return nil
-	}))
-
-	ordered := c.Inputs().AllOrdered()
-	viaAllOrdered := make([]string, 0, len(ordered))
-	for _, p := range ordered {
-		viaAllOrdered = append(viaAllOrdered, p.Name())
+	var names []string
+	for p := range c.Inputs().All() {
+		names = append(names, p.Name())
 	}
 
-	assert.Equal(t, []string{"alpha", "middle", "zebra"}, viaAllOrdered)
-	assert.Equal(t, viaAllOrdered, viaForEach, "ForEach must use the AllOrdered order")
+	assert.Equal(t, []string{"alpha", "middle", "zebra"}, names)
 }

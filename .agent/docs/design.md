@@ -31,14 +31,15 @@ the same output. Three orderings ensure this. Do not add a fourth source of orde
 
 1. **Within one port** — signals keep insertion order (FIFO); `signal.Group` is an ordered slice.
 2. **Many upstreams into one port** — arrival follows upstream **component-name** order, because
-   `drainComponents` walks `component.Collection.AllOrdered()`.
+   `drainComponents` walks the cycle's activation results in component-name order.
 3. **Across the ports of one component** — traversal follows **port-name** order.
 
 Keyed collections (`port.Collection`, `component.Collection`) embed `internal/collection.Keyed[T]`,
 which keeps a name-sorted slice beside the name map. Rules:
 - **Never range over the name map.** Map order leaks into flush order and `Signals()` results.
-  Inside the packages range over `c.Each` (no allocation, no per-item lookup); outside use
-  `AllOrdered()`.
+  Every traversal, inside the packages and out, ranges over `c.All()`, the name-ordered iterator.
+- `Add` and `Remove` replace the sorted slice rather than change it, so a loop body ranging over
+  `All()` may change the collection. `ActivationResultCollection.Add` follows the same rule.
 - The sorted slice is rebuilt on membership change, never lazily on read. Ports are read from
   activation goroutines, and a lazy cache would turn a read into a write.
 - Traversal must stay allocation-free; `port/collection_bench_test.go` guards it.
@@ -88,7 +89,6 @@ nothing per instance and render normally in godoc. Two limits:
   - `payload` is `[]any{value}` (a one-element slice, so `nil` is valid).
   - Predicate combinators and metadata predicates (`HasMeta`, `HasAnyMeta`, `MetaEquals[T]`,
     `MetaContains`) live in `predicates.go`.
-  - `ForEach`/`ForEachIf` return `error` only, as on every collection type ([naming.md](naming.md)).
   - Typed payload accessors are generic methods in `typed.go`: `As[T]()` (error on nil signal,
     missing payload or wrong type), `PayloadOrDefault[T](d)`, `AsGroup()` (a signal carrying a
     group; `As[*Group]()` is noisy from outside) and `AsNumber()` (loose `(float64, bool)`
@@ -159,8 +159,8 @@ nothing per instance and render normally in godoc. Two limits:
 | 2a — batch on contents | `WithMetaOnEach(k, v)`, `WithoutMetaOnEach(keys...)` | `signal.Group` only (CoW) |
 
 - Every group and collection carries its **own** `*meta.Meta`.
-- Batch methods exist on `signal.Group` only. Mutating collections have none — iterate with
-  `ForEach` and use each element's store. There is no cross-entity aggregation tier. Do not add
+- Batch methods exist on `signal.Group` only. Mutating collections have none — range over
+  `All()` and use each element's store. There is no cross-entity aggregation tier. Do not add
   either back.
 - `signal.Group` batch methods keep the group's own metadata on the result (`copyGroupMeta`).
 - **`signal.Group.Meta()` returns a clone**, like `Signal.Meta()`. The only way to a changed group

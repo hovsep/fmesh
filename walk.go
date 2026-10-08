@@ -26,13 +26,12 @@ func (fm *FMesh) Walk(v Visitor) error {
 		return err
 	}
 
-	components := fm.Components().AllOrdered()
-	for _, c := range components {
+	for c := range fm.Components().All() {
 		if err := v.VisitComponent(c); err != nil {
 			return err
 		}
 		for _, ports := range []*port.Collection{c.Inputs(), c.Outputs()} {
-			for p := range ports.Each {
+			for p := range ports.All() {
 				if err := v.VisitPort(c, p); err != nil {
 					return err
 				}
@@ -40,12 +39,12 @@ func (fm *FMesh) Walk(v Visitor) error {
 		}
 	}
 
-	for _, c := range components {
-		for _, out := range c.Outputs().AllOrdered() {
-			if err := out.Pipes().ForEach(func(in *port.Port) error {
-				return v.VisitPipe(out, in)
-			}); err != nil {
-				return err
+	for c := range fm.Components().All() {
+		for out := range c.Outputs().All() {
+			for in := range out.Pipes().All() {
+				if err := v.VisitPipe(out, in); err != nil {
+					return err
+				}
 			}
 		}
 	}

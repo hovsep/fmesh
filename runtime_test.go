@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -355,7 +356,7 @@ func Test_MultipleRun(t *testing.T) {
 
 			// 201 activated cycles + 1 empty one; the last 5 are kept, in order.
 			require.Equal(t, 5, runResult.Cycles.Len())
-			for i, c := range runResult.Cycles.All() {
+			for i, c := range slices.Collect(runResult.Cycles.All()) {
 				assert.Equal(t, 198+i, c.Number())
 			}
 		})
@@ -412,7 +413,7 @@ func Test_MultipleRun(t *testing.T) {
 			// 2 -> 1 -> 0 (3 activated cycles) + 1 empty cycle = 4 total cycles
 			assert.Equal(t, 4, runResult.Cycles.Len())
 
-			for _, c := range runResult.Cycles.All() {
+			for c := range runResult.Cycles.All() {
 				assert.Nil(t, c.ActivationResults().ByName("idle"), "cycle #%d", c.Number())
 
 				repeaterResult := c.ActivationResults().ByName("repeater")
@@ -432,7 +433,7 @@ func Test_MultipleRun(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, 2, runResult.Cycles.Len())
-			for _, c := range runResult.Cycles.All() {
+			for c := range runResult.Cycles.All() {
 				assert.Nil(t, c.ActivationResults().ByName("idle"), "cycle #%d", c.Number())
 			}
 		})

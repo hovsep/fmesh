@@ -1,7 +1,7 @@
 package signal
 
 import (
-	"errors"
+	"slices"
 	"sync"
 	"testing"
 
@@ -76,23 +76,6 @@ func TestGroup_Add_does_not_poison_receiver_on_nil_signal(t *testing.T) {
 	assert.Equal(t, 2, g2.Len())
 }
 
-func TestGroup_ForEach_does_not_poison_receiver_on_error(t *testing.T) {
-	g := NewGroup(1, 2, 3)
-	_ = g.ForEach(func(*Signal) error { return errors.New("stop") })
-
-	assert.Equal(t, 3, g.Len())
-}
-
-func TestGroup_ForEachIf_does_not_poison_receiver_on_error(t *testing.T) {
-	g := NewGroup(1, 2, 3)
-	_ = g.ForEachIf(
-		func(*Signal) bool { return true },
-		func(*Signal) error { return errors.New("stop") },
-	)
-
-	assert.Equal(t, 3, g.Len())
-}
-
 func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) {
 	g := NewGroup(1, 2)
 	mapper := func(*Signal) *Signal {
@@ -101,7 +84,7 @@ func TestGroup_MapIf_non_matching_signals_are_not_shared_pointers(t *testing.T) 
 	}
 	out := g.MapIf(func(*Signal) bool { return false }, mapper)
 
-	outSigs := out.All()
+	outSigs := slices.Collect(out.All())
 	require.Len(t, outSigs, 2)
 	assert.NotSame(t, g.First(), outSigs[0],
 		"MapIf pass-through must use cloned signals, not shared pointers (#203)")
@@ -131,7 +114,7 @@ func TestGroup_Map_identity_mapper_does_not_alias(t *testing.T) {
 	identity := func(s *Signal) *Signal { return s }
 	out := g.Map(identity)
 
-	outSigs := out.All()
+	outSigs := slices.Collect(out.All())
 	require.Len(t, outSigs, 2)
 	assert.NotSame(t, g.First(), outSigs[0],
 		"Map with identity mapper must clone signals, not share pointers")
@@ -151,7 +134,7 @@ func TestGroup_MapPayloadsIf_non_matching_signals_are_not_shared_pointers(t *tes
 		},
 	)
 
-	outSigs := out.All()
+	outSigs := slices.Collect(out.All())
 	require.Len(t, outSigs, 2)
 	assert.NotSame(t, g.First(), outSigs[0])
 
@@ -259,7 +242,7 @@ func TestGroup_concurrent_WithMetaOnEach_is_race_free(t *testing.T) {
 	wg.Wait()
 
 	// Signals inside the original group must have no metadata.
-	sigs := shared.All()
+	sigs := slices.Collect(shared.All())
 	for _, s := range sigs {
 		assert.False(t, s.Meta().Has("priority"),
 			"original group's signals must not be affected")
@@ -267,7 +250,7 @@ func TestGroup_concurrent_WithMetaOnEach_is_race_free(t *testing.T) {
 
 	// Each result group's signals must have the entry.
 	for i, g := range results {
-		outSigs := g.All()
+		outSigs := slices.Collect(g.All())
 		for _, s := range outSigs {
 			assert.True(t, s.Meta().Has("priority"),
 				"goroutine %d: derived signal must have the entry", i)

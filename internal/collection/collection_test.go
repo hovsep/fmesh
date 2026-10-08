@@ -1,7 +1,7 @@
 package collection
 
 import (
-	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,11 +49,21 @@ func TestSlice_ReadSurface(t *testing.T) {
 	}
 }
 
-func TestSlice_AllIsIndependent(t *testing.T) {
-	s := newSlice(1, 2)
-	all := s.All()
+func TestSlice_All(t *testing.T) {
+	s := newSlice(3, 1, 2)
+
+	var visited []int
+	for item := range s.All() {
+		visited = append(visited, item)
+		if item == 1 {
+			break
+		}
+	}
+	assert.Equal(t, []int{3, 1}, visited, "All yields in insertion order and honors early stop")
+
+	all := slices.Collect(s.All())
 	all[0] = 99
-	assert.Equal(t, 1, s.First())
+	assert.Equal(t, 3, s.First(), "a collected slice is independent of the group")
 }
 
 func TestSlice_Predicates(t *testing.T) {
@@ -101,40 +111,11 @@ func TestSlice_Predicates(t *testing.T) {
 	}
 }
 
-func TestSlice_ForEach(t *testing.T) {
-	errBoom := errors.New("boom")
-	s := newSlice(1, 2, 3)
-
-	var visited []int
-	require.NoError(t, s.ForEach(func(i int) error {
-		visited = append(visited, i)
-		return nil
-	}))
-	assert.Equal(t, []int{1, 2, 3}, visited)
-
-	visited = nil
-	require.ErrorIs(t, s.ForEach(func(i int) error {
-		visited = append(visited, i)
-		if i == 2 {
-			return errBoom
-		}
-		return nil
-	}), errBoom)
-	assert.Equal(t, []int{1, 2}, visited, "first error stops iteration")
-
-	visited = nil
-	require.NoError(t, s.ForEachIf(func(i int) bool { return i != 2 }, func(i int) error {
-		visited = append(visited, i)
-		return nil
-	}))
-	assert.Equal(t, []int{1, 3}, visited)
-}
-
 func TestSlice_RawAndReplace(t *testing.T) {
 	s := newSlice(1, 2)
 	assert.Equal(t, []int{1, 2}, Items(s))
 	SetItems(s, []int{5})
-	assert.Equal(t, []int{5}, s.All())
+	assert.Equal(t, []int{5}, slices.Collect(s.All()))
 }
 
 func TestKeyed_Add(t *testing.T) {
@@ -160,7 +141,7 @@ func TestKeyed_Add(t *testing.T) {
 			name:        "a duplicate within the batch adds nothing",
 			add:         []named{"a", "b", "a"},
 			wantErr:     `widget "a" already exists`,
-			wantOrdered: []named{},
+			wantOrdered: nil,
 		},
 		{
 			name:        "a name already in the collection adds nothing",
@@ -180,7 +161,7 @@ func TestKeyed_Add(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			assert.Equal(t, tt.wantOrdered, k.AllOrdered())
+			assert.Equal(t, tt.wantOrdered, slices.Collect(k.All()))
 			assert.Equal(t, len(tt.wantOrdered), k.Len())
 		})
 	}
@@ -195,28 +176,22 @@ func TestKeyed_Lookups(t *testing.T) {
 	assert.Equal(t, named("a"), k.First(), "first in name order, not insertion order")
 	assert.Equal(t, 2, k.Len())
 	assert.False(t, k.IsEmpty())
-	assert.Equal(t, map[string]named{"a": "a", "b": "b"}, k.All())
 }
 
 func TestKeyed_AllIsIndependent(t *testing.T) {
 	k := NewKeyed[named]("widget")
 	require.NoError(t, k.Add("a"))
-	delete(k.All(), "a")
-	k.AllOrdered()[0] = "z"
+	slices.Collect(k.All())[0] = "z"
 	assert.Equal(t, named("a"), k.ByName("a"))
-	assert.Equal(t, []named{"a"}, k.AllOrdered())
+	assert.Equal(t, []named{"a"}, slices.Collect(k.All()))
 }
 
-func TestKeyed_RemoveAndClear(t *testing.T) {
+func TestKeyed_Remove(t *testing.T) {
 	k := NewKeyed[named]("widget")
 	require.NoError(t, k.Add("a", "b", "c"))
 
 	k.Remove("b", "missing")
-	assert.Equal(t, []named{"a", "c"}, k.AllOrdered())
-
-	Reset(k)
-	assert.True(t, k.IsEmpty())
-	assert.Empty(t, k.AllOrdered())
+	assert.Equal(t, []named{"a", "c"}, slices.Collect(k.All()))
 }
 
 func TestKeyed_Traversal(t *testing.T) {
@@ -224,23 +199,24 @@ func TestKeyed_Traversal(t *testing.T) {
 	require.NoError(t, k.Add("c", "a", "b"))
 
 	var visited []named
-	for item := range k.Each {
+	for item := range k.All() {
 		visited = append(visited, item)
 		if item == "b" {
 			break
 		}
 	}
-	assert.Equal(t, []named{"a", "b"}, visited, "Each yields in name order and honors early stop")
+	assert.Equal(t, []named{"a", "b"}, visited, "All yields in name order and honors early stop")
 
 	visited = nil
-	require.NoError(t, k.ForEach(func(n named) error {
-		visited = append(visited, n)
-		return nil
-	}))
-	assert.Equal(t, []named{"a", "b", "c"}, visited)
-
-	errBoom := errors.New("boom")
-	require.ErrorIs(t, k.ForEach(func(named) error { return errBoom }), errBoom)
+	for item := range k.All() {
+		visited = append(visited, item)
+		if item == "a" {
+			require.NoError(t, k.Add("d"))
+			k.Remove("c")
+		}
+	}
+	assert.Equal(t, []named{"a", "b", "c"}, visited, "a loop body may change the collection; the walk keeps its snapshot")
+	assert.Equal(t, []named{"a", "b", "d"}, slices.Collect(k.All()))
 }
 
 func TestKeyed_Predicates(t *testing.T) {

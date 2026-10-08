@@ -1,6 +1,7 @@
 package component
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -194,7 +195,7 @@ func TestCollection_PromotedReadSurface(t *testing.T) {
 		collection := newCol("c2", "c1")
 		assert.Equal(t, 2, collection.Len())
 		assert.False(t, collection.IsEmpty())
-		assert.Equal(t, "c1", collection.AllOrdered()[0].Name(), "traversal is name-ordered")
+		assert.Equal(t, "c1", slices.Collect(collection.All())[0].Name(), "traversal is name-ordered")
 		assert.True(t, collection.Any(func(c *Component) bool { return c.Name() == "c2" }))
 	})
 }

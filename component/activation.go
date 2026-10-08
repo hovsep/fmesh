@@ -148,7 +148,7 @@ func WithRetryIf(retry func(ctx context.Context, attempt int, err error) bool) O
 // copy-on-write, so a port an attempt did not touch keeps the same group.
 func (c *Component) snapshotOutputs() map[*port.Port]*signal.Group {
 	outputs := make(map[*port.Port]*signal.Group, c.Outputs().Len())
-	for _, p := range c.Outputs().AllOrdered() {
+	for p := range c.Outputs().All() {
 		outputs[p] = p.Signals()
 	}
 	return outputs
@@ -157,7 +157,7 @@ func (c *Component) snapshotOutputs() map[*port.Port]*signal.Group {
 // restoreOutputs puts back the output signals of a snapshot, touching only the
 // ports a failed attempt changed.
 func (c *Component) restoreOutputs(ctx context.Context, outputs map[*port.Port]*signal.Group) error {
-	for _, p := range c.Outputs().AllOrdered() {
+	for p := range c.Outputs().All() {
 		before := outputs[p]
 		if p.Signals() == before {
 			continue

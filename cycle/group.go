@@ -53,6 +53,15 @@ func (g *Group) Add(cycles ...*Cycle) *Group {
 	return g
 }
 
+// ByNumber returns the cycle with the given number, or nil if the group does not
+// hold it. With a length limit the oldest cycles are evicted, so a cycle's
+// position in the group is not its number.
+func (g *Group) ByNumber(number int) *Cycle {
+	return g.Find(func(c *Cycle) bool {
+		return c.Number() == number
+	})
+}
+
 // evictExcess drops the oldest cycles beyond the length limit. The front is
 // sliced off rather than the rest shifted down, so evicting one cycle per Add is
 // O(1) amortized; evicted slots are cleared so the cycles can be collected.

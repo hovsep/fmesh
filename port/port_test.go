@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/hovsep/fmesh/signal"
@@ -205,7 +206,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11), portAfter.Signals())
 			},
 			args: func() args {
-				signals := signal.NewGroup(11).All()
+				signals := slices.Collect(signal.NewGroup(11).All())
 				return args{signals: signals}
 			}(),
 		},
@@ -216,7 +217,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: func() args {
-				signals := signal.NewGroup(11, 12).All()
+				signals := slices.Collect(signal.NewGroup(11, 12).All())
 				return args{signals: signals}
 			}(),
 		},
@@ -231,7 +232,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12), portAfter.Signals())
 			},
 			args: func() args {
-				signals := signal.NewGroup(12).All()
+				signals := slices.Collect(signal.NewGroup(12).All())
 				return args{signals: signals}
 			}(),
 		},
@@ -246,7 +247,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(11, 12, 13), portAfter.Signals())
 			},
 			args: func() args {
-				signals := signal.NewGroup(13).All()
+				signals := slices.Collect(signal.NewGroup(13).All())
 				return args{signals: signals}
 			}(),
 		},
@@ -261,7 +262,7 @@ func TestPort_PutSignals(t *testing.T) {
 				assert.Equal(t, signal.NewGroup(55, 66, 13, 14), portAfter.Signals())
 			},
 			args: func() args {
-				signals := signal.NewGroup(13, 14).All()
+				signals := slices.Collect(signal.NewGroup(13, 14).All())
 				return args{signals: signals}
 			}(),
 		},
@@ -480,11 +481,11 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				destPorts := srcPort.Pipes().All()
+				destPorts := slices.Collect(srcPort.Pipes().All())
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 3, destPort.Signals().Len())
-					allPayloads := destPort.Signals().AllPayloads()
+					allPayloads := slices.Collect(destPort.Signals().Payloads())
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)
@@ -506,11 +507,11 @@ func TestPort_Flush(t *testing.T) {
 			assertions: func(t *testing.T, srcPort *Port) {
 				assert.False(t, srcPort.HasSignals())
 				assert.True(t, srcPort.HasPipes())
-				destPorts := srcPort.Pipes().All()
+				destPorts := slices.Collect(srcPort.Pipes().All())
 				for _, destPort := range destPorts {
 					assert.True(t, destPort.HasSignals())
 					assert.Equal(t, 6, destPort.Signals().Len())
-					allPayloads := destPort.Signals().AllPayloads()
+					allPayloads := slices.Collect(destPort.Signals().Payloads())
 					assert.Contains(t, allPayloads, 1)
 					assert.Contains(t, allPayloads, 2)
 					assert.Contains(t, allPayloads, 3)

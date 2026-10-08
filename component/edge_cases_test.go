@@ -37,7 +37,7 @@ func TestWithIndexedPorts(t *testing.T) {
 	// Exact names, so an off-by-one at either end of the range fails.
 	portNames := func(ports *port.Collection) []string {
 		names := make([]string, 0, ports.Len())
-		for _, p := range ports.AllOrdered() {
+		for p := range ports.All() {
 			names = append(names, p.Name())
 		}
 		return names
@@ -116,17 +116,6 @@ func TestActivationResultCode_String(t *testing.T) {
 	for code, want := range tests {
 		assert.Equal(t, want, code.String())
 	}
-}
-
-func TestActivationResultCollection_ForEach_StopsOnError(t *testing.T) {
-	c := NewActivationResultCollection()
-	c.Add(NewActivationResult("a", ActivationCodeUndefined), NewActivationResult("b", ActivationCodeUndefined))
-
-	errStop := errors.New("stop")
-	calls := 0
-	err := c.ForEach(func(*ActivationResult) error { calls++; return errStop })
-	require.ErrorIs(t, err, errStop)
-	assert.Equal(t, 1, calls)
 }
 
 func TestComponent_FlushOutputs_ReportsARefusedDelivery(t *testing.T) {

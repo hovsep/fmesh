@@ -3,6 +3,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/hovsep/fmesh/signal"
 )
@@ -92,7 +93,7 @@ func Pipeline(inputPortNames []string, outputPortName string, stages ...Pipeline
 			if in == nil {
 				return fmt.Errorf("pipeline input port %q does not exist", name)
 			}
-			inputs = append(inputs, in.Signals().All()...)
+			inputs = slices.AppendSeq(inputs, in.Signals().All())
 		}
 		signals := signal.NewGroup().With(inputs...)
 

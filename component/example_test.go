@@ -3,6 +3,7 @@ package component_test
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/hovsep/fmesh/component"
 )
@@ -74,7 +75,7 @@ func ExampleComponent_State() {
 		_ = counter.ClearInputs(ctx)
 	}
 
-	fmt.Println(counter.OutputByName("count").Signals().AllPayloads())
+	fmt.Println(slices.Collect(counter.OutputByName("count").Signals().Payloads()))
 	// Output:
 	// [1 2 3]
 }

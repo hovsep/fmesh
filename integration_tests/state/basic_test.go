@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/hovsep/fmesh/internal/testutil"
@@ -134,7 +135,7 @@ func Test_State(t *testing.T) {
 			fm := tt.setupFM()
 			tt.setInputs(fm)
 			runResult, err := fm.Run(context.Background())
-			cycles := runResult.Cycles.All()
+			cycles := slices.Collect(runResult.Cycles.All())
 			tt.assertions(t, fm, cycles, err)
 		})
 	}

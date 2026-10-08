@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -32,7 +33,7 @@ func TestComponent_WithActivationFunc(t *testing.T) {
 		err1 := c.f(context.Background(), dummy1)
 		err2 := f(context.Background(), dummy2)
 		assert.Equal(t, err1, err2)
-		assert.ElementsMatch(t, dummy1.OutputByName("out1").Signals().All(), dummy2.OutputByName("out1").Signals().All())
+		assert.ElementsMatch(t, slices.Collect(dummy1.OutputByName("out1").Signals().All()), slices.Collect(dummy2.OutputByName("out1").Signals().All()))
 	})
 
 	t.Run("WithActivationFunc replaces previous value", func(t *testing.T) {
@@ -519,7 +520,7 @@ func TestComponent_WithRetry(t *testing.T) {
 			assert.Equal(t, 1, before, "BeforeActivation fires once per activation")
 			assert.Equal(t, 1, after, "AfterActivation fires once per activation")
 			if tt.wantOut != nil {
-				assert.Equal(t, tt.wantOut, c.OutputByName("o1").Signals().AllPayloads())
+				assert.Equal(t, tt.wantOut, slices.Collect(c.OutputByName("o1").Signals().Payloads()))
 			}
 		})
 	}
@@ -549,7 +550,7 @@ func TestComponent_WithRetry(t *testing.T) {
 		result := c.MaybeActivate(context.Background())
 
 		assert.Equal(t, ActivationCodeOK, result.Code())
-		assert.Equal(t, []any{"earlier", 2}, c.OutputByName("o1").Signals().AllPayloads())
+		assert.Equal(t, []any{"earlier", 2}, slices.Collect(c.OutputByName("o1").Signals().Payloads()))
 	})
 
 	t.Run("the output reset fires the port's hooks", func(t *testing.T) {

@@ -3,6 +3,7 @@ package hooks
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -107,7 +108,7 @@ func TestPortHooks_FailingPipeHookRemovesThatPipe(t *testing.T) {
 
 	require.ErrorContains(t, source.PipeTo(ok, rejecting), "onInboundPipe hook failed")
 
-	assert.Equal(t, []*port.Port{ok}, source.Pipes().All(), "the earlier pipe stays, the rejected one is gone")
+	assert.Equal(t, []*port.Port{ok}, slices.Collect(source.Pipes().All()), "the earlier pipe stays, the rejected one is gone")
 }
 
 func TestPortHooks_MultipleHooksRunInRegistrationOrder(t *testing.T) {
