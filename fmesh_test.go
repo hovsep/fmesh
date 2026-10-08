@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"runtime"
 	"testing"
 	"time"
 
@@ -162,6 +163,32 @@ func TestWithCyclesLimit(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWithMaxConcurrency(t *testing.T) {
+	t.Run("defaults to GOMAXPROCS", func(t *testing.T) {
+		fm := mustNewFMesh("fm")
+		assert.Equal(t, runtime.GOMAXPROCS(0), fm.config.MaxConcurrency)
+	})
+
+	t.Run("sets the limit", func(t *testing.T) {
+		fm := mustNewFMesh("fm", WithMaxConcurrency(3))
+		assert.Equal(t, 3, fm.config.MaxConcurrency)
+	})
+
+	// 0 means unlimited, so it must be asked for by name, not passed by accident.
+	for _, n := range []int{0, -1} {
+		t.Run(fmt.Sprintf("rejects %d", n), func(t *testing.T) {
+			_, err := New("fm", WithMaxConcurrency(n))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "WithUnlimitedConcurrency")
+		})
+	}
+}
+
+func TestWithUnlimitedConcurrency(t *testing.T) {
+	fm := mustNewFMesh("fm", WithUnlimitedConcurrency())
+	assert.Equal(t, 0, fm.config.MaxConcurrency)
 }
 
 func TestWithUnlimitedCycles(t *testing.T) {

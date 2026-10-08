@@ -3,6 +3,7 @@ package fmesh
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"time"
 )
 
@@ -34,6 +35,12 @@ type config struct {
 	// on State, the clock or the outside world needs a higher threshold or none.
 	// 0 disables detection (use WithoutLivelockDetection to say so explicitly).
 	LivelockThreshold int
+
+	// MaxConcurrency is how many activation functions may run at once; the
+	// ready components of a cycle share that many goroutines. Defaults to
+	// GOMAXPROCS when the mesh is created.
+	// 0 means one goroutine per ready component (use WithUnlimitedConcurrency).
+	MaxConcurrency int
 }
 
 // newDefaultConfig returns a safe default configuration.
@@ -43,6 +50,7 @@ func newDefaultConfig() config {
 		CyclesLimit:           1000,
 		TimeLimit:             5 * time.Second,
 		LivelockThreshold:     2,
+		MaxConcurrency:        runtime.GOMAXPROCS(0),
 	}
 }
 
@@ -138,4 +146,21 @@ func WithCyclesHistoryLimit(limit int) Option {
 // WithUnlimitedCyclesHistory is an FMesh option that removes the cycles history retention limit.
 func WithUnlimitedCyclesHistory() Option {
 	return func(fm *FMesh) error { fm.config.CyclesHistoryLimit = 0; return nil }
+}
+
+// WithMaxConcurrency is an FMesh option that sets how many activation functions
+// may run at once (default GOMAXPROCS). n must be greater than 0. An activation
+// that blocks holds its goroutine, so a mesh whose activations mostly wait on
+// I/O may want more, or WithUnlimitedConcurrency.
+func WithMaxConcurrency(n int) Option {
+	return func(fm *FMesh) error {
+		return setPositive(n, &fm.config.MaxConcurrency,
+			"max concurrency must be greater than 0, use WithUnlimitedConcurrency() to remove the limit")
+	}
+}
+
+// WithUnlimitedConcurrency is an FMesh option that runs every ready component
+// of a cycle on its own goroutine, all at once.
+func WithUnlimitedConcurrency() Option {
+	return func(fm *FMesh) error { fm.config.MaxConcurrency = 0; return nil }
 }
