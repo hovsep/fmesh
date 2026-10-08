@@ -55,7 +55,7 @@ func newPort(direction Direction, name string, opts ...Option) (*Port, error) {
 		name:      name,
 		direction: direction,
 		meta:      meta.New(),
-		pipes:     NewGroup(),
+		pipes:     newGroup(),
 		signals:   signal.NewGroup(),
 		hooks:     newHooks(),
 	}

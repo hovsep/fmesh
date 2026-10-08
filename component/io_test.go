@@ -402,9 +402,10 @@ func TestComponent_FlushOutputs(t *testing.T) {
 				require.NoError(t, err)
 				c := mustNew("c1")
 				require.NoError(t, c.AddOutputs("o1", "o2"))
-				require.NoError(t, c.Outputs().ByNames("o1").PutSignalsOnEach(signal.New(777)))
-				require.NoError(t, c.Outputs().ByNames("o2").PutSignalsOnEach(signal.New(888)))
-				require.NoError(t, c.Outputs().ByNames("o1", "o2").PipeEachTo(sink))
+				require.NoError(t, c.OutputByName("o1").PutSignals(signal.New(777)))
+				require.NoError(t, c.OutputByName("o2").PutSignals(signal.New(888)))
+				require.NoError(t, c.OutputByName("o1").PipeTo(sink))
+				require.NoError(t, c.OutputByName("o2").PipeTo(sink))
 				return c
 			},
 			assertions: func(t *testing.T, componentAfterFlush *Component) {

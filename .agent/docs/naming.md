@@ -71,10 +71,14 @@ whole by `NewActivationResult(name, code, errs...)`, and `Activated()` is derive
 
 ## Collection/group operations
 
-`Any(p)`, `Every(p)`, `Count(p)`, `Map`, `MapIf`, `Filter`, `ForEach`, `ForEachIf`, `Reduce`,
-`ReducePayloads`, `Join`, `Find(p)`, `First()`. The names mean the same on every group and
-collection; keyed collections (`port.Collection`, `component.Collection`) traverse in name order,
-so their `First()` is the first by name.
+Every group and collection has `Len`, `IsEmpty`, `First()`, `Find(p)`, `Any(p)`, `Every(p)`,
+`Count(p)`, `Filter(p)` and `ForEach`; groups add `Last()`. The names mean the same on every type;
+keyed collections (`port.Collection`, `component.Collection`) traverse in name order, so their
+`First()` is the first by name.
+
+Transforms (`Map`, `MapIf`, `MapPayloads`, `ReducePayloads`, `Join`) exist on `signal.Group` only.
+The other containers hold live, mutable entities: "mapping" one is an in-place loop, so they have
+`Filter` for a subset and nothing else.
 
 ## Error returns
 

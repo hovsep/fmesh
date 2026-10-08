@@ -5,9 +5,6 @@ import "context"
 // Predicate is a function that tests whether a Component matches a condition.
 type Predicate func(component *Component) bool
 
-// Mapper transforms a Component into a new Component.
-type Mapper func(component *Component) *Component
-
 // ResultPredicate is a function that tests whether an ActivationResult matches a condition.
 type ResultPredicate func(result *ActivationResult) bool
 

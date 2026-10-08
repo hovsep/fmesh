@@ -142,57 +142,6 @@ func TestGroup_SetLenLimit(t *testing.T) {
 	}
 }
 
-func TestGroup_Without(t *testing.T) {
-	t.Parallel()
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-	c3 := New().SetNumber(3)
-
-	tests := []struct {
-		name       string
-		group      *Group
-		predicate  Predicate
-		assertions func(t *testing.T, group *Group)
-	}{
-		{
-			name:  "remove from empty group",
-			group: NewGroup(),
-			predicate: func(c *Cycle) bool {
-				return c.Number() == 1
-			},
-			assertions: func(t *testing.T, group *Group) {
-				assert.Zero(t, group.Len())
-			},
-		},
-		{
-			name:  "remove existing cycle by number",
-			group: NewGroup().Add(c1, c2, c3),
-			predicate: func(c *Cycle) bool {
-				return c.Number() == 2
-			},
-			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, 2, group.Len())
-			},
-		},
-		{
-			name:  "remove odd numbered cycles",
-			group: NewGroup().Add(c1, c2, c3),
-			predicate: func(c *Cycle) bool {
-				return c.Number()%2 == 1
-			},
-			assertions: func(t *testing.T, group *Group) {
-				assert.Equal(t, 1, group.Len())
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.group.Without(tt.predicate)
-			tt.assertions(t, result)
-		})
-	}
-}
-
 func TestGroup_Filter(t *testing.T) {
 	t.Parallel()
 	c1 := New().SetNumber(1).AddActivationResults(component.NewActivationResult("c1", component.ActivationCodeOK))
@@ -215,7 +164,7 @@ func TestGroup_Filter(t *testing.T) {
 		assert.Equal(t, 0, filtered.Len())
 	})
 
-	t.Run("preserves group meta and len limit", func(t *testing.T) {
+	t.Run("keeps the len limit but starts with empty meta", func(t *testing.T) {
 		group := NewGroup().SetLenLimit(5).Add(c1, c2, c3)
 		group.Meta().Set("k", "v")
 
@@ -224,78 +173,7 @@ func TestGroup_Filter(t *testing.T) {
 		})
 
 		assert.Equal(t, 5, filtered.lenLimit)
-		assert.True(t, filtered.Meta().ValueIs("k", "v"))
-		// The derived stores are copies, not shared with the source group.
-		filtered.Meta().Set("k2", "v2")
-		assert.False(t, group.Meta().Has("k2"))
-	})
-}
-
-func TestGroup_MapIf(t *testing.T) {
-	t.Parallel()
-	t.Run("maps only matching cycles", func(t *testing.T) {
-		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3), New().SetNumber(4))
-		mapped := group.MapIf(
-			func(c *Cycle) bool { return c.Number()%2 == 0 },
-			func(c *Cycle) *Cycle { return c.SetNumber(c.Number() * 100) },
-		)
-		assert.Equal(t, 4, mapped.Len())
-		assert.Equal(t, 1, mapped.First().Number()) // odd unchanged
-		assert.NotNil(t, mapped.Find(func(c *Cycle) bool { return c.Number() == 200 }))
-		assert.NotNil(t, mapped.Find(func(c *Cycle) bool { return c.Number() == 400 }))
-	})
-
-	t.Run("predicate matches none - all cycles kept as-is", func(t *testing.T) {
-		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3))
-		mapped := group.MapIf(
-			func(c *Cycle) bool { return false },
-			func(c *Cycle) *Cycle { return c.SetNumber(-1) },
-		)
-		assert.Equal(t, 3, mapped.Len())
-		assert.Equal(t, 1, mapped.First().Number())
-	})
-
-	t.Run("predicate matches all - all cycles mapped", func(t *testing.T) {
-		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2))
-		mapped := group.MapIf(
-			func(c *Cycle) bool { return true },
-			func(c *Cycle) *Cycle { return c.SetNumber(c.Number() * 10) },
-		)
-		assert.Equal(t, 2, mapped.Len())
-		assert.Equal(t, 10, mapped.First().Number())
-	})
-
-	t.Run("nil mapper result drops the cycle", func(t *testing.T) {
-		group := NewGroup().Add(New().SetNumber(1), New().SetNumber(2), New().SetNumber(3))
-		mapped := group.MapIf(
-			func(c *Cycle) bool { return c.Number() == 2 },
-			func(c *Cycle) *Cycle { return nil },
-		)
-		assert.Equal(t, 2, mapped.Len()) // c2 dropped, c1 and c3 kept
-	})
-}
-
-func TestGroup_Map(t *testing.T) {
-	t.Parallel()
-	c1 := New().SetNumber(1)
-	c2 := New().SetNumber(2)
-
-	t.Run("transforms all cycles", func(t *testing.T) {
-		group := NewGroup().Add(c1, c2)
-		mapped := group.Map(func(c *Cycle) *Cycle {
-			return c.SetNumber(c.Number() * 10)
-		})
-		assert.Equal(t, 2, mapped.Len())
-		first := mapped.First()
-		assert.Equal(t, 10, first.Number())
-	})
-
-	t.Run("empty group", func(t *testing.T) {
-		group := NewGroup()
-		mapped := group.Map(func(c *Cycle) *Cycle {
-			return c
-		})
-		assert.Equal(t, 0, mapped.Len())
+		assert.False(t, filtered.Meta().Has("k"))
 	})
 }
 

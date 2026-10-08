@@ -254,24 +254,6 @@ func TestGroup_Join(t *testing.T) {
 	})
 }
 
-func TestGroup_Contains(t *testing.T) {
-	t.Parallel()
-	t.Run("found by pointer identity", func(t *testing.T) {
-		s := New(42)
-		g := NewGroup().With(s)
-		assert.True(t, g.Contains(s))
-	})
-
-	t.Run("not found — different pointer same value", func(t *testing.T) {
-		g := NewGroup(42)
-		assert.False(t, g.Contains(New(42)))
-	})
-
-	t.Run("empty group", func(t *testing.T) {
-		assert.False(t, NewGroup().Contains(New(1)))
-	})
-}
-
 func TestGroup_ContainsPayload(t *testing.T) {
 	t.Parallel()
 	t.Run("found", func(t *testing.T) {
@@ -293,30 +275,6 @@ func TestGroup_ContainsPayload(t *testing.T) {
 	t.Run("a different numeric type is a different payload", func(t *testing.T) {
 		// Interface equality, not conversion: int64(2) is not the int 2.
 		assert.False(t, NewGroup(1, 2, 3).ContainsPayload(int64(2)))
-	})
-}
-
-func TestGroup_ContainsPayloadFunc(t *testing.T) {
-	t.Parallel()
-	t.Run("found with custom comparator", func(t *testing.T) {
-		g := NewGroup([]int{1, 2}, []int{3, 4})
-		found := g.ContainsPayloadFunc(func(p any) bool {
-			s, ok := p.([]int)
-			return ok && len(s) == 2 && s[0] == 3
-		})
-		assert.True(t, found)
-	})
-
-	t.Run("not found", func(t *testing.T) {
-		g := NewGroup(1, 2, 3)
-		assert.False(t, g.ContainsPayloadFunc(func(p any) bool {
-			v, ok := p.(int)
-			return ok && v > 100
-		}))
-	})
-
-	t.Run("empty group", func(t *testing.T) {
-		assert.False(t, NewGroup().ContainsPayloadFunc(func(any) bool { return true }))
 	})
 }
 
@@ -585,27 +543,6 @@ func TestGroup_MapPayloads(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func TestGroup_Reduce(t *testing.T) {
-	t.Parallel()
-	t.Run("accumulates signals", func(t *testing.T) {
-		g := NewGroup(1, 2, 3)
-		result := g.Reduce(New(0), func(acc, s *Signal) *Signal {
-			accVal := acc.Payload()
-			sVal := s.Payload()
-			return New(accVal.(int) + sVal.(int))
-		})
-		require.NotNil(t, result)
-		payload := result.Payload()
-		assert.Equal(t, 6, payload)
-	})
-
-	t.Run("returns initial for empty group", func(t *testing.T) {
-		initial := New(99)
-		result := NewGroup().Reduce(initial, func(acc, s *Signal) *Signal { return s })
-		assert.Equal(t, initial, result)
-	})
 }
 
 func TestGroup_ReducePayloads(t *testing.T) {

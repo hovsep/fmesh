@@ -105,7 +105,9 @@ func TestOrdering_FlushAcrossOutputPorts(t *testing.T) {
 		fm, err := fmesh.New("fan-out-in")
 		require.NoError(t, err)
 		require.NoError(t, fm.AddComponents(source, sink))
-		require.NoError(t, source.Outputs().PipeEachTo(sink.InputByName("in")))
+		for out := range source.Outputs().Each {
+			require.NoError(t, out.PipeTo(sink.InputByName("in")))
+		}
 		require.NoError(t, source.InputByName("in").PutSignals(signal.New("go")))
 
 		_, err = fm.Run(context.Background())

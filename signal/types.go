@@ -8,6 +8,3 @@ type Mapper func(signal *Signal) *Signal
 
 // PayloadMapper transforms a payload into a new payload.
 type PayloadMapper func(payload any) any
-
-// Reducer accumulates signals into a single signal.
-type Reducer func(acc *Signal, s *Signal) *Signal

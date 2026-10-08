@@ -151,44 +151,6 @@ func TestCollection_Filter(t *testing.T) {
 	}
 }
 
-func TestCollection_Map(t *testing.T) {
-	t.Run("transforms components", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-		mapped, err := collection.Map(func(c *Component) *Component {
-			nc, nerr := New("mapped_" + c.Name())
-			if nerr != nil {
-				panic(nerr)
-			}
-			return nc
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 2, mapped.Len())
-		assert.NotNil(t, mapped.ByName("mapped_c1"))
-		assert.NotNil(t, mapped.ByName("mapped_c2"))
-	})
-
-	t.Run("filters out nil results", func(t *testing.T) {
-		collection := newCol("c1", "c2", "c3")
-		mapped, err := collection.Map(func(c *Component) *Component {
-			if c.Name() == "c2" {
-				return nil
-			}
-			return c
-		})
-		require.NoError(t, err)
-		assert.Equal(t, 2, mapped.Len())
-	})
-}
-
-func TestCollection_Clear(t *testing.T) {
-	t.Run("removes all components", func(t *testing.T) {
-		collection := newCol("c1", "c2")
-		result := collection.Clear()
-		assert.Equal(t, 0, result.Len())
-		assert.True(t, result.IsEmpty())
-	})
-}
-
 func TestCollection_Remove(t *testing.T) {
 	t.Run("removes specified components", func(t *testing.T) {
 		collection := newCol("c1", "c2", "c3")
