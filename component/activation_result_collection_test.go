@@ -70,6 +70,45 @@ func TestActivationResultCollection_Add(t *testing.T) {
 				assert.True(t, collection.HasActivatedComponents())
 			},
 		},
+		{
+			// The collection keeps a name-sorted slice; unsorted input must still read back sorted.
+			name:       "unsorted batch with a repeated name, last one wins",
+			collection: NewActivationResultCollection(),
+			args: args{
+				activationResults: []*ActivationResult{
+					NewActivationResult("c3", ActivationCodeOK),
+					NewActivationResult("c1", ActivationCodeOK),
+					NewActivationResult("c3", ActivationCodePanicked, errors.New("panic")),
+					NewActivationResult("c2", ActivationCodeOK),
+				},
+			},
+			assertions: func(t *testing.T, collection *ActivationResultCollection) {
+				names := make([]string, 0, collection.Len())
+				for _, ar := range collection.AllOrdered() {
+					names = append(names, ar.ComponentName())
+				}
+				assert.Equal(t, []string{"c1", "c2", "c3"}, names)
+				assert.Equal(t, ActivationCodePanicked, collection.ByName("c3").Code())
+			},
+		},
+		{
+			name: "a result for a component already present replaces it",
+			collection: NewActivationResultCollection().Add(
+				NewActivationResult("c1", ActivationCodeOK),
+				NewActivationResult("c3", ActivationCodeOK),
+			),
+			args: args{
+				activationResults: []*ActivationResult{
+					NewActivationResult("c3", ActivationCodeReturnedError, errors.New("oops")),
+					NewActivationResult("c2", ActivationCodeOK),
+				},
+			},
+			assertions: func(t *testing.T, collection *ActivationResultCollection) {
+				assert.Equal(t, 3, collection.Len())
+				assert.Equal(t, ActivationCodeReturnedError, collection.ByName("c3").Code())
+				assert.Equal(t, "c2", collection.AllOrdered()[1].ComponentName())
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

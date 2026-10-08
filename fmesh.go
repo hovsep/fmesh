@@ -26,6 +26,11 @@ type FMesh struct {
 	hooks       *Hooks
 	plugins     *plugin.Registry[*FMesh]
 	livelock    livelockDetector // per run; reset by cleanUpPreviousRun
+
+	// Per-cycle scratch, reused so a cycle does not allocate them: the components
+	// ready to activate, and one result slot per component in name order.
+	ready []readyComponent
+	slots []*component.ActivationResult
 }
 
 // New creates a new F-Mesh with the default configuration and applies any provided options.

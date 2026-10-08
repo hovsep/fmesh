@@ -57,8 +57,17 @@ read by your own goroutine (the same pattern streams history to disk or a store)
 
 ## One cycle (`runCycle`)
 
-- `beforeCycle` hooks, then every component's `MaybeActivate(ctx)` in **its own goroutine**, then
-  `wg.Wait()`, then `afterCycle` hooks. There is no ordering between components within a cycle.
+- `beforeCycle` hooks, then every ready component's `MaybeActivate(ctx)` on a pool of at most
+  `MaxConcurrency` goroutines (default `GOMAXPROCS`; `WithUnlimitedConcurrency` gives each its own
+  goroutine), then `wg.Wait()`, then `afterCycle` hooks. There is no ordering between components
+  within a cycle.
+- **Why a pool.** A goroutine started for one activation must grow its stack on the first real
+  call. That copy cost more than the activation itself (27% of CPU in the throughput benchmark),
+  and shrinking frames only moves it to the next call. Workers keep their grown stacks.
+- Each activation writes its result into its own slot (indexed by name order), so collecting
+  results takes no lock. The cycle receives them in one sorted batch.
+- A blocking activation holds a worker. Activation functions must not wait on each other within a
+  cycle, so this never deadlocks a correct mesh, but I/O-bound meshes may want a higher limit.
 - `MaybeActivate` returns `ActivationCodeNoInput` without running the function when **no input port
   has signals**. One signal on any input makes a component ready — the activation function must
   handle partial inputs itself (or return a waiting sentinel).
@@ -188,9 +197,9 @@ complexity classes are what lasts.
 
 - **Width scales near-linearly.** ~1.5–4 µs of scheduler overhead per component per cycle, and
   ~300 B of heap per component. A 10⁶-component mesh builds in ~2 s and runs one wave in ~10 s. But
-  `runCycle` starts one goroutine per ready component per cycle (each grows to ~16 KB of stack), so
-  a wave across 10⁷ components needs tens of GiB of stacks alone and risks OOM before speed is the
-  problem. Components with no input get no goroutine.
+  with `WithUnlimitedConcurrency`, `runCycle` starts one goroutine per ready component per cycle
+  (each grows to ~16 KB of stack), so a wave across 10⁷ components needs tens of GiB of stacks
+  alone. The default worker pool keeps that to `GOMAXPROCS` stacks.
 - **Fan-in is O(N²).** Each delivery copies the destination port's whole signal group
   (`port.putSignals` → `signal.Group.With`). N outputs into one input port become impractical near
   N ≈ 10⁵ (tens of seconds in one drain). Guarded by `BenchmarkMeshRun/fan-in`.

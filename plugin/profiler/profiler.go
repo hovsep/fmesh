@@ -222,10 +222,11 @@ func (p *Plugin) initTiming(hooks *fmesh.Hooks) {
 	})
 }
 
-// labelGoroutines tags each activation goroutine with runtime/pprof labels
-// naming the mesh and the component. BeforeActivation runs on the goroutine the
-// scheduler spawned for this activation, and that goroutine ends with it, so
-// nothing needs resetting. CPU profiles can then be focused per component
+// labelGoroutines tags each activation with runtime/pprof labels naming the
+// mesh and the component. BeforeActivation runs on the goroutine that runs the
+// activation, and AfterActivation puts back the run context's labels, because
+// that goroutine is a worker that goes on to activate other components. CPU
+// profiles can then be focused per component
 // (go tool pprof -tagfocus=fmesh.component=NAME), and since Go 1.27 tracebacks,
 // including a PanicError's stack, carry the labels in their header.
 //
@@ -236,6 +237,10 @@ func labelGoroutines(meshName string, c *component.Component) {
 	c.SetupHooks(func(hooks *component.Hooks) {
 		hooks.BeforeActivation(func(ctx context.Context, _ *component.Component) error {
 			pprof.SetGoroutineLabels(pprof.WithLabels(ctx, labels))
+			return nil
+		})
+		hooks.AfterActivation(func(ctx context.Context, _ *component.ActivationContext) error {
+			pprof.SetGoroutineLabels(ctx)
 			return nil
 		})
 	})

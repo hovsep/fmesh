@@ -106,7 +106,7 @@ for _, r := range prof.Timeline() {
 ## Goroutine labels
 
 The profiler does not measure the process, but it helps process-wide tools. Every activation runs
-on a goroutine with the `runtime/pprof` labels `fmesh.mesh` and `fmesh.component`, in every mode.
+with the `runtime/pprof` labels `fmesh.mesh` and `fmesh.component`, in every mode.
 So you can focus a CPU profile on one component:
 
 ```

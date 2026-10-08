@@ -1,7 +1,7 @@
 package component
 
 import (
-	"maps"
+	"cmp"
 	"slices"
 	"sync"
 )
@@ -12,26 +12,71 @@ import (
 // The order-independent queries (Any, Every, Count, Filter and the Has* methods)
 // read under the lock and must not change the collection from their predicate.
 type ActivationResultCollection struct {
-	mu                sync.RWMutex
-	activationResults map[string]*ActivationResult
+	mu sync.RWMutex
+	// results is sorted by component name, one entry per component.
+	results []*ActivationResult
 }
 
 // NewActivationResultCollection creates an empty collection.
 func NewActivationResultCollection() *ActivationResultCollection {
-	return &ActivationResultCollection{
-		activationResults: make(map[string]*ActivationResult),
-	}
+	return &ActivationResultCollection{}
 }
 
-// Add adds multiple activation results and returns the collection.
+func compareName(e *ActivationResult, name string) int { return cmp.Compare(e.componentName, name) }
+
+func byName(a, b *ActivationResult) int { return cmp.Compare(a.componentName, b.componentName) }
+
+// Add adds multiple activation results and returns the collection. A result for
+// a component already in the collection, or repeated later in the same call,
+// replaces the earlier one.
 func (c *ActivationResultCollection) Add(activationResults ...*ActivationResult) *ActivationResultCollection {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, activationResult := range activationResults {
-		c.activationResults[activationResult.ComponentName()] = activationResult
+	// The run loop adds a whole cycle at once into an empty collection, already
+	// in name order: that takes one copy, not an insert per result.
+	if len(c.results) == 0 {
+		c.results = sortedByName(activationResults)
+		return c
+	}
+
+	for _, ar := range activationResults {
+		i, found := slices.BinarySearchFunc(c.results, ar.componentName, compareName)
+		if found {
+			c.results[i] = ar
+			continue
+		}
+		c.results = slices.Insert(c.results, i, ar)
 	}
 	return c
+}
+
+// sortedByName returns a name-sorted copy of results, keeping the last result
+// of each name.
+func sortedByName(results []*ActivationResult) []*ActivationResult {
+	sorted := slices.Clone(results)
+	if slices.IsSortedFunc(sorted, byName) && !hasAdjacentDuplicates(sorted) {
+		return sorted
+	}
+	slices.SortStableFunc(sorted, byName)
+	unique := sorted[:0]
+	for i, ar := range sorted {
+		if i+1 < len(sorted) && sorted[i+1].componentName == ar.componentName {
+			continue
+		}
+		unique = append(unique, ar)
+	}
+	clear(sorted[len(unique):])
+	return unique
+}
+
+func hasAdjacentDuplicates(sorted []*ActivationResult) bool {
+	for i := 1; i < len(sorted); i++ {
+		if sorted[i].componentName == sorted[i-1].componentName {
+			return true
+		}
+	}
+	return false
 }
 
 // HasActivationErrors tells whether the collection contains at least one activation result with error and respective code.
@@ -53,7 +98,11 @@ func (c *ActivationResultCollection) HasActivatedComponents() bool {
 func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.activationResults[name]
+	i, found := slices.BinarySearchFunc(c.results, name, compareName)
+	if !found {
+		return nil
+	}
+	return c.results[i]
 }
 
 // All returns a shallow copy of all activation results as a map.
@@ -61,8 +110,10 @@ func (c *ActivationResultCollection) ByName(name string) *ActivationResult {
 func (c *ActivationResultCollection) All() map[string]*ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make(map[string]*ActivationResult, len(c.activationResults))
-	maps.Copy(result, c.activationResults)
+	result := make(map[string]*ActivationResult, len(c.results))
+	for _, ar := range c.results {
+		result[ar.componentName] = ar
+	}
 	return result
 }
 
@@ -71,18 +122,14 @@ func (c *ActivationResultCollection) All() map[string]*ActivationResult {
 func (c *ActivationResultCollection) AllOrdered() []*ActivationResult {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	ordered := make([]*ActivationResult, 0, len(c.activationResults))
-	for _, name := range slices.Sorted(maps.Keys(c.activationResults)) {
-		ordered = append(ordered, c.activationResults[name])
-	}
-	return ordered
+	return slices.Clone(c.results)
 }
 
 // Len returns the number of activation results in the collection.
 func (c *ActivationResultCollection) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.activationResults)
+	return len(c.results)
 }
 
 // IsEmpty returns true when there are no activation results in the collection.
@@ -94,7 +141,7 @@ func (c *ActivationResultCollection) IsEmpty() bool {
 func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
+	for _, result := range c.results {
 		if !predicate(result) {
 			return false
 		}
@@ -106,12 +153,7 @@ func (c *ActivationResultCollection) Every(predicate ResultPredicate) bool {
 func (c *ActivationResultCollection) Any(predicate ResultPredicate) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	for _, result := range c.activationResults {
-		if predicate(result) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(c.results, predicate)
 }
 
 // Count returns the number of activation results that match the predicate.
@@ -119,7 +161,7 @@ func (c *ActivationResultCollection) Count(predicate ResultPredicate) int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	count := 0
-	for _, result := range c.activationResults {
+	for _, result := range c.results {
 		if predicate(result) {
 			count++
 		}
@@ -153,9 +195,9 @@ func (c *ActivationResultCollection) Filter(predicate ResultPredicate) *Activati
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	filtered := NewActivationResultCollection()
-	for _, ar := range c.activationResults {
+	for _, ar := range c.results {
 		if predicate(ar) {
-			filtered.Add(ar)
+			filtered.results = append(filtered.results, ar)
 		}
 	}
 	return filtered

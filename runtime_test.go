@@ -3,6 +3,8 @@ package fmesh
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -433,6 +435,80 @@ func Test_MultipleRun(t *testing.T) {
 			for _, c := range runResult.Cycles.All() {
 				assert.Nil(t, c.ActivationResults().ByName("idle"), "cycle #%d", c.Number())
 			}
+		})
+	})
+}
+
+func Test_Concurrency(t *testing.T) {
+	// buildMesh returns a mesh of n components that each sleep while counting how
+	// many activations are in flight, and the peak it saw.
+	buildMesh := func(t *testing.T, n int, opts ...Option) (*FMesh, func() int) {
+		t.Helper()
+		var mu sync.Mutex
+		inFlight, peak := 0, 0
+		fm := mustNewFMesh("fm", opts...)
+		for i := range n {
+			require.NoError(t, fm.AddComponents(mustNewComponent(fmt.Sprintf("c%d", i),
+				component.WithInputs("in"),
+				component.WithActivationFunc(func(context.Context, *component.Component) error {
+					mu.Lock()
+					inFlight++
+					peak = max(peak, inFlight)
+					mu.Unlock()
+					time.Sleep(time.Millisecond)
+					mu.Lock()
+					inFlight--
+					mu.Unlock()
+					return nil
+				}))))
+			require.NoError(t, fm.ComponentByName(fmt.Sprintf("c%d", i)).InputByName("in").PutSignals(signal.New(i)))
+		}
+		return fm, func() int {
+			mu.Lock()
+			defer mu.Unlock()
+			return peak
+		}
+	}
+
+	t.Run("at most MaxConcurrency activations run at once", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fm, peak := buildMesh(t, 10, WithMaxConcurrency(3))
+			ri, err := fm.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, 10, ri.Cycles.First().ActivationResults().Len())
+			assert.Equal(t, 3, peak())
+		})
+	})
+
+	t.Run("unlimited runs every ready component at once", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fm, peak := buildMesh(t, 10, WithUnlimitedConcurrency())
+			_, err := fm.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, 10, peak())
+		})
+	})
+
+	// Components that wait for each other within a cycle are not allowed, but they
+	// are the one case where the two models differ in outcome, so pin it.
+	t.Run("unlimited lets activations of one cycle meet", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			const n = 8
+			var arrived sync.WaitGroup
+			arrived.Add(n)
+			fm := mustNewFMesh("fm", WithUnlimitedConcurrency())
+			for i := range n {
+				require.NoError(t, fm.AddComponents(mustNewComponent(fmt.Sprintf("c%d", i),
+					component.WithInputs("in"),
+					component.WithActivationFunc(func(context.Context, *component.Component) error {
+						arrived.Done()
+						arrived.Wait()
+						return nil
+					}))))
+				require.NoError(t, fm.ComponentByName(fmt.Sprintf("c%d", i)).InputByName("in").PutSignals(signal.New(i)))
+			}
+			_, err := fm.Run(context.Background())
+			require.NoError(t, err)
 		})
 	})
 }

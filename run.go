@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hovsep/fmesh/component"
 	"github.com/hovsep/fmesh/cycle"
@@ -142,28 +143,105 @@ func (fm *FMesh) runCycle(ctx context.Context) (err error) {
 
 	fm.LogDebug("starting activation cycle #%d", newCycle.Number())
 
-	var wg sync.WaitGroup
+	ready, slots := fm.prepareCycle()
+	fm.activate(ctx, ready, slots)
 
-	for c := range fm.components.Each {
-		// No goroutine for a component with nothing to read: in a sparse mesh
-		// that is most of them, and MaybeActivate would only report NoInput.
-		if !c.Inputs().AnyHasSignals() {
-			continue
+	recorded := 0
+	for _, ar := range slots {
+		if ar != nil {
+			recorded++
 		}
-		wg.Go(func() {
-			ar := c.MaybeActivate(ctx)
-			// A missing result means "had no input": recording NoInput would fill
-			// the history of a sparse mesh with noise.
-			if ar.Code() == component.ActivationCodeNoInput {
-				return
+	}
+	if recorded > 0 {
+		// The slots are in component-name order, so the cycle takes them in one
+		// sorted batch instead of one locked insert per activation.
+		results := make([]*component.ActivationResult, 0, recorded)
+		for _, ar := range slots {
+			if ar != nil {
+				results = append(results, ar)
 			}
-			newCycle.AddActivationResults(ar)
-		})
+		}
+		newCycle.AddActivationResults(results...)
 	}
 
-	wg.Wait()
-
 	return nil
+}
+
+// readyComponent is a component with input this cycle and its slot index.
+type readyComponent struct {
+	component *component.Component
+	slot      int
+}
+
+// prepareCycle lists the components that have input and clears one result slot
+// per component, reusing the previous cycle's scratch.
+func (fm *FMesh) prepareCycle() ([]readyComponent, []*component.ActivationResult) {
+	n := fm.components.Len()
+	if cap(fm.slots) < n {
+		fm.slots = make([]*component.ActivationResult, n)
+	}
+	slots := fm.slots[:n]
+	clear(slots)
+
+	ready := fm.ready[:0]
+	i := 0
+	for c := range fm.components.Each {
+		// A component with nothing to read gets no worker: in a sparse mesh that
+		// is most of them, and MaybeActivate would only report NoInput.
+		if c.Inputs().AnyHasSignals() {
+			ready = append(ready, readyComponent{component: c, slot: i})
+		}
+		i++
+	}
+	fm.ready = ready
+	return ready, slots
+}
+
+// activate runs the ready components on at most MaxConcurrency goroutines and
+// waits for them. Each activation writes only its own slot, so no lock is needed.
+//
+// The workers are what keeps activation cheap: a goroutine started for a single
+// activation has to grow its stack on the first real call, and that copy cost
+// more than the activation itself.
+func (fm *FMesh) activate(ctx context.Context, ready []readyComponent, slots []*component.ActivationResult) {
+	run := func(rc readyComponent) {
+		ar := rc.component.MaybeActivate(ctx)
+		// A missing result means "had no input": recording NoInput would fill
+		// the history of a sparse mesh with noise.
+		if ar.Code() != component.ActivationCodeNoInput {
+			slots[rc.slot] = ar
+		}
+	}
+
+	var wg sync.WaitGroup
+	workers := len(ready)
+	if limit := fm.config.MaxConcurrency; limit > 0 && limit < workers {
+		workers = limit
+	}
+
+	// One goroutine per component: hand each its own, so a blocked activation
+	// never delays another.
+	if workers == len(ready) {
+		for _, rc := range ready {
+			wg.Go(func() { run(rc) })
+		}
+		wg.Wait()
+		return
+	}
+
+	var next atomic.Int64
+	for range workers {
+		wg.Go(func() {
+			for {
+				i := int(next.Add(1)) - 1
+				if i >= len(ready) {
+					return
+				}
+				run(ready[i])
+			}
+		})
+	}
+	wg.Wait()
 }
 
 // drainComponents drains the data from activated components.
@@ -205,16 +283,23 @@ func (fm *FMesh) clearInputs(ctx context.Context) error {
 
 // forEachActivatedComponent applies action to every component that activated in
 // the last cycle, paired with its activation result, and stops at the first error.
-// It walks the name-ordered components rather than the map-backed activation
-// results: drain order decides fan-in order and must be deterministic. A
-// component with no result did not activate at all.
+// It walks the name-ordered components rather than the results alone: drain
+// order decides fan-in order and must be deterministic. Both lists are sorted
+// by name, so one merge walk pairs them. A component with no result did not
+// activate at all.
 func (fm *FMesh) forEachActivatedComponent(
 	action func(*component.Component, *component.ActivationResult) error,
 ) error {
-	results := fm.runtimeInfo.Cycles.Last().ActivationResults()
+	results := fm.runtimeInfo.Cycles.Last().ActivationResults().AllOrdered()
 	for c := range fm.components.Each {
-		activationResult := results.ByName(c.Name())
-		if activationResult == nil || !activationResult.Activated() {
+		for len(results) > 0 && results[0].ComponentName() < c.Name() {
+			results = results[1:]
+		}
+		if len(results) == 0 {
+			return nil
+		}
+		activationResult := results[0]
+		if activationResult.ComponentName() != c.Name() || !activationResult.Activated() {
 			continue
 		}
 		if err := action(c, activationResult); err != nil {

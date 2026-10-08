@@ -68,7 +68,7 @@ hundreds and thousands of components:
 
 - **scheduling-only** — activation returns `component.ErrWaitKeepingInputs`, so each component
   keeps its input and re-activates every cycle, with no outputs or pipes. The scheduling floor
-  (goroutine fan-out, `WaitGroup`, result collection).
+  (worker pool, `WaitGroup`, result collection).
 - **with-signal-movement** — activation copies input → output through a self-loop pipe, adding the
   per-cycle drain/flush/forward cost.
 
@@ -88,8 +88,7 @@ for _, n := range []int{10, 100, 1_000, 10_000} {
 ```
 
 `BenchmarkGroupBuild` shows this way that building a group by repeated `With` is O(n²) (each `With`
-allocates a new slice). `BenchmarkMeshRun/wide` exercises the one-goroutine-per-component-per-cycle
-cost at scale.
+allocates a new slice). `BenchmarkMeshRun/wide` exercises the per-component scheduling cost at scale.
 
 Mesh-scale gotchas:
 
