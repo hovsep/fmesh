@@ -78,23 +78,13 @@ func (g *Group) WithoutMetaOnEach(keys ...string) *Group {
 	}))
 }
 
-// Contains returns true if the group contains the exact signal (pointer identity).
-func (g *Group) Contains(s *Signal) bool {
-	return slices.Contains(g.raw(), s)
-}
-
 // ContainsPayload reports whether any signal's payload equals the given value.
-// T must be comparable, so a slice or map argument does not compile — use
-// ContainsPayloadFunc for those. A nil payload is found with ContainsPayload[any](nil).
+// T must be comparable, so a slice or map argument does not compile — use Any
+// with your own comparison for those. A nil payload is found with ContainsPayload[any](nil).
 func (g *Group) ContainsPayload[T comparable](payload T) bool {
 	target := any(payload)
-	return g.ContainsPayloadFunc(func(p any) bool { return p == target })
-}
-
-// ContainsPayloadFunc returns true if any signal's payload satisfies eq.
-func (g *Group) ContainsPayloadFunc(eq func(payload any) bool) bool {
 	for _, sig := range g.raw() {
-		if eq(sig.Payload()) {
+		if sig.Payload() == target {
 			return true
 		}
 	}
@@ -237,15 +227,6 @@ func (g *Group) MapPayloadsIf(predicate Predicate, mapper PayloadMapper) *Group 
 		}
 	}
 	return adoptSignals(mapped)
-}
-
-// Reduce accumulates all signals into a single signal using the given function.
-func (g *Group) Reduce(initial *Signal, fn Reducer) *Signal {
-	acc := initial
-	for _, s := range g.raw() {
-		acc = fn(acc, s)
-	}
-	return acc
 }
 
 // ReducePayloads folds every payload into an accumulator of type A.

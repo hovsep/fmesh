@@ -101,14 +101,6 @@ func TestCollection_AnyAndMetadata(t *testing.T) {
 	assert.True(t, col.Meta().ValueIs("s", 1.0))
 }
 
-func TestCollection_Map_RejectsCollidingNames(t *testing.T) {
-	col := NewCollection()
-	require.NoError(t, col.Add(mustNew("a"), mustNew("b")))
-
-	_, err := col.Map(func(*Component) *Component { return mustNew("same") })
-	require.Error(t, err, "two components mapped to one name cannot share a collection")
-}
-
 func TestActivationResultCode_String(t *testing.T) {
 	tests := map[ActivationResultCode]string{
 		ActivationCodeUndefined:             "Undefined",

@@ -66,24 +66,16 @@ func (g *Group) evictExcess() {
 	g.replace(cycles[excess:])
 }
 
-// derive returns an empty group carrying the receiver's length limit and copies
-// of its own metadata, so Filter/Map/MapIf results keep them.
+// derive returns an empty group carrying the receiver's length limit. Like every
+// other Filter result, it starts with empty metadata.
 func (g *Group) derive() *Group {
 	derived := NewGroup()
 	derived.lenLimit = g.lenLimit
-	derived.meta = g.meta.Clone()
 	return derived
 }
 
-// Without removes cycles matching the predicate and returns a new group.
-func (g *Group) Without(predicate Predicate) *Group {
-	return g.Filter(func(c *Cycle) bool {
-		return !predicate(c)
-	})
-}
-
 // Filter returns a new group with cycles that match the predicate. The group's
-// own length limit and metadata are preserved on the returned group.
+// length limit is preserved on the returned group; its metadata is not.
 func (g *Group) Filter(predicate Predicate) *Group {
 	filtered := g.derive()
 	for _, cyc := range g.raw() {
@@ -92,33 +84,4 @@ func (g *Group) Filter(predicate Predicate) *Group {
 		}
 	}
 	return filtered
-}
-
-// MapIf is like Map but only applies the mapper to cycles that match the predicate.
-// Non-matching cycles are kept as-is. Nil mapper results are dropped. The group's
-// own length limit and metadata are preserved on the returned group.
-func (g *Group) MapIf(predicate Predicate, mapper Mapper) *Group {
-	mapped := g.derive()
-	for _, c := range g.raw() {
-		if predicate(c) {
-			if transformedCyc := mapper(c); transformedCyc != nil {
-				mapped.Add(transformedCyc)
-			}
-		} else {
-			mapped.Add(c)
-		}
-	}
-	return mapped
-}
-
-// Map returns a new group with cycles transformed by the mapper function. The
-// group's own length limit and metadata are preserved on the returned group.
-func (g *Group) Map(mapper Mapper) *Group {
-	mapped := g.derive()
-	for _, cyc := range g.raw() {
-		if transformedCyc := mapper(cyc); transformedCyc != nil {
-			mapped.Add(transformedCyc)
-		}
-	}
-	return mapped
 }

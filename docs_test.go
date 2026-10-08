@@ -191,6 +191,8 @@ func TestDocs_NoRemovedMethodNames(t *testing.T) {
 		"SetActivationCode", "ActivationErrorWithComponentName", "IsWaitingForInput",
 		"WantsToKeepInputs", "ValidateBeforeAddingToMesh", "PluginRegistered",
 		"SetActivated", "SetCode", "AddError", "RemoveOldest",
+		"PutSignalsOnEach", "PipeEachTo", "ContainsPayloadFunc", "Reduce", "Without",
+		"NewInputGroup", "NewOutputGroup",
 	}
 	banned := make(map[string]bool, len(removed))
 	for _, name := range removed {

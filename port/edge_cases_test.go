@@ -70,33 +70,8 @@ func TestCollection_AnyRemoveAndMetadata(t *testing.T) {
 	assert.True(t, col.Meta().ValueIs("s", 1.0))
 }
 
-func TestCollection_Map_RejectsCollidingNames(t *testing.T) {
-	col := mustNewCollection(mustInput("a"), mustInput("b"))
-	_, err := col.Map(func(*Port) *Port { return mustInput("same") })
-	require.Error(t, err)
-}
-
-func TestCollection_ErrorsSurfaceFromEachPort(t *testing.T) {
-	t.Run("PutSignalsOnEach", func(t *testing.T) {
-		col := mustNewCollection(refusing(mustInput("a")))
-		require.ErrorContains(t, col.PutSignalsOnEach(signal.New(1)), "refused")
-	})
-
-	t.Run("Flush", func(t *testing.T) {
-		out := mustOutput("out")
-		require.NoError(t, out.PipeTo(refusing(mustInput("in"))))
-		require.NoError(t, out.PutSignals(signal.New(1)))
-		require.ErrorContains(t, mustNewCollection(out).Flush(context.Background()), "refused")
-	})
-
-	t.Run("PipeEachTo", func(t *testing.T) {
-		col := mustNewCollection(mustInput("a"))
-		require.ErrorIs(t, col.PipeEachTo(mustInput("b")), ErrInvalidPipeDirection)
-	})
-}
-
 func TestGroup_OwnMetadata(t *testing.T) {
-	g := NewGroup()
+	g := newGroup()
 	g.Meta().Set("k", "v").Set("s", 2.0)
 	assert.True(t, g.Meta().ValueIs("k", "v"))
 	assert.True(t, g.Meta().ValueIs("s", 2.0))

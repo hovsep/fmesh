@@ -46,25 +46,3 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	_ = filtered.Add(matched...) // components come from existing collection — names are unique by construction
 	return filtered
 }
-
-// Map returns a new collection with components transformed by the mapper function.
-// Returns an error if a mapped component has a duplicate name.
-func (c *Collection) Map(mapper Mapper) (*Collection, error) {
-	transformed := make([]*Component, 0, c.Len())
-	for comp := range c.Each {
-		if transformedComp := mapper(comp); transformedComp != nil {
-			transformed = append(transformed, transformedComp)
-		}
-	}
-	mapped := NewCollection()
-	if err := mapped.Add(transformed...); err != nil {
-		return nil, err
-	}
-	return mapped, nil
-}
-
-// Clear removes all components from the collection.
-func (c *Collection) Clear() *Collection {
-	collection.Reset(c.keyedComponents)
-	return c
-}

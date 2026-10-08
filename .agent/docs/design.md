@@ -77,7 +77,7 @@ Slice plumbing uses package functions (`collection.Items`/`SetItems`/`AppendItem
 typed `meta.Meta` surface (`Set[T]`, `Value[T]`, `ValueOrDefault[T]`, `ValueIs[T]`). They cost
 nothing per instance and render normally in godoc. Two limits:
 - A generic method cannot implement an interface method.
-- It cannot name its receiver's type as a result. So the `Filter`/`Map` duplication across the
+- It cannot name its receiver's type as a result. So the `Filter` duplication across the
   collection types needs a self type parameter, not generic methods — it stays hand-written.
 
 **Minimise `reflect`.** Use it only when no alternative exists. There is currently no use at all.

@@ -10,7 +10,7 @@ import (
 
 func TestNewGroup(t *testing.T) {
 	t.Run("empty group", func(t *testing.T) {
-		assert.Equal(t, 0, NewGroup().Len())
+		assert.Equal(t, 0, newGroup().Len())
 	})
 }
 
@@ -40,11 +40,11 @@ func TestNewDirectedGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			inputs := NewInputGroup(tt.args.names...)
+			inputs := newInputGroup(tt.args.names...)
 			assert.Equal(t, tt.wantLen, inputs.Len())
 			assert.True(t, inputs.Every(func(p *Port) bool { return p.IsInput() }))
 
-			outputs := NewOutputGroup(tt.args.names...)
+			outputs := newOutputGroup(tt.args.names...)
 			assert.Equal(t, tt.wantLen, outputs.Len())
 			assert.True(t, outputs.Every(func(p *Port) bool { return p.IsOutput() }))
 		})
@@ -63,7 +63,7 @@ func TestGroup_With(t *testing.T) {
 	}{
 		{
 			name:  "adding nothing to empty group",
-			group: NewGroup(),
+			group: newGroup(),
 			args: args{
 				ports: nil,
 			},
@@ -73,9 +73,9 @@ func TestGroup_With(t *testing.T) {
 		},
 		{
 			name:  "adding to empty group",
-			group: NewGroup(),
+			group: newGroup(),
 			args: args{
-				ports: NewOutputGroup("p1", "p2", "p3").All(),
+				ports: newOutputGroup("p1", "p2", "p3").All(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 3, group.Len())
@@ -83,9 +83,9 @@ func TestGroup_With(t *testing.T) {
 		},
 		{
 			name:  "adding to non-empty group",
-			group: NewOutputGroup("p1", "p2", "p3"),
+			group: newOutputGroup("p1", "p2", "p3"),
 			args: args{
-				ports: NewOutputGroup("p4", "p5", "p6").All(),
+				ports: newOutputGroup("p4", "p5", "p6").All(),
 			},
 			assertions: func(t *testing.T, group *Group) {
 				assert.Equal(t, 6, group.Len())
@@ -102,19 +102,9 @@ func TestGroup_With(t *testing.T) {
 	}
 }
 
-func TestGroup_Without(t *testing.T) {
-	t.Run("removes matching ports", func(t *testing.T) {
-		group := NewOutputGroup("a1", "a2", "b1")
-		result := group.Without(func(p *Port) bool {
-			return p.Name()[0] == 'a'
-		})
-		assert.Equal(t, 1, result.Len())
-	})
-}
-
 func TestGroup_ForEach(t *testing.T) {
 	t.Run("applies action to each port", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		count := 0
 		err := group.ForEach(func(p *Port) error {
 			count++
@@ -125,7 +115,7 @@ func TestGroup_ForEach(t *testing.T) {
 	})
 
 	t.Run("stops on error", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		err := group.ForEach(func(p *Port) error {
 			return assert.AnError
 		})
@@ -135,7 +125,7 @@ func TestGroup_ForEach(t *testing.T) {
 
 func TestGroup_ForEachIf(t *testing.T) {
 	t.Run("applies action only to matching ports", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "special1", "special2")
+		group := newOutputGroup("p1", "p2", "special1", "special2")
 		count := 0
 		err := group.ForEachIf(
 			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
@@ -146,7 +136,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	})
 
 	t.Run("applies action to all when predicate always true", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		count := 0
 		err := group.ForEachIf(
 			func(p *Port) bool { return true },
@@ -157,7 +147,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	})
 
 	t.Run("applies action to none when predicate always false", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		count := 0
 		err := group.ForEachIf(
 			func(p *Port) bool { return false },
@@ -168,7 +158,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 	})
 
 	t.Run("stops on error", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		err := group.ForEachIf(
 			func(p *Port) bool { return true },
 			func(p *Port) error { return assert.AnError },
@@ -179,7 +169,7 @@ func TestGroup_ForEachIf(t *testing.T) {
 
 func TestGroup_AllMatch(t *testing.T) {
 	t.Run("returns true when all match", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2")
+		group := newOutputGroup("p1", "p2")
 		result := group.Every(func(p *Port) bool {
 			return p.Name() != ""
 		})
@@ -187,7 +177,7 @@ func TestGroup_AllMatch(t *testing.T) {
 	})
 
 	t.Run("returns false when not all match", func(t *testing.T) {
-		group := NewOutputGroup("p1", "")
+		group := newOutputGroup("p1", "")
 		result := group.Every(func(p *Port) bool {
 			return p.Name() != ""
 		})
@@ -197,7 +187,7 @@ func TestGroup_AllMatch(t *testing.T) {
 
 func TestGroup_Any(t *testing.T) {
 	t.Run("returns true when at least one matches", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		result := group.Any(func(p *Port) bool {
 			return p.Name() == "p2"
 		})
@@ -205,7 +195,7 @@ func TestGroup_Any(t *testing.T) {
 	})
 
 	t.Run("returns false when none match", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2")
+		group := newOutputGroup("p1", "p2")
 		result := group.Any(func(p *Port) bool {
 			return p.Name() == "p3"
 		})
@@ -215,7 +205,7 @@ func TestGroup_Any(t *testing.T) {
 
 func TestGroup_CountMatch(t *testing.T) {
 	t.Run("counts matching ports", func(t *testing.T) {
-		group := NewOutputGroup("a1", "a2", "b1")
+		group := newOutputGroup("a1", "a2", "b1")
 		count := group.Count(func(p *Port) bool {
 			return p.Name()[0] == 'a'
 		})
@@ -223,7 +213,7 @@ func TestGroup_CountMatch(t *testing.T) {
 	})
 
 	t.Run("returns 0 for empty group", func(t *testing.T) {
-		group := NewGroup()
+		group := newGroup()
 		count := group.Count(func(p *Port) bool {
 			return true
 		})
@@ -233,7 +223,7 @@ func TestGroup_CountMatch(t *testing.T) {
 
 func TestGroup_Filter(t *testing.T) {
 	t.Run("filters matching ports", func(t *testing.T) {
-		group := NewOutputGroup("a1", "a2", "b1")
+		group := newOutputGroup("a1", "a2", "b1")
 		filtered := group.Filter(func(p *Port) bool {
 			return p.Name()[0] == 'a'
 		})
@@ -241,90 +231,28 @@ func TestGroup_Filter(t *testing.T) {
 	})
 }
 
-func TestGroup_MapIf(t *testing.T) {
-	t.Run("maps only matching ports", func(t *testing.T) {
-		group := NewOutputGroup("p1", "special", "p2")
-		mapped := group.MapIf(
-			func(p *Port) bool { return strings.HasPrefix(p.Name(), "special") },
-			func(p *Port) *Port { return mustOutput("mapped_" + p.Name()) },
-		)
-		assert.Equal(t, 3, mapped.Len())
-		assert.Equal(t, "mapped_special", mapped.Find(func(p *Port) bool {
-			return strings.HasPrefix(p.Name(), "mapped_")
-		}).Name())
-	})
-
-	t.Run("predicate matches none - all ports kept as-is", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
-		mapped := group.MapIf(
-			func(p *Port) bool { return false },
-			func(p *Port) *Port { return mustOutput("x") },
-		)
-		assert.Equal(t, 3, mapped.Len())
-	})
-
-	t.Run("predicate matches all - all ports mapped", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2")
-		mapped := group.MapIf(
-			func(p *Port) bool { return true },
-			func(p *Port) *Port { return mustOutput("mapped_" + p.Name()) },
-		)
-		assert.Equal(t, 2, mapped.Len())
-	})
-
-	t.Run("nil mapper result drops the port", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
-		mapped := group.MapIf(
-			func(p *Port) bool { return p.Name() == "p2" },
-			func(p *Port) *Port { return nil },
-		)
-		assert.Equal(t, 2, mapped.Len()) // p2 dropped, p1 and p3 kept
-	})
-}
-
-func TestGroup_Map(t *testing.T) {
-	t.Run("transforms ports", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2")
-		mapped := group.Map(func(p *Port) *Port {
-			return mustOutput("mapped_" + p.Name())
-		})
-		assert.Equal(t, 2, mapped.Len())
-	})
-
-	t.Run("filters out nil results", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
-		mapped := group.Map(func(p *Port) *Port {
-			if p.Name() == "p2" {
-				return nil
-			}
-			return p
-		})
-		assert.Equal(t, 2, mapped.Len())
-	})
-}
-
 func TestGroup_Len(t *testing.T) {
 	t.Run("returns count of ports", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		assert.Equal(t, 3, group.Len())
 	})
 
 	t.Run("returns 0 for empty group", func(t *testing.T) {
-		group := NewGroup()
+		group := newGroup()
 		assert.Equal(t, 0, group.Len())
 	})
 }
 
 func TestGroup_First(t *testing.T) {
 	t.Run("returns first port", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2")
+		group := newOutputGroup("p1", "p2")
 		first := group.First()
 		require.NotNil(t, first)
 		assert.Equal(t, "p1", first.Name())
 	})
 
 	t.Run("returns nil for empty group", func(t *testing.T) {
-		group := NewGroup()
+		group := newGroup()
 		first := group.First()
 		assert.Nil(t, first)
 	})
@@ -332,7 +260,7 @@ func TestGroup_First(t *testing.T) {
 
 func TestGroup_Find(t *testing.T) {
 	t.Run("returns first matching port", func(t *testing.T) {
-		group := NewOutputGroup("p1", "special", "p2")
+		group := newOutputGroup("p1", "special", "p2")
 		got := group.Find(func(p *Port) bool {
 			return strings.HasPrefix(p.Name(), "special")
 		})
@@ -341,7 +269,7 @@ func TestGroup_Find(t *testing.T) {
 	})
 
 	t.Run("returns nil when no port matches", func(t *testing.T) {
-		group := NewOutputGroup("p1", "p2", "p3")
+		group := newOutputGroup("p1", "p2", "p3")
 		got := group.Find(func(p *Port) bool {
 			return strings.HasPrefix(p.Name(), "x")
 		})
@@ -349,7 +277,7 @@ func TestGroup_Find(t *testing.T) {
 	})
 
 	t.Run("returns nil for empty group", func(t *testing.T) {
-		group := NewGroup()
+		group := newGroup()
 		got := group.Find(func(p *Port) bool { return true })
 		assert.Nil(t, got)
 	})
@@ -357,7 +285,7 @@ func TestGroup_Find(t *testing.T) {
 
 func TestGroup_FirstDoesNotPoisonGroup(t *testing.T) {
 	t.Run("First does not break group when empty", func(t *testing.T) {
-		group := NewGroup()
+		group := newGroup()
 
 		// Query first on empty group
 		result := group.First()

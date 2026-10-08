@@ -1,8 +1,6 @@
 package port
 
 import (
-	"context"
-
 	"github.com/hovsep/fmesh/internal/collection"
 	"github.com/hovsep/fmesh/meta"
 	"github.com/hovsep/fmesh/signal"
@@ -68,41 +66,6 @@ func (c *Collection) AllHaveSignals() bool {
 	})
 }
 
-// PutSignalsOnEach adds the same signals to every port in the collection.
-// The name says OnEach because this broadcasts — it is not a fan-in.
-// Stops and returns the first error encountered.
-func (c *Collection) PutSignalsOnEach(signals ...*signal.Signal) error {
-	for p := range c.Each {
-		if err := p.PutSignals(signals...); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Flush flushes all ports in a collection.
-// Stops and returns the first error encountered.
-func (c *Collection) Flush(ctx context.Context) error {
-	for p := range c.Each {
-		if err := p.Flush(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// PipeEachTo pipes every port in the collection to every destination port —
-// a full cross product, which the name makes explicit.
-// Stops and returns the first error encountered.
-func (c *Collection) PipeEachTo(destPorts ...*Port) error {
-	for p := range c.Each {
-		if err := p.PipeTo(destPorts...); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Remove deletes ports by name and returns the collection.
 func (c *Collection) Remove(names ...string) *Collection {
 	c.keyedPorts.Remove(names...)
@@ -129,22 +92,6 @@ func (c *Collection) Filter(predicate Predicate) *Collection {
 	filtered := NewCollection()
 	_ = filtered.Add(matched...) // ports come from existing collection — names are unique by construction
 	return filtered
-}
-
-// Map returns a new collection with ports transformed by the mapper function.
-// Returns an error if a mapped port has a duplicate name.
-func (c *Collection) Map(mapper Mapper) (*Collection, error) {
-	transformed := make([]*Port, 0, c.Len())
-	for port := range c.Each {
-		if transformedPort := mapper(port); transformedPort != nil {
-			transformed = append(transformed, transformedPort)
-		}
-	}
-	mapped := NewCollection()
-	if err := mapped.Add(transformed...); err != nil {
-		return nil, err
-	}
-	return mapped, nil
 }
 
 // SetParentComponent sets the parent component on all ports in the collection and returns the collection.
