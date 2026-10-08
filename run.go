@@ -251,11 +251,12 @@ func (fm *FMesh) activate(ctx context.Context, ready []readyComponent, slots []*
 // be merged into one: flushing delivers signals into downstream input ports, so
 // a single pass would clear away what an earlier component had just delivered.
 func (fm *FMesh) drainComponents(ctx context.Context) error {
-	if err := fm.clearInputs(ctx); err != nil {
+	results := fm.runtimeInfo.Cycles.Last().ActivationResults().AllOrdered()
+	if err := fm.clearInputs(ctx, results); err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedToDrain, err)
 	}
 
-	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
+	return fm.forEachActivatedComponent(results, func(c *component.Component, activationResult *component.ActivationResult) error {
 		if activationResult.IsWaiting() {
 			return nil
 		}
@@ -268,8 +269,8 @@ func (fm *FMesh) drainComponents(ctx context.Context) error {
 }
 
 // clearInputs clears all the input ports of all components activated in the latest cycle.
-func (fm *FMesh) clearInputs(ctx context.Context) error {
-	return fm.forEachActivatedComponent(func(c *component.Component, activationResult *component.ActivationResult) error {
+func (fm *FMesh) clearInputs(ctx context.Context, results []*component.ActivationResult) error {
+	return fm.forEachActivatedComponent(results, func(c *component.Component, activationResult *component.ActivationResult) error {
 		if activationResult.KeepsInputs() {
 			return nil
 		}
@@ -281,16 +282,16 @@ func (fm *FMesh) clearInputs(ctx context.Context) error {
 	})
 }
 
-// forEachActivatedComponent applies action to every component that activated in
-// the last cycle, paired with its activation result, and stops at the first error.
+// forEachActivatedComponent applies action to every component that activated,
+// paired with its result from results (sorted by name), and stops at the first error.
 // It walks the name-ordered components rather than the results alone: drain
 // order decides fan-in order and must be deterministic. Both lists are sorted
 // by name, so one merge walk pairs them. A component with no result did not
 // activate at all.
 func (fm *FMesh) forEachActivatedComponent(
+	results []*component.ActivationResult,
 	action func(*component.Component, *component.ActivationResult) error,
 ) error {
-	results := fm.runtimeInfo.Cycles.Last().ActivationResults().AllOrdered()
 	for c := range fm.components.Each {
 		for len(results) > 0 && results[0].ComponentName() < c.Name() {
 			results = results[1:]
