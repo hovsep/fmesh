@@ -11,6 +11,111 @@ release title — a suffix in the tag makes Go treat the release as a pre-releas
 
 ## [Unreleased]
 
+## [v1.18.0] — Tavush — 2026-10-14
+
+Metadata takes any ordered or bool value, activations run on a worker pool, every container
+iterates the same way, and a long list of hook, livelock, pipe and retry fixes.
+
+### BREAKING
+
+**`All()` is the one iterator on every container, and it is an `iter.Seq`.** `signal.Group`,
+`port.Group`, `port.Collection`, `component.Collection`, `cycle.Group` and
+`ActivationResultCollection` all have `All() iter.Seq[T]`: insertion order on the groups, name order
+on the keyed collections. It replaces `ForEach`, `ForEachIf`, `Each`, `AllOrdered`, the
+slice-returning `All()` on the groups and the map-returning `All()` on the keyed types.
+`signal.Group.AllPayloads()` becomes `Payloads() iter.Seq[any]`, and `cycle.Group` gains
+`ByNumber(n)`, since with a history limit a cycle's position is not its number.
+
+```go
+// before
+err := p.Signals().ForEach(func(s *signal.Signal) error { use(s); return nil })
+for _, s := range p.Signals().All() { use(s) }
+payloads := p.Signals().AllPayloads()
+
+// after
+for s := range p.Signals().All() { use(s) } // break, continue and return err work as usual
+signals := slices.Collect(p.Signals().All())  // when a slice is needed
+for payload := range p.Signals().Payloads() { use(payload) }
+```
+
+**One vocabulary across groups, collections and activation results.**
+
+- Keyed collections (`port.Collection`, `component.Collection`): `Any()` → `First()`,
+  `AnyMatch(p)` → `Any(p)`, `FindAny(p)` → `Find(p)`. `ActivationResultCollection.FindAny` → `Find`.
+- `ActivationResult`: `ActivationError()` → `Err()`, `ActivationErrors()` → `Errors()`;
+  `component.IsWaitingForInput(r)` and `WantsToKeepInputs(r)` become the methods `r.IsWaiting()`
+  and `r.KeepsInputs()`. `ActivationErrorWithComponentName` is removed.
+- `Component.ValidateBeforeAddingToMesh` → `Validate`; `PluginRegistered` → `HasPlugin` on both
+  `FMesh` and `Component`.
+
+```go
+// before
+if result.ActivationError() != nil { ... }
+first := fm.Components().Any()
+
+// after
+if result.Err() != nil { ... }
+first := fm.Components().First()
+```
+
+**Activation results are built whole.** `NewActivationResult(name, code, errs...)` replaces
+`NewActivationResult(name)` plus `SetActivated`, `SetActivationCode` and `AddActivationError`;
+`Activated()` is derived from the code. `ActivationResultCollection.Remove` and `Clear` and
+`cycle.Group.RemoveOldest` are removed.
+
+**Collection methods with no caller are gone.** `Map`, `MapIf` and `Without` on `port.Group`,
+`cycle.Group`, `port.Collection` and `component.Collection` (their elements are live pointers, so
+loop in place; `Filter` stays); `component.Collection.Clear`; `port.Collection.PutSignalsOnEach`,
+`PipeEachTo` and `Flush`; `signal.Group.Reduce`, `Contains` and `ContainsPayloadFunc`
+(`ContainsPayload` stays); the `component.ResultMapper` type. The `port.Group` constructors are
+unexported.
+
+**`WithErrorHandlingStrategy` rejects an unknown strategy** at `New`, with
+`ErrUnsupportedErrorHandlingStrategy`, instead of failing a cycle after it has already run.
+
+### Added
+
+- `meta.Value` widens from `string | float64` to `cmp.Ordered | ~bool`: a metadata entry can be
+  `int`, `bool`, any sized int, uint or float, or a named type built on one of them, such as
+  `type Celsius float64`. The read rule is unchanged: an entry reads back only as the type it was
+  written with, so `Set("n", 3)` is read with `Value[int]`, not `Value[float64]`.
+- `fmesh.WithMaxConcurrency(n)` and `fmesh.WithUnlimitedConcurrency()`. The ready components of a
+  cycle share at most `n` goroutines (default `GOMAXPROCS`) instead of starting one each, which was
+  27 % of CPU in the throughput benchmark.
+
+### Changed
+
+- A run allocates about half as much (root benchmarks, geomean vs v1.17.0: allocs/op −51 %,
+  B/op −49 %, time/op −36 %). Building a mesh is linear in the number of components (100k
+  components in 0.8 s, not 73 s). Run history is released after `Run`, and history eviction is O(1).
+- Observer hooks run every registered hook and join the errors: `AfterRun`, `AfterCycle`,
+  `AfterActivation`, `OnComponentAdded`, `OnSignalsDelivered` and `OnClear`. `AfterCycle` runs
+  however the cycle ends, and an `AfterRun` error is joined to the run's. `Before` hooks,
+  `OnCreation`, `OnSignalsAdded` and the pipe hooks stay fail-fast.
+- `AfterRun` hooks receive the context `Run` was called with, not the run context that a time
+  limit has already expired.
+- `AddComponents` validates the whole batch before adopting any component; a rejected batch
+  leaves every component where it was.
+- Errors from `OnClear` and `OnCreation` hooks name the component and port.
+- `ActivationResultCollection` is walked in component-name order, and never runs user code under
+  its lock.
+
+### Fixed
+
+- Livelock detection counts a stall from its first stalled cycle, so `WithLivelockThreshold(n)`
+  no longer fires one cycle late, and a waiter that drops its inputs is no longer reported as a
+  livelock.
+- A component whose `BeforeActivation` hook failed has its inputs cleared, so they no longer pile
+  up under `IgnoreAll`.
+- A pipe whose `OnOutboundPipe` or `OnInboundPipe` hook fails is removed again, so a retried
+  `PipeTo` no longer delivers every signal twice.
+- `WithRetry`: an output port that was empty before the activation is no longer refilled with an
+  empty group between attempts; a `WithRetryIf` backoff checks the context after waiting; a panic
+  on a later attempt keeps the errors of the attempts before it.
+- Adding ports or components is all-or-nothing, also for a duplicate within one call; adding them
+  one by one is no longer quadratic.
+- Doc comments, the wiki and the agent docs were checked against the code and corrected.
+
 ## [v1.17.0] — Syunik — 2026-10-01
 
 ### Added
