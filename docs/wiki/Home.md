@@ -4,7 +4,7 @@ F-Mesh (also FMesh or fmesh) is a Go framework for Flow-Based Programming (FBP).
 data-flow network from components. Each component has input and output **ports**. Type-agnostic
 **pipes** connect the ports, and **signals** flow through them.
 
-Extension points: hooks (run your code at key moments), plugins, metadata (string and number tags
+Extension points: hooks (run your code at key moments), plugins, metadata (string, bool and number tags
 on every entity) and collections/groups (work with many entities at once).
 
 # Installation
@@ -60,18 +60,41 @@ The `cycle` package appears in the run report: see [402. Inspecting a run](https
 
 # Examples
 
-[fmesh-examples](https://github.com/hovsep/fmesh-examples) has runnable programs, from small demos to full apps:
+[fmesh-examples](https://github.com/hovsep/fmesh-examples) has runnable programs, grouped by what they teach. Start at the top.
 
-- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/basics/pipeline): a text pipeline built from chained stages
+**Basics**
+
+- [string_processing](https://github.com/hovsep/fmesh-examples/tree/main/basics/string_processing): two components and one pipe, the smallest useful mesh
 - [filter](https://github.com/hovsep/fmesh-examples/tree/main/basics/filter): metadata-based content routing
+- [pipeline](https://github.com/hovsep/fmesh-examples/tree/main/basics/pipeline): a multi-stage chain that reads stdin and files
+
+**Patterns: how a mesh is wired and driven**
+
 - [fibonacci](https://github.com/hovsep/fmesh-examples/tree/main/patterns/fibonacci): a generator built on a loopback pipe
-- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/simulation/electric_circuit): a stateful feedback loop that stops on its own
-- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/patterns/load_balancer): round-robin dispatch/collect with indexed ports
-- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/patterns/async_input): a mesh driven by live external input (HTTP crawler)
 - [nesting](https://github.com/hovsep/fmesh-examples/tree/main/patterns/nesting): a mesh running inside a component
+- [load_balancer](https://github.com/hovsep/fmesh-examples/tree/main/patterns/load_balancer): round-robin dispatch/collect with indexed ports and component state
+- [async_input](https://github.com/hovsep/fmesh-examples/tree/main/patterns/async_input): a mesh driven from outside, signals injected on a ticker and results drained into a channel
+- [retry](https://github.com/hovsep/fmesh-examples/tree/main/patterns/retry): `WithRetry` and `WithRetryIf`, temporary errors retried with backoff, permanent ones not
+- [state_machine](https://github.com/hovsep/fmesh-examples/tree/main/patterns/state_machine): states as components, transitions as pipes, the current state in mesh metadata
+- [autodiff](https://github.com/hovsep/fmesh-examples/tree/main/patterns/autodiff): a neural network learning XOR, values flowing forward and gradients back
+- [tree_search](https://github.com/hovsep/fmesh-examples/tree/main/patterns/tree_search): one component per tree node, a search going down one level per cycle and merging on the way up
+- [hypergraph](https://github.com/hovsep/fmesh-examples/tree/main/patterns/hypergraph): many-to-many edges, a reaction firing only when every reactant is there
+- [fpga](https://github.com/hovsep/fmesh-examples/tree/main/patterns/fpga): generic logic cells flashed at runtime from a Verilog-like file
+- [unix_pipes](https://github.com/hovsep/fmesh-examples/tree/main/patterns/unix_pipes): unix commands as components, one log analysed three ways at once
+- [rule_engine](https://github.com/hovsep/fmesh-examples/tree/main/patterns/rule_engine): rules from a config file compiled into a mesh on every run
+
+**Simulations: systems evolving over time**
+
+- [electric_circuit](https://github.com/hovsep/fmesh-examples/tree/main/simulation/electric_circuit): a stateful feedback loop that stops on its own
 - [can_bus](https://github.com/hovsep/fmesh-examples/tree/main/simulation/can_bus): a broadcast bus; the advanced variant models the full CAN stack
-- [simulation](https://github.com/hovsep/fmesh-examples/tree/main/simulation): a step-by-step simulation driven from a REPL
+- [combustion_engine](https://github.com/hovsep/fmesh-examples/tree/main/simulation/combustion_engine): a four-cylinder engine driven from the browser
+- [elevator](https://github.com/hovsep/fmesh-examples/tree/main/simulation/elevator): two elevators down to the last button and brake, every click a signal
+- [restaurant](https://github.com/hovsep/fmesh-examples/tree/main/simulation/restaurant): one day in a restaurant, one mesh run per minute
 - [life](https://github.com/hovsep/fmesh-examples/tree/main/simulation/life): a large body simulation with nested meshes and a live TUI
+
+**Graphics**
+
 - [graphviz](https://github.com/hovsep/fmesh-examples/tree/main/graphics/graphviz): static and per-cycle graph export
+- [ray_tracer](https://github.com/hovsep/fmesh-examples/tree/main/graphics/ray_tracer): a wavefront 3D ray tracer with parallel tile bands and a reflection cycle
 
 The techniques they use are listed in [602. Patterns & recipes](https://github.com/hovsep/fmesh/wiki/602.-Patterns-and-recipes).
