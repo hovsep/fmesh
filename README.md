@@ -109,7 +109,7 @@ func main() {
   are deterministic.
 - **Cancellation and deadlines.** `Run(ctx)` passes the context to every activation function and hook.
 - **Hooks and plugins.** Add behavior at mesh, cycle, component and port level.
-- **Metadata.** Tag signals, components and ports with string or number values, then filter and route by them.
+- **Metadata.** Tag signals, components and ports with string, bool or number values, then filter and route by them.
 - **Run report.** `Run(ctx)` returns a `RuntimeInfo` with the result of every cycle.
 
 ### Hooks
